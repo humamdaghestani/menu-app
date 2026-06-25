@@ -175,11 +175,11 @@ router.get('/settings', requireAuth, async (req, res) => {
 });
 
 router.post('/settings', requireAuth, async (req, res) => {
-  const { name, description, logo_url, cover_image, theme_color } = req.body;
+  const { name, description, logo_url, cover_image, theme_color, bg_video, whatsapp } = req.body;
   try {
     await db.query(
-      `UPDATE tenants SET name=$1, description=$2, logo_url=$3, cover_image=$4, theme_color=$5 WHERE id=$6`,
-      [name, description, logo_url, cover_image, theme_color, req.user.tenantId]
+      `UPDATE tenants SET name=$1, description=$2, logo_url=$3, cover_image=$4, theme_color=$5, bg_video=$6, whatsapp=$7 WHERE id=$8`,
+      [name, description, logo_url, cover_image, theme_color, bg_video || null, whatsapp || null, req.user.tenantId]
     );
     res.redirect('/admin/settings?success=Settings+saved+successfully');
   } catch (err) {

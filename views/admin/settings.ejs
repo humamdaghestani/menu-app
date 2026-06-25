@@ -160,11 +160,19 @@
           </div>
         </div>
         <div class="form-group full">
-          <label>Cover Image URL</label>
+          <label>Background Image URL <small style="color:#aaa;font-weight:400">(shown behind the menu)</small></label>
           <input type="url" name="cover_image" value="<%= tenant.cover_image || '' %>" id="coverInput" oninput="previewImg(this,'coverPreview')" placeholder="https://..." />
           <div class="preview-wrap">
             <img id="coverPreview" class="img-preview <%= tenant.cover_image ? 'show' : '' %>" src="<%= tenant.cover_image || '' %>" style="width:200px;height:100px" />
           </div>
+        </div>
+        <div class="form-group full">
+          <label>Background Video URL <small style="color:#aaa;font-weight:400">(mp4 — overrides image if set)</small></label>
+          <input type="url" name="bg_video" value="<%= tenant.bg_video || '' %>" placeholder="https://example.com/video.mp4" />
+        </div>
+        <div class="form-group full">
+          <label>WhatsApp Number <small style="color:#aaa;font-weight:400">(with country code, e.g. 9647501234567)</small></label>
+          <input type="text" name="whatsapp" value="<%= tenant.whatsapp || '' %>" placeholder="9647501234567" />
         </div>
       </div>
     </div>

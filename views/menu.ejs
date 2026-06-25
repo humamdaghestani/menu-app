@@ -1,306 +1,404 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= tenant.name %> — Menu</title>
+  <title><%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --accent: <%= tenant.theme_color || '#e94560' %>;
-      --accent-dark: color-mix(in srgb, var(--accent) 75%, black);
-      --accent-light: color-mix(in srgb, var(--accent) 15%, white);
+    :root { --accent: <%= tenant.theme_color || '#e94560' %>; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+      color: #1a1a2e;
+      min-height: 100vh;
+      background: #1a1a2e;
     }
 
-    body { font-family: 'Segoe UI', sans-serif; background: #f7f7f8; color: #1a1a2e; min-height: 100vh; }
-
-    /* ── Hero ── */
-    .hero {
-      position: relative;
-      height: 260px;
-      background: #1a1a2e;
-      background-image: url('<%= tenant.cover_image || "" %>');
-      background-size: cover;
-      background-position: center;
+    /* ── Full-page background ── */
+    .page-bg {
+      position: fixed; inset: 0; z-index: 0;
       overflow: hidden;
     }
-    .hero::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to bottom, rgba(0,0,0,.2) 0%, rgba(0,0,0,.7) 100%);
+    .page-bg-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
     }
-    .hero-content {
-      position: absolute;
-      bottom: 24px;
-      left: 32px;
-      z-index: 1;
+    .page-bg-video {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .page-bg-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0, 0, 0, 0.30);
+    }
+
+    /* ── Page content wrapper ── */
+    .page-content { position: relative; z-index: 1; min-height: 100vh; }
+
+    /* ── Top Header ── */
+    .top-header {
+      background: rgba(26, 26, 46, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding: 14px 28px;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 16px;
     }
-    .hero-logo {
-      width: 72px; height: 72px;
-      border-radius: 16px;
-      object-fit: cover;
-      border: 3px solid #fff;
-      box-shadow: 0 4px 16px rgba(0,0,0,.3);
-      background: #fff;
+    .restaurant-info { display: flex; align-items: center; gap: 14px; }
+    .restaurant-logo {
+      width: 52px; height: 52px; border-radius: 12px;
+      object-fit: cover; border: 2px solid rgba(255,255,255,0.2);
+      flex-shrink: 0; background: rgba(255,255,255,0.1);
       display: flex; align-items: center; justify-content: center;
-      font-size: 2rem;
-      flex-shrink: 0;
+      font-size: 1.6rem;
+      overflow: hidden;
     }
-    .hero-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 13px; }
-    .hero-text h1 { color: #fff; font-size: 1.7rem; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
-    .hero-text p { color: rgba(255,255,255,.85); font-size: .9rem; margin-top: 4px; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
+    .restaurant-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .restaurant-text h1 { color: #fff; font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
+    .restaurant-text p { color: rgba(255,255,255,0.7); font-size: .8rem; margin-top: 2px; }
+
+    /* ── Language Switcher ── */
+    .lang-switcher {
+      display: flex; gap: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 24px; padding: 4px;
+    }
+    .lang-btn {
+      background: none; border: none; color: rgba(255,255,255,0.6);
+      font-size: .78rem; font-weight: 700; padding: 5px 10px;
+      border-radius: 20px; cursor: pointer; transition: all .2s;
+      font-family: inherit; letter-spacing: .3px;
+    }
+    .lang-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+    .lang-btn.active { background: var(--accent); color: #fff; }
 
     /* ── Sticky Nav ── */
     .sticky-wrap {
-      position: sticky;
-      top: 0;
-      z-index: 50;
-      background: #fff;
-      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(26, 26, 46, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    nav {
-      display: flex;
-      gap: 4px;
-      padding: 0 24px;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
+    nav { display: flex; gap: 4px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
     nav::-webkit-scrollbar { display: none; }
     nav button {
-      background: none; border: none;
-      color: #777; font-size: .9rem;
-      padding: 14px 16px; cursor: pointer;
-      border-bottom: 3px solid transparent;
-      white-space: nowrap;
-      transition: color .2s, border-color .2s;
-      font-weight: 500;
+      background: none; border: none; color: rgba(255,255,255,0.55);
+      font-size: .88rem; padding: 13px 16px; cursor: pointer;
+      border-bottom: 3px solid transparent; white-space: nowrap;
+      font-weight: 500; transition: color .2s, border-color .2s;
+      font-family: inherit;
     }
-    nav button:hover { color: #1a1a2e; }
+    nav button:hover { color: #fff; }
     nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
 
     /* ── Toolbar ── */
     .toolbar {
-      max-width: 1100px;
-      margin: 24px auto 0;
-      padding: 0 24px;
-      display: flex;
-      justify-content: flex-end;
+      max-width: 1100px; margin: 24px auto 0; padding: 0 24px;
+      display: flex; justify-content: flex-end;
     }
     .search-wrap { position: relative; }
-    .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #aaa; }
+    .search-wrap svg { position: absolute; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); }
+    [dir="ltr"] .search-wrap svg { left: 12px; }
+    [dir="rtl"] .search-wrap svg { right: 12px; }
     .toolbar input {
-      padding: 10px 14px 10px 38px;
-      border: 1.5px solid #e8e8e8;
-      border-radius: 24px;
-      font-size: .9rem;
-      width: 260px;
-      outline: none;
-      background: #fff;
-      transition: border-color .2s, box-shadow .2s;
+      padding: 10px 14px 10px 38px; border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 24px; font-size: .88rem; width: 250px; outline: none;
+      background: rgba(255,255,255,0.12); color: #fff;
+      backdrop-filter: blur(8px); transition: border-color .2s, background .2s;
+      font-family: inherit;
     }
-    .toolbar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    [dir="rtl"] .toolbar input { padding: 10px 38px 10px 14px; }
+    .toolbar input::placeholder { color: rgba(255,255,255,0.45); }
+    .toolbar input:focus { border-color: var(--accent); background: rgba(255,255,255,0.18); }
 
     /* ── Grid ── */
     main {
-      max-width: 1100px;
-      margin: 20px auto 60px;
-      padding: 0 24px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 20px;
+      max-width: 1100px; margin: 20px auto 60px; padding: 0 24px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px;
     }
 
     /* ── Card ── */
     .card {
-      background: #fff;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0,0,0,.07);
-      cursor: pointer;
-      transition: transform .22s, box-shadow .22s;
+      background: rgba(255,255,255,0.95);
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      cursor: pointer; transition: transform .22s, box-shadow .22s;
       position: relative;
     }
-    .card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(0,0,0,.13); }
-    .card.unavailable { opacity: .55; cursor: not-allowed; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
+    .card.unavailable { opacity: .6; cursor: not-allowed; }
 
     .card-img-wrap { position: relative; overflow: hidden; }
-    .card img {
-      width: 100%; height: 170px;
-      object-fit: cover; display: block;
-      transition: transform .3s;
-    }
-    .card:hover .card-img-wrap img { transform: scale(1.04); }
+    .card img { width: 100%; height: 170px; object-fit: cover; display: block; transition: transform .3s; }
+    .card:hover .card-img-wrap img { transform: scale(1.05); }
 
     .unavailable-tag {
-      position: absolute; inset: 0;
-      background: rgba(0,0,0,.45);
+      position: absolute; inset: 0; background: rgba(0,0,0,0.5);
       display: flex; align-items: center; justify-content: center;
       color: #fff; font-weight: 700; font-size: .95rem;
-      letter-spacing: .5px;
     }
-
     .badge {
-      position: absolute; top: 10px; left: 10px;
+      position: absolute; top: 10px;
       padding: 4px 10px; border-radius: 20px;
-      font-size: .75rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .5px;
+      font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px;
     }
+    [dir="ltr"] .badge { left: 10px; }
+    [dir="rtl"] .badge { right: 10px; }
     .badge-spicy      { background: #ff4d4d; color: #fff; }
     .badge-popular    { background: #f5a623; color: #fff; }
     .badge-new        { background: #00b894; color: #fff; }
     .badge-vegetarian { background: #27ae60; color: #fff; }
 
     .card-body { padding: 14px 16px 16px; }
-    .card-body h3 { font-size: 1rem; font-weight: 700; margin-bottom: 5px; }
-    .card-body .desc {
-      color: #888; font-size: .82rem; line-height: 1.5;
+    .card-body h3 { font-size: .98rem; font-weight: 700; margin-bottom: 5px; color: #1a1a2e; }
+    .card-desc {
+      color: #888; font-size: .8rem; line-height: 1.5;
       display: -webkit-box; -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical; overflow: hidden;
-      margin-bottom: 10px;
+      -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px;
     }
     .card-footer { display: flex; align-items: center; justify-content: space-between; }
-    .price { color: var(--accent); font-weight: 800; font-size: 1.05rem; }
+    .price { color: var(--accent); font-weight: 800; font-size: 1rem; }
 
     /* ── Empty ── */
     .empty {
-      grid-column: 1 / -1;
-      text-align: center; padding: 80px 0;
-      color: #bbb;
+      grid-column: 1 / -1; text-align: center; padding: 80px 0;
+      color: rgba(255,255,255,0.5);
     }
-    .empty svg { display: block; margin: 0 auto 16px; opacity: .4; }
-    .empty p { font-size: 1.05rem; }
+    .empty p { font-size: 1.05rem; margin-top: 12px; }
 
     /* ── Modal ── */
     .overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.6); z-index: 200;
+      background: rgba(0,0,0,0.7); z-index: 200;
       align-items: center; justify-content: center; padding: 20px;
+      backdrop-filter: blur(4px);
     }
     .overlay.open { display: flex; }
     .modal {
-      background: #fff; border-radius: 20px;
-      max-width: 500px; width: 100%;
-      overflow: hidden; animation: popIn .22s ease;
-      position: relative; max-height: 90vh; overflow-y: auto;
+      background: #fff; border-radius: 20px; max-width: 500px; width: 100%;
+      overflow: hidden; animation: popIn .22s ease; position: relative;
+      max-height: 90vh; overflow-y: auto;
     }
     @keyframes popIn {
       from { transform: scale(.92) translateY(20px); opacity: 0; }
       to   { transform: scale(1)   translateY(0);    opacity: 1; }
     }
     .modal-img-wrap { position: relative; }
-    .modal img { width: 100%; height: 260px; object-fit: cover; display: block; }
+    .modal-img { width: 100%; height: 260px; object-fit: cover; display: block; }
     .modal-badge {
-      position: absolute; top: 14px; left: 14px;
-      padding: 5px 12px; border-radius: 20px;
+      position: absolute; bottom: 14px;
+      padding: 5px 14px; border-radius: 20px;
       font-size: .8rem; font-weight: 700; text-transform: uppercase;
     }
-    .modal-body { padding: 24px 26px 32px; }
-    .modal-body h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
-    .modal-price { color: var(--accent); font-size: 1.3rem; font-weight: 800; margin-bottom: 14px; }
-    .modal-desc { color: #666; line-height: 1.7; font-size: .95rem; }
+    [dir="ltr"] .modal-badge { left: 14px; }
+    [dir="rtl"] .modal-badge { right: 14px; }
+    .modal-body { padding: 22px 24px 28px; }
+    .modal-body h2 { font-size: 1.35rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
+    .modal-price { color: var(--accent); font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; }
+    .modal-desc { color: #666; line-height: 1.7; font-size: .92rem; margin-bottom: 20px; }
+
+    /* WhatsApp button */
+    .whatsapp-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: #25d366; color: #fff; text-decoration: none;
+      padding: 12px 20px; border-radius: 12px;
+      font-weight: 700; font-size: .92rem; width: 100%;
+      transition: background .2s, transform .1s;
+    }
+    .whatsapp-btn:hover { background: #1da851; transform: scale(.98); }
+    .whatsapp-btn svg { flex-shrink: 0; }
+
     .close-btn {
-      position: absolute; top: 12px; right: 14px;
-      background: rgba(0,0,0,.5); color: #fff; border: none;
-      border-radius: 50%; width: 34px; height: 34px;
-      font-size: 1.1rem; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
+      position: absolute; top: 12px;
+      background: rgba(0,0,0,0.5); color: #fff; border: none;
+      border-radius: 50%; width: 34px; height: 34px; font-size: 1rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: background .2s; z-index: 1;
     }
-    .close-btn:hover { background: rgba(0,0,0,.75); }
+    [dir="ltr"] .close-btn { right: 14px; }
+    [dir="rtl"] .close-btn { left: 14px; }
+    .close-btn:hover { background: rgba(0,0,0,0.75); }
 
     /* ── Footer ── */
     footer {
-      text-align: center;
-      padding: 20px;
-      color: #bbb;
-      font-size: .8rem;
-      border-top: 1px solid #f0f0f0;
+      text-align: center; padding: 20px;
+      color: rgba(255,255,255,0.4); font-size: .78rem;
     }
 
+    /* ── Responsive ── */
     @media (max-width: 600px) {
-      .hero { height: 200px; }
-      .hero-text h1 { font-size: 1.3rem; }
-      main { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; padding: 0 12px; }
+      .top-header { padding: 12px 16px; }
+      .restaurant-text h1 { font-size: 1rem; }
+      main { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; padding: 0 12px; }
       .toolbar { padding: 0 12px; }
       .toolbar input { width: 100%; }
       .toolbar { justify-content: stretch; }
       .search-wrap { width: 100%; }
+      .lang-btn { padding: 5px 7px; font-size: .72rem; }
     }
   </style>
 </head>
 <body>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-content">
-    <div class="hero-logo">
-      <% if (tenant.logo_url) { %>
-        <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
-      <% } else { %>
-        🍽️
-      <% } %>
+<!-- Full-page background -->
+<div class="page-bg">
+  <% if (tenant.bg_video) { %>
+    <video class="page-bg-video" autoplay muted loop playsinline>
+      <source src="<%= tenant.bg_video %>" />
+    </video>
+  <% } else if (tenant.cover_image) { %>
+    <img class="page-bg-img" src="<%= tenant.cover_image %>" alt="" />
+  <% } %>
+  <div class="page-bg-overlay"></div>
+</div>
+
+<div class="page-content">
+
+  <!-- Header -->
+  <header class="top-header">
+    <div class="restaurant-info">
+      <div class="restaurant-logo">
+        <% if (tenant.logo_url) { %>
+          <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+        <% } else { %>
+          🍽️
+        <% } %>
+      </div>
+      <div class="restaurant-text">
+        <h1><%= tenant.name %></h1>
+        <% if (tenant.description) { %><p><%= tenant.description %></p><% } %>
+      </div>
     </div>
-    <div class="hero-text">
-      <h1><%= tenant.name %></h1>
-      <% if (tenant.description) { %><p><%= tenant.description %></p><% } %>
+
+    <!-- Language Switcher -->
+    <div class="lang-switcher">
+      <button class="lang-btn active" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" onclick="setLang('ar')">ع</button>
+      <button class="lang-btn" onclick="setLang('ku')">کو</button>
+    </div>
+  </header>
+
+  <!-- Category Nav -->
+  <div class="sticky-wrap">
+    <nav id="categoryNav">
+      <button class="active" data-id="all" data-label-key="all"></button>
+      <% categories.forEach(cat => { %>
+        <button data-id="<%= cat.id %>"><%= cat.name %></button>
+      <% }) %>
+    </nav>
+  </div>
+
+  <!-- Search -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" />
     </div>
   </div>
-</div>
 
-<!-- Sticky Category Nav -->
-<div class="sticky-wrap">
-  <nav id="categoryNav">
-    <button class="active" data-id="all">All</button>
-    <% categories.forEach(cat => { %>
-      <button data-id="<%= cat.id %>"><%= cat.name %></button>
-    <% }) %>
-  </nav>
-</div>
+  <!-- Grid -->
+  <main id="itemsGrid"></main>
 
-<!-- Search -->
-<div class="toolbar">
-  <div class="search-wrap">
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-    <input type="text" id="searchInput" placeholder="Search items..." />
-  </div>
-</div>
-
-<!-- Items Grid -->
-<main id="itemsGrid"></main>
-
-<!-- Modal -->
-<div class="overlay" id="overlay">
-  <div class="modal">
-    <button class="close-btn" id="closeModal">✕</button>
-    <div class="modal-img-wrap">
-      <img id="modalImg" src="" alt="" />
-      <span class="modal-badge" id="modalBadge" style="display:none"></span>
-    </div>
-    <div class="modal-body">
-      <h2 id="modalName"></h2>
-      <div class="modal-price" id="modalPrice"></div>
-      <p class="modal-desc" id="modalDesc"></p>
+  <!-- Modal -->
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <button class="close-btn" id="closeModal">✕</button>
+      <div class="modal-img-wrap">
+        <img class="modal-img" id="modalImg" src="" alt="" />
+        <span class="modal-badge" id="modalBadge" style="display:none"></span>
+      </div>
+      <div class="modal-body">
+        <h2 id="modalName"></h2>
+        <div class="modal-price" id="modalPrice"></div>
+        <p class="modal-desc" id="modalDesc"></p>
+        <% if (tenant.whatsapp) { %>
+        <a id="whatsappBtn" href="#" target="_blank" rel="noopener" class="whatsapp-btn">
+          <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.557 4.112 1.524 5.842L0 24l6.302-1.504A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.001-1.366l-.357-.214-3.74.892.946-3.617-.233-.373A9.789 9.789 0 0 1 2.182 12C2.182 6.579 6.579 2.182 12 2.182S21.818 6.579 21.818 12 17.421 21.818 12 21.818z"/></svg>
+          <span id="whatsappBtnText"></span>
+        </a>
+        <% } %>
+      </div>
     </div>
   </div>
-</div>
 
-<footer>Powered by MenuApp</footer>
+  <footer id="footer"></footer>
+</div>
 
 <script>
   const items      = <%- JSON.stringify(items) %>;
   const categories = <%- JSON.stringify(categories) %>;
+  const WHATSAPP   = '<%= tenant.whatsapp || "" %>';
 
-  const BADGE_LABELS = { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' };
-  const BADGE_CLASS  = { spicy:'badge-spicy', popular:'badge-popular', new:'badge-new', vegetarian:'badge-vegetarian' };
+  // ── Translations ────────────────────────────────────
+  const LANG = {
+    en: {
+      dir: 'ltr', lang: 'en',
+      all: 'All',
+      search: 'Search items...',
+      notFound: 'No items found.',
+      unavailable: 'Unavailable',
+      footer: 'Powered by MenuApp',
+      whatsapp: '🛒 Order via WhatsApp',
+      badges: { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' }
+    },
+    ar: {
+      dir: 'rtl', lang: 'ar',
+      all: 'الكل',
+      search: 'ابحث عن الأصناف...',
+      notFound: 'لا توجد أصناف.',
+      unavailable: 'غير متوفر',
+      footer: 'مدعوم من MenuApp',
+      whatsapp: '🛒 اطلب عبر واتساب',
+      badges: { spicy:'🌶 حار', popular:'⭐ الأكثر طلباً', new:'🆕 جديد', vegetarian:'🌱 نباتي' }
+    },
+    ku: {
+      dir: 'rtl', lang: 'ku',
+      all: 'هەمووی',
+      search: 'بگەڕێ بۆ بەرهەم...',
+      notFound: 'هیچ بەرهەمێک نەدۆزرایەوە.',
+      unavailable: 'بەردەست نییە',
+      footer: 'دروستکراوە لەلایەن MenuApp',
+      whatsapp: '🛒 داواکاری لە واتساپ',
+      badges: { spicy:'🌶 تیژ', popular:'⭐ بەناوبانگ', new:'🆕 نوێ', vegetarian:'🌱 ڕووەکی' }
+    }
+  };
 
+  const BADGE_CLASS = { spicy:'badge-spicy', popular:'badge-popular', new:'badge-new', vegetarian:'badge-vegetarian' };
+
+  let currentLang = localStorage.getItem('lang') || 'en';
   let activeCategory = 'all';
   let searchQuery = '';
 
-  // Category nav
+  function setLang(lang) {
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    const L = LANG[lang];
+    document.documentElement.dir  = L.dir;
+    document.documentElement.lang = L.lang;
+    // Update lang buttons
+    document.querySelectorAll('.lang-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', ['en','ar','ku'][i] === lang);
+    });
+    // Update UI text
+    document.getElementById('searchInput').placeholder = L.search;
+    document.getElementById('footer').textContent = L.footer;
+    if (document.getElementById('whatsappBtnText')) {
+      document.getElementById('whatsappBtnText').textContent = L.whatsapp;
+    }
+    // Update "All" button
+    const allBtn = document.querySelector('[data-id="all"]');
+    if (allBtn) allBtn.textContent = L.all;
+    renderGrid();
+  }
+
+  // ── Category Nav ──────────────────────────────────
   const nav = document.getElementById('categoryNav');
   nav.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -311,7 +409,7 @@
     });
   });
 
-  // Search (debounced)
+  // ── Search ────────────────────────────────────────
   let searchTimer;
   document.getElementById('searchInput').addEventListener('input', e => {
     clearTimeout(searchTimer);
@@ -321,7 +419,9 @@
     }, 200);
   });
 
+  // ── Render ────────────────────────────────────────
   function renderGrid() {
+    const L = LANG[currentLang];
     const grid = document.getElementById('itemsGrid');
     grid.innerHTML = '';
 
@@ -333,11 +433,10 @@
     });
 
     if (filtered.length === 0) {
-      grid.innerHTML = `
-        <div class="empty">
-          <svg width="64" height="64" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 5h12.8"/></svg>
-          <p>No items found.</p>
-        </div>`;
+      grid.innerHTML = `<div class="empty">
+        <svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 5h12.8"/></svg>
+        <p>${L.notFound}</p>
+      </div>`;
       return;
     }
 
@@ -345,20 +444,21 @@
       const card = document.createElement('div');
       card.className = 'card' + (item.is_available === false ? ' unavailable' : '');
 
-      const badgeHTML = item.badge && BADGE_LABELS[item.badge]
-        ? `<span class="badge ${BADGE_CLASS[item.badge]}">${BADGE_LABELS[item.badge]}</span>` : '';
-      const unavailableHTML = item.is_available === false
-        ? `<div class="unavailable-tag">Unavailable</div>` : '';
+      const badgeLabel = item.badge ? (L.badges[item.badge] || item.badge) : '';
+      const badgeHTML = badgeLabel
+        ? `<span class="badge ${BADGE_CLASS[item.badge] || ''}">${badgeLabel}</span>` : '';
+      const unavailHTML = item.is_available === false
+        ? `<div class="unavailable-tag">${L.unavailable}</div>` : '';
 
       card.innerHTML = `
         <div class="card-img-wrap">
           <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${item.name}" loading="lazy" />
           ${badgeHTML}
-          ${unavailableHTML}
+          ${unavailHTML}
         </div>
         <div class="card-body">
           <h3>${item.name}</h3>
-          <p class="desc">${item.description || ''}</p>
+          <p class="card-desc">${item.description || ''}</p>
           <div class="card-footer">
             <span class="price">${item.price}</span>
           </div>
@@ -371,20 +471,30 @@
     });
   }
 
+  // ── Modal ─────────────────────────────────────────
   function openModal(item) {
-    document.getElementById('modalImg').src   = item.image_url || 'https://placehold.co/500x260?text=No+Image';
-    document.getElementById('modalImg').alt   = item.name;
-    document.getElementById('modalName').textContent  = item.name;
-    document.getElementById('modalPrice').textContent = item.price;
-    document.getElementById('modalDesc').textContent  = item.description || '';
+    const L = LANG[currentLang];
+    document.getElementById('modalImg').src             = item.image_url || 'https://placehold.co/500x260?text=No+Image';
+    document.getElementById('modalImg').alt             = item.name;
+    document.getElementById('modalName').textContent    = item.name;
+    document.getElementById('modalPrice').textContent   = item.price;
+    document.getElementById('modalDesc').textContent    = item.description || '';
 
     const badge = document.getElementById('modalBadge');
-    if (item.badge && BADGE_LABELS[item.badge]) {
-      badge.textContent  = BADGE_LABELS[item.badge];
-      badge.className    = `modal-badge ${BADGE_CLASS[item.badge]}`;
+    if (item.badge && L.badges[item.badge]) {
+      badge.textContent   = L.badges[item.badge];
+      badge.className     = `modal-badge ${BADGE_CLASS[item.badge] || ''}`;
       badge.style.display = '';
     } else {
       badge.style.display = 'none';
+    }
+
+    if (WHATSAPP) {
+      const msg = encodeURIComponent(`${L.whatsapp.replace('🛒 ','')}: ${item.name} (${item.price})`);
+      document.getElementById('whatsappBtn').href = `https://wa.me/${WHATSAPP.replace(/\D/g,'')}?text=${msg}`;
+      if (document.getElementById('whatsappBtnText')) {
+        document.getElementById('whatsappBtnText').textContent = L.whatsapp;
+      }
     }
 
     document.getElementById('overlay').classList.add('open');
@@ -402,7 +512,8 @@
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-  renderGrid();
+  // ── Init ──────────────────────────────────────────
+  setLang(currentLang);
 </script>
 </body>
 </html>
