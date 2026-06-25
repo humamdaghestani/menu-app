@@ -437,13 +437,11 @@
 
   const BADGE_CLASS = { spicy:'badge-spicy', popular:'badge-popular', new:'badge-new', vegetarian:'badge-vegetarian' };
 
-  let currentLang      = localStorage.getItem('lang') || 'en';
-  let searchQuery      = '';
-  let modalItem        = null;
-  let modalQty         = 1;
-  let scrollSpy        = null;
-  let scrollLockTimer  = null;
-  let scrollLocked     = false;
+  let currentLang    = localStorage.getItem('lang') || 'en';
+  let searchQuery    = '';
+  let activeCategory = 'all';
+  let modalItem      = null;
+  let modalQty       = 1;
 
   // ── Cart ──────────────────────────────────────────
   let cart = [];
@@ -583,23 +581,10 @@
   // ── Category Nav ──────────────────────────────────
   document.getElementById('categoryNav').querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
-      const catId = btn.dataset.id;
-
-      // Lock scroll spy so it doesn't fight with this click
-      scrollLocked = true;
-      clearTimeout(scrollLockTimer);
-      scrollLockTimer = setTimeout(() => { scrollLocked = false; }, 1100);
-
-      setActiveNav(catId);
-
-      if (catId === 'all') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        const section = document.getElementById(`cat-${catId}`);
-        if (section) {
-          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
+      activeCategory = btn.dataset.id;
+      setActiveNav(activeCategory);
+      renderGrid();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
 
@@ -619,58 +604,81 @@
     searchTimer = setTimeout(() => { searchQuery = e.target.value.toLowerCase(); renderGrid(); }, 200);
   });
 
-  // ── Render Grid (sections) ────────────────────────
+  // ── Render Grid ───────────────────────────────────
   function renderGrid() {
     const L    = LANG[currentLang];
     const grid = document.getElementById('itemsGrid');
     grid.innerHTML = '';
-    if (scrollSpy) { scrollSpy.disconnect(); scrollSpy = null; }
 
-    let hasAny = false;
-
-    categories.forEach(cat => {
-      const catItems = items.filter(item => {
-        if (Number(item.category_id) !== Number(cat.id)) return false;
-        if (!searchQuery) return true;
-        return (item.name || '').toLowerCase().includes(searchQuery) ||
-               (item.description || '').toLowerCase().includes(searchQuery) ||
-               (item.name_ar || '').toLowerCase().includes(searchQuery) ||
-               (item.name_ku || '').toLowerCase().includes(searchQuery);
-      });
-      if (catItems.length === 0) return;
-      hasAny = true;
-
-      const section = document.createElement('section');
-      section.className = 'category-section';
-      section.id = `cat-${cat.id}`;
-
-      const title = document.createElement('h2');
-      title.className = 'section-title';
-      if (cat.image_url) {
-        const img = document.createElement('img');
-        img.src = cat.image_url; img.alt = ''; img.className = 'section-title-img';
-        title.appendChild(img);
-      }
-      title.appendChild(document.createTextNode(getLocalized(cat, 'name', currentLang)));
-      section.appendChild(title);
-
-      const innerGrid = document.createElement('div');
-      innerGrid.className = 'items-inner-grid';
-      catItems.forEach((item, i) => {
-        const card = buildCard(item, L);
-        card.style.animationDelay = (i * 40) + 'ms';
-        innerGrid.appendChild(card);
-      });
-      section.appendChild(innerGrid);
-      grid.appendChild(section);
+    // Determine which items to show
+    const filtered = items.filter(item => {
+      const matchCat = activeCategory === 'all' || Number(item.category_id) === Number(activeCategory);
+      if (!matchCat) return false;
+      if (!searchQuery) return true;
+      return (item.name || '').toLowerCase().includes(searchQuery) ||
+             (item.description || '').toLowerCase().includes(searchQuery) ||
+             (item.name_ar || '').toLowerCase().includes(searchQuery) ||
+             (item.name_ku || '').toLowerCase().includes(searchQuery);
     });
 
-    if (!hasAny) {
+    if (filtered.length === 0) {
       grid.innerHTML = `<div class="empty"><svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p>${L.notFound}</p></div>`;
       return;
     }
 
-    setupScrollSpy();
+    if (activeCategory === 'all') {
+      // Group by category with section headers
+      categories.forEach(cat => {
+        const catItems = filtered.filter(item => Number(item.category_id) === Number(cat.id));
+        if (catItems.length === 0) return;
+
+        const section = document.createElement('section');
+        section.className = 'category-section';
+
+        const title = document.createElement('h2');
+        title.className = 'section-title';
+        if (cat.image_url) {
+          const img = document.createElement('img');
+          img.src = cat.image_url; img.alt = ''; img.className = 'section-title-img';
+          title.appendChild(img);
+        }
+        title.appendChild(document.createTextNode(getLocalized(cat, 'name', currentLang)));
+        section.appendChild(title);
+
+        const innerGrid = document.createElement('div');
+        innerGrid.className = 'items-inner-grid';
+        catItems.forEach((item, i) => {
+          const card = buildCard(item, L);
+          card.style.animationDelay = (i * 40) + 'ms';
+          innerGrid.appendChild(card);
+        });
+        section.appendChild(innerGrid);
+        grid.appendChild(section);
+      });
+
+      // Uncategorized
+      const uncat = filtered.filter(item => !item.category_id);
+      if (uncat.length > 0) {
+        const innerGrid = document.createElement('div');
+        innerGrid.className = 'items-inner-grid';
+        uncat.forEach((item, i) => {
+          const card = buildCard(item, L);
+          card.style.animationDelay = (i * 40) + 'ms';
+          innerGrid.appendChild(card);
+        });
+        grid.appendChild(innerGrid);
+      }
+    } else {
+      // Flat grid — single category selected
+      const innerGrid = document.createElement('div');
+      innerGrid.className = 'items-inner-grid';
+      filtered.forEach((item, i) => {
+        const card = buildCard(item, L);
+        card.style.animationDelay = (i * 40) + 'ms';
+        innerGrid.appendChild(card);
+      });
+      grid.appendChild(innerGrid);
+    }
   }
 
   function buildCard(item, L) {
@@ -712,21 +720,6 @@
       }
     }
     return card;
-  }
-
-  // ── Scroll Spy ────────────────────────────────────
-  function setupScrollSpy() {
-    if (!('IntersectionObserver' in window)) return;
-    scrollSpy = new IntersectionObserver(entries => {
-      if (scrollLocked) return;
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          setActiveNav(entry.target.id.replace('cat-', ''));
-        }
-      });
-    }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
-
-    document.querySelectorAll('.category-section').forEach(s => scrollSpy.observe(s));
   }
 
   // ── Modal ─────────────────────────────────────────
