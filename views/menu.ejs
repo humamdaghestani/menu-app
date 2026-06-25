@@ -18,7 +18,7 @@
 
     /* ── Header ── */
     .top-header {
-      background: rgba(26,26,46,0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: rgba(26,26,46,0.80); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid rgba(255,255,255,0.08); padding: 14px 28px;
       display: flex; align-items: center; justify-content: space-between; gap: 16px;
     }
@@ -47,7 +47,7 @@
     /* ── Sticky Nav ── */
     .sticky-wrap {
       position: sticky; top: 0; z-index: 50;
-      background: rgba(26,26,46,0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      background: rgba(26,26,46,0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
     nav { display: flex; gap: 4px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
@@ -72,14 +72,14 @@
     .cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     /* ── Toolbar ── */
-    .toolbar { max-width: 1100px; margin: 24px auto 0; padding: 0 24px; display: flex; justify-content: flex-end; }
+    .toolbar { max-width: 1100px; margin: 28px auto 0; padding: 0 24px; display: flex; justify-content: flex-end; }
     .search-wrap { position: relative; }
     .search-wrap svg { position: absolute; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.5); }
     [dir="ltr"] .search-wrap svg { left: 12px; }
     [dir="rtl"] .search-wrap svg { right: 12px; }
     .toolbar input {
       padding: 10px 14px 10px 38px; border: 1.5px solid rgba(255,255,255,0.15);
-      border-radius: 24px; font-size: .88rem; width: 250px; outline: none;
+      border-radius: 24px; font-size: .88rem; width: 260px; outline: none;
       background: rgba(255,255,255,0.12); color: #fff; backdrop-filter: blur(8px);
       transition: border-color .2s, background .2s; font-family: inherit;
     }
@@ -87,20 +87,33 @@
     .toolbar input::placeholder { color: rgba(255,255,255,0.45); }
     .toolbar input:focus { border-color: var(--accent); background: rgba(255,255,255,0.18); }
 
-    /* ── Grid ── */
-    main { max-width: 1100px; margin: 20px auto 100px; padding: 0 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+    /* ── Sections ── */
+    main { max-width: 1100px; margin: 24px auto 120px; padding: 0 24px; }
+    .category-section { margin-bottom: 44px; scroll-margin-top: 110px; }
+    .section-title {
+      color: #fff; font-size: 1.15rem; font-weight: 800; margin-bottom: 16px;
+      padding-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.12);
+      display: flex; align-items: center; gap: 10px; letter-spacing: .01em;
+    }
+    .section-title-img {
+      width: 32px; height: 32px; border-radius: 50%; object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.2); flex-shrink: 0;
+    }
+    .items-inner-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; }
 
     /* ── Card ── */
     .card {
-      background: rgba(255,255,255,0.95); border-radius: 16px; overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2); cursor: pointer;
+      background: rgba(255,255,255,0.97); border-radius: 16px; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15); cursor: pointer;
       transition: transform .22s, box-shadow .22s; position: relative;
+      animation: fadeUp .3s ease both;
     }
-    .card:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.25); }
     .card.unavailable { opacity: .6; cursor: not-allowed; }
     .card-img-wrap { position: relative; overflow: hidden; }
-    .card img { width: 100%; height: 170px; object-fit: cover; display: block; transition: transform .3s; }
-    .card:hover .card-img-wrap img { transform: scale(1.05); }
+    .card img { width: 100%; height: 170px; object-fit: cover; display: block; transition: transform .35s; }
+    .card:hover .card-img-wrap img { transform: scale(1.06); }
     .unavailable-tag { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: .95rem; }
     .badge { position: absolute; top: 10px; padding: 4px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
     [dir="ltr"] .badge { left: 10px; }
@@ -123,7 +136,7 @@
     .add-btn:active { transform: scale(.95); }
 
     /* ── Empty ── */
-    .empty { grid-column: 1/-1; text-align: center; padding: 80px 0; color: rgba(255,255,255,0.5); }
+    .empty { text-align: center; padding: 80px 0; color: rgba(255,255,255,0.5); }
     .empty p { font-size: 1.05rem; margin-top: 12px; }
 
     /* ── Item Modal ── */
@@ -140,8 +153,6 @@
     .modal-body h2 { font-size: 1.35rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
     .modal-price { color: var(--accent); font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; }
     .modal-desc { color: #666; line-height: 1.7; font-size: .92rem; margin-bottom: 20px; }
-
-    /* Qty controls in modal */
     .modal-cart-row { display: flex; align-items: center; gap: 12px; }
     .qty-ctrl { display: flex; align-items: center; gap: 0; border: 1.5px solid #e8e8e8; border-radius: 10px; overflow: hidden; }
     .qty-btn { background: #f5f5f5; border: none; width: 36px; height: 36px; font-size: 1.1rem; cursor: pointer; font-family: inherit; transition: background .15s; }
@@ -153,7 +164,6 @@
       font-family: inherit; transition: opacity .15s; display: flex; align-items: center; justify-content: center; gap: 8px;
     }
     .modal-add-btn:hover { opacity: .88; }
-
     .close-btn {
       position: absolute; top: 12px; background: rgba(0,0,0,0.5); color: #fff; border: none;
       border-radius: 50%; width: 34px; height: 34px; font-size: 1rem; cursor: pointer;
@@ -163,7 +173,7 @@
     [dir="rtl"] .close-btn { left: 14px; }
     .close-btn:hover { background: rgba(0,0,0,0.75); }
 
-    /* ── Floating Cart Button ── */
+    /* ── Floating Cart ── */
     .cart-fab {
       position: fixed; bottom: 28px; z-index: 150;
       background: var(--accent); color: #fff; border: none; border-radius: 50px;
@@ -175,11 +185,7 @@
     [dir="rtl"] .cart-fab { left: 28px; }
     .cart-fab:hover { transform: scale(1.05); }
     .cart-fab.hidden { opacity: 0; pointer-events: none; transform: scale(.8); }
-    .cart-fab-count {
-      background: #fff; color: var(--accent); border-radius: 50%;
-      width: 22px; height: 22px; font-size: .75rem; font-weight: 900;
-      display: flex; align-items: center; justify-content: center;
-    }
+    .cart-fab-count { background: #fff; color: var(--accent); border-radius: 50%; width: 22px; height: 22px; font-size: .75rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
 
     /* ── Cart Drawer ── */
     .cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; display: none; backdrop-filter: blur(4px); }
@@ -192,24 +198,14 @@
     [dir="ltr"] .cart-drawer { right: 0; transform: translateX(100%); }
     [dir="rtl"] .cart-drawer { left: 0; transform: translateX(-100%); }
     .cart-drawer.open { transform: translateX(0); }
-
-    .cart-header {
-      padding: 20px 24px; border-bottom: 1px solid #f0f0f0;
-      display: flex; align-items: center; justify-content: space-between;
-    }
+    .cart-header { padding: 20px 24px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; justify-content: space-between; }
     .cart-header h2 { font-size: 1.1rem; font-weight: 800; color: #1a1a2e; }
     .cart-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: #888; transition: color .15s; }
     .cart-close:hover { color: #1a1a2e; }
-
     .cart-items { flex: 1; overflow-y: auto; padding: 16px 24px; }
     .cart-empty { text-align: center; padding: 60px 0; color: #bbb; }
-    .cart-empty svg { display: block; margin: 0 auto 12px; }
-    .cart-empty p { font-size: .95rem; }
-
-    .cart-item {
-      display: flex; align-items: center; gap: 14px;
-      padding: 14px 0; border-bottom: 1px solid #f5f5f5;
-    }
+    .cart-empty p { font-size: .95rem; margin-top: 12px; }
+    .cart-item { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #f5f5f5; }
     .cart-item:last-child { border-bottom: none; }
     .cart-item-img { width: 60px; height: 50px; border-radius: 10px; object-fit: cover; background: #f0f0f0; flex-shrink: 0; }
     .cart-item-info { flex: 1; min-width: 0; }
@@ -218,11 +214,22 @@
     .cart-item-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
     .cart-qty-btn { background: #f5f5f5; border: none; width: 28px; height: 28px; border-radius: 8px; font-size: .95rem; cursor: pointer; font-family: inherit; transition: background .15s; display: flex; align-items: center; justify-content: center; }
     .cart-qty-btn:hover { background: #eaeaea; }
-    .cart-qty-btn.remove-btn { color: #e94560; }
     .cart-qty-val { font-weight: 700; font-size: .9rem; min-width: 20px; text-align: center; }
 
-    .cart-footer { padding: 20px 24px; border-top: 1px solid #f0f0f0; }
-    .cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    /* ── Order Info Fields ── */
+    .order-fields { padding: 16px 24px 0; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #f0f0f0; }
+    .order-field-row { display: flex; gap: 10px; }
+    .order-field {
+      flex: 1; padding: 10px 12px; border: 1.5px solid #e8e8e8; border-radius: 10px;
+      font-size: .85rem; font-family: inherit; outline: none; color: #1a1a2e;
+      transition: border-color .2s;
+    }
+    .order-field:focus { border-color: var(--accent); }
+    .order-field::placeholder { color: #bbb; }
+
+    /* ── Cart Footer ── */
+    .cart-footer { padding: 16px 24px 24px; border-top: 1px solid #f0f0f0; }
+    .cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
     .cart-total-label { font-size: .9rem; color: #888; font-weight: 600; }
     .cart-total-items { font-size: .85rem; color: #aaa; margin-top: 2px; }
     .cart-total-price { font-size: 1.2rem; font-weight: 800; color: #1a1a2e; }
@@ -234,7 +241,6 @@
     }
     .whatsapp-order-btn:hover { background: #1da851; }
     .whatsapp-order-btn:active { transform: scale(.98); }
-    .whatsapp-order-btn:disabled { background: #ccc; cursor: not-allowed; }
 
     /* ── Footer ── */
     footer { text-align: center; padding: 20px; color: rgba(255,255,255,0.4); font-size: .78rem; }
@@ -243,7 +249,8 @@
     @media (max-width: 600px) {
       .top-header { padding: 12px 16px; }
       .restaurant-text h1 { font-size: 1rem; }
-      main { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; padding: 0 12px; }
+      main { padding: 0 12px; }
+      .items-inner-grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; }
       .toolbar { padding: 0 12px; }
       .toolbar input { width: 100%; }
       .toolbar { justify-content: stretch; }
@@ -252,6 +259,7 @@
       .cart-fab { bottom: 16px; padding: 12px 18px; }
       [dir="ltr"] .cart-fab { right: 16px; }
       [dir="rtl"] .cart-fab { left: 16px; }
+      .order-field-row { flex-direction: column; }
     }
   </style>
 </head>
@@ -364,6 +372,15 @@
     <button class="cart-close" onclick="closeCart()">✕</button>
   </div>
   <div class="cart-items" id="cartItems"></div>
+
+  <!-- Customer name + table number -->
+  <div class="order-fields" id="orderFields" style="display:none">
+    <div class="order-field-row">
+      <input class="order-field" type="text" id="orderName" />
+      <input class="order-field" type="text" id="orderTable" />
+    </div>
+  </div>
+
   <div class="cart-footer">
     <div class="cart-total">
       <div>
@@ -382,13 +399,12 @@
 <% } %>
 
 <script>
-  const items        = <%- JSON.stringify(items) %>;
-  const categories   = <%- JSON.stringify(categories) %>;
-  const WHATSAPP     = '<%= tenant.whatsapp || "" %>';
-  const REST_NAME    = '<%= tenant.name %>';
+  const items      = <%- JSON.stringify(items) %>;
+  const categories = <%- JSON.stringify(categories) %>;
+  const WHATSAPP   = '<%= tenant.whatsapp || "" %>';
+  const REST_NAME  = '<%= tenant.name %>';
   const CART_ENABLED = <%= tenant.cart_enabled !== false ? 'true' : 'false' %>;
 
-  // ── Translations ──────────────────────────────────
   const LANG = {
     en: {
       dir: 'ltr', lang: 'en',
@@ -396,7 +412,7 @@
       unavailable: 'Unavailable', footer: 'Powered by MenuApp',
       addToCart: 'Add to Cart', cart: 'Your Cart', emptyCart: 'Your cart is empty',
       totalItems: 'items', placeOrder: 'Place Order via WhatsApp',
-      cartBtn: 'Cart',
+      cartBtn: 'Cart', yourName: 'Your name', tableNo: 'Table no.',
       badges: { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' }
     },
     ar: {
@@ -405,7 +421,7 @@
       unavailable: 'غير متوفر', footer: 'مدعوم من MenuApp',
       addToCart: 'أضف إلى السلة', cart: 'سلة الطلبات', emptyCart: 'سلتك فارغة',
       totalItems: 'عناصر', placeOrder: 'اطلب عبر واتساب',
-      cartBtn: 'السلة',
+      cartBtn: 'السلة', yourName: 'اسمك', tableNo: 'رقم الطاولة',
       badges: { spicy:'🌶 حار', popular:'⭐ الأكثر طلباً', new:'🆕 جديد', vegetarian:'🌱 نباتي' }
     },
     ku: {
@@ -414,22 +430,21 @@
       unavailable: 'بەردەست نییە', footer: 'دروستکراوە لەلایەن MenuApp',
       addToCart: 'زیادبکە بۆ سەبەتە', cart: 'سەبەتەی داواکاری', emptyCart: 'سەبەتەکەت بەتاڵە',
       totalItems: 'کاڵا', placeOrder: 'داواکاری لە واتساپ',
-      cartBtn: 'سەبەتە',
+      cartBtn: 'سەبەتە', yourName: 'ناوت', tableNo: 'ژمارەی مێز',
       badges: { spicy:'🌶 تیژ', popular:'⭐ بەناوبانگ', new:'🆕 نوێ', vegetarian:'🌱 ڕووەکی' }
     }
   };
 
   const BADGE_CLASS = { spicy:'badge-spicy', popular:'badge-popular', new:'badge-new', vegetarian:'badge-vegetarian' };
 
-  let currentLang    = localStorage.getItem('lang') || 'en';
-  let activeCategory = 'all';
-  let searchQuery    = '';
-  let modalItem      = null;
-  let modalQty       = 1;
+  let currentLang = localStorage.getItem('lang') || 'en';
+  let searchQuery = '';
+  let modalItem   = null;
+  let modalQty    = 1;
+  let scrollSpy   = null;
 
-  // ── Cart State ────────────────────────────────────
-  let cart = []; // [{ item, qty }]
-
+  // ── Cart ──────────────────────────────────────────
+  let cart = [];
   function cartTotalQty() { return cart.reduce((s, e) => s + e.qty, 0); }
 
   function addToCart(item, qty) {
@@ -453,7 +468,7 @@
     const fab   = document.getElementById('cartFab');
     document.getElementById('cartFabCount').textContent = total;
     fab.classList.toggle('hidden', total === 0);
-    if (document.getElementById('cartItems').innerHTML !== '') renderCartItems();
+    if (!document.getElementById('cartItems').querySelector('.cart-empty')) renderCartItems();
   }
 
   // ── Cart Drawer ───────────────────────────────────
@@ -470,21 +485,27 @@
   }
 
   function renderCartItems() {
-    const L   = LANG[currentLang];
-    const el  = document.getElementById('cartItems');
+    const L  = LANG[currentLang];
+    const el = document.getElementById('cartItems');
     document.getElementById('cartTitle').textContent      = L.cart;
     document.getElementById('cartTotalLabel').textContent = L.totalItems;
     document.getElementById('cartTotalItems').textContent = cartTotalQty() + ' ' + L.totalItems;
     if (document.getElementById('placeOrderBtnText'))
       document.getElementById('placeOrderBtnText').textContent = L.placeOrder;
 
+    const fields = document.getElementById('orderFields');
     if (cart.length === 0) {
       el.innerHTML = `<div class="cart-empty">
         <svg width="56" height="56" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 5h12.8"/></svg>
         <p>${L.emptyCart}</p>
       </div>`;
+      if (fields) fields.style.display = 'none';
       return;
     }
+
+    if (fields) fields.style.display = '';
+    if (document.getElementById('orderName')) document.getElementById('orderName').placeholder = L.yourName;
+    if (document.getElementById('orderTable')) document.getElementById('orderTable').placeholder = L.tableNo;
 
     el.innerHTML = cart.map(({ item, qty }) => {
       const name = getLocalized(item, 'name', currentLang);
@@ -495,7 +516,7 @@
           <div class="cart-item-price">${item.price}</div>
         </div>
         <div class="cart-item-controls">
-          <button class="cart-qty-btn remove-btn" onclick="changeQty(${item.id}, -1)">−</button>
+          <button class="cart-qty-btn" onclick="changeQty(${item.id}, -1)">−</button>
           <span class="cart-qty-val">${qty}</span>
           <button class="cart-qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
         </div>
@@ -506,11 +527,15 @@
   // ── WhatsApp Order ────────────────────────────────
   function placeOrderWhatsApp() {
     if (cart.length === 0 || !WHATSAPP) return;
-    const L = LANG[currentLang];
-    let msg = `🍽️ *${REST_NAME}*\n${L.cart}:\n\n`;
+    const L     = LANG[currentLang];
+    const name  = (document.getElementById('orderName')  || {}).value || '';
+    const table = (document.getElementById('orderTable') || {}).value || '';
+    let msg = `🍽️ *${REST_NAME}*\n`;
+    if (name.trim())  msg += `👤 ${name.trim()}\n`;
+    if (table.trim()) msg += `🪑 ${L.tableNo}: ${table.trim()}\n`;
+    msg += `\n${L.cart}:\n\n`;
     cart.forEach(({ item, qty }) => {
-      const name = getLocalized(item, 'name', currentLang);
-      msg += `• ${name} x${qty} — ${item.price}\n`;
+      msg += `• ${getLocalized(item, 'name', currentLang)} x${qty} — ${item.price}\n`;
     });
     msg += `\n📦 ${L.totalItems}: ${cartTotalQty()}`;
     window.open(`https://wa.me/${WHATSAPP.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -529,12 +554,13 @@
     document.getElementById('searchInput').placeholder = L.search;
     document.getElementById('footer').textContent      = L.footer;
     if (CART_ENABLED) {
-      document.getElementById('cartFabLabel').textContent    = L.cartBtn;
-      document.getElementById('modalAddBtnText').textContent = L.addToCart;
+      document.getElementById('cartFabLabel').textContent = L.cartBtn;
+      if (document.getElementById('modalAddBtnText'))
+        document.getElementById('modalAddBtnText').textContent = L.addToCart;
     }
     updateCategoryNav();
     renderGrid();
-    if (document.getElementById('cartDrawer').classList.contains('open')) renderCartItems();
+    if (CART_ENABLED && document.getElementById('cartDrawer').classList.contains('open')) renderCartItems();
   }
 
   function getLocalized(item, field, lang) {
@@ -555,12 +581,28 @@
   // ── Category Nav ──────────────────────────────────
   document.getElementById('categoryNav').querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
-      activeCategory = btn.dataset.id;
-      document.getElementById('categoryNav').querySelectorAll('button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderGrid();
+      const catId = btn.dataset.id;
+      if (catId === 'all') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        const section = document.getElementById(`cat-${catId}`);
+        if (section) {
+          const offset = section.getBoundingClientRect().top + window.scrollY - 120;
+          window.scrollTo({ top: offset, behavior: 'smooth' });
+        }
+      }
+      setActiveNav(catId);
     });
   });
+
+  function setActiveNav(catId) {
+    document.querySelectorAll('#categoryNav button').forEach(b => b.classList.remove('active'));
+    const target = document.querySelector(`#categoryNav [data-id="${catId}"]`);
+    if (target) {
+      target.classList.add('active');
+      target.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }
 
   // ── Search ────────────────────────────────────────
   let searchTimer;
@@ -569,64 +611,113 @@
     searchTimer = setTimeout(() => { searchQuery = e.target.value.toLowerCase(); renderGrid(); }, 200);
   });
 
-  // ── Render Grid ───────────────────────────────────
+  // ── Render Grid (sections) ────────────────────────
   function renderGrid() {
     const L    = LANG[currentLang];
     const grid = document.getElementById('itemsGrid');
     grid.innerHTML = '';
+    if (scrollSpy) { scrollSpy.disconnect(); scrollSpy = null; }
 
-    const filtered = items.filter(item => {
-      const matchCat    = activeCategory === 'all' || String(item.category_id) === activeCategory;
-      const matchSearch = item.name.toLowerCase().includes(searchQuery) ||
-                          (item.description || '').toLowerCase().includes(searchQuery);
-      return matchCat && matchSearch;
+    let hasAny = false;
+
+    categories.forEach(cat => {
+      const catItems = items.filter(item => {
+        if (item.category_id !== cat.id) return false;
+        if (!searchQuery) return true;
+        return (item.name || '').toLowerCase().includes(searchQuery) ||
+               (item.description || '').toLowerCase().includes(searchQuery) ||
+               (item.name_ar || '').toLowerCase().includes(searchQuery) ||
+               (item.name_ku || '').toLowerCase().includes(searchQuery);
+      });
+      if (catItems.length === 0) return;
+      hasAny = true;
+
+      const section = document.createElement('section');
+      section.className = 'category-section';
+      section.id = `cat-${cat.id}`;
+
+      const title = document.createElement('h2');
+      title.className = 'section-title';
+      if (cat.image_url) {
+        const img = document.createElement('img');
+        img.src = cat.image_url; img.alt = ''; img.className = 'section-title-img';
+        title.appendChild(img);
+      }
+      title.appendChild(document.createTextNode(getLocalized(cat, 'name', currentLang)));
+      section.appendChild(title);
+
+      const innerGrid = document.createElement('div');
+      innerGrid.className = 'items-inner-grid';
+      catItems.forEach((item, i) => {
+        const card = buildCard(item, L);
+        card.style.animationDelay = (i * 40) + 'ms';
+        innerGrid.appendChild(card);
+      });
+      section.appendChild(innerGrid);
+      grid.appendChild(section);
     });
 
-    if (filtered.length === 0) {
-      grid.innerHTML = `<div class="empty"><svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 5h12.8"/></svg><p>${L.notFound}</p></div>`;
+    if (!hasAny) {
+      grid.innerHTML = `<div class="empty"><svg width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><p>${L.notFound}</p></div>`;
       return;
     }
 
-    filtered.forEach(item => {
-      const card = document.createElement('div');
-      card.className = 'card' + (item.is_available === false ? ' unavailable' : '');
+    setupScrollSpy();
+  }
 
-      const badgeLabel = item.badge ? (L.badges[item.badge] || item.badge) : '';
-      const badgeHTML  = badgeLabel ? `<span class="badge ${BADGE_CLASS[item.badge] || ''}">${badgeLabel}</span>` : '';
-      const unavailHTML = item.is_available === false ? `<div class="unavailable-tag">${L.unavailable}</div>` : '';
-      const localName  = getLocalized(item, 'name', currentLang);
-      const localDesc  = getLocalized(item, 'description', currentLang);
+  function buildCard(item, L) {
+    const card = document.createElement('div');
+    card.className = 'card' + (item.is_available === false ? ' unavailable' : '');
 
-      card.innerHTML = `
-        <div class="card-img-wrap">
-          <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${localName}" loading="lazy" />
-          ${badgeHTML}${unavailHTML}
+    const badgeLabel = item.badge ? (L.badges[item.badge] || item.badge) : '';
+    const badgeHTML  = badgeLabel ? `<span class="badge ${BADGE_CLASS[item.badge] || ''}">${badgeLabel}</span>` : '';
+    const unavailHTML = item.is_available === false ? `<div class="unavailable-tag">${L.unavailable}</div>` : '';
+    const localName  = getLocalized(item, 'name', currentLang);
+    const localDesc  = getLocalized(item, 'description', currentLang);
+
+    card.innerHTML = `
+      <div class="card-img-wrap">
+        <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${localName}" loading="lazy" />
+        ${badgeHTML}${unavailHTML}
+      </div>
+      <div class="card-body">
+        <h3>${localName}</h3>
+        <p class="card-desc">${localDesc}</p>
+        <div class="card-footer">
+          <span class="price">${item.price}</span>
+          ${CART_ENABLED && item.is_available !== false ? `<button class="add-btn">${L.addToCart}</button>` : ''}
         </div>
-        <div class="card-body">
-          <h3>${localName}</h3>
-          <p class="card-desc">${localDesc}</p>
-          <div class="card-footer">
-            <span class="price">${item.price}</span>
-            ${CART_ENABLED && item.is_available !== false ? `<button class="add-btn" data-id="${item.id}">${L.addToCart}</button>` : ''}
-          </div>
-        </div>`;
+      </div>`;
 
-      if (item.is_available !== false) {
-        card.querySelector('.card-img-wrap').addEventListener('click', () => openModal(item));
-        card.querySelector('h3').addEventListener('click', () => openModal(item));
-        const addBtn = card.querySelector('.add-btn');
-        if (addBtn) {
-          addBtn.addEventListener('click', e => {
-            e.stopPropagation();
-            addToCart(item, 1);
-            const btn = e.currentTarget;
-            btn.textContent = '✓';
-            setTimeout(() => { btn.textContent = L.addToCart; }, 800);
-          });
-        }
+    if (item.is_available !== false) {
+      card.querySelector('.card-img-wrap').addEventListener('click', () => openModal(item));
+      card.querySelector('h3').addEventListener('click', () => openModal(item));
+      const addBtn = card.querySelector('.add-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          addToCart(item, 1);
+          const btn = e.currentTarget;
+          btn.textContent = '✓';
+          setTimeout(() => { btn.textContent = LANG[currentLang].addToCart; }, 800);
+        });
       }
-      grid.appendChild(card);
-    });
+    }
+    return card;
+  }
+
+  // ── Scroll Spy ────────────────────────────────────
+  function setupScrollSpy() {
+    if (!('IntersectionObserver' in window)) return;
+    scrollSpy = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          setActiveNav(entry.target.id.replace('cat-', ''));
+        }
+      });
+    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+    document.querySelectorAll('.category-section').forEach(s => scrollSpy.observe(s));
   }
 
   // ── Modal ─────────────────────────────────────────
@@ -635,17 +726,18 @@
     modalItem = item;
     modalQty  = 1;
     if (CART_ENABLED) document.getElementById('modalQtyVal').textContent = 1;
-    document.getElementById('modalImg').src                = item.image_url || 'https://placehold.co/500x260?text=No+Image';
-    document.getElementById('modalImg').alt                = getLocalized(item, 'name', currentLang);
-    document.getElementById('modalName').textContent       = getLocalized(item, 'name', currentLang);
-    document.getElementById('modalPrice').textContent      = item.price;
-    document.getElementById('modalDesc').textContent = getLocalized(item, 'description', currentLang);
-    if (CART_ENABLED) document.getElementById('modalAddBtnText').textContent = L.addToCart;
+    document.getElementById('modalImg').src           = item.image_url || 'https://placehold.co/500x260?text=No+Image';
+    document.getElementById('modalImg').alt           = getLocalized(item, 'name', currentLang);
+    document.getElementById('modalName').textContent  = getLocalized(item, 'name', currentLang);
+    document.getElementById('modalPrice').textContent = item.price;
+    document.getElementById('modalDesc').textContent  = getLocalized(item, 'description', currentLang);
+    if (CART_ENABLED && document.getElementById('modalAddBtnText'))
+      document.getElementById('modalAddBtnText').textContent = L.addToCart;
 
     const badge = document.getElementById('modalBadge');
     if (item.badge && L.badges[item.badge]) {
-      badge.textContent = L.badges[item.badge];
-      badge.className   = `modal-badge ${BADGE_CLASS[item.badge] || ''}`;
+      badge.textContent   = L.badges[item.badge];
+      badge.className     = `modal-badge ${BADGE_CLASS[item.badge] || ''}`;
       badge.style.display = '';
     } else { badge.style.display = 'none'; }
 

@@ -274,11 +274,52 @@
       <div class="stat-label">Available</div>
     </div>
     <div class="stat-card">
+      <span class="stat-icon">🚫</span>
+      <div class="stat-value"><%= items.filter(i => i.is_available === false).length %></div>
+      <div class="stat-label">Unavailable</div>
+    </div>
+    <div class="stat-card">
       <span class="stat-icon">📂</span>
       <div class="stat-value"><%= categories.length %></div>
       <div class="stat-label">Categories</div>
     </div>
   </div>
+
+  <!-- Category breakdown -->
+  <% if (categories.length > 0) { %>
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-header">
+      <h2>Items per Category</h2>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; padding-top:4px">
+      <% categories.forEach(cat => { %>
+        <% const count = items.filter(i => i.category_id === cat.id).length; %>
+        <% const avail = items.filter(i => i.category_id === cat.id && i.is_available !== false).length; %>
+        <div style="background:#f8f9fa; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:10px; min-width:160px">
+          <% if (cat.image_url) { %>
+            <img src="<%= cat.image_url %>" style="width:32px;height:32px;border-radius:50%;object-fit:cover" />
+          <% } else { %>
+            <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);opacity:.15;"></div>
+          <% } %>
+          <div>
+            <div style="font-weight:700;font-size:.88rem;color:#1a1a2e"><%= cat.name %></div>
+            <div style="font-size:.78rem;color:#aaa"><%= count %> items &nbsp;·&nbsp; <%= avail %> available</div>
+          </div>
+        </div>
+      <% }) %>
+      <% const uncatCount = items.filter(i => !i.category_id).length; %>
+      <% if (uncatCount > 0) { %>
+        <div style="background:#f8f9fa; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:10px; min-width:160px">
+          <div style="width:32px;height:32px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:.9rem">?</div>
+          <div>
+            <div style="font-weight:700;font-size:.88rem;color:#1a1a2e">Uncategorized</div>
+            <div style="font-size:.78rem;color:#aaa"><%= uncatCount %> items</div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+  <% } %>
 
   <!-- Categories -->
   <div class="card">

@@ -6,7 +6,7 @@ router.get('/', async (req, res) => {
   const slug = req.tenant;
 
   if (!slug) {
-    return res.send('<h2>Welcome to MenuApp</h2><p>Visit your restaurant subdomain to see a menu.</p>');
+    return res.render('landing');
   }
 
   try {

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MenuApp — Digital Menus for Restaurants</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: #e94560; --dark: #1a1a2e; --darker: #12122b; }
+    body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; color: #fff; background: var(--dark); overflow-x: hidden; }
+
+    /* ── Nav ── */
+    .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 18px 40px; display: flex; align-items: center; justify-content: space-between; background: rgba(26,26,46,0.85); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(255,255,255,0.07); }
+    .nav-logo { font-size: 1.3rem; font-weight: 800; color: #fff; letter-spacing: -.02em; }
+    .nav-logo span { color: var(--accent); }
+    .nav-cta { background: var(--accent); color: #fff; border: none; border-radius: 24px; padding: 10px 22px; font-size: .9rem; font-weight: 700; cursor: pointer; text-decoration: none; font-family: inherit; transition: opacity .2s; }
+    .nav-cta:hover { opacity: .88; }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; text-align: center;
+      padding: 120px 24px 80px;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(233,69,96,.18) 0%, transparent 70%),
+                  linear-gradient(180deg, var(--darker) 0%, var(--dark) 100%);
+    }
+    .hero-inner { max-width: 700px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(233,69,96,.15); border: 1px solid rgba(233,69,96,.3); color: var(--accent); border-radius: 24px; padding: 6px 16px; font-size: .8rem; font-weight: 700; margin-bottom: 28px; }
+    .hero h1 { font-size: clamp(2.2rem, 6vw, 3.8rem); font-weight: 900; line-height: 1.1; margin-bottom: 22px; letter-spacing: -.03em; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { font-size: 1.1rem; color: rgba(255,255,255,0.65); line-height: 1.7; max-width: 520px; margin: 0 auto 40px; }
+    .hero-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn-primary { background: var(--accent); color: #fff; border: none; border-radius: 30px; padding: 14px 32px; font-size: 1rem; font-weight: 700; cursor: pointer; text-decoration: none; font-family: inherit; transition: transform .15s, box-shadow .15s; box-shadow: 0 8px 24px rgba(233,69,96,.35); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(233,69,96,.45); }
+    .btn-outline { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,.25); border-radius: 30px; padding: 14px 32px; font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none; font-family: inherit; transition: border-color .2s, background .2s; }
+    .btn-outline:hover { border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.06); }
+    .hero-note { margin-top: 20px; font-size: .8rem; color: rgba(255,255,255,.35); }
+
+    /* ── Preview ── */
+    .preview-wrap { max-width: 900px; margin: -20px auto 0; padding: 0 24px 80px; }
+    .preview-card {
+      background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px; padding: 24px; text-align: center;
+      box-shadow: 0 40px 80px rgba(0,0,0,.4);
+    }
+    .preview-bar { display: flex; gap: 6px; margin-bottom: 16px; }
+    .preview-dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.15); }
+    .preview-screen { background: #fff; border-radius: 12px; height: 340px; display: flex; align-items: center; justify-content: center; color: #888; font-size: .9rem; overflow: hidden; }
+    .mock-menu { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .mock-header { background: #1a1a2e; padding: 14px 20px; display: flex; align-items: center; gap: 10px; }
+    .mock-logo { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; }
+    .mock-title { color: #fff; font-weight: 700; font-size: .9rem; }
+    .mock-nav { background: rgba(26,26,46,0.9); display: flex; gap: 8px; padding: 8px 20px; overflow: hidden; }
+    .mock-cat { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 12px; color: rgba(255,255,255,.6); font-size: .7rem; white-space: nowrap; }
+    .mock-cat.active { background: var(--accent); color: #fff; }
+    .mock-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px; background: #f4f5f7; }
+    .mock-card { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+    .mock-img { height: 60px; background: linear-gradient(135deg, #f0f0f0, #e0e0e0); }
+    .mock-info { padding: 6px 8px; }
+    .mock-name { height: 7px; background: #e0e0e0; border-radius: 4px; margin-bottom: 5px; }
+    .mock-price { height: 6px; width: 40%; background: var(--accent); border-radius: 4px; opacity: .7; }
+
+    /* ── Features ── */
+    .section { padding: 90px 24px; max-width: 1100px; margin: 0 auto; }
+    .section-header { text-align: center; margin-bottom: 56px; }
+    .section-header h2 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800; margin-bottom: 12px; letter-spacing: -.02em; }
+    .section-header p { color: rgba(255,255,255,.55); font-size: 1rem; max-width: 480px; margin: 0 auto; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .feature-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 18px; padding: 28px; transition: background .2s, border-color .2s; }
+    .feature-card:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); }
+    .feature-icon { font-size: 2rem; margin-bottom: 14px; display: block; }
+    .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { color: rgba(255,255,255,.55); font-size: .88rem; line-height: 1.6; }
+
+    /* ── How it works ── */
+    .how-section { background: rgba(255,255,255,.03); border-top: 1px solid rgba(255,255,255,.07); border-bottom: 1px solid rgba(255,255,255,.07); }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 32px; }
+    .step { text-align: center; }
+    .step-num { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 900; margin: 0 auto 16px; }
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .step p { color: rgba(255,255,255,.5); font-size: .85rem; line-height: 1.6; }
+
+    /* ── Languages ── */
+    .lang-chips { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    .lang-chip { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 24px; padding: 8px 18px; font-size: .88rem; font-weight: 600; }
+
+    /* ── CTA ── */
+    .cta-section { text-align: center; padding: 100px 24px; background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(233,69,96,.18) 0%, transparent 70%); }
+    .cta-section h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; margin-bottom: 16px; letter-spacing: -.02em; }
+    .cta-section p { color: rgba(255,255,255,.55); font-size: 1rem; margin-bottom: 36px; }
+
+    /* ── Footer ── */
+    .site-footer { border-top: 1px solid rgba(255,255,255,.07); text-align: center; padding: 28px; color: rgba(255,255,255,.3); font-size: .82rem; }
+    .site-footer span { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">Menu<span>App</span></div>
+  <a href="/admin/login" class="nav-cta">Admin Login</a>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">🚀 Digital Menu Platform</div>
+    <h1>Beautiful digital menus<br/><span>in minutes</span></h1>
+    <p>Give your restaurant a stunning online menu with multi-language support, WhatsApp ordering, and a powerful admin dashboard — no tech skills needed.</p>
+    <div class="hero-btns">
+      <a href="/admin/login" class="btn-primary">Get Started Free</a>
+      <a href="#features" class="btn-outline">See Features</a>
+    </div>
+    <p class="hero-note">No credit card required &nbsp;·&nbsp; Set up in 5 minutes</p>
+  </div>
+</section>
+
+<!-- Preview -->
+<div class="preview-wrap">
+  <div class="preview-card">
+    <div class="preview-bar">
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+    </div>
+    <div class="preview-screen">
+      <div class="mock-menu">
+        <div class="mock-header">
+          <div class="mock-logo"></div>
+          <div class="mock-title">Your Restaurant Name</div>
+        </div>
+        <div class="mock-nav">
+          <div class="mock-cat active">All</div>
+          <div class="mock-cat">Burgers</div>
+          <div class="mock-cat">Pizza</div>
+          <div class="mock-cat">Drinks</div>
+          <div class="mock-cat">Desserts</div>
+        </div>
+        <div class="mock-grid">
+          <div class="mock-card"><div class="mock-img"></div><div class="mock-info"><div class="mock-name"></div><div class="mock-price"></div></div></div>
+          <div class="mock-card"><div class="mock-img"></div><div class="mock-info"><div class="mock-name"></div><div class="mock-price"></div></div></div>
+          <div class="mock-card"><div class="mock-img"></div><div class="mock-info"><div class="mock-name"></div><div class="mock-price"></div></div></div>
+          <div class="mock-card"><div class="mock-img"></div><div class="mock-info"><div class="mock-name"></div><div class="mock-price"></div></div></div>
+          <div class="mock-card"><div class="mock-img"></div><div class="mock-info"><div class="mock-name"></div><div class="mock-price"></div></div></div>
+          <div class="mock-card"><div class="mock-img"></div><div class="mock-info"><div class="mock-name"></div><div class="mock-price"></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Features -->
+<div id="features" class="how-section" style="padding: 0">
+  <div class="section">
+    <div class="section-header">
+      <h2>Everything you need</h2>
+      <p>A complete digital menu solution built for modern restaurants</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon">🌐</span>
+        <h3>Multi-Language</h3>
+        <p>Full support for English, Arabic, and Kurdish Sorani — with automatic RTL layout for Arabic and Kurdish.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🛒</span>
+        <h3>Cart & WhatsApp Orders</h3>
+        <p>Customers add items to cart and place their order directly via WhatsApp — no app downloads needed.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🎨</span>
+        <h3>Custom Branding</h3>
+        <p>Your logo, cover photo or video background, and brand color. Every menu looks unique to your restaurant.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <h3>Admin Dashboard</h3>
+        <p>Add, edit, and delete items and categories. Toggle availability live. No technical knowledge required.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📱</span>
+        <h3>Mobile First</h3>
+        <p>Looks great on every device. Customers can browse your menu on any phone, tablet, or desktop.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">⚡</span>
+        <h3>Instant Updates</h3>
+        <p>Change a price, mark an item unavailable, or add a new dish — it updates immediately on your live menu.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div class="how-section">
+  <div class="section">
+    <div class="section-header">
+      <h2>Up and running in 3 steps</h2>
+      <p>No technical skills needed — if you can use WhatsApp, you can set this up</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Create your account</h3>
+        <p>Sign up and get your own subdomain like <em>yourplace.menuapp.com</em></p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Add your menu</h3>
+        <p>Upload your categories, items, photos, and prices from the admin dashboard</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Share the link</h3>
+        <p>Print a QR code, put it on tables, and customers start ordering instantly</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Languages -->
+<div class="section" style="text-align:center">
+  <div class="section-header">
+    <h2>Built for the region</h2>
+    <p>Full RTL support for Arabic and Kurdish Sorani — customers switch language with one tap</p>
+  </div>
+  <div class="lang-chips">
+    <div class="lang-chip">🇬🇧 English</div>
+    <div class="lang-chip">🇸🇦 العربية</div>
+    <div class="lang-chip">🏔️ کوردی سۆرانی</div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2>Ready to go digital?</h2>
+  <p>Join restaurants already using MenuApp to serve their customers better</p>
+  <a href="/admin/login" class="btn-primary" style="font-size:1.05rem; padding: 16px 40px">Get Your Menu Now</a>
+</div>
+
+<footer class="site-footer">
+  Built with ❤️ — <span>MenuApp</span> &nbsp;·&nbsp; All rights reserved
+</footer>
+
+</body>
+</html>
