@@ -21,6 +21,9 @@ router.get('/', async (req, res) => {
 
     const tenant = tenantResult.rows[0];
 
+    // Fire-and-forget view count increment
+    db.query('UPDATE tenants SET view_count = COALESCE(view_count,0) + 1 WHERE id = $1', [tenant.id]).catch(() => {});
+
     const categoriesResult = await db.query(
       'SELECT * FROM categories WHERE tenant_id = $1 ORDER BY sort_order',
       [tenant.id]

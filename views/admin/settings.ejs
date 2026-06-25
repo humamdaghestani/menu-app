@@ -193,6 +193,45 @@
           <label>WhatsApp Number <small style="color:#aaa;font-weight:400">(with country code, e.g. 9647501234567)</small></label>
           <input type="text" name="whatsapp" value="<%= tenant.whatsapp || '' %>" placeholder="9647501234567" />
         </div>
+        <div class="form-group full">
+          <label>Currency Symbol</label>
+          <input type="text" name="currency" value="<%= tenant.currency || '$' %>" maxlength="8" style="max-width:120px" />
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+            <% ['$','€','£','IQD','﷼','₹','₺','AED'].forEach(c => { %>
+              <button type="button" onclick="document.querySelector('[name=currency]').value='<%= c %>'"
+                style="background:#f0f0f0;border:1.5px solid #e0e0e0;border-radius:6px;padding:4px 10px;font-size:.8rem;cursor:pointer;font-family:inherit">
+                <%= c %>
+              </button>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opening Hours -->
+    <div class="card">
+      <h2>Opening Hours</h2>
+      <div class="toggle-row" style="margin-bottom:20px">
+        <div class="toggle-info">
+          <div class="toggle-title">Always Open</div>
+          <div class="toggle-desc">When enabled, no closed banner is shown on the menu. Disable to set specific hours.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" name="is_always_open" value="1" id="alwaysOpenChk"
+            <%= (tenant.is_always_open !== false) ? 'checked' : '' %>
+            onchange="document.getElementById('hoursFields').style.display = this.checked ? 'none' : 'flex'" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div id="hoursFields" style="display:<%= (tenant.is_always_open !== false) ? 'none' : 'flex' %>;gap:20px;flex-wrap:wrap">
+        <div class="form-group">
+          <label>Opening Time</label>
+          <input type="time" name="open_time" value="<%= tenant.open_time ? String(tenant.open_time).substring(0,5) : '' %>" style="max-width:160px" />
+        </div>
+        <div class="form-group">
+          <label>Closing Time</label>
+          <input type="time" name="close_time" value="<%= tenant.close_time ? String(tenant.close_time).substring(0,5) : '' %>" style="max-width:160px" />
+        </div>
       </div>
     </div>
 
