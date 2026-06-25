@@ -168,7 +168,28 @@
     input:checked + .slider { background: var(--accent); }
     input:checked + .slider::before { transform: translateX(18px); }
 
-    .actions-cell { display: flex; gap: 6px; align-items: center; }
+    .actions-cell { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .btn-dupe { background: #f0f4ff; color: #4c6ef5; border: 1px solid #c5d0fa; }
+    .btn-dupe:hover { background: #dce4ff; }
+
+    /* ── Drag handle ── */
+    .drag-handle { cursor: grab; color: #ccc; font-size: 1rem; padding: 0 4px; user-select: none; flex-shrink: 0; }
+    .drag-handle:hover { color: #888; }
+    .sortable-ghost { opacity: .4; background: #f0f4ff !important; }
+    .sortable-chosen { box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+
+    /* ── Search bar ── */
+    .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .table-search { position: relative; }
+    .table-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #bbb; pointer-events: none; }
+    .table-search input { padding: 8px 12px 8px 32px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .85rem; width: 220px; outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s; }
+    .table-search input:focus { border-color: var(--accent); background: #fff; }
+
+    /* ── Badge presets ── */
+    .badge-presets { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+    .preset-btn { background: #f0f0f0; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 4px 9px; font-size: .75rem; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s; }
+    .preset-btn:hover { background: #e4e4e4; border-color: #ccc; }
+    .preset-btn.clear { color: #aaa; }
 
     /* Image preview */
     .img-preview {
@@ -330,9 +351,11 @@
     <div class="card-header">
       <h2>Categories</h2>
     </div>
+    <p style="font-size:.8rem;color:#aaa;margin-bottom:10px">⋮⋮ Drag to reorder</p>
     <div class="cat-list" id="catList">
       <% categories.forEach(cat => { %>
-        <div class="cat-tag">
+        <div class="cat-tag" data-id="<%= cat.id %>">
+          <span class="drag-handle">⋮⋮</span>
           <% if (cat.image_url) { %>
             <img src="<%= cat.image_url %>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #ddd" />
           <% } %>
@@ -393,14 +416,15 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Badge</label>
-          <select name="badge">
-            <option value="">None</option>
-            <option value="popular">⭐ Popular</option>
-            <option value="new">🆕 New</option>
-            <option value="spicy">🌶 Spicy</option>
-            <option value="vegetarian">🌱 Vegetarian</option>
-          </select>
+          <label>Badge <span style="color:#bbb;font-weight:400">(optional)</span></label>
+          <input type="text" name="badge" id="addBadge" placeholder="e.g. Chef's Pick, Hot, Vegan…" maxlength="24" />
+          <div class="badge-presets">
+            <button type="button" class="preset-btn" onclick="setBadge('addBadge','spicy')">🌶 Spicy</button>
+            <button type="button" class="preset-btn" onclick="setBadge('addBadge','popular')">⭐ Popular</button>
+            <button type="button" class="preset-btn" onclick="setBadge('addBadge','new')">🆕 New</button>
+            <button type="button" class="preset-btn" onclick="setBadge('addBadge','vegetarian')">🌱 Veg</button>
+            <button type="button" class="preset-btn clear" onclick="setBadge('addBadge','')">✕ Clear</button>
+          </div>
         </div>
         <div class="form-group full">
           <label>Description (English)</label>
@@ -443,10 +467,18 @@
     <% if (items.length === 0) { %>
       <p style="text-align:center;color:#bbb;padding:32px 0">No items yet. Add one above.</p>
     <% } else { %>
+    <div class="table-toolbar">
+      <div class="table-search">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="itemSearch" placeholder="Search items…" oninput="filterItems(this.value)" />
+      </div>
+      <span style="color:#aaa;font-size:.8rem">⋮⋮ Drag rows to reorder</span>
+    </div>
     <div style="overflow-x:auto">
       <table class="items-table">
         <thead>
           <tr>
+            <th style="width:32px"></th>
             <th>Image</th>
             <th>Item</th>
             <th>Price</th>
@@ -456,9 +488,10 @@
             <th>Actions</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="itemsTbody">
           <% items.forEach(item => { %>
-          <tr>
+          <tr data-id="<%= item.id %>">
+            <td><span class="drag-handle">⋮⋮</span></td>
             <td><img class="item-img" src="<%= item.image_url || 'https://placehold.co/52x42?text=?' %>" alt="<%= item.name %>" /></td>
             <td>
               <div class="item-name"><%= item.name %></div>
@@ -470,7 +503,7 @@
               <% if (item.badge) { %>
                 <span class="badge badge-<%= item.badge %>"><%= item.badge %></span>
               <% } else { %>
-                <span class="badge badge-none">none</span>
+                <span class="badge badge-none">—</span>
               <% } %>
             </td>
             <td>
@@ -484,6 +517,9 @@
             <td>
               <div class="actions-cell">
                 <button class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
+                <form method="POST" action="/admin/items/<%= item.id %>/duplicate" style="margin:0">
+                  <button class="btn btn-dupe btn-sm" type="submit" title="Duplicate">⧉ Copy</button>
+                </form>
                 <form method="POST" action="/admin/items/<%= item.id %>/delete" onsubmit="return confirm('Delete this item?')" style="margin:0">
                   <button class="btn btn-danger btn-sm" type="submit">Delete</button>
                 </form>
@@ -555,14 +591,15 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Badge</label>
-          <select name="badge" id="editBadge">
-            <option value="">None</option>
-            <option value="popular">⭐ Popular</option>
-            <option value="new">🆕 New</option>
-            <option value="spicy">🌶 Spicy</option>
-            <option value="vegetarian">🌱 Vegetarian</option>
-          </select>
+          <label>Badge <span style="color:#bbb;font-weight:400">(optional)</span></label>
+          <input type="text" name="badge" id="editBadge" placeholder="e.g. Chef's Pick, Hot, Vegan…" maxlength="24" />
+          <div class="badge-presets">
+            <button type="button" class="preset-btn" onclick="setBadge('editBadge','spicy')">🌶 Spicy</button>
+            <button type="button" class="preset-btn" onclick="setBadge('editBadge','popular')">⭐ Popular</button>
+            <button type="button" class="preset-btn" onclick="setBadge('editBadge','new')">🆕 New</button>
+            <button type="button" class="preset-btn" onclick="setBadge('editBadge','vegetarian')">🌱 Veg</button>
+            <button type="button" class="preset-btn clear" onclick="setBadge('editBadge','')">✕ Clear</button>
+          </div>
         </div>
         <div class="form-group full">
           <label>Description (English)</label>
@@ -658,6 +695,60 @@
   const params = new URLSearchParams(location.search);
   if (params.get('success')) showToast(decodeURIComponent(params.get('success')));
   if (params.get('error'))   showToast(decodeURIComponent(params.get('error')), 'error');
+
+  // Badge preset helper
+  function setBadge(inputId, value) {
+    document.getElementById(inputId).value = value;
+  }
+
+  // Search filter
+  function filterItems(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('#itemsTbody tr').forEach(row => {
+      const text = row.querySelector('.item-name') ? row.querySelector('.item-name').textContent.toLowerCase() : '';
+      const cat  = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';
+      row.style.display = (!q || text.includes(q) || cat.includes(q)) ? '' : 'none';
+    });
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+  // Drag-and-drop: items table
+  const itemsTbody = document.getElementById('itemsTbody');
+  if (itemsTbody) {
+    Sortable.create(itemsTbody, {
+      handle: '.drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onEnd() {
+        const order = [...itemsTbody.querySelectorAll('tr')].map(r => r.dataset.id);
+        fetch('/admin/items/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order })
+        }).then(r => r.json()).then(d => { if (d.ok) showToast('Order saved'); });
+      }
+    });
+  }
+
+  // Drag-and-drop: categories
+  const catList = document.getElementById('catList');
+  if (catList) {
+    Sortable.create(catList, {
+      handle: '.drag-handle',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      onEnd() {
+        const order = [...catList.querySelectorAll('[data-id]')].map(el => el.dataset.id);
+        fetch('/admin/categories/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order })
+        }).then(r => r.json()).then(d => { if (d.ok) showToast('Category order saved'); });
+      }
+    });
+  }
 </script>
 </body>
 </html>

@@ -177,6 +177,43 @@ router.post('/items/:id/toggle', requireAuth, async (req, res) => {
   }
 });
 
+// ── Duplicate item ─────────────────────────────────
+router.post('/items/:id/duplicate', requireAuth, async (req, res) => {
+  try {
+    const r = await db.query('SELECT * FROM menu_items WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    if (r.rows.length === 0) return res.redirect('/admin/dashboard');
+    const i = r.rows[0];
+    await db.query(
+      `INSERT INTO menu_items (tenant_id,category_id,name,name_ar,name_ku,price,description,description_ar,description_ku,image_url,badge,sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [req.user.tenantId, i.category_id, i.name+' (Copy)', i.name_ar, i.name_ku, i.price, i.description, i.description_ar, i.description_ku, i.image_url, i.badge, i.sort_order]
+    );
+    res.redirect('/admin/dashboard?success=Item+duplicated');
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// ── Reorder items ──────────────────────────────────
+router.post('/items/reorder', requireAuth, async (req, res) => {
+  try {
+    const { order } = req.body;
+    for (let idx = 0; idx < order.length; idx++) {
+      await db.query('UPDATE menu_items SET sort_order=$1 WHERE id=$2 AND tenant_id=$3', [idx, order[idx], req.user.tenantId]);
+    }
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+// ── Reorder categories ─────────────────────────────
+router.post('/categories/reorder', requireAuth, async (req, res) => {
+  try {
+    const { order } = req.body;
+    for (let idx = 0; idx < order.length; idx++) {
+      await db.query('UPDATE categories SET sort_order=$1 WHERE id=$2 AND tenant_id=$3', [idx, order[idx], req.user.tenantId]);
+    }
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
 // ── QR Code ────────────────────────────────────────
 router.get('/qrcode', requireAuth, async (req, res) => {
   try {
