@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Start-Process \"c:\\\\Users\\\\ASUS\\\\menu-app\\\\index.html\")"
+    ]
+  }
+}
