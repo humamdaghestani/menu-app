@@ -288,18 +288,26 @@
     <div class="cat-list" id="catList">
       <% categories.forEach(cat => { %>
         <div class="cat-tag">
+          <% if (cat.image_url) { %>
+            <img src="<%= cat.image_url %>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #ddd" />
+          <% } %>
           <%= cat.name %>
-          <form method="POST" action="/admin/categories/<%= cat.id %>/delete" onsubmit="return confirm('Delete category?')">
-            <button type="submit" title="Delete">✕</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick='openCatEdit(<%- JSON.stringify(cat) %>)' style="padding:2px 8px;font-size:.75rem">Edit</button>
+          <form method="POST" action="/admin/categories/<%= cat.id %>/delete" onsubmit="return confirm('Delete category?')" style="margin:0">
+            <button type="submit" title="Delete" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:.9rem">✕</button>
           </form>
         </div>
       <% }) %>
     </div>
     <form method="POST" action="/admin/categories">
-      <div class="form-grid three" style="margin-bottom:12px">
+      <div class="form-grid" style="margin-bottom:12px">
         <div class="form-group">
           <label>Name (English) *</label>
           <input type="text" name="name" placeholder="e.g. Burgers" required />
+        </div>
+        <div class="form-group">
+          <label>Image URL</label>
+          <input type="url" name="image_url" placeholder="https://..." id="catImgUrl" oninput="previewImg(this,'catImgPreview')" />
         </div>
         <div class="form-group">
           <label>الاسم (Arabic)</label>
@@ -310,6 +318,7 @@
           <input type="text" name="name_ku" placeholder="نموونە: برگەر" dir="rtl" />
         </div>
       </div>
+      <img id="catImgPreview" class="img-preview" />
       <div class="form-actions">
         <button class="btn btn-primary" type="submit">Add Category</button>
       </div>
@@ -445,6 +454,38 @@
 
 </div>
 
+<!-- Category Edit Modal -->
+<div class="overlay" id="catEditOverlay">
+  <div class="modal" style="max-width:420px">
+    <h3>Edit Category</h3>
+    <form method="POST" id="catEditForm">
+      <div class="form-grid" style="grid-template-columns:1fr">
+        <div class="form-group">
+          <label>Name (English) *</label>
+          <input type="text" name="name" id="catEditName" required />
+        </div>
+        <div class="form-group">
+          <label>الاسم (Arabic)</label>
+          <input type="text" name="name_ar" id="catEditNameAr" dir="rtl" />
+        </div>
+        <div class="form-group">
+          <label>ناو (Kurdish)</label>
+          <input type="text" name="name_ku" id="catEditNameKu" dir="rtl" />
+        </div>
+        <div class="form-group">
+          <label>Image URL</label>
+          <input type="url" name="image_url" id="catEditImgUrl" oninput="previewImg(this,'catEditImgPreview')" placeholder="https://..." />
+          <img id="catEditImgPreview" class="img-preview" style="width:80px;height:80px;border-radius:50%;margin-top:8px" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeCatEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Edit Modal -->
 <div class="overlay" id="editOverlay">
   <div class="modal">
@@ -516,6 +557,20 @@
 <div id="toast"></div>
 
 <script>
+  function openCatEdit(cat) {
+    document.getElementById('catEditName').value   = cat.name;
+    document.getElementById('catEditNameAr').value = cat.name_ar || '';
+    document.getElementById('catEditNameKu').value = cat.name_ku || '';
+    document.getElementById('catEditImgUrl').value = cat.image_url || '';
+    document.getElementById('catEditForm').action  = '/admin/categories/' + cat.id + '/edit';
+    previewImg(document.getElementById('catEditImgUrl'), 'catEditImgPreview');
+    document.getElementById('catEditOverlay').classList.add('open');
+  }
+  function closeCatEdit() { document.getElementById('catEditOverlay').classList.remove('open'); }
+  document.getElementById('catEditOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('catEditOverlay')) closeCatEdit();
+  });
+
   function openEdit(item) {
     document.getElementById('editName').value          = item.name;
     document.getElementById('editNameAr').value        = item.name_ar || '';

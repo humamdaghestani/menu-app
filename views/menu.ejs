@@ -90,13 +90,26 @@
     nav::-webkit-scrollbar { display: none; }
     nav button {
       background: none; border: none; color: rgba(255,255,255,0.55);
-      font-size: .88rem; padding: 13px 16px; cursor: pointer;
+      font-size: .8rem; padding: 10px 12px; cursor: pointer;
       border-bottom: 3px solid transparent; white-space: nowrap;
       font-weight: 500; transition: color .2s, border-color .2s;
       font-family: inherit;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
     }
     nav button:hover { color: #fff; }
     nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
+
+    .cat-img-wrap {
+      width: 46px; height: 46px; border-radius: 50%;
+      overflow: hidden; border: 2px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; transition: border-color .2s;
+      flex-shrink: 0;
+    }
+    nav button.active .cat-img-wrap { border-color: var(--accent); }
+    nav button:hover .cat-img-wrap { border-color: rgba(255,255,255,0.5); }
+    .cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     /* ── Toolbar ── */
     .toolbar {
@@ -288,9 +301,21 @@
   <!-- Category Nav -->
   <div class="sticky-wrap">
     <nav id="categoryNav">
-      <button class="active" data-id="all" data-label-key="all"></button>
+      <button class="active" data-id="all">
+        <div class="cat-img-wrap">🍴</div>
+        <span class="cat-label"></span>
+      </button>
       <% categories.forEach(cat => { %>
-        <button data-id="<%= cat.id %>"><%= cat.name %></button>
+        <button data-id="<%= cat.id %>" data-name="<%= cat.name %>" data-name-ar="<%= cat.name_ar || '' %>" data-name-ku="<%= cat.name_ku || '' %>">
+          <div class="cat-img-wrap">
+            <% if (cat.image_url) { %>
+              <img src="<%= cat.image_url %>" alt="<%= cat.name %>" />
+            <% } else { %>
+              🍽️
+            <% } %>
+          </div>
+          <span class="cat-label"><%= cat.name %></span>
+        </button>
       <% }) %>
     </nav>
   </div>
@@ -404,10 +429,13 @@
 
   function updateCategoryNav() {
     const L = LANG[currentLang];
-    document.querySelector('[data-id="all"]').textContent = L.all;
+    document.querySelector('[data-id="all"] .cat-label').textContent = L.all;
     categories.forEach(cat => {
       const btn = document.querySelector(`[data-id="${cat.id}"]`);
-      if (btn) btn.textContent = getLocalized(cat, 'name', currentLang);
+      if (btn) {
+        const label = btn.querySelector('.cat-label');
+        if (label) label.textContent = getLocalized(cat, 'name', currentLang);
+      }
     });
   }
 

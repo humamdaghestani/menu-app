@@ -123,13 +123,27 @@ router.post('/items/:id/delete', requireAuth, async (req, res) => {
 
 // ── Categories CRUD ────────────────────────────────
 router.post('/categories', requireAuth, async (req, res) => {
-  const { name, name_ar, name_ku } = req.body;
+  const { name, name_ar, name_ku, image_url } = req.body;
   try {
     await db.query(
-      'INSERT INTO categories (tenant_id, name, name_ar, name_ku) VALUES ($1, $2, $3, $4)',
-      [req.user.tenantId, name, name_ar || null, name_ku || null]
+      'INSERT INTO categories (tenant_id, name, name_ar, name_ku, image_url) VALUES ($1, $2, $3, $4, $5)',
+      [req.user.tenantId, name, name_ar || null, name_ku || null, image_url || null]
     );
     res.redirect('/admin/dashboard');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
+router.post('/categories/:id/edit', requireAuth, async (req, res) => {
+  const { name, name_ar, name_ku, image_url } = req.body;
+  try {
+    await db.query(
+      'UPDATE categories SET name=$1, name_ar=$2, name_ku=$3, image_url=$4 WHERE id=$5 AND tenant_id=$6',
+      [name, name_ar || null, name_ku || null, image_url || null, req.params.id, req.user.tenantId]
+    );
+    res.redirect('/admin/dashboard?success=Category+updated');
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
