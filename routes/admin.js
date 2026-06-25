@@ -177,6 +177,21 @@ router.post('/items/:id/toggle', requireAuth, async (req, res) => {
   }
 });
 
+// ── QR Code ────────────────────────────────────────
+router.get('/qrcode', requireAuth, async (req, res) => {
+  try {
+    const tenant = await db.query('SELECT * FROM tenants WHERE id = $1', [req.user.tenantId]);
+    const t = tenant.rows[0];
+    const host    = req.get('host');
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const menuUrl = `${protocol}://${host}/?tenant=${t.subdomain}`;
+    res.render('admin/qrcode', { tenant: t, menuUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
 // ── Settings ───────────────────────────────────────
 router.get('/settings', requireAuth, async (req, res) => {
   try {

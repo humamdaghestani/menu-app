@@ -772,6 +772,12 @@
 
   // ── Init ──────────────────────────────────────────
   setLang(currentLang);
+
+  // Pre-fill table number from URL ?table=N (set by table QR codes)
+  const _tableParam = new URLSearchParams(window.location.search).get('table');
+  if (_tableParam && document.getElementById('orderTable')) {
+    document.getElementById('orderTable').value = _tableParam;
+  }
 </script>
 </body>
 </html>

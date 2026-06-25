@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Code — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: var(--sidebar-w); background: #1a1a2e;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px;
+    }
+    .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
+    .sidebar-brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #fff; flex-shrink: 0; }
+    .sidebar-brand .brand-emoji { font-size: 1.6rem; }
+    .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-nav a, .sidebar-nav button {
+      display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+      border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem;
+      background: none; border: none; cursor: pointer; width: 100%;
+      transition: background .15s, color .15s; font-family: inherit;
+    }
+    .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer { padding: 0 12px; }
+    .view-menu-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: rgba(255,255,255,.07); color: #ccc; padding: 10px; border-radius: 10px;
+      text-decoration: none; font-size: .85rem; transition: background .15s, color .15s;
+    }
+    .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
+    .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+
+    .card { background: #fff; border-radius: 14px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+
+    /* ── Main QR ── */
+    .qr-main { display: flex; align-items: flex-start; gap: 36px; flex-wrap: wrap; }
+    .qr-box { text-align: center; flex-shrink: 0; }
+    .qr-box img { width: 220px; height: 220px; border: 6px solid #f4f5f7; border-radius: 16px; display: block; }
+    .qr-box p { margin-top: 12px; color: #888; font-size: .8rem; }
+    .qr-info { flex: 1; min-width: 220px; }
+    .qr-url {
+      background: #f8f9fa; border: 1.5px solid #e8e8e8; border-radius: 10px;
+      padding: 12px 16px; font-size: .85rem; color: #1a1a2e; word-break: break-all;
+      font-family: monospace; margin-bottom: 16px;
+    }
+    .qr-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; font-family: inherit; display: flex; align-items: center; gap: 7px; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-outline { background: #fff; color: #1a1a2e; border: 1.5px solid #e8e8e8; }
+    .btn-outline:hover { border-color: #ccc; background: #f8f9fa; }
+
+    /* ── Tables grid ── */
+    .tables-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .tables-header h2 { border: none; margin: 0; padding: 0; }
+    .table-count-row { display: flex; align-items: center; gap: 10px; }
+    .table-count-row label { font-size: .85rem; font-weight: 600; color: #555; }
+    .table-count-row input { width: 70px; padding: 7px 10px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .88rem; text-align: center; font-family: inherit; outline: none; }
+    .table-count-row input:focus { border-color: var(--accent); }
+
+    .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+    .table-card {
+      background: #f8f9fa; border: 1.5px solid #e8e8e8; border-radius: 12px;
+      padding: 16px; text-align: center; cursor: pointer;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .table-card:hover { border-color: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,.08); }
+    .table-card img { width: 110px; height: 110px; border-radius: 8px; display: block; margin: 0 auto 10px; }
+    .table-card-label { font-weight: 700; font-size: .88rem; color: #1a1a2e; margin-bottom: 4px; }
+    .table-card-url { font-size: .7rem; color: #aaa; word-break: break-all; }
+    .table-print-btn { margin-top: 10px; background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: .75rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .table-print-btn:hover { opacity: .88; }
+
+    /* ── Print page link ── */
+    .print-link-card { background: linear-gradient(135deg, #1a1a2e, #2d2d5e); border-radius: 14px; padding: 24px 28px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .print-link-card h3 { color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+    .print-link-card p { color: rgba(255,255,255,.55); font-size: .85rem; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 64px; }
+      .sidebar-brand-text, .sidebar-nav span:not(.icon) { display: none; }
+      .main { margin-left: 64px; padding: 20px 16px; }
+      .qr-main { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %>
+      <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+    <% } else { %>
+      <span class="brand-emoji">🍽️</span>
+    <% } %>
+    <div class="sidebar-brand-text">
+      <h2><%= tenant.name %></h2>
+      <span>Admin Panel</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a>
+    <a href="/admin/qrcode" class="active"><span class="icon">📱</span><span>QR Code</span></a>
+    <a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="<%= menuUrl %>" target="_blank" class="view-menu-btn">
+      <span>🔗</span><span>View Menu</span>
+    </a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="page-header">
+    <h1>QR Code & Print Menu</h1>
+    <p>Share your menu with customers — scan to open, or print for tables</p>
+  </div>
+
+  <!-- Main QR -->
+  <div class="card">
+    <h2>Menu QR Code</h2>
+    <div class="qr-main">
+      <div class="qr-box">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=<%= encodeURIComponent(menuUrl) %>" alt="QR Code" />
+        <p>Scan to open menu</p>
+      </div>
+      <div class="qr-info">
+        <div style="font-size:.8rem;font-weight:600;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Menu URL</div>
+        <div class="qr-url"><%= menuUrl %></div>
+        <div class="qr-actions">
+          <a href="<%= menuUrl %>" target="_blank" class="btn btn-outline">🔗 Open Menu</a>
+          <button class="btn btn-outline" onclick="copyUrl('<%= menuUrl %>')">📋 Copy URL</button>
+          <button class="btn btn-primary" onclick="printQR('<%= menuUrl %>', '<%= tenant.name %>', 'Main Menu')">🖨️ Print QR</button>
+        </div>
+        <div style="margin-top:16px; padding:12px 16px; background:#f0fff4; border-radius:8px; font-size:.82rem; color:#2d6a4f;">
+          💡 Put this QR code at your entrance, on menus, or your social media — customers scan it to open your digital menu instantly.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Menu -->
+  <div class="print-link-card" style="margin-bottom:24px">
+    <div>
+      <h3>🖨️ Print-Friendly Menu</h3>
+      <p>A clean black-and-white version of your full menu, ready to print or save as PDF</p>
+    </div>
+    <a href="/print?tenant=<%= tenant.subdomain %>" target="_blank" class="btn btn-primary">Open Print View</a>
+  </div>
+
+  <!-- Table QR codes -->
+  <div class="card">
+    <div class="tables-header">
+      <h2>Table QR Codes</h2>
+      <div class="table-count-row">
+        <label>Tables:</label>
+        <input type="number" id="tableCount" value="10" min="1" max="50" onchange="renderTables()" />
+      </div>
+    </div>
+    <p style="color:#888;font-size:.85rem;margin-bottom:20px">Each table gets its own QR code. When a customer scans it, the table number is automatically filled in their cart order.</p>
+    <div class="tables-grid" id="tablesGrid"></div>
+  </div>
+</div>
+
+<script>
+  const MENU_URL  = '<%= menuUrl %>';
+  const REST_NAME = '<%= tenant.name %>';
+
+  function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = event.currentTarget;
+      const orig = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => btn.textContent = orig, 1800);
+    });
+  }
+
+  function printQR(url, name, label) {
+    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(url)}`;
+    const win = window.open('', '_blank', 'width=500,height=600');
+    win.document.write(`<!DOCTYPE html><html><head><title>QR Code</title>
+      <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; text-align: center; padding: 40px 20px; }
+        img { width: 280px; height: 280px; border: 4px solid #f0f0f0; border-radius: 12px; margin: 20px auto; display: block; }
+        h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 6px; }
+        p { color: #888; font-size: .85rem; margin-bottom: 4px; }
+        .url { font-size: .7rem; color: #bbb; word-break: break-all; margin-top: 8px; }
+        @media print { button { display: none; } }
+      </style></head><body>
+      <h2>${name}</h2>
+      <p>${label}</p>
+      <img src="${qrSrc}" onload="window.print()" />
+      <div class="url">${url}</div>
+    </body></html>`);
+    win.document.close();
+  }
+
+  function renderTables() {
+    const count = parseInt(document.getElementById('tableCount').value) || 10;
+    const grid  = document.getElementById('tablesGrid');
+    grid.innerHTML = '';
+
+    for (let i = 1; i <= count; i++) {
+      const tableUrl = MENU_URL + (MENU_URL.includes('?') ? '&' : '?') + `table=${i}`;
+      const qrSrc    = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&margin=6&data=${encodeURIComponent(tableUrl)}`;
+
+      const card = document.createElement('div');
+      card.className = 'table-card';
+      card.innerHTML = `
+        <img src="${qrSrc}" alt="Table ${i}" loading="lazy" />
+        <div class="table-card-label">Table ${i}</div>
+        <button class="table-print-btn" onclick="printQR('${tableUrl.replace(/'/g,"\\'")}', '${REST_NAME.replace(/'/g,"\\'")}', 'Table ${i}')">🖨️ Print</button>
+      `;
+      grid.appendChild(card);
+    }
+  }
+
+  renderTables();
+</script>
+
+</body>
+</html>
