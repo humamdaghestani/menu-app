@@ -392,10 +392,23 @@
     if (document.getElementById('whatsappBtnText')) {
       document.getElementById('whatsappBtnText').textContent = L.whatsapp;
     }
-    // Update "All" button
-    const allBtn = document.querySelector('[data-id="all"]');
-    if (allBtn) allBtn.textContent = L.all;
+    updateCategoryNav();
     renderGrid();
+  }
+
+  function getLocalized(item, field, lang) {
+    if (lang === 'ar' && item[field + '_ar']) return item[field + '_ar'];
+    if (lang === 'ku' && item[field + '_ku']) return item[field + '_ku'];
+    return item[field] || '';
+  }
+
+  function updateCategoryNav() {
+    const L = LANG[currentLang];
+    document.querySelector('[data-id="all"]').textContent = L.all;
+    categories.forEach(cat => {
+      const btn = document.querySelector(`[data-id="${cat.id}"]`);
+      if (btn) btn.textContent = getLocalized(cat, 'name', currentLang);
+    });
   }
 
   // ── Category Nav ──────────────────────────────────
@@ -450,15 +463,17 @@
       const unavailHTML = item.is_available === false
         ? `<div class="unavailable-tag">${L.unavailable}</div>` : '';
 
+      const localName = getLocalized(item, 'name', currentLang);
+      const localDesc = getLocalized(item, 'description', currentLang);
       card.innerHTML = `
         <div class="card-img-wrap">
-          <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${item.name}" loading="lazy" />
+          <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${localName}" loading="lazy" />
           ${badgeHTML}
           ${unavailHTML}
         </div>
         <div class="card-body">
-          <h3>${item.name}</h3>
-          <p class="card-desc">${item.description || ''}</p>
+          <h3>${localName}</h3>
+          <p class="card-desc">${localDesc}</p>
           <div class="card-footer">
             <span class="price">${item.price}</span>
           </div>
@@ -474,11 +489,13 @@
   // ── Modal ─────────────────────────────────────────
   function openModal(item) {
     const L = LANG[currentLang];
+    const localName = getLocalized(item, 'name', currentLang);
+    const localDesc = getLocalized(item, 'description', currentLang);
     document.getElementById('modalImg').src             = item.image_url || 'https://placehold.co/500x260?text=No+Image';
-    document.getElementById('modalImg').alt             = item.name;
-    document.getElementById('modalName').textContent    = item.name;
+    document.getElementById('modalImg').alt             = localName;
+    document.getElementById('modalName').textContent    = localName;
     document.getElementById('modalPrice').textContent   = item.price;
-    document.getElementById('modalDesc').textContent    = item.description || '';
+    document.getElementById('modalDesc').textContent    = localDesc;
 
     const badge = document.getElementById('modalBadge');
     if (item.badge && L.badges[item.badge]) {

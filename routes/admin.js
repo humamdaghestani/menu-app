@@ -79,12 +79,12 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 
 // ── Items CRUD ─────────────────────────────────────
 router.post('/items', requireAuth, async (req, res) => {
-  const { name, price, description, image_url, category_id, badge } = req.body;
+  const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;
   try {
     await db.query(
-      `INSERT INTO menu_items (tenant_id, category_id, name, price, description, image_url, badge)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [req.user.tenantId, category_id || null, name, price, description, image_url, badge || null]
+      `INSERT INTO menu_items (tenant_id, category_id, name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, badge)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [req.user.tenantId, category_id || null, name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, badge || null]
     );
     res.redirect('/admin/dashboard?success=Item+added');
   } catch (err) {
@@ -94,12 +94,12 @@ router.post('/items', requireAuth, async (req, res) => {
 });
 
 router.post('/items/:id/edit', requireAuth, async (req, res) => {
-  const { name, price, description, image_url, category_id, badge } = req.body;
+  const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;
   try {
     await db.query(
-      `UPDATE menu_items SET name=$1, price=$2, description=$3, image_url=$4, category_id=$5, badge=$6
-       WHERE id=$7 AND tenant_id=$8`,
-      [name, price, description, image_url, category_id || null, badge || null, req.params.id, req.user.tenantId]
+      `UPDATE menu_items SET name=$1, name_ar=$2, name_ku=$3, price=$4, description=$5, description_ar=$6, description_ku=$7, image_url=$8, category_id=$9, badge=$10
+       WHERE id=$11 AND tenant_id=$12`,
+      [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, req.params.id, req.user.tenantId]
     );
     res.redirect('/admin/dashboard?success=Item+updated');
   } catch (err) {
@@ -123,11 +123,11 @@ router.post('/items/:id/delete', requireAuth, async (req, res) => {
 
 // ── Categories CRUD ────────────────────────────────
 router.post('/categories', requireAuth, async (req, res) => {
-  const { name } = req.body;
+  const { name, name_ar, name_ku } = req.body;
   try {
     await db.query(
-      'INSERT INTO categories (tenant_id, name) VALUES ($1, $2)',
-      [req.user.tenantId, name]
+      'INSERT INTO categories (tenant_id, name, name_ar, name_ku) VALUES ($1, $2, $3, $4)',
+      [req.user.tenantId, name, name_ar || null, name_ku || null]
     );
     res.redirect('/admin/dashboard');
   } catch (err) {

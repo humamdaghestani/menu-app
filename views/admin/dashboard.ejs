@@ -295,9 +295,24 @@
         </div>
       <% }) %>
     </div>
-    <form method="POST" action="/admin/categories" style="display:flex;gap:10px">
-      <input type="text" name="name" placeholder="New category name" required style="flex:1" />
-      <button class="btn btn-primary" type="submit">Add</button>
+    <form method="POST" action="/admin/categories">
+      <div class="form-grid three" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Name (English) *</label>
+          <input type="text" name="name" placeholder="e.g. Burgers" required />
+        </div>
+        <div class="form-group">
+          <label>الاسم (Arabic)</label>
+          <input type="text" name="name_ar" placeholder="مثال: برغر" dir="rtl" />
+        </div>
+        <div class="form-group">
+          <label>ناو (Kurdish)</label>
+          <input type="text" name="name_ku" placeholder="نموونە: برگەر" dir="rtl" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Add Category</button>
+      </div>
     </form>
   </div>
 
@@ -334,8 +349,24 @@
           </select>
         </div>
         <div class="form-group full">
-          <label>Description</label>
+          <label>Description (English)</label>
           <textarea name="description" placeholder="Describe the item..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>الوصف (Arabic)</label>
+          <textarea name="description_ar" placeholder="وصف الصنف..." dir="rtl"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>وەسف (Kurdish)</label>
+          <textarea name="description_ku" placeholder="وەسفی بەرهەم..." dir="rtl"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Name (Arabic / الاسم)</label>
+          <input type="text" name="name_ar" placeholder="مثال: برغر كلاسيكي" dir="rtl" />
+        </div>
+        <div class="form-group">
+          <label>Name (Kurdish / ناو)</label>
+          <input type="text" name="name_ku" placeholder="نموونە: برگەری کلاسیک" dir="rtl" />
         </div>
         <div class="form-group full">
           <label>Image URL</label>
@@ -448,8 +479,24 @@
           </select>
         </div>
         <div class="form-group full">
-          <label>Description</label>
+          <label>Description (English)</label>
           <textarea name="description" id="editDescription"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>الوصف (Arabic)</label>
+          <textarea name="description_ar" id="editDescriptionAr" dir="rtl"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>وەسف (Kurdish)</label>
+          <textarea name="description_ku" id="editDescriptionKu" dir="rtl"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Name (Arabic / الاسم)</label>
+          <input type="text" name="name_ar" id="editNameAr" dir="rtl" />
+        </div>
+        <div class="form-group">
+          <label>Name (Kurdish / ناو)</label>
+          <input type="text" name="name_ku" id="editNameKu" dir="rtl" />
         </div>
         <div class="form-group full">
           <label>Image URL</label>
@@ -470,13 +517,17 @@
 
 <script>
   function openEdit(item) {
-    document.getElementById('editName').value        = item.name;
-    document.getElementById('editPrice').value       = item.price;
-    document.getElementById('editDescription').value = item.description || '';
-    document.getElementById('editImageUrl').value    = item.image_url || '';
-    document.getElementById('editCategory').value    = item.category_id || '';
-    document.getElementById('editBadge').value       = item.badge || '';
-    document.getElementById('editForm').action       = '/admin/items/' + item.id + '/edit';
+    document.getElementById('editName').value          = item.name;
+    document.getElementById('editNameAr').value        = item.name_ar || '';
+    document.getElementById('editNameKu').value        = item.name_ku || '';
+    document.getElementById('editPrice').value         = item.price;
+    document.getElementById('editDescription').value   = item.description || '';
+    document.getElementById('editDescriptionAr').value = item.description_ar || '';
+    document.getElementById('editDescriptionKu').value = item.description_ku || '';
+    document.getElementById('editImageUrl').value      = item.image_url || '';
+    document.getElementById('editCategory').value      = item.category_id || '';
+    document.getElementById('editBadge').value         = item.badge || '';
+    document.getElementById('editForm').action         = '/admin/items/' + item.id + '/edit';
     previewImg(document.getElementById('editImageUrl'), 'editPreview');
     document.getElementById('editOverlay').classList.add('open');
   }
