@@ -89,7 +89,7 @@
 
     /* ── Sections ── */
     main { max-width: 1100px; margin: 24px auto 120px; padding: 0 24px; }
-    .category-section { margin-bottom: 44px; scroll-margin-top: 110px; }
+    .category-section { margin-bottom: 44px; scroll-margin-top: 130px; }
     .section-title {
       color: #fff; font-size: 1.15rem; font-weight: 800; margin-bottom: 16px;
       padding-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.12);
@@ -597,8 +597,7 @@
       } else {
         const section = document.getElementById(`cat-${catId}`);
         if (section) {
-          const offset = section.getBoundingClientRect().top + window.scrollY - 120;
-          window.scrollTo({ top: offset, behavior: 'smooth' });
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
     });
@@ -631,7 +630,7 @@
 
     categories.forEach(cat => {
       const catItems = items.filter(item => {
-        if (item.category_id !== cat.id) return false;
+        if (Number(item.category_id) !== Number(cat.id)) return false;
         if (!searchQuery) return true;
         return (item.name || '').toLowerCase().includes(searchQuery) ||
                (item.description || '').toLowerCase().includes(searchQuery) ||
