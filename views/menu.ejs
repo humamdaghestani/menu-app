@@ -437,11 +437,13 @@
 
   const BADGE_CLASS = { spicy:'badge-spicy', popular:'badge-popular', new:'badge-new', vegetarian:'badge-vegetarian' };
 
-  let currentLang = localStorage.getItem('lang') || 'en';
-  let searchQuery = '';
-  let modalItem   = null;
-  let modalQty    = 1;
-  let scrollSpy   = null;
+  let currentLang      = localStorage.getItem('lang') || 'en';
+  let searchQuery      = '';
+  let modalItem        = null;
+  let modalQty         = 1;
+  let scrollSpy        = null;
+  let scrollLockTimer  = null;
+  let scrollLocked     = false;
 
   // ── Cart ──────────────────────────────────────────
   let cart = [];
@@ -582,6 +584,14 @@
   document.getElementById('categoryNav').querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       const catId = btn.dataset.id;
+
+      // Lock scroll spy so it doesn't fight with this click
+      scrollLocked = true;
+      clearTimeout(scrollLockTimer);
+      scrollLockTimer = setTimeout(() => { scrollLocked = false; }, 1100);
+
+      setActiveNav(catId);
+
       if (catId === 'all') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
@@ -591,7 +601,6 @@
           window.scrollTo({ top: offset, behavior: 'smooth' });
         }
       }
-      setActiveNav(catId);
     });
   });
 
@@ -710,12 +719,13 @@
   function setupScrollSpy() {
     if (!('IntersectionObserver' in window)) return;
     scrollSpy = new IntersectionObserver(entries => {
+      if (scrollLocked) return;
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           setActiveNav(entry.target.id.replace('cat-', ''));
         }
       });
-    }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+    }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
 
     document.querySelectorAll('.category-section').forEach(s => scrollSpy.observe(s));
   }
