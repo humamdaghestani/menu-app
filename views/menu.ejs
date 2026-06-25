@@ -330,6 +330,7 @@
         <h2 id="modalName"></h2>
         <div class="modal-price" id="modalPrice"></div>
         <p class="modal-desc" id="modalDesc"></p>
+        <% if (tenant.cart_enabled !== false) { %>
         <div class="modal-cart-row">
           <div class="qty-ctrl">
             <button class="qty-btn" id="modalQtyMinus">−</button>
@@ -340,6 +341,7 @@
             🛒 <span id="modalAddBtnText"></span>
           </button>
         </div>
+        <% } %>
       </div>
     </div>
   </div>
@@ -347,6 +349,7 @@
   <footer id="footer"></footer>
 </div>
 
+<% if (tenant.cart_enabled !== false) { %>
 <!-- Floating Cart Button -->
 <button class="cart-fab hidden" id="cartFab" onclick="openCart()">
   🛒 <span id="cartFabLabel"></span>
@@ -376,12 +379,14 @@
     <% } %>
   </div>
 </div>
+<% } %>
 
 <script>
-  const items      = <%- JSON.stringify(items) %>;
-  const categories = <%- JSON.stringify(categories) %>;
-  const WHATSAPP   = '<%= tenant.whatsapp || "" %>';
-  const REST_NAME  = '<%= tenant.name %>';
+  const items        = <%- JSON.stringify(items) %>;
+  const categories   = <%- JSON.stringify(categories) %>;
+  const WHATSAPP     = '<%= tenant.whatsapp || "" %>';
+  const REST_NAME    = '<%= tenant.name %>';
+  const CART_ENABLED = <%= tenant.cart_enabled !== false ? 'true' : 'false' %>;
 
   // ── Translations ──────────────────────────────────
   const LANG = {
@@ -523,8 +528,10 @@
     });
     document.getElementById('searchInput').placeholder = L.search;
     document.getElementById('footer').textContent      = L.footer;
-    document.getElementById('cartFabLabel').textContent = L.cartBtn;
-    document.getElementById('modalAddBtnText').textContent = L.addToCart;
+    if (CART_ENABLED) {
+      document.getElementById('cartFabLabel').textContent    = L.cartBtn;
+      document.getElementById('modalAddBtnText').textContent = L.addToCart;
+    }
     updateCategoryNav();
     renderGrid();
     if (document.getElementById('cartDrawer').classList.contains('open')) renderCartItems();
@@ -600,7 +607,7 @@
           <p class="card-desc">${localDesc}</p>
           <div class="card-footer">
             <span class="price">${item.price}</span>
-            ${item.is_available !== false ? `<button class="add-btn" data-id="${item.id}">${L.addToCart}</button>` : ''}
+            ${CART_ENABLED && item.is_available !== false ? `<button class="add-btn" data-id="${item.id}">${L.addToCart}</button>` : ''}
           </div>
         </div>`;
 
@@ -629,8 +636,8 @@
     document.getElementById('modalImg').alt                = getLocalized(item, 'name', currentLang);
     document.getElementById('modalName').textContent       = getLocalized(item, 'name', currentLang);
     document.getElementById('modalPrice').textContent      = item.price;
-    document.getElementById('modalDesc').textContent       = getLocalized(item, 'description', currentLang);
-    document.getElementById('modalAddBtnText').textContent = L.addToCart;
+    document.getElementById('modalDesc').textContent = getLocalized(item, 'description', currentLang);
+    if (CART_ENABLED) document.getElementById('modalAddBtnText').textContent = L.addToCart;
 
     const badge = document.getElementById('modalBadge');
     if (item.badge && L.badges[item.badge]) {
@@ -643,17 +650,19 @@
     document.body.style.overflow = 'hidden';
   }
 
-  document.getElementById('modalQtyMinus').addEventListener('click', () => {
-    if (modalQty > 1) { modalQty--; document.getElementById('modalQtyVal').textContent = modalQty; }
-  });
-  document.getElementById('modalQtyPlus').addEventListener('click', () => {
-    modalQty++; document.getElementById('modalQtyVal').textContent = modalQty;
-  });
-  document.getElementById('modalAddBtn').addEventListener('click', () => {
-    if (!modalItem) return;
-    addToCart(modalItem, modalQty);
-    closeModal();
-  });
+  if (CART_ENABLED) {
+    document.getElementById('modalQtyMinus').addEventListener('click', () => {
+      if (modalQty > 1) { modalQty--; document.getElementById('modalQtyVal').textContent = modalQty; }
+    });
+    document.getElementById('modalQtyPlus').addEventListener('click', () => {
+      modalQty++; document.getElementById('modalQtyVal').textContent = modalQty;
+    });
+    document.getElementById('modalAddBtn').addEventListener('click', () => {
+      if (!modalItem) return;
+      addToCart(modalItem, modalQty);
+      closeModal();
+    });
+  }
 
   function closeModal() {
     document.getElementById('overlay').classList.remove('open');
@@ -662,7 +671,7 @@
   }
   document.getElementById('closeModal').addEventListener('click', closeModal);
   document.getElementById('overlay').addEventListener('click', e => { if (e.target === document.getElementById('overlay')) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); closeCart(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeModal(); if (CART_ENABLED) closeCart(); } });
 
   // ── Init ──────────────────────────────────────────
   setLang(currentLang);

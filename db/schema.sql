@@ -6,6 +6,7 @@ CREATE TABLE tenants (
   name         VARCHAR(120) NOT NULL,
   logo_url     TEXT,
   active       BOOLEAN DEFAULT true,
+  cart_enabled BOOLEAN DEFAULT true,
   created_at   TIMESTAMP DEFAULT NOW()
 );
 
