@@ -634,7 +634,7 @@
     const L = LANG[currentLang];
     modalItem = item;
     modalQty  = 1;
-    document.getElementById('modalQtyVal').textContent     = 1;
+    if (CART_ENABLED) document.getElementById('modalQtyVal').textContent = 1;
     document.getElementById('modalImg').src                = item.image_url || 'https://placehold.co/500x260?text=No+Image';
     document.getElementById('modalImg').alt                = getLocalized(item, 'name', currentLang);
     document.getElementById('modalName').textContent       = getLocalized(item, 'name', currentLang);
