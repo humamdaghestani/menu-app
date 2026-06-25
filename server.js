@@ -22,7 +22,7 @@ app.use((req, res, next) => {
   const parts = host.split('.');
 
   // On localhost, use query param ?tenant=slug for testing
-  if (host === 'localhost' || host === '127.0.0.1') {
+  if (host === 'localhost' || host === '127.0.0.1' || host.includes('railway.app')) {
     req.tenant = req.query.tenant || null;
   } else {
     // subdomain is the first part if there are more than 2 parts
