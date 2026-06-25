@@ -246,21 +246,45 @@
     footer { text-align: center; padding: 20px; color: rgba(255,255,255,0.4); font-size: .78rem; }
 
     /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .modal { border-radius: 20px 20px 0 0; position: fixed; bottom: 0; left: 0; right: 0; max-width: 100%; max-height: 92vh; }
+      .overlay { align-items: flex-end; padding: 0; }
+      @keyframes popIn { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    }
+
     @media (max-width: 600px) {
-      .top-header { padding: 12px 16px; }
-      .restaurant-text h1 { font-size: 1rem; }
-      main { padding: 0 12px; }
-      .items-inner-grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; }
-      .toolbar { padding: 0 12px; }
+      .top-header { padding: 10px 14px; gap: 10px; }
+      .restaurant-logo { width: 40px; height: 40px; font-size: 1.2rem; }
+      .restaurant-text h1 { font-size: .95rem; }
+      .restaurant-text p { display: none; }
+      .lang-btn { padding: 4px 7px; font-size: .7rem; }
+      .cat-img-wrap { width: 36px; height: 36px; font-size: 1rem; }
+      nav button { font-size: .72rem; padding: 8px 10px; gap: 4px; }
+      main { padding: 0 10px; margin-bottom: 100px; }
+      .items-inner-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .card img { height: 140px; }
+      .card-body { padding: 10px 12px 12px; }
+      .card-body h3 { font-size: .88rem; }
+      .price { font-size: .9rem; }
+      .toolbar { padding: 0 10px; margin-top: 16px; }
       .toolbar input { width: 100%; }
       .toolbar { justify-content: stretch; }
       .search-wrap { width: 100%; }
-      .lang-btn { padding: 5px 7px; font-size: .72rem; }
-      .cart-fab { bottom: 16px; padding: 12px 18px; }
-      [dir="ltr"] .cart-fab { right: 16px; }
-      [dir="rtl"] .cart-fab { left: 16px; }
+      .cart-fab { bottom: 16px; padding: 11px 16px; font-size: .88rem; }
+      [dir="ltr"] .cart-fab { right: 14px; }
+      [dir="rtl"] .cart-fab { left: 14px; }
+      .modal-img { height: 200px; }
       .order-field-row { flex-direction: column; }
+      .section-title { font-size: 1rem; }
     }
+
+    @media (max-width: 360px) {
+      .items-inner-grid { grid-template-columns: 1fr; }
+      .lang-switcher { gap: 2px; }
+    }
+
+    /* Remove tap delay on mobile */
+    button, a { touch-action: manipulation; }
   </style>
 </head>
 <body>
