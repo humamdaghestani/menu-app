@@ -6,163 +6,409 @@
   <title>Dashboard — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; color: #222; }
-
-    /* Top bar */
-    header {
-      background: #1a1a2e; color: #fff;
-      padding: 16px 32px; display: flex;
-      justify-content: space-between; align-items: center;
+    :root {
+      --accent: <%= tenant.theme_color || '#e94560' %>;
+      --sidebar-w: 240px;
     }
-    header h1 { font-size: 1.2rem; }
-    header a { color: #e94560; font-size: .9rem; text-decoration: none; }
-    header a:hover { text-decoration: underline; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
 
-    .container { max-width: 960px; margin: 32px auto; padding: 0 20px; }
-
-    /* Section cards */
-    .section {
-      background: #fff; border-radius: 12px;
-      padding: 24px; margin-bottom: 28px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w); background: #1a1a2e;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+      z-index: 100; padding: 0 0 24px;
     }
-    .section h2 { font-size: 1.1rem; margin-bottom: 18px; color: #1a1a2e; }
-
-    /* Form rows */
-    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
-    .form-row input, .form-row select, .form-row textarea {
-      flex: 1; min-width: 140px; padding: 9px 12px;
-      border: 1px solid #ddd; border-radius: 8px; font-size: .9rem; outline: none;
+    .sidebar-brand {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: 12px;
     }
-    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
-      border-color: #e94560;
+    .sidebar-brand img {
+      width: 40px; height: 40px; border-radius: 10px;
+      object-fit: cover; background: #fff; flex-shrink: 0;
     }
-    textarea { resize: vertical; min-height: 72px; }
+    .sidebar-brand .brand-emoji { font-size: 1.6rem; }
+    .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
 
-    .btn { padding: 9px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 600; }
-    .btn-primary { background: #e94560; color: #fff; }
-    .btn-primary:hover { background: #c73652; }
-    .btn-danger  { background: #fee; color: #e94560; border: 1px solid #f5c2cb; }
-    .btn-danger:hover { background: #fdd; }
-    .btn-edit { background: #eef; color: #16213e; border: 1px solid #ccd; }
-    .btn-edit:hover { background: #dde; }
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-nav a, .sidebar-nav button {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; border-radius: 10px;
+      color: #aaa; text-decoration: none; font-size: .9rem;
+      background: none; border: none; cursor: pointer; width: 100%;
+      transition: background .15s, color .15s; font-family: inherit;
+    }
+    .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
 
-    /* Items table */
-    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    th { text-align: left; padding: 10px 12px; background: #f9f9f9; color: #555; font-weight: 600; border-bottom: 2px solid #eee; }
-    td { padding: 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-    td img { width: 52px; height: 40px; object-fit: cover; border-radius: 6px; }
-    tr:last-child td { border-bottom: none; }
+    .sidebar-footer { padding: 0 12px; }
+    .view-menu-btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: rgba(255,255,255,.07); color: #ccc;
+      padding: 10px; border-radius: 10px;
+      text-decoration: none; font-size: .85rem;
+      transition: background .15s, color .15s;
+    }
+    .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
 
-    /* Categories list */
-    .cat-list { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    /* ── Main ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; min-height: 100vh; }
+
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
+    .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+
+    /* ── Stats ── */
+    .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: #fff; border-radius: 14px;
+      padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .stat-icon { font-size: 1.5rem; }
+    .stat-value { font-size: 1.8rem; font-weight: 800; color: #1a1a2e; line-height: 1; }
+    .stat-label { color: #888; font-size: .82rem; }
+
+    /* ── Card ── */
+    .card {
+      background: #fff; border-radius: 14px;
+      padding: 24px; margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .card-header h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+
+    /* ── Form ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.span2 { grid-column: span 2; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: .8rem; font-weight: 600; color: #555; }
+    input, select, textarea {
+      padding: 10px 12px; border: 1.5px solid #e8e8e8;
+      border-radius: 8px; font-size: .9rem; outline: none;
+      font-family: inherit; background: #fafafa;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+      background: #fff;
+    }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .form-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+    /* ── Buttons ── */
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; font-family: inherit; transition: opacity .15s, transform .1s; }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost { background: #f0f0f0; color: #555; }
+    .btn-ghost:hover { background: #e4e4e4; }
+    .btn-danger { background: #fff0f3; color: #e94560; border: 1px solid #f5c2cb; }
+    .btn-danger:hover { background: #fde0e6; }
+    .btn-sm { padding: 6px 12px; font-size: .8rem; }
+
+    /* ── Categories ── */
+    .cat-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
     .cat-tag {
       display: flex; align-items: center; gap: 8px;
-      background: #f0f0f0; border-radius: 20px; padding: 6px 14px; font-size: .88rem;
+      background: #f0f0f0; border-radius: 20px;
+      padding: 6px 10px 6px 14px; font-size: .85rem; font-weight: 500;
     }
-    .cat-tag form { margin: 0; }
+    .cat-tag button { background: none; border: none; cursor: pointer; color: #aaa; font-size: .9rem; padding: 0; line-height: 1; transition: color .15s; }
+    .cat-tag button:hover { color: #e94560; }
 
-    /* Edit modal */
-    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
+    /* ── Items Table ── */
+    .items-table { width: 100%; border-collapse: collapse; }
+    .items-table th {
+      text-align: left; padding: 10px 14px;
+      font-size: .78rem; font-weight: 700; color: #888;
+      text-transform: uppercase; letter-spacing: .5px;
+      border-bottom: 2px solid #f0f0f0;
+      background: #fafafa;
+    }
+    .items-table td { padding: 14px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
+    .items-table tr:last-child td { border-bottom: none; }
+    .items-table tr:hover td { background: #fafcff; }
+
+    .item-img { width: 52px; height: 42px; object-fit: cover; border-radius: 8px; background: #f0f0f0; }
+    .item-name { font-weight: 600; font-size: .9rem; }
+    .item-desc { color: #aaa; font-size: .78rem; margin-top: 2px; }
+
+    /* Badge */
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: .72rem; font-weight: 700; text-transform: uppercase; }
+    .badge-spicy      { background: #ffe5e5; color: #e00; }
+    .badge-popular    { background: #fff3d4; color: #d4880a; }
+    .badge-new        { background: #d4f5ec; color: #0a8a63; }
+    .badge-vegetarian { background: #d4f0d4; color: #1a7a1a; }
+    .badge-none       { background: #f0f0f0; color: #aaa; }
+
+    /* Toggle */
+    .toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; inset: 0; background: #ccc;
+      border-radius: 22px; cursor: pointer; transition: .2s;
+    }
+    .slider::before {
+      content: ''; position: absolute;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; left: 3px; top: 3px;
+      transition: .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    input:checked + .slider { background: var(--accent); }
+    input:checked + .slider::before { transform: translateX(18px); }
+
+    .actions-cell { display: flex; gap: 6px; align-items: center; }
+
+    /* Image preview */
+    .img-preview {
+      width: 80px; height: 60px; border-radius: 8px;
+      object-fit: cover; background: #f0f0f0;
+      border: 1.5px dashed #ddd; display: none;
+      margin-top: 8px;
+    }
+    .img-preview.show { display: block; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: #1a1a2e; color: #fff;
+      padding: 12px 20px; border-radius: 10px;
+      font-size: .88rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,0,0,.2);
+      transform: translateY(80px); opacity: 0;
+      transition: transform .3s, opacity .3s;
+      z-index: 999; max-width: 320px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-left: 4px solid #00b894; }
+    #toast.error   { border-left: 4px solid #e94560; }
+
+    /* ── Edit Modal ── */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
     .overlay.open { display: flex; }
-    .modal { background: #fff; border-radius: 14px; padding: 28px; width: 100%; max-width: 500px; }
-    .modal h3 { margin-bottom: 16px; color: #1a1a2e; }
-    .modal .form-row { margin-bottom: 10px; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 100%; max-width: 540px; animation: popIn .2s ease; max-height: 90vh; overflow-y: auto; }
+    @keyframes popIn { from { transform: scale(.93); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 64px; }
+      .sidebar-brand-text, .sidebar-nav span:not(.icon) { display: none; }
+      .main { margin-left: 64px; padding: 20px 16px; }
+      .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+      .form-group.span2, .form-group.full { grid-column: 1; }
+    }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>🍽️ <%= tenant.name %> — Admin</h1>
-  <div style="display:flex;gap:20px;align-items:center">
-    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank">View Menu ↗</a>
-    <form method="POST" action="/admin/logout" style="margin:0">
-      <button class="btn btn-danger" style="padding:6px 14px">Logout</button>
-    </form>
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %>
+      <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+    <% } else { %>
+      <span class="brand-emoji">🍽️</span>
+    <% } %>
+    <div class="sidebar-brand-text">
+      <h2><%= tenant.name %></h2>
+      <span>Admin Panel</span>
+    </div>
   </div>
-</header>
 
-<div class="container">
+  <nav class="sidebar-nav">
+    <a href="/admin/dashboard" class="active">
+      <span class="icon">📊</span>
+      <span>Dashboard</span>
+    </a>
+    <a href="/admin/settings">
+      <span class="icon">⚙️</span>
+      <span>Settings</span>
+    </a>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit">
+        <span class="icon">🚪</span>
+        <span>Logout</span>
+      </button>
+    </form>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn">
+      <span>🔗</span>
+      <span>View Menu</span>
+    </a>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<div class="main">
+
+  <div class="page-header">
+    <h1>Dashboard</h1>
+    <p>Manage your menu items and categories</p>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <span class="stat-icon">🍽️</span>
+      <div class="stat-value"><%= items.length %></div>
+      <div class="stat-label">Total Items</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">✅</span>
+      <div class="stat-value"><%= items.filter(i => i.is_available !== false).length %></div>
+      <div class="stat-label">Available</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📂</span>
+      <div class="stat-value"><%= categories.length %></div>
+      <div class="stat-label">Categories</div>
+    </div>
+  </div>
 
   <!-- Categories -->
-  <div class="section">
-    <h2>Categories</h2>
-    <div class="cat-list">
+  <div class="card">
+    <div class="card-header">
+      <h2>Categories</h2>
+    </div>
+    <div class="cat-list" id="catList">
       <% categories.forEach(cat => { %>
         <div class="cat-tag">
           <%= cat.name %>
-          <form method="POST" action="/admin/categories/<%= cat.id %>/delete" onsubmit="return confirm('Delete this category?')">
-            <button class="btn btn-danger" style="padding:2px 8px;font-size:.8rem">✕</button>
+          <form method="POST" action="/admin/categories/<%= cat.id %>/delete" onsubmit="return confirm('Delete category?')">
+            <button type="submit" title="Delete">✕</button>
           </form>
         </div>
       <% }) %>
     </div>
-    <form method="POST" action="/admin/categories">
-      <div class="form-row">
-        <input type="text" name="name" placeholder="New category name" required />
-        <button class="btn btn-primary" type="submit">Add Category</button>
-      </div>
+    <form method="POST" action="/admin/categories" style="display:flex;gap:10px">
+      <input type="text" name="name" placeholder="New category name" required style="flex:1" />
+      <button class="btn btn-primary" type="submit">Add</button>
     </form>
   </div>
 
   <!-- Add Item -->
-  <div class="section">
-    <h2>Add New Item</h2>
+  <div class="card">
+    <div class="card-header"><h2>Add New Item</h2></div>
     <form method="POST" action="/admin/items">
-      <div class="form-row">
-        <input type="text" name="name" placeholder="Item name" required />
-        <input type="text" name="price" placeholder="Price (e.g. $9.99)" required />
-        <select name="category_id" required>
-          <option value="">Select category</option>
-          <% categories.forEach(cat => { %>
-            <option value="<%= cat.id %>"><%= cat.name %></option>
-          <% }) %>
-        </select>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Item Name *</label>
+          <input type="text" name="name" placeholder="e.g. Classic Burger" required />
+        </div>
+        <div class="form-group">
+          <label>Price *</label>
+          <input type="text" name="price" placeholder="e.g. $9.99" required />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category_id">
+            <option value="">No category</option>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Badge</label>
+          <select name="badge">
+            <option value="">None</option>
+            <option value="popular">⭐ Popular</option>
+            <option value="new">🆕 New</option>
+            <option value="spicy">🌶 Spicy</option>
+            <option value="vegetarian">🌱 Vegetarian</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Description</label>
+          <textarea name="description" placeholder="Describe the item..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Image URL</label>
+          <input type="url" name="image_url" placeholder="https://..." id="addImageUrl" oninput="previewImg(this,'addPreview')" />
+          <img id="addPreview" class="img-preview" />
+        </div>
       </div>
-      <div class="form-row">
-        <textarea name="description" placeholder="Description"></textarea>
-      </div>
-      <div class="form-row">
-        <input type="url" name="image_url" placeholder="Image URL (optional)" />
+      <div class="form-actions">
         <button class="btn btn-primary" type="submit">Add Item</button>
       </div>
     </form>
   </div>
 
   <!-- Items List -->
-  <div class="section">
-    <h2>Menu Items (<%= items.length %>)</h2>
+  <div class="card">
+    <div class="card-header">
+      <h2>Menu Items</h2>
+      <span style="color:#aaa;font-size:.85rem"><%= items.length %> items</span>
+    </div>
     <% if (items.length === 0) { %>
-      <p style="color:#aaa;text-align:center;padding:24px 0">No items yet. Add one above.</p>
+      <p style="text-align:center;color:#bbb;padding:32px 0">No items yet. Add one above.</p>
     <% } else { %>
-    <table>
-      <thead>
-        <tr>
-          <th>Image</th>
-          <th>Name</th>
-          <th>Price</th>
-          <th>Category</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% items.forEach(item => { %>
-        <tr>
-          <td><img src="<%= item.image_url || 'https://placehold.co/52x40?text=?' %>" alt="<%= item.name %>" /></td>
-          <td><strong><%= item.name %></strong><br><small style="color:#aaa"><%= (item.description || '').substring(0, 50) %><%= item.description && item.description.length > 50 ? '…' : '' %></small></td>
-          <td><%= item.price %></td>
-          <td><%= item.category_name || '—' %></td>
-          <td style="display:flex;gap:8px;align-items:center;padding-top:14px">
-            <button class="btn btn-edit" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
-            <form method="POST" action="/admin/items/<%= item.id %>/delete" onsubmit="return confirm('Delete this item?')" style="margin:0">
-              <button class="btn btn-danger" type="submit">Delete</button>
-            </form>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <div style="overflow-x:auto">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Image</th>
+            <th>Item</th>
+            <th>Price</th>
+            <th>Category</th>
+            <th>Badge</th>
+            <th>Available</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(item => { %>
+          <tr>
+            <td><img class="item-img" src="<%= item.image_url || 'https://placehold.co/52x42?text=?' %>" alt="<%= item.name %>" /></td>
+            <td>
+              <div class="item-name"><%= item.name %></div>
+              <div class="item-desc"><%= (item.description || '').substring(0,60) %><%= item.description && item.description.length > 60 ? '…' : '' %></div>
+            </td>
+            <td><strong><%= item.price %></strong></td>
+            <td><%= item.category_name || '—' %></td>
+            <td>
+              <% if (item.badge) { %>
+                <span class="badge badge-<%= item.badge %>"><%= item.badge %></span>
+              <% } else { %>
+                <span class="badge badge-none">none</span>
+              <% } %>
+            </td>
+            <td>
+              <form method="POST" action="/admin/items/<%= item.id %>/toggle" style="margin:0">
+                <label class="toggle">
+                  <input type="checkbox" <%= item.is_available !== false ? 'checked' : '' %> onchange="this.form.submit()" />
+                  <span class="slider"></span>
+                </label>
+              </form>
+            </td>
+            <td>
+              <div class="actions-cell">
+                <button class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
+                <form method="POST" action="/admin/items/<%= item.id %>/delete" onsubmit="return confirm('Delete this item?')" style="margin:0">
+                  <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
     <% } %>
   </div>
 
@@ -173,50 +419,94 @@
   <div class="modal">
     <h3>Edit Item</h3>
     <form method="POST" id="editForm">
-      <div class="form-row">
-        <input type="text" name="name" id="editName" placeholder="Item name" required />
-        <input type="text" name="price" id="editPrice" placeholder="Price" required />
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Item Name *</label>
+          <input type="text" name="name" id="editName" required />
+        </div>
+        <div class="form-group">
+          <label>Price *</label>
+          <input type="text" name="price" id="editPrice" required />
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select name="category_id" id="editCategory">
+            <option value="">No category</option>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Badge</label>
+          <select name="badge" id="editBadge">
+            <option value="">None</option>
+            <option value="popular">⭐ Popular</option>
+            <option value="new">🆕 New</option>
+            <option value="spicy">🌶 Spicy</option>
+            <option value="vegetarian">🌱 Vegetarian</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>Description</label>
+          <textarea name="description" id="editDescription"></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Image URL</label>
+          <input type="url" name="image_url" id="editImageUrl" oninput="previewImg(this,'editPreview')" />
+          <img id="editPreview" class="img-preview" />
+        </div>
       </div>
-      <div class="form-row">
-        <select name="category_id" id="editCategory" required>
-          <% categories.forEach(cat => { %>
-            <option value="<%= cat.id %>"><%= cat.name %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div class="form-row">
-        <textarea name="description" id="editDescription" placeholder="Description"></textarea>
-      </div>
-      <div class="form-row">
-        <input type="url" name="image_url" id="editImageUrl" placeholder="Image URL" />
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-edit" onclick="closeEdit()">Cancel</button>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
       </div>
     </form>
   </div>
 </div>
 
+<!-- Toast -->
+<div id="toast"></div>
+
 <script>
   function openEdit(item) {
-    document.getElementById('editName').value = item.name;
-    document.getElementById('editPrice').value = item.price;
+    document.getElementById('editName').value        = item.name;
+    document.getElementById('editPrice').value       = item.price;
     document.getElementById('editDescription').value = item.description || '';
-    document.getElementById('editImageUrl').value = item.image_url || '';
-    document.getElementById('editCategory').value = item.category_id || '';
-    document.getElementById('editForm').action = '/admin/items/' + item.id + '/edit';
+    document.getElementById('editImageUrl').value    = item.image_url || '';
+    document.getElementById('editCategory').value    = item.category_id || '';
+    document.getElementById('editBadge').value       = item.badge || '';
+    document.getElementById('editForm').action       = '/admin/items/' + item.id + '/edit';
+    previewImg(document.getElementById('editImageUrl'), 'editPreview');
     document.getElementById('editOverlay').classList.add('open');
   }
-
-  function closeEdit() {
-    document.getElementById('editOverlay').classList.remove('open');
-  }
-
+  function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
   document.getElementById('editOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('editOverlay')) closeEdit();
   });
-</script>
 
+  function previewImg(input, previewId) {
+    const preview = document.getElementById(previewId);
+    if (input.value) {
+      preview.src = input.value;
+      preview.classList.add('show');
+      preview.onerror = () => preview.classList.remove('show');
+    } else {
+      preview.classList.remove('show');
+    }
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = (type === 'success' ? '✓ ' : '✗ ') + msg;
+    t.className = 'show ' + type;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  // Show toast from URL param
+  const params = new URLSearchParams(location.search);
+  if (params.get('success')) showToast(decodeURIComponent(params.get('success')));
+  if (params.get('error'))   showToast(decodeURIComponent(params.get('error')), 'error');
+</script>
 </body>
 </html>

@@ -6,160 +6,301 @@
   <title><%= tenant.name %> — Menu</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f5f5f5;
-      color: #222;
-      min-height: 100vh;
+    :root {
+      --accent: <%= tenant.theme_color || '#e94560' %>;
+      --accent-dark: color-mix(in srgb, var(--accent) 75%, black);
+      --accent-light: color-mix(in srgb, var(--accent) 15%, white);
     }
 
-    header {
+    body { font-family: 'Segoe UI', sans-serif; background: #f7f7f8; color: #1a1a2e; min-height: 100vh; }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative;
+      height: 260px;
       background: #1a1a2e;
-      color: #fff;
-      padding: 18px 32px;
+      background-image: url('<%= tenant.cover_image || "" %>');
+      background-size: cover;
+      background-position: center;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(0,0,0,.2) 0%, rgba(0,0,0,.7) 100%);
+    }
+    .hero-content {
+      position: absolute;
+      bottom: 24px;
+      left: 32px;
+      z-index: 1;
       display: flex;
       align-items: center;
-      gap: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+      gap: 16px;
     }
-    header img.logo {
-      width: 42px; height: 42px;
-      border-radius: 50%;
+    .hero-logo {
+      width: 72px; height: 72px;
+      border-radius: 16px;
       object-fit: cover;
+      border: 3px solid #fff;
+      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      flex-shrink: 0;
     }
-    header h1 { font-size: 1.5rem; letter-spacing: 1px; }
+    .hero-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 13px; }
+    .hero-text h1 { color: #fff; font-size: 1.7rem; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,.4); }
+    .hero-text p { color: rgba(255,255,255,.85); font-size: .9rem; margin-top: 4px; text-shadow: 0 1px 4px rgba(0,0,0,.4); }
 
+    /* ── Sticky Nav ── */
+    .sticky-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
     nav {
-      background: #16213e;
       display: flex;
-      gap: 8px;
-      padding: 0 32px;
+      gap: 4px;
+      padding: 0 24px;
       overflow-x: auto;
       scrollbar-width: none;
     }
     nav::-webkit-scrollbar { display: none; }
     nav button {
-      background: none; border: none; color: #aaa;
-      font-size: .95rem; padding: 14px 18px; cursor: pointer;
-      border-bottom: 3px solid transparent; white-space: nowrap;
+      background: none; border: none;
+      color: #777; font-size: .9rem;
+      padding: 14px 16px; cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
       transition: color .2s, border-color .2s;
+      font-weight: 500;
     }
-    nav button:hover { color: #fff; }
-    nav button.active { color: #e94560; border-bottom-color: #e94560; font-weight: 600; }
+    nav button:hover { color: #1a1a2e; }
+    nav button.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 700; }
 
+    /* ── Toolbar ── */
     .toolbar {
-      padding: 20px 32px 0;
+      max-width: 1100px;
+      margin: 24px auto 0;
+      padding: 0 24px;
       display: flex;
       justify-content: flex-end;
     }
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #aaa; }
     .toolbar input {
-      padding: 9px 14px; border: 1px solid #ddd; border-radius: 24px;
-      font-size: .9rem; width: 240px; outline: none;
+      padding: 10px 14px 10px 38px;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 24px;
+      font-size: .9rem;
+      width: 260px;
+      outline: none;
+      background: #fff;
       transition: border-color .2s, box-shadow .2s;
     }
-    .toolbar input:focus { border-color: #e94560; box-shadow: 0 0 0 3px rgba(233,69,96,.15); }
+    .toolbar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
 
+    /* ── Grid ── */
     main {
-      padding: 20px 32px 48px;
+      max-width: 1100px;
+      margin: 20px auto 60px;
+      padding: 0 24px;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 20px;
     }
 
+    /* ── Card ── */
     .card {
-      background: #fff; border-radius: 12px; overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,.08); cursor: pointer;
-      transition: transform .2s, box-shadow .2s;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      cursor: pointer;
+      transition: transform .22s, box-shadow .22s;
+      position: relative;
     }
-    .card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.14); }
-    .card img { width: 100%; height: 160px; object-fit: cover; display: block; }
-    .card-body { padding: 14px; }
-    .card-body h3 { font-size: 1rem; margin-bottom: 4px; }
-    .card-body .price { color: #e94560; font-weight: 700; font-size: 1.05rem; }
-    .card-body .short-desc {
-      color: #777; font-size: .82rem; margin-top: 4px;
+    .card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(0,0,0,.13); }
+    .card.unavailable { opacity: .55; cursor: not-allowed; }
+
+    .card-img-wrap { position: relative; overflow: hidden; }
+    .card img {
+      width: 100%; height: 170px;
+      object-fit: cover; display: block;
+      transition: transform .3s;
+    }
+    .card:hover .card-img-wrap img { transform: scale(1.04); }
+
+    .unavailable-tag {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.45);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: .95rem;
+      letter-spacing: .5px;
+    }
+
+    .badge {
+      position: absolute; top: 10px; left: 10px;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: .75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px;
+    }
+    .badge-spicy      { background: #ff4d4d; color: #fff; }
+    .badge-popular    { background: #f5a623; color: #fff; }
+    .badge-new        { background: #00b894; color: #fff; }
+    .badge-vegetarian { background: #27ae60; color: #fff; }
+
+    .card-body { padding: 14px 16px 16px; }
+    .card-body h3 { font-size: 1rem; font-weight: 700; margin-bottom: 5px; }
+    .card-body .desc {
+      color: #888; font-size: .82rem; line-height: 1.5;
       display: -webkit-box; -webkit-line-clamp: 2;
       -webkit-box-orient: vertical; overflow: hidden;
+      margin-bottom: 10px;
     }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; }
+    .price { color: var(--accent); font-weight: 800; font-size: 1.05rem; }
 
+    /* ── Empty ── */
     .empty {
-      grid-column: 1 / -1; text-align: center;
-      padding: 60px 0; color: #aaa; font-size: 1.1rem;
+      grid-column: 1 / -1;
+      text-align: center; padding: 80px 0;
+      color: #bbb;
     }
+    .empty svg { display: block; margin: 0 auto 16px; opacity: .4; }
+    .empty p { font-size: 1.05rem; }
 
+    /* ── Modal ── */
     .overlay {
       display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,.55); z-index: 100;
+      background: rgba(0,0,0,.6); z-index: 200;
       align-items: center; justify-content: center; padding: 20px;
     }
     .overlay.open { display: flex; }
     .modal {
-      background: #fff; border-radius: 16px; max-width: 480px;
-      width: 100%; overflow: hidden; animation: popIn .22s ease; position: relative;
+      background: #fff; border-radius: 20px;
+      max-width: 500px; width: 100%;
+      overflow: hidden; animation: popIn .22s ease;
+      position: relative; max-height: 90vh; overflow-y: auto;
     }
     @keyframes popIn {
-      from { transform: scale(.9); opacity: 0; }
-      to   { transform: scale(1);  opacity: 1; }
+      from { transform: scale(.92) translateY(20px); opacity: 0; }
+      to   { transform: scale(1)   translateY(0);    opacity: 1; }
     }
-    .modal img { width: 100%; height: 240px; object-fit: cover; display: block; }
-    .modal-body { padding: 22px 24px 28px; }
-    .modal-body h2 { font-size: 1.35rem; margin-bottom: 6px; }
-    .modal-body .modal-price { color: #e94560; font-size: 1.25rem; font-weight: 700; margin-bottom: 12px; }
-    .modal-body p { color: #555; line-height: 1.6; font-size: .95rem; }
+    .modal-img-wrap { position: relative; }
+    .modal img { width: 100%; height: 260px; object-fit: cover; display: block; }
+    .modal-badge {
+      position: absolute; top: 14px; left: 14px;
+      padding: 5px 12px; border-radius: 20px;
+      font-size: .8rem; font-weight: 700; text-transform: uppercase;
+    }
+    .modal-body { padding: 24px 26px 32px; }
+    .modal-body h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+    .modal-price { color: var(--accent); font-size: 1.3rem; font-weight: 800; margin-bottom: 14px; }
+    .modal-desc { color: #666; line-height: 1.7; font-size: .95rem; }
     .close-btn {
-      position: absolute; top: 10px; right: 12px;
-      background: rgba(0,0,0,.45); color: #fff; border: none;
-      border-radius: 50%; width: 32px; height: 32px;
-      font-size: 1.1rem; cursor: pointer; line-height: 32px;
-      text-align: center; transition: background .2s;
+      position: absolute; top: 12px; right: 14px;
+      background: rgba(0,0,0,.5); color: #fff; border: none;
+      border-radius: 50%; width: 34px; height: 34px;
+      font-size: 1.1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s; z-index: 1;
     }
-    .close-btn:hover { background: rgba(0,0,0,.7); }
+    .close-btn:hover { background: rgba(0,0,0,.75); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #bbb;
+      font-size: .8rem;
+      border-top: 1px solid #f0f0f0;
+    }
+
+    @media (max-width: 600px) {
+      .hero { height: 200px; }
+      .hero-text h1 { font-size: 1.3rem; }
+      main { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; padding: 0 12px; }
+      .toolbar { padding: 0 12px; }
+      .toolbar input { width: 100%; }
+      .toolbar { justify-content: stretch; }
+      .search-wrap { width: 100%; }
+    }
   </style>
 </head>
 <body>
 
-<header>
-  <% if (tenant.logo_url) { %>
-    <img class="logo" src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
-  <% } else { %>
-    <span style="font-size:1.6rem">🍽️</span>
-  <% } %>
-  <h1><%= tenant.name %></h1>
-</header>
-
-<nav id="categoryNav">
-  <button class="active" data-id="all">🍴 All</button>
-  <% categories.forEach(cat => { %>
-    <button data-id="<%= cat.id %>"><%= cat.name %></button>
-  <% }) %>
-</nav>
-
-<div class="toolbar">
-  <input type="text" id="searchInput" placeholder="Search items..." />
-</div>
-
-<main id="itemsGrid"></main>
-
-<div class="overlay" id="overlay">
-  <div class="modal" id="modal">
-    <button class="close-btn" id="closeModal">&times;</button>
-    <img id="modalImg" src="" alt="" />
-    <div class="modal-body">
-      <h2 id="modalName"></h2>
-      <div class="modal-price" id="modalPrice"></div>
-      <p id="modalDesc"></p>
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-logo">
+      <% if (tenant.logo_url) { %>
+        <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+      <% } else { %>
+        🍽️
+      <% } %>
+    </div>
+    <div class="hero-text">
+      <h1><%= tenant.name %></h1>
+      <% if (tenant.description) { %><p><%= tenant.description %></p><% } %>
     </div>
   </div>
 </div>
 
+<!-- Sticky Category Nav -->
+<div class="sticky-wrap">
+  <nav id="categoryNav">
+    <button class="active" data-id="all">All</button>
+    <% categories.forEach(cat => { %>
+      <button data-id="<%= cat.id %>"><%= cat.name %></button>
+    <% }) %>
+  </nav>
+</div>
+
+<!-- Search -->
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="Search items..." />
+  </div>
+</div>
+
+<!-- Items Grid -->
+<main id="itemsGrid"></main>
+
+<!-- Modal -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="close-btn" id="closeModal">✕</button>
+    <div class="modal-img-wrap">
+      <img id="modalImg" src="" alt="" />
+      <span class="modal-badge" id="modalBadge" style="display:none"></span>
+    </div>
+    <div class="modal-body">
+      <h2 id="modalName"></h2>
+      <div class="modal-price" id="modalPrice"></div>
+      <p class="modal-desc" id="modalDesc"></p>
+    </div>
+  </div>
+</div>
+
+<footer>Powered by MenuApp</footer>
+
 <script>
-  const items = <%- JSON.stringify(items) %>;
+  const items      = <%- JSON.stringify(items) %>;
   const categories = <%- JSON.stringify(categories) %>;
+
+  const BADGE_LABELS = { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' };
+  const BADGE_CLASS  = { spicy:'badge-spicy', popular:'badge-popular', new:'badge-new', vegetarian:'badge-vegetarian' };
 
   let activeCategory = 'all';
   let searchQuery = '';
 
+  // Category nav
   const nav = document.getElementById('categoryNav');
   nav.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -170,9 +311,14 @@
     });
   });
 
+  // Search (debounced)
+  let searchTimer;
   document.getElementById('searchInput').addEventListener('input', e => {
-    searchQuery = e.target.value.toLowerCase();
-    renderGrid();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      searchQuery = e.target.value.toLowerCase();
+      renderGrid();
+    }, 200);
   });
 
   function renderGrid() {
@@ -180,39 +326,67 @@
     grid.innerHTML = '';
 
     const filtered = items.filter(item => {
-      const matchCat = activeCategory === 'all' || String(item.category_id) === activeCategory;
+      const matchCat    = activeCategory === 'all' || String(item.category_id) === activeCategory;
       const matchSearch = item.name.toLowerCase().includes(searchQuery) ||
                           (item.description || '').toLowerCase().includes(searchQuery);
       return matchCat && matchSearch;
     });
 
     if (filtered.length === 0) {
-      grid.innerHTML = '<div class="empty">No items found.</div>';
+      grid.innerHTML = `
+        <div class="empty">
+          <svg width="64" height="64" fill="none" stroke="#ccc" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.4 5h12.8"/></svg>
+          <p>No items found.</p>
+        </div>`;
       return;
     }
 
     filtered.forEach(item => {
       const card = document.createElement('div');
-      card.className = 'card';
+      card.className = 'card' + (item.is_available === false ? ' unavailable' : '');
+
+      const badgeHTML = item.badge && BADGE_LABELS[item.badge]
+        ? `<span class="badge ${BADGE_CLASS[item.badge]}">${BADGE_LABELS[item.badge]}</span>` : '';
+      const unavailableHTML = item.is_available === false
+        ? `<div class="unavailable-tag">Unavailable</div>` : '';
+
       card.innerHTML = `
-        <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${item.name}" loading="lazy" />
+        <div class="card-img-wrap">
+          <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${item.name}" loading="lazy" />
+          ${badgeHTML}
+          ${unavailableHTML}
+        </div>
         <div class="card-body">
           <h3>${item.name}</h3>
-          <div class="price">${item.price}</div>
-          <div class="short-desc">${item.description || ''}</div>
-        </div>
-      `;
-      card.addEventListener('click', () => openModal(item));
+          <p class="desc">${item.description || ''}</p>
+          <div class="card-footer">
+            <span class="price">${item.price}</span>
+          </div>
+        </div>`;
+
+      if (item.is_available !== false) {
+        card.addEventListener('click', () => openModal(item));
+      }
       grid.appendChild(card);
     });
   }
 
   function openModal(item) {
-    document.getElementById('modalImg').src = item.image_url || 'https://placehold.co/480x240?text=No+Image';
-    document.getElementById('modalImg').alt = item.name;
-    document.getElementById('modalName').textContent = item.name;
+    document.getElementById('modalImg').src   = item.image_url || 'https://placehold.co/500x260?text=No+Image';
+    document.getElementById('modalImg').alt   = item.name;
+    document.getElementById('modalName').textContent  = item.name;
     document.getElementById('modalPrice').textContent = item.price;
-    document.getElementById('modalDesc').textContent = item.description || '';
+    document.getElementById('modalDesc').textContent  = item.description || '';
+
+    const badge = document.getElementById('modalBadge');
+    if (item.badge && BADGE_LABELS[item.badge]) {
+      badge.textContent  = BADGE_LABELS[item.badge];
+      badge.className    = `modal-badge ${BADGE_CLASS[item.badge]}`;
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+
     document.getElementById('overlay').classList.add('open');
     document.body.style.overflow = 'hidden';
   }

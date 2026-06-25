@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Start-Process \"c:\\\\Users\\\\ASUS\\\\menu-app\\\\index.html\")"
+      "PowerShell(Start-Process \"c:\\\\Users\\\\ASUS\\\\menu-app\\\\index.html\")",
+      "PowerShell(gh --version 2>&1)"
     ]
   }
 }
