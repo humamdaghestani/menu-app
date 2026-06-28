@@ -411,6 +411,15 @@
       </div>
     </div>
 
+    <!-- Custom CSS -->
+    <div class="card">
+      <h2>🎨 Custom CSS</h2>
+      <p style="color:#888;font-size:.85rem;margin-bottom:16px">Add custom CSS to fully control how your menu looks. Changes apply to the customer menu only.</p>
+      <div class="form-group full">
+        <textarea name="custom_css" rows="10" placeholder="/* Example: change card corners */&#10;.card { border-radius: 0; }&#10;&#10;/* Example: dark background */&#10;body { background: #111; }&#10;.card { background: #1e1e1e; color: #fff; }" style="font-family:monospace;font-size:.85rem;resize:vertical"><%= tenant.custom_css || '' %></textarea>
+      </div>
+    </div>
+
     <div class="form-actions">
       <button class="btn btn-primary" type="submit">Save Settings</button>
     </div>

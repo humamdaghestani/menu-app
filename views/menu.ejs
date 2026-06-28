@@ -512,6 +512,7 @@
       .splash-rest-name { font-size: 1.7rem; }
     }
   </style>
+  <% if (tenant.custom_css) { %><style><%- tenant.custom_css %></style><% } %>
 </head>
 <body data-layout="<%= _layout %>">
 
