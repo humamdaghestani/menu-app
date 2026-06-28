@@ -80,6 +80,11 @@
     .preview-wrap { margin-top: 10px; }
     .img-preview { width: 120px; height: 80px; object-fit: cover; border-radius: 10px; border: 1.5px dashed #ddd; display: none; }
     .img-preview.show { display: block; }
+    .img-row { display: flex; gap: 8px; align-items: center; }
+    .img-row input[type="url"] { flex: 1; }
+    .btn-upload { background: #f0f0f0; color: #444; border: 1.5px solid #e0e0e0; font-size: .82rem; padding: 8px 12px; cursor: pointer; }
+    .btn-upload:hover { background: #e4e4e4; }
+    .upload-lbl { display: inline-flex; align-items: center; white-space: nowrap; }
 
     .form-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
     .btn { padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 600; font-family: inherit; }
@@ -175,15 +180,27 @@
           <input type="text" name="description" value="<%= tenant.description || '' %>" placeholder="e.g. Best burgers in town" />
         </div>
         <div class="form-group full">
-          <label>Logo URL</label>
-          <input type="url" name="logo_url" value="<%= tenant.logo_url || '' %>" id="logoInput" oninput="previewImg(this,'logoPreview')" placeholder="https://..." />
+          <label>Logo</label>
+          <div class="img-row">
+            <input type="url" name="logo_url" value="<%= tenant.logo_url || '' %>" id="logoInput" oninput="previewImg(this,'logoPreview')" placeholder="https://... or upload →" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="logoUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'logoInput','logoPreview','logoUploadTxt')" />
+            </label>
+          </div>
           <div class="preview-wrap">
             <img id="logoPreview" class="img-preview <%= tenant.logo_url ? 'show' : '' %>" src="<%= tenant.logo_url || '' %>" />
           </div>
         </div>
         <div class="form-group full">
-          <label>Background Image URL <small style="color:#aaa;font-weight:400">(shown behind the menu)</small></label>
-          <input type="url" name="cover_image" value="<%= tenant.cover_image || '' %>" id="coverInput" oninput="previewImg(this,'coverPreview')" placeholder="https://..." />
+          <label>Background Image <small style="color:#aaa;font-weight:400">(shown behind the menu)</small></label>
+          <div class="img-row">
+            <input type="url" name="cover_image" value="<%= tenant.cover_image || '' %>" id="coverInput" oninput="previewImg(this,'coverPreview')" placeholder="https://... or upload →" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="coverUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'coverInput','coverPreview','coverUploadTxt')" />
+            </label>
+          </div>
           <div class="preview-wrap">
             <img id="coverPreview" class="img-preview <%= tenant.cover_image ? 'show' : '' %>" src="<%= tenant.cover_image || '' %>" style="width:200px;height:100px" />
           </div>
@@ -468,6 +485,38 @@
   wireRadios('menu_style', 'theme-active');
   wireRadios('menu_layout', 'layout-active');
   wireRadios('menu_font', 'layout-active');
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = (type === 'error' ? '✗ ' : '✓ ') + msg;
+    t.className = 'show' + (type === 'error' ? '' : ' success');
+    setTimeout(() => t.className = '', 3500);
+  }
+
+  async function uploadImg(fileInput, urlId, previewId, textId) {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const textEl = document.getElementById(textId);
+    const orig = textEl.textContent;
+    textEl.textContent = '⏳ Uploading…';
+    fileInput.disabled = true;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch('/admin/upload', { method: 'POST', body: fd });
+      const data = await r.json();
+      if (data.ok) {
+        document.getElementById(urlId).value = data.url;
+        previewImg(document.getElementById(urlId), previewId);
+        showToast('Image uploaded — save settings to apply');
+      } else {
+        showToast('Upload failed: ' + (data.error || 'unknown error'), 'error');
+      }
+    } catch { showToast('Upload failed', 'error'); }
+    textEl.textContent = orig;
+    fileInput.disabled = false;
+    fileInput.value = '';
+  }
 </script>
 <style>
   .theme-active { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(var(--accent-rgb,233,69,96),.15); }

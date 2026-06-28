@@ -825,14 +825,23 @@
     if (!file) return;
     const textEl = document.getElementById(textId);
     const orig = textEl.textContent;
-    textEl.textContent = '⏳ Processing…';
+    textEl.textContent = '⏳ Uploading…';
+    fileInput.disabled = true;
     try {
-      const base64 = await compressImage(file, 900, 0.78);
-      document.getElementById(urlId).value = base64;
-      previewImg(document.getElementById(urlId), previewId);
-      showToast('Image ready — save the form to apply');
-    } catch { showToast('Could not process image', 'error'); }
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch('/admin/upload', { method: 'POST', body: fd });
+      const data = await r.json();
+      if (data.ok) {
+        document.getElementById(urlId).value = data.url;
+        previewImg(document.getElementById(urlId), previewId);
+        showToast('Image uploaded — save the form to apply');
+      } else {
+        showToast('Upload failed: ' + (data.error || 'unknown error'), 'error');
+      }
+    } catch { showToast('Upload failed', 'error'); }
     textEl.textContent = orig;
+    fileInput.disabled = false;
     fileInput.value = '';
   }
 
