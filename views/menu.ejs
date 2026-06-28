@@ -95,12 +95,12 @@
     .nav-icon-btn:hover { background: var(--cat-border); transform: scale(1.08); }
 
     /* ── Sticky Nav ── */
-    .sticky-wrap {
-      position: sticky; top: 0; z-index: 50;
+    .sticky-wrap { position: sticky; top: 0; z-index: 50; }
+    nav {
+      display: flex; gap: 4px; padding: 0 20px; overflow-x: auto; scrollbar-width: none;
       background: var(--nav-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border); box-shadow: var(--nav-shadow);
     }
-    nav { display: flex; gap: 4px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
     nav::-webkit-scrollbar { display: none; }
     nav button {
       background: none; border: none; color: var(--nav-text);
@@ -495,14 +495,9 @@
 
 <div class="page-content">
 
-  <!-- Header -->
   <div class="content-sheet">
-  <!-- Closed Banner -->
-  <div id="closedBanner" style="display:none;background:rgba(233,69,96,0.92);color:#fff;text-align:center;padding:11px 20px;font-weight:600;font-size:.9rem;backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.15)">
-    🕐 <span id="closedBannerText"></span>
-  </div>
 
-  <!-- Category Nav -->
+  <!-- Category Nav (sticky) -->
   <div class="sticky-wrap">
     <div class="nav-controls">
       <% if (tenant.valet_enabled) { %>
@@ -526,6 +521,10 @@
         </button>
       <% }) %>
     </nav>
+    <!-- Closed Banner sits below categories, still inside sticky -->
+    <div id="closedBanner" style="display:none;background:rgba(233,69,96,0.92);color:#fff;text-align:center;padding:10px 20px;font-weight:600;font-size:.88rem;backdrop-filter:blur(8px);">
+      🕐 <span id="closedBannerText"></span>
+    </div>
   </div>
 
   <!-- Search -->
