@@ -52,6 +52,16 @@ CREATE TABLE users (
   created_at    TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS orders (
+  id            SERIAL PRIMARY KEY,
+  tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+  customer_name VARCHAR(200),
+  table_no      VARCHAR(50),
+  items         TEXT,
+  item_count    INTEGER DEFAULT 0,
+  created_at    TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS feedback (
   id         SERIAL PRIMARY KEY,
   tenant_id  INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

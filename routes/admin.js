@@ -237,7 +237,11 @@ router.get('/orders', requireAuth, async (req, res) => {
       'SELECT * FROM orders WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200',
       [req.user.tenantId]
     );
-    res.render('admin/orders', { tenant: tenant.rows[0], orders: orders.rows });
+    const rows = orders.rows.map(o => ({
+      ...o,
+      items: typeof o.items === 'string' ? (() => { try { return JSON.parse(o.items); } catch(e) { return []; } })() : (o.items || [])
+    }));
+    res.render('admin/orders', { tenant: tenant.rows[0], orders: rows });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
