@@ -268,11 +268,38 @@ router.get('/qrcode', requireAuth, async (req, res) => {
 // ── Settings ───────────────────────────────────────
 router.get('/settings', requireAuth, async (req, res) => {
   try {
-    const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
-    res.render('admin/settings', { tenant: tenant.rows[0] });
+    const [tenantRes, userRes] = await Promise.all([
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+      db.query('SELECT id, email FROM users WHERE id=$1', [req.user.userId]),
+    ]);
+    res.render('admin/settings', { tenant: tenantRes.rows[0], user: userRes.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
+  }
+});
+
+router.post('/settings/password', requireAuth, async (req, res) => {
+  const { email, current_password, new_password, confirm_password } = req.body;
+  try {
+    if (new_password !== confirm_password)
+      return res.redirect('/admin/settings?error=New+passwords+do+not+match');
+    if (new_password.length < 6)
+      return res.redirect('/admin/settings?error=Password+must+be+at+least+6+characters');
+
+    const userRes = await db.query('SELECT * FROM users WHERE id=$1', [req.user.userId]);
+    const user = userRes.rows[0];
+
+    const valid = await bcrypt.compare(current_password, user.password_hash);
+    if (!valid)
+      return res.redirect('/admin/settings?error=Current+password+is+incorrect');
+
+    const hash = await bcrypt.hash(new_password, 10);
+    await db.query('UPDATE users SET email=$1, password_hash=$2 WHERE id=$3', [email, hash, req.user.userId]);
+    res.redirect('/admin/settings?success=Credentials+updated+successfully');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/settings?error=Failed+to+update+credentials');
   }
 });
 

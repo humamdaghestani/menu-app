@@ -414,6 +414,30 @@
       <button class="btn btn-primary" type="submit">Save Settings</button>
     </div>
   </form>
+
+  <!-- Change Password -->
+  <div class="card">
+    <h2>🔐 Change Password</h2>
+    <form method="POST" action="/admin/settings/password" style="max-width:400px">
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Email (Username)</label>
+        <input type="email" name="email" value="<%= user.email %>" required />
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>Current Password</label>
+        <input type="password" name="current_password" required placeholder="Enter current password" />
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label>New Password</label>
+        <input type="password" name="new_password" required placeholder="At least 6 characters" minlength="6" />
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Confirm New Password</label>
+        <input type="password" name="confirm_password" required placeholder="Repeat new password" minlength="6" />
+      </div>
+      <button class="btn btn-primary" type="submit">Update Credentials</button>
+    </form>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -455,6 +479,12 @@
     t.textContent = '✓ ' + decodeURIComponent(params.get('success'));
     t.className = 'show success';
     setTimeout(() => t.className = '', 3000);
+  }
+  if (params.get('error')) {
+    const t = document.getElementById('toast');
+    t.textContent = '✗ ' + decodeURIComponent(params.get('error'));
+    t.className = 'show';
+    setTimeout(() => t.className = '', 4000);
   }
 
   // Nav bar preview
