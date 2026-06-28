@@ -790,32 +790,40 @@
     document.getElementById('darkLabel').textContent = 'Light Mode';
   }
 
-  // Cloudinary image upload
-  const CLOUDINARY_CLOUD  = <%- JSON.stringify(cloudinaryCloud) %>;
-  const CLOUDINARY_PRESET = <%- JSON.stringify(cloudinaryPreset) %>;
+  // Image upload — compress in browser, store as base64 in DB
+  function compressImage(file, maxW, quality) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = e => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          let w = img.width, h = img.height;
+          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function uploadImg(fileInput, urlId, previewId, textId) {
-    if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
-      showToast('Add CLOUDINARY_CLOUD_NAME & CLOUDINARY_UPLOAD_PRESET to Railway env vars', 'error');
-      return;
-    }
     const file = fileInput.files[0];
     if (!file) return;
     const textEl = document.getElementById(textId);
     const orig = textEl.textContent;
-    textEl.textContent = '⏳ Uploading…';
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', CLOUDINARY_PRESET);
+    textEl.textContent = '⏳ Processing…';
     try {
-      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:'POST', body:fd });
-      const d = await r.json();
-      if (d.secure_url) {
-        document.getElementById(urlId).value = d.secure_url;
-        previewImg(document.getElementById(urlId), previewId);
-        showToast('Image uploaded!');
-      } else { showToast(d.error?.message || 'Upload failed', 'error'); }
-    } catch { showToast('Upload failed', 'error'); }
+      const base64 = await compressImage(file, 900, 0.78);
+      document.getElementById(urlId).value = base64;
+      previewImg(document.getElementById(urlId), previewId);
+      showToast('Image ready — save the form to apply');
+    } catch { showToast('Could not process image', 'error'); }
     textEl.textContent = orig;
     fileInput.value = '';
   }

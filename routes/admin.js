@@ -70,8 +70,6 @@ router.get('/dashboard', requireAuth, async (req, res) => {
       tenant: tenant.rows[0],
       categories: categories.rows,
       items: items.rows,
-      cloudinaryCloud:  process.env.CLOUDINARY_CLOUD_NAME   || '',
-      cloudinaryPreset: process.env.CLOUDINARY_UPLOAD_PRESET || '',
     });
   } catch (err) {
     console.error(err);
