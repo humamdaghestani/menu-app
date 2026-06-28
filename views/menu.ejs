@@ -811,6 +811,9 @@
       cartBtn: 'Cart', yourName: 'Your name', tableNo: 'Table no.',
       closed: "We're currently closed", opensAt: 'Opens at', featured: 'Featured',
       valetTitle: 'Valet Service', valetDesc: "Enter your ticket number and we'll bring your car right away.", valetTicket: 'Ticket number', valetName: 'Your name (optional)', valetBtn: 'Request My Car', valetCancel: 'Cancel', valetSuccessTitle: 'Request Sent!', valetSuccessDesc: 'Your car is on the way. Please wait near the entrance.',
+      fbTitle: 'Share Your Feedback', fbSub: 'Rate your experience today',
+      fbQ1: '🍽️ Food Quality', fbQ2: '🙋 Service', fbQ3: '🏡 Atmosphere', fbQ4: '💰 Value for Money', fbQ5: '⭐ Overall Experience',
+      fbName: 'Your name (optional)', fbMobile: 'Mobile number (optional)', fbTable: 'Table number (optional)', fbComment: 'Any other comments... (optional)', fbSubmit: 'Send Feedback', fbCancel: 'Cancel', fbSuccessTitle: 'Thank you!', fbSuccessDesc: 'Your feedback means a lot to us.',
       badges: { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' }
     },
     ar: {
@@ -822,6 +825,9 @@
       cartBtn: 'السلة', yourName: 'اسمك', tableNo: 'رقم الطاولة',
       closed: 'نحن مغلقون حاليًا', opensAt: 'يفتح الساعة', featured: 'المميزة',
       valetTitle: 'خدمة الفاليه', valetDesc: 'أدخل رقم التذكرة وسنحضر سيارتك فوراً.', valetTicket: 'رقم التذكرة', valetName: 'اسمك (اختياري)', valetBtn: 'اطلب سيارتي', valetCancel: 'إلغاء', valetSuccessTitle: 'تم الإرسال!', valetSuccessDesc: 'سيارتك في الطريق. يرجى الانتظار عند المدخل.',
+      fbTitle: 'شاركنا رأيك', fbSub: 'قيّم تجربتك اليوم',
+      fbQ1: '🍽️ جودة الطعام', fbQ2: '🙋 الخدمة', fbQ3: '🏡 الأجواء', fbQ4: '💰 القيمة مقابل السعر', fbQ5: '⭐ التجربة العامة',
+      fbName: 'اسمك (اختياري)', fbMobile: 'رقم الهاتف (اختياري)', fbTable: 'رقم الطاولة (اختياري)', fbComment: 'أي تعليقات أخرى... (اختياري)', fbSubmit: 'إرسال الرأي', fbCancel: 'إلغاء', fbSuccessTitle: 'شكراً لك!', fbSuccessDesc: 'رأيك يهمنا كثيراً.',
       badges: { spicy:'🌶 حار', popular:'⭐ الأكثر طلباً', new:'🆕 جديد', vegetarian:'🌱 نباتي' }
     },
     ku: {
@@ -833,6 +839,9 @@
       cartBtn: 'سەبەتە', yourName: 'ناوت', tableNo: 'ژمارەی مێز',
       closed: 'ئێستا داخراوین', opensAt: 'دەکرێتەوە لە', featured: 'تایبەتمەندەکان',
       valetTitle: 'خزمەتگوزاری ڤالێت', valetDesc: 'ژمارەی تیکێتەکەت بنووسە، ئەمەندا ئۆتۆمبێلەکەت دەهێنینەوە.', valetTicket: 'ژمارەی تیکێت', valetName: 'ناوت (ئارەزوومەندانە)', valetBtn: 'داوای ئۆتۆمبێلەکەم بکە', valetCancel: 'پاشگەزبوونەوە', valetSuccessTitle: 'داواکاری نێردرا!', valetSuccessDesc: 'ئۆتۆمبێلەکەت لە ڕێگایە. تکایە لە نزیکی دەروازەکە چاوەڕێ بە.',
+      fbTitle: 'ڕای خۆت بڵێ', fbSub: 'ئەمڕۆی تجربەکەت هەڵسەنگاندن بکە',
+      fbQ1: '🍽️ چێژی خواردن', fbQ2: '🙋 خزمەتگوزاری', fbQ3: '🏡 ژینگەکە', fbQ4: '💰 کار لە بەرانبەر نرخ', fbQ5: '⭐ کۆی ئەزموون',
+      fbName: 'ناوت (ئارەزوومەندانە)', fbMobile: 'ژمارەی مۆبایل (ئارەزوومەندانە)', fbTable: 'ژمارەی مێز (ئارەزوومەندانە)', fbComment: 'هەر تێبینییەکی تر... (ئارەزوومەندانە)', fbSubmit: 'ڕای بنێرە', fbCancel: 'پاشگەزبوونەوە', fbSuccessTitle: 'سوپاست!', fbSuccessDesc: 'ڕایەکەت زۆر گرنگە بۆمان.',
       badges: { spicy:'🌶 تیژ', popular:'⭐ بەناوبانگ', new:'🆕 نوێ', vegetarian:'🌱 ڕووەکی' }
     }
   };
@@ -1010,6 +1019,22 @@
       document.getElementById('valetSuccessTitle').textContent = L.valetSuccessTitle;
       document.getElementById('valetSuccessDesc').textContent  = L.valetSuccessDesc;
     }
+    // Feedback modal labels
+    document.getElementById('fbTitle').textContent        = L.fbTitle;
+    document.getElementById('fbSub').textContent          = L.fbSub;
+    document.getElementById('fbL1').textContent           = L.fbQ1;
+    document.getElementById('fbL2').textContent           = L.fbQ2;
+    document.getElementById('fbL3').textContent           = L.fbQ3;
+    document.getElementById('fbL4').textContent           = L.fbQ4;
+    document.getElementById('fbL5').textContent           = L.fbQ5;
+    document.getElementById('fbName').placeholder         = L.fbName;
+    document.getElementById('fbMobile').placeholder       = L.fbMobile;
+    document.getElementById('fbTable').placeholder        = L.fbTable;
+    document.getElementById('fbComment').placeholder      = L.fbComment;
+    document.getElementById('fbSubmitBtn').textContent    = L.fbSubmit;
+    document.getElementById('fbSuccessTitle').textContent = L.fbSuccessTitle;
+    document.getElementById('fbSuccessDesc').textContent  = L.fbSuccessDesc;
+    document.querySelectorAll('.fb-cancel').forEach(b => b.textContent = L.fbCancel);
     updateCategoryNav();
     renderGrid();
     if (CART_ENABLED && document.getElementById('cartDrawer').classList.contains('open')) renderCartItems();
