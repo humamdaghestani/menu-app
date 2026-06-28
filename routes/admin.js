@@ -2,8 +2,12 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const XLSX = require('xlsx');
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // ── Login ──────────────────────────────────────────
 router.get('/login', (req, res) => {
@@ -282,7 +286,121 @@ router.post('/settings', requireAuth, async (req, res) => {
   }
 });
 
-// ── Feedback ───────────────────────────────────────
+// ── Import ─────────────────────────────────────────
+router.get('/import', requireAuth, async (req, res) => {
+  try {
+    const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
+    res.render('admin/import', { tenant: tenant.rows[0] });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// Download blank template
+router.get('/import/template', requireAuth, (req, res) => {
+  const wb = XLSX.utils.book_new();
+  const headers = ['name','name_ar','name_ku','price','category','description','description_ar','description_ku','image_url','badge'];
+  const example = ['Chicken Burger','برجر دجاج','برگەری مریشک','12.99','Burgers','Crispy fried chicken with lettuce','دجاج مقلي مع خس','مریشکی سووتاو','','popular'];
+  const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+  // Column widths
+  ws['!cols'] = [22,22,22,10,16,34,34,34,30,12].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Menu Items');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  res.setHeader('Content-Disposition', 'attachment; filename="menu-import-template.xlsx"');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(buf);
+});
+
+// Handle upload
+router.post('/import', requireAuth, upload.single('file'), async (req, res) => {
+  const tenantRes = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
+  const tenant = tenantRes.rows[0];
+
+  if (!req.file) return res.render('admin/import', { tenant, result: { imported: 0, errors: ['No file uploaded'], rows: [] } });
+
+  try {
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+    const categoryCache = {};
+    let imported = 0;
+    const errors = [];
+    const rows = [];
+
+    for (let i = 0; i < raw.length; i++) {
+      const r = raw[i];
+      const rowNum = i + 2; // 1-indexed + header row
+      const name  = String(r.name || '').trim();
+      const price = String(r.price || '').trim();
+
+      if (!name) {
+        errors.push(`Row ${rowNum}: missing name`);
+        rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'Missing name' });
+        continue;
+      }
+      if (!price) {
+        errors.push(`Row ${rowNum}: missing price`);
+        rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'Missing price' });
+        continue;
+      }
+
+      try {
+        // Resolve category
+        let categoryId = null;
+        const catName = String(r.category || '').trim();
+        if (catName) {
+          if (categoryCache[catName] !== undefined) {
+            categoryId = categoryCache[catName];
+          } else {
+            const existing = await db.query(
+              'SELECT id FROM categories WHERE tenant_id=$1 AND LOWER(name)=LOWER($2)',
+              [req.user.tenantId, catName]
+            );
+            if (existing.rows.length > 0) {
+              categoryId = existing.rows[0].id;
+            } else {
+              const created = await db.query(
+                'INSERT INTO categories (tenant_id, name) VALUES ($1,$2) RETURNING id',
+                [req.user.tenantId, catName]
+              );
+              categoryId = created.rows[0].id;
+            }
+            categoryCache[catName] = categoryId;
+          }
+        }
+
+        await db.query(
+          `INSERT INTO menu_items (tenant_id, category_id, name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, badge)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          [
+            req.user.tenantId, categoryId,
+            name,
+            String(r.name_ar || '').trim() || null,
+            String(r.name_ku || '').trim() || null,
+            price,
+            String(r.description || '').trim() || null,
+            String(r.description_ar || '').trim() || null,
+            String(r.description_ku || '').trim() || null,
+            String(r.image_url || '').trim() || null,
+            String(r.badge || '').trim() || null,
+          ]
+        );
+        imported++;
+        rows.push({ row: rowNum, name, category: catName, price, ok: true });
+      } catch (rowErr) {
+        console.error(rowErr);
+        errors.push(`Row ${rowNum}: ${rowErr.message}`);
+        rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'DB error' });
+      }
+    }
+
+    res.render('admin/import', { tenant, result: { imported, errors, rows } });
+  } catch (err) {
+    console.error(err);
+    res.render('admin/import', { tenant, result: { imported: 0, errors: ['Failed to parse file — make sure it is a valid .xlsx file'], rows: [] } });
+  }
+});
+
+// ── Feedback ─────────────────────────────────────────
 router.get('/feedback', requireAuth, async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
