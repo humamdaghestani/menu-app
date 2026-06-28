@@ -397,9 +397,101 @@
     .valet-success .success-icon { font-size: 3rem; margin-bottom: 10px; }
     .valet-success h3 { color: #fff; font-size: 1.1rem; margin-bottom: 6px; }
     .valet-success p { color: rgba(255,255,255,.5); font-size: .85rem; }
+
+    /* ── Splash ── */
+    .splash {
+      position: fixed; inset: 0; z-index: 2000;
+      background: #fff; display: flex; flex-direction: column;
+      transition: opacity .45s ease, transform .45s ease;
+    }
+    .splash.out { opacity: 0; transform: scale(1.03); pointer-events: none; }
+    .splash-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 20px 20px 0;
+    }
+    .splash-pill {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--accent); color: #fff; border: none;
+      border-radius: 99px; padding: 10px 18px; font-size: .85rem;
+      font-weight: 700; cursor: pointer; font-family: var(--font);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15); transition: opacity .15s;
+    }
+    .splash-pill:hover { opacity: .88; }
+    .splash-center {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 0 32px;
+      gap: 36px;
+    }
+    .splash-logo-wrap {
+      width: 200px; height: 200px; border-radius: 50%; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 5rem;
+    }
+    .splash-logo-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .splash-langs { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 12px; }
+    .splash-lang-btn {
+      width: 100%; padding: 16px; background: var(--accent); color: #fff;
+      border: none; border-radius: 14px; font-size: 1.05rem; font-weight: 700;
+      cursor: pointer; font-family: var(--font); transition: opacity .15s, transform .1s;
+      letter-spacing: .02em;
+    }
+    .splash-lang-btn:hover { opacity: .88; }
+    .splash-lang-btn:active { transform: scale(.97); }
+    .splash-lang-row { display: flex; gap: 12px; }
+    .splash-lang-row .splash-lang-btn { flex: 1; }
+    .splash-bottom {
+      padding: 0 32px 40px; text-align: center;
+    }
+    .splash-rest-name {
+      font-size: 2.2rem; font-weight: 900; color: var(--accent);
+      letter-spacing: .04em; text-transform: uppercase; line-height: 1.1;
+      font-family: var(--font);
+    }
+    .splash-rest-desc {
+      font-size: .85rem; color: #aaa; margin-top: 4px; letter-spacing: .06em; text-transform: uppercase;
+    }
+    @media (max-width: 400px) {
+      .splash-logo-wrap { width: 160px; height: 160px; }
+      .splash-rest-name { font-size: 1.7rem; }
+    }
   </style>
 </head>
 <body data-layout="<%= _layout %>">
+
+<!-- Splash / Language Selection -->
+<div class="splash" id="splash">
+  <div class="splash-top">
+    <% if (tenant.valet_enabled) { %>
+    <button class="splash-pill" onclick="splashValet()">🚗 Valet</button>
+    <% } else { %>
+    <div></div>
+    <% } %>
+    <div></div>
+  </div>
+
+  <div class="splash-center">
+    <div class="splash-logo-wrap">
+      <% if (tenant.logo_url) { %>
+        <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+      <% } else { %>
+        🍽️
+      <% } %>
+    </div>
+
+    <div class="splash-langs">
+      <button class="splash-lang-btn" onclick="selectLang('en')">English</button>
+      <div class="splash-lang-row">
+        <button class="splash-lang-btn" onclick="selectLang('ku')">كوردى</button>
+        <button class="splash-lang-btn" onclick="selectLang('ar')">العربية</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="splash-bottom">
+    <div class="splash-rest-name"><%= tenant.name %></div>
+    <% if (tenant.description) { %><div class="splash-rest-desc"><%= tenant.description %></div><% } %>
+  </div>
+</div>
 
 <!-- Background -->
 <div class="page-bg">
@@ -1079,6 +1171,24 @@
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeValet(); });
     document.getElementById('valetTicket').addEventListener('keydown', e => { if (e.key === 'Enter') sendValetRequest(); });
+  }
+
+  // ── Splash ────────────────────────────────────────
+  function selectLang(lang) {
+    setLang(lang);
+    const splash = document.getElementById('splash');
+    splash.classList.add('out');
+    setTimeout(() => { splash.style.display = 'none'; }, 460);
+  }
+
+  function splashValet() {
+    // Dismiss splash first, then open valet modal
+    const splash = document.getElementById('splash');
+    splash.classList.add('out');
+    setTimeout(() => {
+      splash.style.display = 'none';
+      if (VALET_ENABLED) openValet();
+    }, 460);
   }
 </script>
 </body>
