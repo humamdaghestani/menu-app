@@ -18,8 +18,6 @@ function cacheBustByTenantId(tenantId) {
     if (entry.data.tenant && entry.data.tenant.id === tenantId) _cache.delete(key);
   }
 }
-module.exports.cacheBustByTenantId = cacheBustByTenantId;
-
 router.get('/', async (req, res) => {
   const slug = req.tenant;
 
@@ -154,3 +152,4 @@ router.post('/api/order', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.cacheBustByTenantId = cacheBustByTenantId;
