@@ -52,6 +52,14 @@ CREATE TABLE users (
   created_at    TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS feedback (
+  id         SERIAL PRIMARY KEY,
+  tenant_id  INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+  rating     INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment    TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- ── Migration: run this block if your database already exists ─────────────────
 -- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS description TEXT;
 -- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS cover_image TEXT;
@@ -68,3 +76,4 @@ CREATE TABLE users (
 -- ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS description_ku TEXT;
 -- ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS badge VARCHAR(30);
 -- ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_available BOOLEAN DEFAULT true;
+-- CREATE TABLE IF NOT EXISTS feedback (id SERIAL PRIMARY KEY, tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE, rating INTEGER CHECK (rating >= 1 AND rating <= 5), comment TEXT, created_at TIMESTAMP DEFAULT NOW());

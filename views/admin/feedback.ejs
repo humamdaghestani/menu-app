@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Orders — <%= tenant.name %></title>
+  <title>Feedback — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
@@ -37,21 +37,26 @@
     .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
     .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
 
+    /* Summary row */
+    .summary-row { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .summary-card { background: #fff; border-radius: 14px; padding: 20px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); flex: 1; min-width: 140px; }
+    .summary-card .s-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #aaa; margin-bottom: 6px; }
+    .summary-card .s-val { font-size: 1.8rem; font-weight: 800; color: #1a1a2e; }
+    .summary-card .s-stars { color: #f5a623; font-size: 1.1rem; margin-top: 2px; }
+
     .card { background: #fff; border-radius: 14px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
     .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .card-header h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
 
-    .orders-table { width: 100%; border-collapse: collapse; }
-    .orders-table th { text-align: left; padding: 10px 14px; font-size: .78rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid #f0f0f0; background: #fafafa; }
-    .orders-table td { padding: 14px; border-bottom: 1px solid #f5f5f5; vertical-align: top; font-size: .88rem; }
-    .orders-table tr:last-child td { border-bottom: none; }
-    .orders-table tr:hover td { background: #fafcff; }
+    .fb-table { width: 100%; border-collapse: collapse; }
+    .fb-table th { text-align: left; padding: 10px 14px; font-size: .78rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid #f0f0f0; background: #fafafa; }
+    .fb-table td { padding: 14px; border-bottom: 1px solid #f5f5f5; vertical-align: top; font-size: .88rem; }
+    .fb-table tr:last-child td { border-bottom: none; }
+    .fb-table tr:hover td { background: #fafcff; }
 
-    .order-time { color: #888; font-size: .78rem; }
-    .order-customer { font-weight: 600; color: #1a1a2e; }
-    .order-table-no { color: #888; font-size: .8rem; margin-top: 2px; }
-    .order-items { color: #555; font-size: .82rem; line-height: 1.6; }
-    .order-count { display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: #fff; border-radius: 20px; padding: 2px 10px; font-size: .75rem; font-weight: 700; }
+    .stars-cell { color: #f5a623; font-size: 1rem; letter-spacing: 1px; }
+    .comment-cell { color: #555; max-width: 340px; }
+    .time-cell { color: #888; font-size: .78rem; white-space: nowrap; }
 
     .empty-state { text-align: center; padding: 64px 0; color: #bbb; }
     .empty-state p { margin-top: 12px; font-size: .95rem; }
@@ -79,8 +84,8 @@
   </div>
   <nav class="sidebar-nav">
     <a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a>
-    <a href="/admin/orders" class="active"><span class="icon">📋</span><span>Orders</span></a>
-    <a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a>
+    <a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a>
+    <a href="/admin/feedback" class="active"><span class="icon">💬</span><span>Feedback</span></a>
     <a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a>
     <a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a>
     <form method="POST" action="/admin/logout" style="margin-top:auto">
@@ -96,62 +101,70 @@
 
 <div class="main">
   <div class="page-header">
-    <h1>Order History</h1>
-    <p>Every WhatsApp order placed through your menu — <%= orders.length %> total</p>
+    <h1>Customer Feedback</h1>
+    <p><%= feedback.length %> review<%= feedback.length !== 1 ? 's' : '' %> received</p>
   </div>
+
+  <%
+    const total = feedback.length;
+    const avg = total > 0 ? (feedback.reduce((s,f) => s + f.rating, 0) / total) : 0;
+    const dist = [0,0,0,0,0];
+    feedback.forEach(f => { if (f.rating >= 1 && f.rating <= 5) dist[f.rating - 1]++; });
+  %>
+
+  <% if (total > 0) { %>
+  <div class="summary-row">
+    <div class="summary-card">
+      <div class="s-label">Average Rating</div>
+      <div class="s-val"><%= avg.toFixed(1) %></div>
+      <div class="s-stars">
+        <% for (let i=1; i<=5; i++) { %><%= i <= Math.round(avg) ? '★' : '☆' %><% } %>
+      </div>
+    </div>
+    <div class="summary-card">
+      <div class="s-label">Total Reviews</div>
+      <div class="s-val"><%= total %></div>
+    </div>
+    <% for (let s=5; s>=1; s--) { %>
+    <div class="summary-card">
+      <div class="s-label"><%= '★'.repeat(s) %></div>
+      <div class="s-val"><%= dist[s-1] %></div>
+    </div>
+    <% } %>
+  </div>
+  <% } %>
 
   <div class="card">
     <div class="card-header">
-      <h2>Recent Orders</h2>
-      <span style="color:#aaa;font-size:.85rem">Last 200</span>
+      <h2>All Reviews</h2>
+      <span style="color:#aaa;font-size:.85rem">Newest first</span>
     </div>
 
-    <% if (orders.length === 0) { %>
+    <% if (feedback.length === 0) { %>
       <div class="empty-state">
-        <div style="font-size:3rem">📋</div>
-        <p>No orders yet. Orders appear here when customers place them via WhatsApp.</p>
+        <div style="font-size:3rem">💬</div>
+        <p>No feedback yet. It will appear here once customers submit reviews.</p>
       </div>
     <% } else { %>
     <div style="overflow-x:auto">
-      <table class="orders-table">
+      <table class="fb-table">
         <thead>
           <tr>
-            <th>Time</th>
-            <th>Customer</th>
-            <th>Items</th>
-            <th>Count</th>
+            <th>Rating</th>
+            <th>Comment</th>
+            <th>Date</th>
           </tr>
         </thead>
         <tbody>
-          <% orders.forEach(order => { %>
+          <% feedback.forEach(f => { %>
           <tr>
-            <td>
-              <div class="order-time">
-                <%= new Date(order.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) %>
-              </div>
-              <div class="order-time">
-                <%= new Date(order.created_at).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) %>
-              </div>
+            <td class="stars-cell">
+              <%= '★'.repeat(f.rating) %><%= '☆'.repeat(5 - f.rating) %>
             </td>
-            <td>
-              <div class="order-customer"><%= order.customer_name || '—' %></div>
-              <% if (order.table_no) { %>
-                <div class="order-table-no">Table <%= order.table_no %></div>
-              <% } %>
-            </td>
-            <td>
-              <div class="order-items">
-                <% if (order.items && order.items.length > 0) { %>
-                  <% order.items.forEach(i => { %>
-                    <%= i.name %> ×<%= i.qty %><br/>
-                  <% }) %>
-                <% } else { %>
-                  —
-                <% } %>
-              </div>
-            </td>
-            <td>
-              <span class="order-count"><%= order.item_count || 0 %></span>
+            <td class="comment-cell"><%= f.comment || '<span style="color:#ccc">—</span>' %></td>
+            <td class="time-cell">
+              <%= new Date(f.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) %><br/>
+              <%= new Date(f.created_at).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) %>
             </td>
           </tr>
           <% }) %>

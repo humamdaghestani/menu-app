@@ -109,6 +109,19 @@ router.get('/api/valet-requests', async (req, res) => {
   } catch (err) { console.error(err); res.json({ requests: [] }); }
 });
 
+// ── Feedback ──────────────────────────────────────
+router.post('/api/feedback', async (req, res) => {
+  try {
+    const { tenant_id, rating, comment } = req.body;
+    if (!tenant_id || !rating) return res.json({ ok: false });
+    await db.query(
+      'INSERT INTO feedback (tenant_id, rating, comment) VALUES ($1,$2,$3)',
+      [tenant_id, parseInt(rating), comment || null]
+    );
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
 // Public order-log endpoint (called from menu page before WhatsApp)
 router.post('/api/order', async (req, res) => {
   try {

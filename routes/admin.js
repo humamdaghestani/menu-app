@@ -277,4 +277,16 @@ router.post('/settings', requireAuth, async (req, res) => {
   }
 });
 
+// ── Feedback ───────────────────────────────────────
+router.get('/feedback', requireAuth, async (req, res) => {
+  try {
+    const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
+    const feedback = await db.query(
+      'SELECT * FROM feedback WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200',
+      [req.user.tenantId]
+    );
+    res.render('admin/feedback', { tenant: tenant.rows[0], feedback: feedback.rows });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 module.exports = router;
