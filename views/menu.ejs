@@ -316,9 +316,9 @@
 
     /* ── Responsive ── */
     @media (max-width: 768px) {
-      .modal { border-radius: 20px 20px 0 0; position: fixed; bottom: 0; left: 0; right: 0; max-width: 100%; max-height: 92vh; }
-      .overlay { align-items: flex-end; padding: 0; }
-      @keyframes popIn { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      .modal { border-radius: 20px; max-width: calc(100% - 32px); max-height: 88vh; }
+      .overlay { align-items: center; padding: 16px; }
+      @keyframes popIn { from { transform: scale(.93); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     }
     @media (max-width: 600px) {
       .top-header { padding: 10px 14px; gap: 10px; }
