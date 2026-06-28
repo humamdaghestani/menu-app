@@ -285,6 +285,43 @@
 
     /* Remove tap delay on mobile */
     button, a { touch-action: manipulation; }
+
+    /* ── Valet ── */
+    .valet-btn {
+      background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2);
+      color: #fff; border-radius: 50%; width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; cursor: pointer; transition: background .2s, transform .15s;
+      flex-shrink: 0;
+    }
+    .valet-btn:hover { background: rgba(255,255,255,0.22); transform: scale(1.08); }
+    .valet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 400; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+    .valet-overlay.open { display: flex; }
+    .valet-modal {
+      background: #1a1a2e; border-radius: 20px; padding: 32px 28px;
+      max-width: 380px; width: 100%; text-align: center;
+      border: 1px solid rgba(255,255,255,0.1); animation: popIn .22s ease;
+    }
+    .valet-icon { font-size: 3rem; margin-bottom: 12px; }
+    .valet-modal h2 { color: #fff; font-size: 1.25rem; font-weight: 800; margin-bottom: 6px; }
+    .valet-modal p { color: rgba(255,255,255,0.55); font-size: .85rem; margin-bottom: 24px; line-height: 1.5; }
+    .valet-input {
+      width: 100%; padding: 13px 16px; border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 12px; background: rgba(255,255,255,0.08); color: #fff;
+      font-size: 1rem; font-family: inherit; outline: none; margin-bottom: 12px;
+      transition: border-color .2s;
+    }
+    .valet-input::placeholder { color: rgba(255,255,255,0.35); }
+    .valet-input:focus { border-color: var(--accent); }
+    .valet-send-btn {
+      width: 100%; padding: 14px; background: #25d366; color: #fff; border: none;
+      border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer;
+      font-family: inherit; display: flex; align-items: center; justify-content: center;
+      gap: 10px; transition: background .2s; margin-top: 4px;
+    }
+    .valet-send-btn:hover { background: #1da851; }
+    .valet-cancel { margin-top: 12px; background: none; border: none; color: rgba(255,255,255,0.4); font-size: .85rem; cursor: pointer; font-family: inherit; }
+    .valet-cancel:hover { color: rgba(255,255,255,0.7); }
   </style>
 </head>
 <body>
@@ -313,6 +350,9 @@
       </div>
     </div>
     <div class="header-right">
+      <% if (tenant.valet_enabled) { %>
+      <button class="valet-btn" onclick="openValet()" title="Valet">🚗</button>
+      <% } %>
       <div class="lang-switcher">
         <button class="lang-btn active" onclick="setLang('en')">EN</button>
         <button class="lang-btn" onclick="setLang('ar')">ع</button>
@@ -386,6 +426,24 @@
   <footer id="footer"></footer>
 </div>
 
+<% if (tenant.valet_enabled) { %>
+<!-- Valet Modal -->
+<div class="valet-overlay" id="valetOverlay">
+  <div class="valet-modal">
+    <div class="valet-icon">🚗</div>
+    <h2 id="valetTitle">Valet Service</h2>
+    <p id="valetDesc">Enter your ticket number and we'll bring your car right away.</p>
+    <input class="valet-input" type="text" id="valetTicket" placeholder="Ticket number" />
+    <input class="valet-input" type="text" id="valetName" placeholder="Your name (optional)" />
+    <button class="valet-send-btn" onclick="sendValetRequest()">
+      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.557 4.112 1.524 5.842L0 24l6.302-1.504A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.001-1.366l-.357-.214-3.74.892.946-3.617-.233-.373A9.789 9.789 0 0 1 2.182 12C2.182 6.579 6.579 2.182 12 2.182S21.818 6.579 21.818 12 17.421 21.818 12 21.818z"/></svg>
+      <span id="valetBtnText">Request My Car</span>
+    </button>
+    <button class="valet-cancel" onclick="closeValet()" id="valetCancel">Cancel</button>
+  </div>
+</div>
+<% } %>
+
 <% if (tenant.cart_enabled !== false) { %>
 <!-- Floating Cart Button -->
 <button class="cart-fab hidden" id="cartFab" onclick="openCart()">
@@ -434,6 +492,8 @@
   const REST_NAME  = '<%= tenant.name %>';
   const CART_ENABLED   = <%= tenant.cart_enabled !== false ? 'true' : 'false' %>;
   const TENANT_ID      = <%= tenant.id %>;
+  const VALET_ENABLED  = <%= tenant.valet_enabled ? 'true' : 'false' %>;
+  const VALET_WA       = <%- JSON.stringify(tenant.valet_whatsapp || tenant.whatsapp || '') %>;
   const CURRENCY       = <%- JSON.stringify(tenant.currency || '$') %>;
   const OPEN_TIME      = <%- JSON.stringify(tenant.open_time  ? String(tenant.open_time).substring(0,5)  : '') %>;
   const CLOSE_TIME     = <%- JSON.stringify(tenant.close_time ? String(tenant.close_time).substring(0,5) : '') %>;
@@ -448,6 +508,7 @@
       totalItems: 'items', placeOrder: 'Place Order via WhatsApp',
       cartBtn: 'Cart', yourName: 'Your name', tableNo: 'Table no.',
       closed: "We're currently closed", opensAt: 'Opens at', featured: 'Featured',
+      valetTitle: 'Valet Service', valetDesc: "Enter your ticket number and we'll bring your car right away.", valetTicket: 'Ticket number', valetName: 'Your name (optional)', valetBtn: 'Request My Car', valetCancel: 'Cancel',
       badges: { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' }
     },
     ar: {
@@ -458,6 +519,7 @@
       totalItems: 'عناصر', placeOrder: 'اطلب عبر واتساب',
       cartBtn: 'السلة', yourName: 'اسمك', tableNo: 'رقم الطاولة',
       closed: 'نحن مغلقون حاليًا', opensAt: 'يفتح الساعة', featured: 'المميزة',
+      valetTitle: 'خدمة الفاليه', valetDesc: 'أدخل رقم التذكرة وسنحضر سيارتك فوراً.', valetTicket: 'رقم التذكرة', valetName: 'اسمك (اختياري)', valetBtn: 'اطلب سيارتي', valetCancel: 'إلغاء',
       badges: { spicy:'🌶 حار', popular:'⭐ الأكثر طلباً', new:'🆕 جديد', vegetarian:'🌱 نباتي' }
     },
     ku: {
@@ -468,6 +530,7 @@
       totalItems: 'کاڵا', placeOrder: 'داواکاری لە واتساپ',
       cartBtn: 'سەبەتە', yourName: 'ناوت', tableNo: 'ژمارەی مێز',
       closed: 'ئێستا داخراوین', opensAt: 'دەکرێتەوە لە', featured: 'تایبەتمەندەکان',
+      valetTitle: 'خزمەتگوزاری ڤالێت', valetDesc: 'ژمارەی تیکێتەکەت بنووسە، ئەمەندا ئۆتۆمبێلەکەت دەهێنینەوە.', valetTicket: 'ژمارەی تیکێت', valetName: 'ناوت (ئارەزوومەندانە)', valetBtn: 'داوای ئۆتۆمبێلەکەم بکە', valetCancel: 'پاشگەزبوونەوە',
       badges: { spicy:'🌶 تیژ', popular:'⭐ بەناوبانگ', new:'🆕 نوێ', vegetarian:'🌱 ڕووەکی' }
     }
   };
@@ -635,6 +698,14 @@
         document.getElementById('modalAddBtnText').textContent = L.addToCart;
     }
     updateClosedBanner(L);
+    if (VALET_ENABLED) {
+      document.getElementById('valetTitle').textContent  = L.valetTitle;
+      document.getElementById('valetDesc').textContent   = L.valetDesc;
+      document.getElementById('valetTicket').placeholder = L.valetTicket;
+      document.getElementById('valetName').placeholder   = L.valetName;
+      document.getElementById('valetBtnText').textContent = L.valetBtn;
+      document.getElementById('valetCancel').textContent = L.valetCancel;
+    }
     updateCategoryNav();
     renderGrid();
     if (CART_ENABLED && document.getElementById('cartDrawer').classList.contains('open')) renderCartItems();
@@ -872,6 +943,37 @@
   const _tableParam = new URLSearchParams(window.location.search).get('table');
   if (_tableParam && document.getElementById('orderTable')) {
     document.getElementById('orderTable').value = _tableParam;
+  }
+
+  // ── Valet ─────────────────────────────────────────
+  function openValet() {
+    document.getElementById('valetOverlay').classList.add('open');
+    document.getElementById('valetTicket').focus();
+    document.body.style.overflow = 'hidden';
+  }
+  function closeValet() {
+    document.getElementById('valetOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function sendValetRequest() {
+    const ticket = document.getElementById('valetTicket').value.trim();
+    const name   = document.getElementById('valetName').value.trim();
+    if (!ticket) { document.getElementById('valetTicket').focus(); return; }
+    if (!VALET_WA) { alert('Valet WhatsApp not configured.'); return; }
+    let msg = `🚗 *${REST_NAME} — Valet Request*\n`;
+    msg += `🎟️ Ticket: ${ticket}`;
+    if (name) msg += `\n👤 ${name}`;
+    window.open(`https://wa.me/${VALET_WA.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    closeValet();
+    document.getElementById('valetTicket').value = '';
+    document.getElementById('valetName').value   = '';
+  }
+  if (VALET_ENABLED) {
+    document.getElementById('valetOverlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('valetOverlay')) closeValet();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeValet(); });
+    document.getElementById('valetTicket').addEventListener('keydown', e => { if (e.key === 'Enter') sendValetRequest(); });
   }
 </script>
 </body>

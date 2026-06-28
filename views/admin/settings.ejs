@@ -235,6 +235,25 @@
       </div>
     </div>
 
+    <!-- Valet -->
+    <div class="card">
+      <h2>Valet Service</h2>
+      <div class="toggle-row" style="margin-bottom:20px">
+        <div class="toggle-info">
+          <div class="toggle-title">Enable Valet Button</div>
+          <div class="toggle-desc">Shows a 🚗 car icon in the menu header. Customers tap it, enter their ticket number, and send a WhatsApp request to the valet.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" name="valet_enabled" value="1" <%= tenant.valet_enabled ? 'checked' : '' %> />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label>Valet WhatsApp Number <small style="color:#aaa;font-weight:400">(leave empty to use the main WhatsApp number)</small></label>
+        <input type="text" name="valet_whatsapp" value="<%= tenant.valet_whatsapp || '' %>" placeholder="9647501234567" />
+      </div>
+    </div>
+
     <!-- Cart Feature -->
     <div class="card">
       <h2>Cart Feature</h2>
