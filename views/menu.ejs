@@ -314,14 +314,19 @@
     .valet-input::placeholder { color: rgba(255,255,255,0.35); }
     .valet-input:focus { border-color: var(--accent); }
     .valet-send-btn {
-      width: 100%; padding: 14px; background: #25d366; color: #fff; border: none;
+      width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none;
       border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer;
       font-family: inherit; display: flex; align-items: center; justify-content: center;
-      gap: 10px; transition: background .2s; margin-top: 4px;
+      gap: 10px; transition: background .2s, opacity .2s; margin-top: 4px;
     }
-    .valet-send-btn:hover { background: #1da851; }
+    .valet-send-btn:hover { opacity: .88; }
+    .valet-send-btn:disabled { opacity: .5; cursor: default; }
     .valet-cancel { margin-top: 12px; background: none; border: none; color: rgba(255,255,255,0.4); font-size: .85rem; cursor: pointer; font-family: inherit; }
     .valet-cancel:hover { color: rgba(255,255,255,0.7); }
+    .valet-success { display: none; text-align: center; padding: 8px 0 4px; }
+    .valet-success .success-icon { font-size: 3rem; margin-bottom: 10px; }
+    .valet-success h3 { color: #fff; font-size: 1.1rem; margin-bottom: 6px; }
+    .valet-success p { color: rgba(255,255,255,.5); font-size: .85rem; }
   </style>
 </head>
 <body>
@@ -430,16 +435,25 @@
 <!-- Valet Modal -->
 <div class="valet-overlay" id="valetOverlay">
   <div class="valet-modal">
-    <div class="valet-icon">🚗</div>
-    <h2 id="valetTitle">Valet Service</h2>
-    <p id="valetDesc">Enter your ticket number and we'll bring your car right away.</p>
-    <input class="valet-input" type="text" id="valetTicket" placeholder="Ticket number" />
-    <input class="valet-input" type="text" id="valetName" placeholder="Your name (optional)" />
-    <button class="valet-send-btn" onclick="sendValetRequest()">
-      <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.557 4.112 1.524 5.842L0 24l6.302-1.504A11.94 11.94 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 0 1-5.001-1.366l-.357-.214-3.74.892.946-3.617-.233-.373A9.789 9.789 0 0 1 2.182 12C2.182 6.579 6.579 2.182 12 2.182S21.818 6.579 21.818 12 17.421 21.818 12 21.818z"/></svg>
-      <span id="valetBtnText">Request My Car</span>
-    </button>
-    <button class="valet-cancel" onclick="closeValet()" id="valetCancel">Cancel</button>
+    <!-- Form state -->
+    <div id="valetForm">
+      <div class="valet-icon">🚗</div>
+      <h2 id="valetTitle">Valet Service</h2>
+      <p id="valetDesc">Enter your ticket number and we'll bring your car right away.</p>
+      <input class="valet-input" type="text" id="valetTicket" placeholder="Ticket number" inputmode="numeric" />
+      <input class="valet-input" type="text" id="valetName" placeholder="Your name (optional)" />
+      <button class="valet-send-btn" id="valetSendBtn" onclick="sendValetRequest()">
+        <span>🚗</span>
+        <span id="valetBtnText">Request My Car</span>
+      </button>
+      <button class="valet-cancel" onclick="closeValet()" id="valetCancel">Cancel</button>
+    </div>
+    <!-- Success state -->
+    <div class="valet-success" id="valetSuccess">
+      <div class="success-icon">✅</div>
+      <h3 id="valetSuccessTitle">Request Sent!</h3>
+      <p id="valetSuccessDesc">Your car is on the way. Please wait near the entrance.</p>
+    </div>
   </div>
 </div>
 <% } %>
@@ -508,7 +522,7 @@
       totalItems: 'items', placeOrder: 'Place Order via WhatsApp',
       cartBtn: 'Cart', yourName: 'Your name', tableNo: 'Table no.',
       closed: "We're currently closed", opensAt: 'Opens at', featured: 'Featured',
-      valetTitle: 'Valet Service', valetDesc: "Enter your ticket number and we'll bring your car right away.", valetTicket: 'Ticket number', valetName: 'Your name (optional)', valetBtn: 'Request My Car', valetCancel: 'Cancel',
+      valetTitle: 'Valet Service', valetDesc: "Enter your ticket number and we'll bring your car right away.", valetTicket: 'Ticket number', valetName: 'Your name (optional)', valetBtn: 'Request My Car', valetCancel: 'Cancel', valetSuccessTitle: 'Request Sent!', valetSuccessDesc: 'Your car is on the way. Please wait near the entrance.',
       badges: { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' }
     },
     ar: {
@@ -519,7 +533,7 @@
       totalItems: 'عناصر', placeOrder: 'اطلب عبر واتساب',
       cartBtn: 'السلة', yourName: 'اسمك', tableNo: 'رقم الطاولة',
       closed: 'نحن مغلقون حاليًا', opensAt: 'يفتح الساعة', featured: 'المميزة',
-      valetTitle: 'خدمة الفاليه', valetDesc: 'أدخل رقم التذكرة وسنحضر سيارتك فوراً.', valetTicket: 'رقم التذكرة', valetName: 'اسمك (اختياري)', valetBtn: 'اطلب سيارتي', valetCancel: 'إلغاء',
+      valetTitle: 'خدمة الفاليه', valetDesc: 'أدخل رقم التذكرة وسنحضر سيارتك فوراً.', valetTicket: 'رقم التذكرة', valetName: 'اسمك (اختياري)', valetBtn: 'اطلب سيارتي', valetCancel: 'إلغاء', valetSuccessTitle: 'تم الإرسال!', valetSuccessDesc: 'سيارتك في الطريق. يرجى الانتظار عند المدخل.',
       badges: { spicy:'🌶 حار', popular:'⭐ الأكثر طلباً', new:'🆕 جديد', vegetarian:'🌱 نباتي' }
     },
     ku: {
@@ -530,7 +544,7 @@
       totalItems: 'کاڵا', placeOrder: 'داواکاری لە واتساپ',
       cartBtn: 'سەبەتە', yourName: 'ناوت', tableNo: 'ژمارەی مێز',
       closed: 'ئێستا داخراوین', opensAt: 'دەکرێتەوە لە', featured: 'تایبەتمەندەکان',
-      valetTitle: 'خزمەتگوزاری ڤالێت', valetDesc: 'ژمارەی تیکێتەکەت بنووسە، ئەمەندا ئۆتۆمبێلەکەت دەهێنینەوە.', valetTicket: 'ژمارەی تیکێت', valetName: 'ناوت (ئارەزوومەندانە)', valetBtn: 'داوای ئۆتۆمبێلەکەم بکە', valetCancel: 'پاشگەزبوونەوە',
+      valetTitle: 'خزمەتگوزاری ڤالێت', valetDesc: 'ژمارەی تیکێتەکەت بنووسە، ئەمەندا ئۆتۆمبێلەکەت دەهێنینەوە.', valetTicket: 'ژمارەی تیکێت', valetName: 'ناوت (ئارەزوومەندانە)', valetBtn: 'داوای ئۆتۆمبێلەکەم بکە', valetCancel: 'پاشگەزبوونەوە', valetSuccessTitle: 'داواکاری نێردرا!', valetSuccessDesc: 'ئۆتۆمبێلەکەت لە ڕێگایە. تکایە لە نزیکی دەروازەکە چاوەڕێ بە.',
       badges: { spicy:'🌶 تیژ', popular:'⭐ بەناوبانگ', new:'🆕 نوێ', vegetarian:'🌱 ڕووەکی' }
     }
   };
@@ -699,12 +713,14 @@
     }
     updateClosedBanner(L);
     if (VALET_ENABLED) {
-      document.getElementById('valetTitle').textContent  = L.valetTitle;
-      document.getElementById('valetDesc').textContent   = L.valetDesc;
-      document.getElementById('valetTicket').placeholder = L.valetTicket;
-      document.getElementById('valetName').placeholder   = L.valetName;
-      document.getElementById('valetBtnText').textContent = L.valetBtn;
-      document.getElementById('valetCancel').textContent = L.valetCancel;
+      document.getElementById('valetTitle').textContent        = L.valetTitle;
+      document.getElementById('valetDesc').textContent         = L.valetDesc;
+      document.getElementById('valetTicket').placeholder       = L.valetTicket;
+      document.getElementById('valetName').placeholder         = L.valetName;
+      document.getElementById('valetBtnText').textContent      = L.valetBtn;
+      document.getElementById('valetCancel').textContent       = L.valetCancel;
+      document.getElementById('valetSuccessTitle').textContent = L.valetSuccessTitle;
+      document.getElementById('valetSuccessDesc').textContent  = L.valetSuccessDesc;
     }
     updateCategoryNav();
     renderGrid();
@@ -951,29 +967,39 @@
     document.getElementById('valetTicket').focus();
     document.body.style.overflow = 'hidden';
   }
-  function closeValet() {
-    document.getElementById('valetOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  function sendValetRequest() {
+  async function sendValetRequest() {
     const ticket = document.getElementById('valetTicket').value.trim();
     const name   = document.getElementById('valetName').value.trim();
     if (!ticket) { document.getElementById('valetTicket').focus(); return; }
-    // Log request to DB so valet desk can see it
-    fetch('/api/valet-request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tenant_id: TENANT_ID, ticket_no: ticket, customer_name: name || null })
-    }).catch(() => {});
-    if (VALET_WA) {
-      let msg = `🚗 *${REST_NAME} — Valet Request*\n`;
-      msg += `🎟️ Ticket: ${ticket}`;
-      if (name) msg += `\n👤 ${name}`;
-      window.open(`https://wa.me/${VALET_WA.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
-    closeValet();
-    document.getElementById('valetTicket').value = '';
-    document.getElementById('valetName').value   = '';
+    const btn = document.getElementById('valetSendBtn');
+    btn.disabled = true;
+    try {
+      await fetch('/api/valet-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: TENANT_ID, ticket_no: ticket, customer_name: name || null })
+      });
+    } catch(e) {}
+    // Show success state
+    document.getElementById('valetForm').style.display    = 'none';
+    document.getElementById('valetSuccess').style.display = 'block';
+    // Auto-close after 3 seconds
+    setTimeout(() => {
+      closeValet();
+    }, 3000);
+  }
+
+  function closeValet() {
+    document.getElementById('valetOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+    // Reset to form state for next use
+    setTimeout(() => {
+      document.getElementById('valetForm').style.display    = 'block';
+      document.getElementById('valetSuccess').style.display = 'none';
+      document.getElementById('valetSendBtn').disabled      = false;
+      document.getElementById('valetTicket').value = '';
+      document.getElementById('valetName').value   = '';
+    }, 300);
   }
   if (VALET_ENABLED) {
     document.getElementById('valetOverlay').addEventListener('click', e => {
