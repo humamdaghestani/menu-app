@@ -9,22 +9,13 @@
     :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
     body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
 
-    .sidebar {
-      width: var(--sidebar-w); background: #1a1a2e;
-      display: flex; flex-direction: column;
-      position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px;
-    }
+    .sidebar { width: var(--sidebar-w); background: #1a1a2e; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px; }
     .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
     .sidebar-brand .brand-emoji { font-size: 1.6rem; }
     .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
     .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
     .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
-    .sidebar-nav a, .sidebar-nav button {
-      display: flex; align-items: center; gap: 10px; padding: 11px 14px;
-      border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem;
-      background: none; border: none; cursor: pointer; width: 100%;
-      transition: background .15s, color .15s; font-family: inherit;
-    }
+    .sidebar-nav a, .sidebar-nav button { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem; background: none; border: none; cursor: pointer; width: 100%; transition: background .15s, color .15s; font-family: inherit; }
     .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
     .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
     .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
@@ -32,51 +23,76 @@
     .view-menu-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.07); color: #ccc; padding: 10px; border-radius: 10px; text-decoration: none; font-size: .85rem; transition: background .15s; }
     .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
 
-    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; }
-    .page-header { margin-bottom: 28px; }
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; min-width: 0; }
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
     .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
     .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+    .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 10px; font-size: .85rem; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: opacity .15s; }
+    .btn-outline { background: #fff; color: #555; border: 1.5px solid #e0e0e0; }
+    .btn-outline:hover { border-color: #bbb; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+
+    /* Filter bar */
+    .filter-bar { background: #fff; border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+    .filter-group label { font-size: .72rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; }
+    .filter-input { padding: 8px 11px; border: 1.5px solid #e8e8e8; border-radius: 9px; font-size: .87rem; font-family: inherit; color: #1a1a2e; outline: none; transition: border-color .2s; background: #fff; }
+    .filter-input:focus { border-color: var(--accent); }
+    .filter-search { min-width: 200px; flex: 2; }
+    .filter-reset { padding: 8px 14px; background: #f4f5f7; border: 1.5px solid #e8e8e8; border-radius: 9px; font-size: .83rem; color: #888; cursor: pointer; font-family: inherit; white-space: nowrap; }
+    .filter-reset:hover { border-color: #bbb; color: #555; }
 
     /* Summary cards */
-    .summary-row { display: flex; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; }
-    .summary-card { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06); flex: 1; min-width: 120px; }
-    .s-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #aaa; margin-bottom: 5px; }
-    .s-val { font-size: 1.7rem; font-weight: 800; color: #1a1a2e; }
-    .s-stars { color: #f5a623; font-size: .95rem; margin-top: 2px; }
+    .summary-row { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .summary-card { background: #fff; border-radius: 14px; padding: 16px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.06); flex: 1; min-width: 110px; }
+    .s-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #aaa; margin-bottom: 4px; }
+    .s-val { font-size: 1.6rem; font-weight: 800; color: #1a1a2e; }
+    .s-stars { color: #f5a623; font-size: .9rem; margin-top: 2px; }
 
     /* Per-question averages */
-    .q-avg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .q-avg-card { background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
-    .q-avg-label { font-size: .78rem; font-weight: 700; color: #555; margin-bottom: 6px; }
-    .q-avg-bar-wrap { background: #f0f0f0; border-radius: 99px; height: 6px; margin-bottom: 4px; }
-    .q-avg-bar { background: #f5a623; border-radius: 99px; height: 6px; transition: width .4s; }
-    .q-avg-num { font-size: .8rem; font-weight: 700; color: #f5a623; }
+    .q-avg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .q-avg-card { background: #fff; border-radius: 12px; padding: 12px 14px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    .q-avg-label { font-size: .75rem; font-weight: 700; color: #555; margin-bottom: 6px; }
+    .q-avg-bar-wrap { background: #f0f0f0; border-radius: 99px; height: 5px; margin-bottom: 4px; }
+    .q-avg-bar { background: #f5a623; border-radius: 99px; height: 5px; transition: width .4s; }
+    .q-avg-num { font-size: .78rem; font-weight: 700; color: #f5a623; }
 
-    .card { background: #fff; border-radius: 14px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    /* Reviews */
+    .card { background: #fff; border-radius: 14px; padding: 22px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 8px; }
     .card-header h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+    .result-count { font-size: .82rem; color: #aaa; }
 
-    /* Review cards */
-    .review-list { display: flex; flex-direction: column; gap: 14px; }
-    .review-card { border: 1.5px solid #f0f0f0; border-radius: 14px; padding: 18px 20px; }
-    .review-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-    .review-customer { display: flex; flex-direction: column; gap: 2px; }
-    .review-name { font-weight: 700; font-size: .95rem; color: #1a1a2e; }
-    .review-meta { font-size: .78rem; color: #aaa; display: flex; gap: 10px; flex-wrap: wrap; }
-    .review-time { font-size: .78rem; color: #bbb; white-space: nowrap; }
-    .review-questions { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 10px; }
-    .review-q { background: #fafafa; border-radius: 8px; padding: 8px 10px; }
-    .review-q-label { font-size: .72rem; color: #888; margin-bottom: 3px; }
-    .review-q-stars { color: #f5a623; font-size: .9rem; letter-spacing: 1px; }
-    .review-comment { font-size: .85rem; color: #555; font-style: italic; padding-top: 8px; border-top: 1px solid #f5f5f5; margin-top: 8px; }
+    .review-list { display: flex; flex-direction: column; gap: 12px; }
+    .review-card { border: 1.5px solid #f0f0f0; border-radius: 12px; padding: 16px 18px; }
+    .review-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .review-name { font-weight: 700; font-size: .93rem; color: #1a1a2e; }
+    .review-meta { font-size: .76rem; color: #aaa; display: flex; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
+    .review-time { font-size: .76rem; color: #bbb; white-space: nowrap; text-align: right; }
+    .review-questions { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; margin-bottom: 8px; }
+    .review-q { background: #fafafa; border-radius: 8px; padding: 7px 10px; }
+    .review-q-label { font-size: .7rem; color: #888; margin-bottom: 2px; }
+    .review-q-stars { color: #f5a623; font-size: .85rem; }
+    .review-comment { font-size: .84rem; color: #555; font-style: italic; padding-top: 8px; border-top: 1px solid #f5f5f5; margin-top: 6px; }
 
-    .empty-state { text-align: center; padding: 64px 0; color: #bbb; }
-    .empty-state p { margin-top: 12px; font-size: .95rem; }
+    .empty-state { text-align: center; padding: 56px 0; color: #bbb; }
+    .empty-state p { margin-top: 10px; font-size: .9rem; }
+
+    /* Print styles */
+    @media print {
+      .sidebar, .filter-bar, .header-actions, .page-header p { display: none !important; }
+      .main { margin-left: 0; padding: 0; }
+      .card, .summary-card, .q-avg-card { box-shadow: none; border: 1px solid #ddd; }
+      body { background: #fff; }
+    }
 
     @media (max-width: 768px) {
       .sidebar { width: 64px; }
       .sidebar-brand-text, .sidebar-nav span:not(.icon) { display: none; }
-      .main { margin-left: 64px; padding: 20px 16px; }
+      .main { margin-left: 64px; padding: 16px; }
+      .filter-search { min-width: 100%; }
     }
   </style>
 </head>
@@ -113,102 +129,226 @@
 
 <div class="main">
   <div class="page-header">
-    <h1>Customer Feedback</h1>
-    <p><%= feedback.length %> review<%= feedback.length !== 1 ? 's' : '' %> received</p>
-  </div>
-
-  <%
-    const total = feedback.length;
-    function qAvg(key) {
-      const vals = feedback.map(f => f[key]).filter(v => v != null && v > 0);
-      return vals.length ? (vals.reduce((a,b) => a+b,0) / vals.length) : 0;
-    }
-    const overallAvg = qAvg('rating') || (qAvg('q5') || ((qAvg('q1')+qAvg('q2')+qAvg('q3')+qAvg('q4')+qAvg('q5'))/5));
-    const questions = [
-      { key: 'q1', label: '🍽️ Food Quality' },
-      { key: 'q2', label: '🙋 Service' },
-      { key: 'q3', label: '🏡 Atmosphere' },
-      { key: 'q4', label: '💰 Value for Money' },
-      { key: 'q5', label: '⭐ Overall Experience' },
-    ];
-  %>
-
-  <% if (total > 0) { %>
-  <div class="summary-row">
-    <div class="summary-card">
-      <div class="s-label">Overall Avg</div>
-      <div class="s-val"><%= overallAvg.toFixed(1) %></div>
-      <div class="s-stars"><% for(let i=1;i<=5;i++){%><%= i<=Math.round(overallAvg)?'★':'☆'%><%}%></div>
+    <div>
+      <h1>Customer Feedback</h1>
+      <p id="totalCount"><%= feedback.length %> review<%= feedback.length !== 1 ? 's' : '' %> total</p>
     </div>
-    <div class="summary-card">
-      <div class="s-label">Total Reviews</div>
-      <div class="s-val"><%= total %></div>
+    <div class="header-actions">
+      <button class="btn btn-outline" onclick="exportCSV()">⬇ Export CSV</button>
+      <button class="btn btn-outline" onclick="window.print()">🖨 Print Report</button>
     </div>
   </div>
 
-  <div class="q-avg-grid">
-    <% questions.forEach(q => {
-      const avg = qAvg(q.key);
-      const pct = (avg / 5 * 100).toFixed(0);
-    %>
-    <div class="q-avg-card">
-      <div class="q-avg-label"><%= q.label %></div>
-      <div class="q-avg-bar-wrap"><div class="q-avg-bar" style="width:<%= pct %>%"></div></div>
-      <div class="q-avg-num"><%= avg > 0 ? avg.toFixed(1) + ' / 5' : '—' %></div>
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="filter-group filter-search">
+      <label>Search</label>
+      <input class="filter-input" type="text" id="fSearch" placeholder="Name, mobile, table, comment..." oninput="applyFilters()" />
     </div>
-    <% }) %>
+    <div class="filter-group">
+      <label>From Date</label>
+      <input class="filter-input" type="date" id="fFrom" onchange="applyFilters()" />
+    </div>
+    <div class="filter-group">
+      <label>To Date</label>
+      <input class="filter-input" type="date" id="fTo" onchange="applyFilters()" />
+    </div>
+    <div class="filter-group" style="min-width:110px;max-width:130px">
+      <label>Min Rating</label>
+      <select class="filter-input" id="fRating" onchange="applyFilters()">
+        <option value="">All</option>
+        <option value="5">★★★★★ 5</option>
+        <option value="4">★★★★☆ 4+</option>
+        <option value="3">★★★☆☆ 3+</option>
+        <option value="2">★★☆☆☆ 2+</option>
+        <option value="1">★☆☆☆☆ 1+</option>
+      </select>
+    </div>
+    <button class="filter-reset" onclick="resetFilters()">✕ Reset</button>
   </div>
-  <% } %>
 
+  <!-- Dynamic Summary -->
+  <div class="summary-row" id="summaryRow"></div>
+
+  <!-- Dynamic Q Averages -->
+  <div class="q-avg-grid" id="qAvgGrid"></div>
+
+  <!-- Reviews -->
   <div class="card">
     <div class="card-header">
-      <h2>All Reviews</h2>
-      <span style="color:#aaa;font-size:.85rem">Newest first</span>
+      <h2>Reviews</h2>
+      <span class="result-count" id="resultCount"></span>
     </div>
-
-    <% if (feedback.length === 0) { %>
-      <div class="empty-state">
-        <div style="font-size:3rem">💬</div>
-        <p>No feedback yet. It will appear here once customers submit reviews.</p>
-      </div>
-    <% } else { %>
-    <div class="review-list">
-      <% feedback.forEach(f => { %>
-      <div class="review-card">
-        <div class="review-top">
-          <div class="review-customer">
-            <div class="review-name"><%= f.customer_name || 'Anonymous' %></div>
-            <div class="review-meta">
-              <% if (f.mobile) { %><span>📞 <%= f.mobile %></span><% } %>
-              <% if (f.table_no) { %><span>🪑 Table <%= f.table_no %></span><% } %>
-            </div>
-          </div>
-          <div class="review-time">
-            <%= new Date(f.created_at).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) %>
-            <%= new Date(f.created_at).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' }) %>
-          </div>
-        </div>
-
-        <div class="review-questions">
-          <% questions.forEach(q => { const r = f[q.key]; if (!r) return; %>
-          <div class="review-q">
-            <div class="review-q-label"><%= q.label %></div>
-            <div class="review-q-stars">
-              <%= '★'.repeat(r) %><%= '☆'.repeat(5-r) %>
-            </div>
-          </div>
-          <% }) %>
-        </div>
-
-        <% if (f.comment) { %>
-        <div class="review-comment">"<%= f.comment %>"</div>
-        <% } %>
-      </div>
-      <% }) %>
-    </div>
-    <% } %>
+    <div id="reviewList"></div>
   </div>
 </div>
+
+<script>
+  const ALL = <%- JSON.stringify(feedback) %>;
+  const QUESTIONS = [
+    { key: 'q1', label: '🍽️ Food Quality' },
+    { key: 'q2', label: '🙋 Service' },
+    { key: 'q3', label: '🏡 Atmosphere' },
+    { key: 'q4', label: '💰 Value for Money' },
+    { key: 'q5', label: '⭐ Overall Experience' },
+  ];
+
+  let filtered = [...ALL];
+
+  function applyFilters() {
+    const search = document.getElementById('fSearch').value.trim().toLowerCase();
+    const from   = document.getElementById('fFrom').value;
+    const to     = document.getElementById('fTo').value;
+    const minRat = parseInt(document.getElementById('fRating').value) || 0;
+
+    filtered = ALL.filter(f => {
+      if (search) {
+        const hay = [f.customer_name, f.mobile, f.table_no, f.comment].filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(search)) return false;
+      }
+      const d = new Date(f.created_at);
+      if (from && d < new Date(from)) return false;
+      if (to   && d > new Date(to + 'T23:59:59')) return false;
+      if (minRat) {
+        const avg = overallRating(f);
+        if (!avg || avg < minRat) return false;
+      }
+      return true;
+    });
+
+    renderSummary();
+    renderQAvg();
+    renderList();
+  }
+
+  function overallRating(f) {
+    const vals = [f.q1, f.q2, f.q3, f.q4, f.q5].filter(v => v > 0);
+    return vals.length ? vals.reduce((a,b) => a+b,0) / vals.length : (f.rating || 0);
+  }
+
+  function qAvg(key, arr) {
+    const vals = arr.map(f => f[key]).filter(v => v > 0);
+    return vals.length ? vals.reduce((a,b) => a+b,0) / vals.length : 0;
+  }
+
+  function stars(n, max=5) {
+    n = Math.round(n);
+    return '★'.repeat(n) + '☆'.repeat(max - n);
+  }
+
+  function fmtDate(d) {
+    return new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  }
+  function fmtTime(d) {
+    return new Date(d).toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function renderSummary() {
+    const n = filtered.length;
+    const avg = n ? filtered.reduce((s,f) => s + overallRating(f), 0) / n : 0;
+    const fiveS = filtered.filter(f => Math.round(overallRating(f)) === 5).length;
+    const withComment = filtered.filter(f => f.comment).length;
+
+    document.getElementById('summaryRow').innerHTML = `
+      <div class="summary-card">
+        <div class="s-label">Avg Rating</div>
+        <div class="s-val">${n ? avg.toFixed(1) : '—'}</div>
+        <div class="s-stars">${n ? stars(avg) : ''}</div>
+      </div>
+      <div class="summary-card">
+        <div class="s-label">Reviews</div>
+        <div class="s-val">${n}</div>
+      </div>
+      <div class="summary-card">
+        <div class="s-label">5-Star</div>
+        <div class="s-val">${fiveS}</div>
+        <div class="s-stars" style="color:#aaa;font-size:.78rem">${n ? ((fiveS/n*100).toFixed(0)+'%') : ''}</div>
+      </div>
+      <div class="summary-card">
+        <div class="s-label">With Comment</div>
+        <div class="s-val">${withComment}</div>
+      </div>
+    `;
+    document.getElementById('resultCount').textContent = n + ' result' + (n !== 1 ? 's' : '');
+  }
+
+  function renderQAvg() {
+    if (filtered.length === 0) { document.getElementById('qAvgGrid').innerHTML = ''; return; }
+    document.getElementById('qAvgGrid').innerHTML = QUESTIONS.map(q => {
+      const avg = qAvg(q.key, filtered);
+      const pct = (avg / 5 * 100).toFixed(0);
+      return `
+        <div class="q-avg-card">
+          <div class="q-avg-label">${q.label}</div>
+          <div class="q-avg-bar-wrap"><div class="q-avg-bar" style="width:${pct}%"></div></div>
+          <div class="q-avg-num">${avg > 0 ? avg.toFixed(1) + ' / 5' : '—'}</div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderList() {
+    const el = document.getElementById('reviewList');
+    if (filtered.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div style="font-size:2.5rem">🔍</div><p>No reviews match your filters.</p></div>';
+      return;
+    }
+    el.innerHTML = '<div class="review-list">' + filtered.map(f => {
+      const qCells = QUESTIONS.map(q => {
+        const r = f[q.key];
+        if (!r) return '';
+        return `<div class="review-q"><div class="review-q-label">${q.label}</div><div class="review-q-stars">${'★'.repeat(r)}${'☆'.repeat(5-r)}</div></div>`;
+      }).join('');
+
+      return `
+        <div class="review-card">
+          <div class="review-top">
+            <div>
+              <div class="review-name">${f.customer_name || 'Anonymous'}</div>
+              <div class="review-meta">
+                ${f.mobile  ? `<span>📞 ${f.mobile}</span>` : ''}
+                ${f.table_no ? `<span>🪑 Table ${f.table_no}</span>` : ''}
+              </div>
+            </div>
+            <div class="review-time">${fmtDate(f.created_at)}<br/>${fmtTime(f.created_at)}</div>
+          </div>
+          ${qCells ? `<div class="review-questions">${qCells}</div>` : ''}
+          ${f.comment ? `<div class="review-comment">"${f.comment}"</div>` : ''}
+        </div>`;
+    }).join('') + '</div>';
+  }
+
+  function resetFilters() {
+    document.getElementById('fSearch').value = '';
+    document.getElementById('fFrom').value   = '';
+    document.getElementById('fTo').value     = '';
+    document.getElementById('fRating').value = '';
+    applyFilters();
+  }
+
+  function exportCSV() {
+    const rows = [['Date', 'Time', 'Name', 'Mobile', 'Table', 'Food', 'Service', 'Atmosphere', 'Value', 'Overall', 'Comment']];
+    filtered.forEach(f => {
+      rows.push([
+        fmtDate(f.created_at),
+        fmtTime(f.created_at),
+        f.customer_name || '',
+        f.mobile || '',
+        f.table_no || '',
+        f.q1 || '', f.q2 || '', f.q3 || '', f.q4 || '', f.q5 || '',
+        (f.comment || '').replace(/"/g, '""')
+      ]);
+    });
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'feedback-<%= tenant.subdomain %>-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click();
+  }
+
+  // Initial render
+  applyFilters();
+</script>
 
 </body>
 </html>
