@@ -264,11 +264,16 @@ router.get('/settings', requireAuth, async (req, res) => {
 });
 
 router.post('/settings', requireAuth, async (req, res) => {
-  const { name, description, logo_url, cover_image, theme_color, bg_video, whatsapp, cart_enabled, currency, is_always_open, open_time, close_time, valet_enabled, valet_whatsapp, menu_style, menu_layout, menu_font, nav_bg_color, nav_bg_opacity } = req.body;
+  const { name, description, logo_url, cover_image, theme_color, bg_video, whatsapp, cart_enabled, currency, is_always_open, open_time, close_time, valet_enabled, valet_whatsapp, menu_style, menu_layout, menu_font, nav_bg_color, nav_bg_opacity,
+    fb_q1_en, fb_q1_ar, fb_q1_ku, fb_q2_en, fb_q2_ar, fb_q2_ku, fb_q3_en, fb_q3_ar, fb_q3_ku, fb_q4_en, fb_q4_ar, fb_q4_ku, fb_q5_en, fb_q5_ar, fb_q5_ku } = req.body;
   try {
     await db.query(
-      `UPDATE tenants SET name=$1, description=$2, logo_url=$3, cover_image=$4, theme_color=$5, bg_video=$6, whatsapp=$7, cart_enabled=$8, currency=$9, is_always_open=$10, open_time=$11, close_time=$12, valet_enabled=$13, valet_whatsapp=$14, menu_style=$15, menu_layout=$16, menu_font=$17, nav_bg_color=$18, nav_bg_opacity=$19 WHERE id=$20`,
-      [name, description, logo_url, cover_image, theme_color, bg_video || null, whatsapp || null, cart_enabled === '1', currency || '$', is_always_open === '1', open_time || null, close_time || null, valet_enabled === '1', valet_whatsapp || null, menu_style || 'dark', menu_layout || 'grid', menu_font || 'default', nav_bg_color || null, nav_bg_opacity != null ? parseInt(nav_bg_opacity) : 90, req.user.tenantId]
+      `UPDATE tenants SET name=$1, description=$2, logo_url=$3, cover_image=$4, theme_color=$5, bg_video=$6, whatsapp=$7, cart_enabled=$8, currency=$9, is_always_open=$10, open_time=$11, close_time=$12, valet_enabled=$13, valet_whatsapp=$14, menu_style=$15, menu_layout=$16, menu_font=$17, nav_bg_color=$18, nav_bg_opacity=$19,
+       fb_q1_en=$20, fb_q1_ar=$21, fb_q1_ku=$22, fb_q2_en=$23, fb_q2_ar=$24, fb_q2_ku=$25, fb_q3_en=$26, fb_q3_ar=$27, fb_q3_ku=$28, fb_q4_en=$29, fb_q4_ar=$30, fb_q4_ku=$31, fb_q5_en=$32, fb_q5_ar=$33, fb_q5_ku=$34
+       WHERE id=$35`,
+      [name, description, logo_url, cover_image, theme_color, bg_video || null, whatsapp || null, cart_enabled === '1', currency || '$', is_always_open === '1', open_time || null, close_time || null, valet_enabled === '1', valet_whatsapp || null, menu_style || 'dark', menu_layout || 'grid', menu_font || 'default', nav_bg_color || null, nav_bg_opacity != null ? parseInt(nav_bg_opacity) : 90,
+       fb_q1_en||null, fb_q1_ar||null, fb_q1_ku||null, fb_q2_en||null, fb_q2_ar||null, fb_q2_ku||null, fb_q3_en||null, fb_q3_ar||null, fb_q3_ku||null, fb_q4_en||null, fb_q4_ar||null, fb_q4_ku||null, fb_q5_en||null, fb_q5_ar||null, fb_q5_ku||null,
+       req.user.tenantId]
     );
     res.redirect('/admin/settings?success=Settings+saved+successfully');
   } catch (err) {

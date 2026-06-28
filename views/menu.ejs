@@ -12,6 +12,11 @@
        const _a = ((tenant.nav_bg_opacity != null ? tenant.nav_bg_opacity : 90)) / 100;
        _navBg = `rgba(${_r},${_g},${_b},${_a})`;
      }
+     const _fbQ = {
+       en: [tenant.fb_q1_en||'Food Quality', tenant.fb_q2_en||'Service', tenant.fb_q3_en||'Atmosphere', tenant.fb_q4_en||'Value for Money', tenant.fb_q5_en||'Overall Experience'],
+       ar: [tenant.fb_q1_ar||'جودة الطعام', tenant.fb_q2_ar||'الخدمة', tenant.fb_q3_ar||'الأجواء', tenant.fb_q4_ar||'القيمة مقابل السعر', tenant.fb_q5_ar||'التجربة العامة'],
+       ku: [tenant.fb_q1_ku||'چێژی خواردن', tenant.fb_q2_ku||'خزمەتگوزاری', tenant.fb_q3_ku||'ژینگەکە', tenant.fb_q4_ku||'کار لە بەرانبەر نرخ', tenant.fb_q5_ku||'کۆی ئەزموون'],
+     };
   %>
   <% if (_font === 'elegant') { %><link rel="preconnect" href="https://fonts.googleapis.com" /><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&display=swap" rel="stylesheet" /><% } %>
   <% if (_font === 'rounded') { %><link rel="preconnect" href="https://fonts.googleapis.com" /><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" /><% } %>
@@ -796,6 +801,7 @@
   const TENANT_ID      = <%= tenant.id %>;
   const VALET_ENABLED  = <%= tenant.valet_enabled ? 'true' : 'false' %>;
   const VALET_WA       = <%- JSON.stringify(tenant.valet_whatsapp || tenant.whatsapp || '') %>;
+  const FB_Q           = <%- JSON.stringify(_fbQ) %>;
   const CURRENCY       = <%- JSON.stringify(tenant.currency || '$') %>;
   const OPEN_TIME      = <%- JSON.stringify(tenant.open_time  ? String(tenant.open_time).substring(0,5)  : '') %>;
   const CLOSE_TIME     = <%- JSON.stringify(tenant.close_time ? String(tenant.close_time).substring(0,5) : '') %>;
@@ -1022,11 +1028,12 @@
     // Feedback modal labels
     document.getElementById('fbTitle').textContent        = L.fbTitle;
     document.getElementById('fbSub').textContent          = L.fbSub;
-    document.getElementById('fbL1').textContent           = L.fbQ1;
-    document.getElementById('fbL2').textContent           = L.fbQ2;
-    document.getElementById('fbL3').textContent           = L.fbQ3;
-    document.getElementById('fbL4').textContent           = L.fbQ4;
-    document.getElementById('fbL5').textContent           = L.fbQ5;
+    const _qs = FB_Q[lang] || FB_Q.en;
+    document.getElementById('fbL1').textContent           = _qs[0];
+    document.getElementById('fbL2').textContent           = _qs[1];
+    document.getElementById('fbL3').textContent           = _qs[2];
+    document.getElementById('fbL4').textContent           = _qs[3];
+    document.getElementById('fbL5').textContent           = _qs[4];
     document.getElementById('fbName').placeholder         = L.fbName;
     document.getElementById('fbMobile').placeholder       = L.fbMobile;
     document.getElementById('fbTable').placeholder        = L.fbTable;

@@ -365,6 +365,33 @@
       </div>
     </div>
 
+    <!-- Feedback Questions -->
+    <div class="card">
+      <h2>💬 Feedback Questions</h2>
+      <p style="color:#888;font-size:.85rem;margin-bottom:20px">The 5 questions shown to customers in the feedback form. Leave blank to use the default text.</p>
+
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:10px;align-items:center;">
+        <div></div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-align:center">🇬🇧 English</div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-align:center">🇸🇦 Arabic</div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-align:center">🏴 Kurdish</div>
+
+        <% const fbDefaults = [
+          { en:'Food Quality', ar:'جودة الطعام', ku:'چێژی خواردن', icon:'🍽️' },
+          { en:'Service', ar:'الخدمة', ku:'خزمەتگوزاری', icon:'🙋' },
+          { en:'Atmosphere', ar:'الأجواء', ku:'ژینگەکە', icon:'🏡' },
+          { en:'Value for Money', ar:'القيمة مقابل السعر', ku:'کار لە بەرانبەر نرخ', icon:'💰' },
+          { en:'Overall Experience', ar:'التجربة العامة', ku:'کۆی ئەزموون', icon:'⭐' },
+        ]; %>
+        <% fbDefaults.forEach((d, i) => { const n = i+1; %>
+        <div style="font-size:.88rem;font-weight:600;color:#555;white-space:nowrap"><%= d.icon %> Q<%= n %></div>
+        <input type="text" name="fb_q<%= n %>_en" value="<%= tenant['fb_q'+n+'_en'] || '' %>" placeholder="<%= d.en %>" style="padding:8px 10px;border:1.5px solid #e8e8e8;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+        <input type="text" name="fb_q<%= n %>_ar" value="<%= tenant['fb_q'+n+'_ar'] || '' %>" placeholder="<%= d.ar %>" dir="rtl" style="padding:8px 10px;border:1.5px solid #e8e8e8;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+        <input type="text" name="fb_q<%= n %>_ku" value="<%= tenant['fb_q'+n+'_ku'] || '' %>" placeholder="<%= d.ku %>" dir="rtl" style="padding:8px 10px;border:1.5px solid #e8e8e8;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+        <% }) %>
+      </div>
+    </div>
+
     <div class="form-actions">
       <button class="btn btn-primary" type="submit">Save Settings</button>
     </div>
