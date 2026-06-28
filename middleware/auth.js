@@ -7,6 +7,7 @@ function requireAuth(req, res, next) {
 
   try {
     req.user = jwt.verify(token, process.env.JWT_SECRET);
+    res.locals.currentUser = req.user;
     next();
   } catch {
     res.redirect('/admin/login');

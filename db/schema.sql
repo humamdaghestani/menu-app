@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS feedback (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- ── Users permissions column ─────────────────────────────────────────────────
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT '[]';
+
 -- ── Indexes for performance ───────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_menu_items_tenant_sort   ON menu_items(tenant_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_categories_tenant_sort   ON categories(tenant_id, sort_order);

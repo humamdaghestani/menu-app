@@ -14,6 +14,19 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 // Bust tenant menu cache after any POST that changes menu data
 function bust(req, res, next) { cacheBustByTenantId(req.user.tenantId); next(); }
 
+// Permission helpers
+function requireAdmin(req, res, next) {
+  if (req.user.role === 'admin') return next();
+  res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Access denied — admin only</h2>');
+}
+function requirePerm(perm) {
+  return (req, res, next) => {
+    if (req.user.role === 'admin') return next();
+    if ((req.user.permissions || []).includes(perm)) return next();
+    res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Access denied</h2>');
+  };
+}
+
 // ── Login ──────────────────────────────────────────
 router.get('/login', (req, res) => {
   res.render('admin/login', { error: null });
@@ -41,14 +54,23 @@ router.post('/login', async (req, res) => {
       return res.render('admin/login', { error: 'Invalid email or password' });
     }
 
+    const permissions = user.role === 'admin' ? [] : JSON.parse(user.permissions || '[]');
     const token = jwt.sign(
-      { userId: user.id, tenantId: user.tenant_id, role: user.role },
+      { userId: user.id, tenantId: user.tenant_id, role: user.role, permissions },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.redirect('/admin/dashboard');
+
+    let redirectTo = '/admin/dashboard';
+    if (user.role !== 'admin') {
+      if (permissions.includes('items'))         redirectTo = '/admin/dashboard';
+      else if (permissions.includes('orders'))   redirectTo = '/admin/orders';
+      else if (permissions.includes('feedback')) redirectTo = '/admin/feedback';
+      else if (permissions.includes('import'))   redirectTo = '/admin/import';
+    }
+    res.redirect(redirectTo);
   } catch (err) {
     console.error(err);
     res.render('admin/login', { error: 'Server error, try again' });
@@ -61,24 +83,19 @@ router.post('/logout', (req, res) => {
 });
 
 // ── Dashboard ──────────────────────────────────────
-router.get('/dashboard', requireAuth, async (req, res) => {
+router.get('/dashboard', requireAuth, requirePerm('items'), async (req, res) => {
   try {
-    const categories = await db.query(
-      'SELECT * FROM categories WHERE tenant_id = $1 ORDER BY sort_order',
-      [req.user.tenantId]
-    );
-    const items = await db.query(
-      `SELECT i.*, c.name as category_name
-       FROM menu_items i LEFT JOIN categories c ON i.category_id = c.id
-       WHERE i.tenant_id = $1 ORDER BY i.sort_order`,
-      [req.user.tenantId]
-    );
-    const tenant = await db.query('SELECT * FROM tenants WHERE id = $1', [req.user.tenantId]);
-
+    const [categoriesRes, itemsRes, tenantRes] = await Promise.all([
+      db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
+      db.query(`SELECT i.*, c.name as category_name FROM menu_items i LEFT JOIN categories c ON i.category_id=c.id WHERE i.tenant_id=$1 ORDER BY i.sort_order`, [req.user.tenantId]),
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+    ]);
+    const canEditPrices = req.user.role === 'admin' || (req.user.permissions || []).includes('edit_prices');
     res.render('admin/dashboard', {
-      tenant: tenant.rows[0],
-      categories: categories.rows,
-      items: items.rows,
+      tenant: tenantRes.rows[0],
+      categories: categoriesRes.rows,
+      items: itemsRes.rows,
+      canEditPrices,
     });
   } catch (err) {
     console.error(err);
@@ -235,7 +252,7 @@ router.post('/categories/reorder', requireAuth, bust, async (req, res) => {
 });
 
 // ── Orders ────────────────────────────────────────
-router.get('/orders', requireAuth, async (req, res) => {
+router.get('/orders', requireAuth, requirePerm('orders'), async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     const orders = await db.query(
@@ -251,7 +268,7 @@ router.get('/orders', requireAuth, async (req, res) => {
 });
 
 // ── QR Code ────────────────────────────────────────
-router.get('/qrcode', requireAuth, async (req, res) => {
+router.get('/qrcode', requireAuth, requireAdmin, async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id = $1', [req.user.tenantId]);
     const t = tenant.rows[0];
@@ -266,7 +283,7 @@ router.get('/qrcode', requireAuth, async (req, res) => {
 });
 
 // ── Settings ───────────────────────────────────────
-router.get('/settings', requireAuth, async (req, res) => {
+router.get('/settings', requireAuth, requireAdmin, async (req, res) => {
   try {
     const [tenantRes, userRes] = await Promise.all([
       db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
@@ -279,7 +296,7 @@ router.get('/settings', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/settings/password', requireAuth, async (req, res) => {
+router.post('/settings/password', requireAuth, requireAdmin, async (req, res) => {
   const { email, current_password, new_password, confirm_password } = req.body;
   try {
     if (new_password !== confirm_password)
@@ -303,7 +320,7 @@ router.post('/settings/password', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/settings', requireAuth, bust, async (req, res) => {
+router.post('/settings', requireAuth, requireAdmin, bust, async (req, res) => {
   const { name, description, logo_url, cover_image, theme_color, bg_video, whatsapp, cart_enabled, currency, is_always_open, open_time, close_time, valet_enabled, valet_whatsapp, menu_style, menu_layout, menu_font, nav_bg_color, nav_bg_opacity,
     fb_q1_en, fb_q1_ar, fb_q1_ku, fb_q2_en, fb_q2_ar, fb_q2_ku, fb_q3_en, fb_q3_ar, fb_q3_ku, fb_q4_en, fb_q4_ar, fb_q4_ku, fb_q5_en, fb_q5_ar, fb_q5_ku } = req.body;
   try {
@@ -323,7 +340,7 @@ router.post('/settings', requireAuth, bust, async (req, res) => {
 });
 
 // ── Import ─────────────────────────────────────────
-router.get('/import', requireAuth, async (req, res) => {
+router.get('/import', requireAuth, requirePerm('import'), async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     res.render('admin/import', { tenant: tenant.rows[0] });
@@ -331,7 +348,7 @@ router.get('/import', requireAuth, async (req, res) => {
 });
 
 // Download blank template
-router.get('/import/template', requireAuth, (req, res) => {
+router.get('/import/template', requireAuth, requirePerm('import'), (req, res) => {
   const wb = XLSX.utils.book_new();
   const headers = ['name','name_ar','name_ku','price','category','description','description_ar','description_ku','image_url','badge'];
   const example = ['Chicken Burger','برجر دجاج','برگەری مریشک','12.99','Burgers','Crispy fried chicken with lettuce','دجاج مقلي مع خس','مریشکی سووتاو','','popular'];
@@ -346,7 +363,7 @@ router.get('/import/template', requireAuth, (req, res) => {
 });
 
 // Handle upload
-router.post('/import', requireAuth, bust, upload.single('file'), async (req, res) => {
+router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('file'), async (req, res) => {
   const tenantRes = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
   const tenant = tenantRes.rows[0];
 
@@ -437,7 +454,7 @@ router.post('/import', requireAuth, bust, upload.single('file'), async (req, res
 });
 
 // ── Feedback ─────────────────────────────────────────
-router.get('/feedback', requireAuth, async (req, res) => {
+router.get('/feedback', requireAuth, requirePerm('feedback'), async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     const feedback = await db.query(
@@ -446,6 +463,74 @@ router.get('/feedback', requireAuth, async (req, res) => {
     );
     res.render('admin/feedback', { tenant: tenant.rows[0], feedback: feedback.rows });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// ── Users management (admin only) ──────────────────
+router.get('/users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [tenantRes, usersRes] = await Promise.all([
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+      db.query('SELECT id, email, role, permissions, created_at FROM users WHERE tenant_id=$1 ORDER BY created_at', [req.user.tenantId]),
+    ]);
+    res.render('admin/users', { tenant: tenantRes.rows[0], users: usersRes.rows, currentUserId: req.user.userId });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/users', requireAuth, requireAdmin, async (req, res) => {
+  const { email, password, permissions } = req.body;
+  try {
+    const perms = Array.isArray(permissions) ? permissions : (permissions ? [permissions] : []);
+    const hash = await bcrypt.hash(password, 10);
+    await db.query(
+      'INSERT INTO users (tenant_id, email, password_hash, role, permissions) VALUES ($1,$2,$3,$4,$5)',
+      [req.user.tenantId, email, hash, 'staff', JSON.stringify(perms)]
+    );
+    res.redirect('/admin/users?success=User+created');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/users?error=Failed+to+create+user+(email+may+already+exist)');
+  }
+});
+
+router.post('/users/:id/edit', requireAuth, requireAdmin, async (req, res) => {
+  const { email, permissions } = req.body;
+  try {
+    const perms = Array.isArray(permissions) ? permissions : (permissions ? [permissions] : []);
+    await db.query(
+      'UPDATE users SET email=$1, permissions=$2 WHERE id=$3 AND tenant_id=$4 AND role=$5',
+      [email, JSON.stringify(perms), req.params.id, req.user.tenantId, 'staff']
+    );
+    res.redirect('/admin/users?success=User+updated');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/users?error=Failed+to+update+user');
+  }
+});
+
+router.post('/users/:id/reset-password', requireAuth, requireAdmin, async (req, res) => {
+  const { new_password } = req.body;
+  try {
+    if (!new_password || new_password.length < 6)
+      return res.redirect('/admin/users?error=Password+must+be+at+least+6+characters');
+    const hash = await bcrypt.hash(new_password, 10);
+    await db.query('UPDATE users SET password_hash=$1 WHERE id=$2 AND tenant_id=$3 AND role=$4',
+      [hash, req.params.id, req.user.tenantId, 'staff']);
+    res.redirect('/admin/users?success=Password+reset');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/users?error=Failed+to+reset+password');
+  }
+});
+
+router.post('/users/:id/delete', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    await db.query('DELETE FROM users WHERE id=$1 AND tenant_id=$2 AND role=$3',
+      [req.params.id, req.user.tenantId, 'staff']);
+    res.redirect('/admin/users?success=User+deleted');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/users?error=Failed+to+delete+user');
+  }
 });
 
 // ── Image upload to ImageKit ────────────────────────

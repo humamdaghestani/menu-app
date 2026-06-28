@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Users — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
+
+    .sidebar { width: var(--sidebar-w); background: #1a1a2e; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px; }
+    .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
+    .sidebar-brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #fff; flex-shrink: 0; }
+    .sidebar-brand .brand-emoji { font-size: 1.6rem; }
+    .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .sidebar-nav a, .sidebar-nav button { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem; background: none; border: none; cursor: pointer; width: 100%; transition: background .15s, color .15s; font-family: inherit; }
+    .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer { padding: 0 12px; }
+    .view-menu-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.07); color: #ccc; padding: 10px; border-radius: 10px; text-decoration: none; font-size: .85rem; transition: background .15s, color .15s; }
+    .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; }
+    .page-header { margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
+    .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+
+    .card { background: #fff; border-radius: 14px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; font-family: inherit; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost { background: #f0f0f0; color: #444; }
+    .btn-ghost:hover { background: #e4e4e4; }
+    .btn-danger { background: #ff4757; color: #fff; }
+    .btn-danger:hover { opacity: .88; }
+    .btn-sm { padding: 7px 14px; font-size: .82rem; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .78rem; color: #888; font-weight: 600; padding: 0 12px 12px; text-transform: uppercase; letter-spacing: .4px; }
+    td { padding: 14px 12px; border-top: 1px solid #f0f0f0; font-size: .88rem; vertical-align: middle; }
+    tr:hover td { background: #fafafa; }
+
+    .perm-tag { display: inline-flex; align-items: center; gap: 4px; background: #f0f0f0; color: #444; border-radius: 20px; padding: 3px 10px; font-size: .75rem; font-weight: 600; margin: 2px; }
+    .perm-tag.active { background: color-mix(in srgb, var(--accent) 15%, #fff); color: var(--accent); }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 480px; max-width: calc(100% - 32px); max-height: 90vh; overflow-y: auto; }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    label { font-size: .8rem; font-weight: 600; color: #555; }
+    input[type="email"], input[type="password"], input[type="text"] { padding: 10px 12px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .9rem; outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s; }
+    input:focus { border-color: var(--accent); background: #fff; }
+
+    .perm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .perm-check { display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1.5px solid #e8e8e8; border-radius: 10px; cursor: pointer; transition: border-color .2s, background .2s; }
+    .perm-check:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, #fff); }
+    .perm-check input { width: 16px; height: 16px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+    .perm-check-text strong { font-size: .85rem; display: block; margin-bottom: 2px; }
+    .perm-check-text span { font-size: .75rem; color: #888; }
+
+    #toast { position: fixed; bottom: 28px; right: 28px; background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.2); transform: translateY(80px); opacity: 0; transition: transform .3s, opacity .3s; z-index: 999; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-left: 4px solid #00b894; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 64px; }
+      .sidebar-brand-text, .sidebar-nav span:not(.icon) { display: none; }
+      .main { margin-left: 64px; padding: 20px 16px; }
+      .perm-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %>
+      <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+    <% } else { %>
+      <span class="brand-emoji">🍽️</span>
+    <% } %>
+    <div class="sidebar-brand-text">
+      <h2><%= tenant.name %></h2>
+      <span>Admin Panel</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a>
+    <a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a>
+    <a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a>
+    <a href="/admin/import"><span class="icon">📥</span><span>Import</span></a>
+    <a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a>
+    <a href="/admin/users" class="active"><span class="icon">👥</span><span>Users</span></a>
+    <a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn">
+      <span>🔗</span><span>View Menu</span>
+    </a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <h1>👥 Users</h1>
+      <p>Manage who can access your admin panel</p>
+    </div>
+    <button class="btn btn-primary" onclick="openCreate()">+ Add User</button>
+  </div>
+
+  <div class="card">
+    <h2>Team Members</h2>
+    <% if (users.length === 0) { %>
+      <p style="color:#aaa;text-align:center;padding:40px 0">No users yet. Add your first team member.</p>
+    <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Permissions</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach(u => { %>
+        <% const perms = JSON.parse(u.permissions || '[]'); %>
+        <tr>
+          <td><strong><%= u.email %></strong></td>
+          <td>
+            <% if (u.role === 'admin') { %>
+              <span class="perm-tag active">👑 Admin</span>
+            <% } else { %>
+              <span class="perm-tag">Staff</span>
+            <% } %>
+          </td>
+          <td>
+            <% if (u.role === 'admin') { %>
+              <span style="color:#aaa;font-size:.82rem">Full access</span>
+            <% } else { %>
+              <% ['items','edit_prices','import','orders','feedback'].forEach(p => { %>
+                <span class="perm-tag <%= perms.includes(p) ? 'active' : '' %>">
+                  <%= {items:'📊 Dashboard', edit_prices:'💰 Prices', import:'📥 Import', orders:'📋 Orders', feedback:'💬 Feedback'}[p] %>
+                </span>
+              <% }) %>
+            <% } %>
+          </td>
+          <td>
+            <% if (u.role !== 'admin') { %>
+              <button class="btn btn-ghost btn-sm" onclick="openEdit(<%= JSON.stringify(u) %>)" style="margin-right:6px">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="openReset(<%= u.id %>, '<%= u.email %>')" style="margin-right:6px">Reset Password</button>
+              <form method="POST" action="/admin/users/<%= u.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= u.email %>?')">
+                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+              </form>
+            <% } else if (u.id !== currentUserId) { %>
+              <span style="color:#aaa;font-size:.82rem">—</span>
+            <% } else { %>
+              <span style="color:#aaa;font-size:.82rem">You</span>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="overlay" id="createOverlay">
+  <div class="modal">
+    <h3>Add New User</h3>
+    <form method="POST" action="/admin/users">
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" name="email" required placeholder="staff@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password * (min 6 characters)</label>
+        <input type="password" name="password" required minlength="6" placeholder="Set a password" />
+      </div>
+      <div class="form-group">
+        <label>Permissions</label>
+        <div class="perm-grid">
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="items" />
+            <div class="perm-check-text">
+              <strong>📊 Dashboard</strong>
+              <span>Add, edit, delete items & categories</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="edit_prices" />
+            <div class="perm-check-text">
+              <strong>💰 Edit Prices</strong>
+              <span>Change item prices (requires Dashboard)</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="import" />
+            <div class="perm-check-text">
+              <strong>📥 Import</strong>
+              <span>Bulk import items via Excel</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="orders" />
+            <div class="perm-check-text">
+              <strong>📋 Orders</strong>
+              <span>View customer orders</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="feedback" />
+            <div class="perm-check-text">
+              <strong>💬 Feedback</strong>
+              <span>View customer feedback</span>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <h3>Edit User</h3>
+    <form method="POST" id="editForm">
+      <div class="form-group">
+        <label>Email *</label>
+        <input type="email" name="email" id="editEmail" required />
+      </div>
+      <div class="form-group">
+        <label>Permissions</label>
+        <div class="perm-grid">
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="items" id="ep_items" />
+            <div class="perm-check-text">
+              <strong>📊 Dashboard</strong>
+              <span>Add, edit, delete items & categories</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="edit_prices" id="ep_edit_prices" />
+            <div class="perm-check-text">
+              <strong>💰 Edit Prices</strong>
+              <span>Change item prices (requires Dashboard)</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="import" id="ep_import" />
+            <div class="perm-check-text">
+              <strong>📥 Import</strong>
+              <span>Bulk import items via Excel</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="orders" id="ep_orders" />
+            <div class="perm-check-text">
+              <strong>📋 Orders</strong>
+              <span>View customer orders</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="feedback" id="ep_feedback" />
+            <div class="perm-check-text">
+              <strong>💬 Feedback</strong>
+              <span>View customer feedback</span>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="overlay" id="resetOverlay">
+  <div class="modal">
+    <h3>Reset Password</h3>
+    <p id="resetEmail" style="color:#888;font-size:.88rem;margin-bottom:20px"></p>
+    <form method="POST" id="resetForm">
+      <div class="form-group">
+        <label>New Password * (min 6 characters)</label>
+        <input type="password" name="new_password" required minlength="6" placeholder="Enter new password" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeReset()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Reset Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
+  function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
+
+  function openEdit(user) {
+    document.getElementById('editEmail').value = user.email;
+    document.getElementById('editForm').action = '/admin/users/' + user.id + '/edit';
+    const perms = JSON.parse(user.permissions || '[]');
+    ['items','edit_prices','import','orders','feedback'].forEach(p => {
+      document.getElementById('ep_' + p).checked = perms.includes(p);
+    });
+    document.getElementById('editOverlay').classList.add('open');
+  }
+  function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+
+  function openReset(id, email) {
+    document.getElementById('resetForm').action = '/admin/users/' + id + '/reset-password';
+    document.getElementById('resetEmail').textContent = 'Resetting password for: ' + email;
+    document.getElementById('resetOverlay').classList.add('open');
+  }
+  function closeReset() { document.getElementById('resetOverlay').classList.remove('open'); }
+
+  document.getElementById('createOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreate(); });
+  document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
+  document.getElementById('resetOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeReset(); });
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('success')) {
+    const t = document.getElementById('toast');
+    t.textContent = '✓ ' + decodeURIComponent(params.get('success'));
+    t.className = 'show success';
+    setTimeout(() => t.className = '', 3000);
+  }
+  if (params.get('error')) {
+    const t = document.getElementById('toast');
+    t.textContent = '✗ ' + decodeURIComponent(params.get('error'));
+    t.className = 'show';
+    setTimeout(() => t.className = '', 4000);
+  }
+</script>
+</body>
+</html>

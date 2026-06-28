@@ -291,30 +291,14 @@
   </div>
 
   <nav class="sidebar-nav">
-    <a href="/admin/dashboard" class="active">
-      <span class="icon">📊</span>
-      <span>Dashboard</span>
-    </a>
-    <a href="/admin/orders">
-      <span class="icon">📋</span>
-      <span>Orders</span>
-    </a>
-    <a href="/admin/feedback">
-      <span class="icon">💬</span>
-      <span>Feedback</span>
-    </a>
-    <a href="/admin/import">
-      <span class="icon">📥</span>
-      <span>Import</span>
-    </a>
-    <a href="/admin/qrcode">
-      <span class="icon">📱</span>
-      <span>QR Code</span>
-    </a>
-    <a href="/admin/settings">
-      <span class="icon">⚙️</span>
-      <span>Settings</span>
-    </a>
+    <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
+    <% if (_can('items')) { %><a href="/admin/dashboard" class="active"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
+    <% if (_can('orders')) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
+    <% if (_can('feedback')) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
+    <% if (_can('import')) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
+    <% if (_isAdmin) { %><a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a><% } %>
+    <% if (_isAdmin) { %><a href="/admin/users"><span class="icon">👥</span><span>Users</span></a><% } %>
+    <% if (_isAdmin) { %><a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a><% } %>
     <button class="dark-toggle" id="darkToggle" onclick="toggleDark()" style="margin-top:auto">
       <span class="icon" id="darkIcon">🌙</span>
       <span id="darkLabel">Dark Mode</span>
@@ -472,7 +456,7 @@
         </div>
         <div class="form-group">
           <label>Price *</label>
-          <input type="text" name="price" placeholder="e.g. $9.99" required />
+          <input type="text" name="price" placeholder="e.g. $9.99" required <% if(!canEditPrices){%>readonly style="background:#f0f0f0;cursor:not-allowed" title="You don't have permission to edit prices"<%}%> />
         </div>
         <div class="form-group">
           <label>Category</label>
@@ -662,7 +646,7 @@
         </div>
         <div class="form-group">
           <label>Price *</label>
-          <input type="text" name="price" id="editPrice" required />
+          <input type="text" name="price" id="editPrice" required <% if(!canEditPrices){%>readonly style="background:#f0f0f0;cursor:not-allowed" title="You don't have permission to edit prices"<%}%> />
         </div>
         <div class="form-group">
           <label>Category</label>
