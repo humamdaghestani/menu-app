@@ -6,6 +6,7 @@ const compression = require('compression');
 
 const menuRouter = require('./routes/menu');
 const adminRouter = require('./routes/admin');
+const superAdminRouter = require('./routes/superadmin');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use('/superadmin', superAdminRouter);
 app.use('/admin', adminRouter);
 app.use('/', menuRouter);
 

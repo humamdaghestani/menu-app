@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Admin — All Restaurants</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #1a1a2e; padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { display: flex; align-items: center; gap: 10px; color: #fff; font-weight: 700; font-size: 1rem; }
+    .topbar-brand span { font-size: 1.4rem; }
+    .topbar-actions { display: flex; align-items: center; gap: 12px; }
+    .btn { padding: 8px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; font-family: inherit; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: .78rem; }
+    .btn-danger { background: rgba(255,71,87,.15); color: #ff6b7a; border: 1px solid rgba(255,71,87,.3); }
+    .btn-danger:hover { background: rgba(255,71,87,.25); }
+    .btn-success { background: rgba(0,184,148,.12); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
+    .btn-success:hover { background: rgba(0,184,148,.22); }
+
+    .main { padding: 32px; max-width: 1200px; margin: 0 auto; }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: #1a1a2e; border-radius: 14px; padding: 20px 24px; border: 1px solid rgba(255,255,255,.06); }
+    .stat-label { font-size: .75rem; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .stat-value { font-size: 2rem; font-weight: 700; color: #fff; }
+    .stat-value.accent { color: #7c5cbf; }
+
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section-header h2 { font-size: 1rem; font-weight: 700; color: #fff; }
+
+    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; color: #555; font-weight: 600; padding: 14px 18px; text-transform: uppercase; letter-spacing: .4px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    td { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.04); font-size: .85rem; vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; }
+    .badge-active { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-inactive { background: rgba(255,71,87,.15); color: #ff6b7a; }
+
+    .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 480px; max-width: calc(100% - 32px); border: 1px solid rgba(255,255,255,.1); }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: #888; margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 10px 12px; background: #0f0f1a; border: 1.5px solid #333; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; transition: border-color .2s; }
+    input:focus, textarea:focus { border-color: #7c5cbf; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    #toast { position: fixed; bottom: 28px; right: 28px; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.4); transform: translateY(80px); opacity: 0; transition: transform .3s, opacity .3s; z-index: 999; background: #1a1a2e; color: #fff; border: 1px solid rgba(255,255,255,.1); }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: rgba(0,184,148,.5); color: #00b894; }
+    #toast.error { border-color: rgba(255,71,87,.5); color: #ff6b7a; }
+
+    @media (max-width: 768px) {
+      .stats { grid-template-columns: 1fr 1fr; }
+      .main { padding: 16px; }
+      .topbar { padding: 0 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <span>⚡</span> Super Admin
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-primary" onclick="openCreate()">+ New Restaurant</button>
+    <form method="POST" action="/superadmin/logout" style="display:inline">
+      <button class="btn btn-ghost" type="submit">Logout</button>
+    </form>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Total Restaurants</div>
+      <div class="stat-value accent"><%= stats.total %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active</div>
+      <div class="stat-value"><%= stats.active %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Menu Views</div>
+      <div class="stat-value"><%= stats.totalViews.toLocaleString() %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Orders</div>
+      <div class="stat-value"><%= stats.totalOrders %></div>
+    </div>
+  </div>
+
+  <!-- Restaurants table -->
+  <div class="section-header">
+    <h2>All Restaurants (<%= tenants.length %>)</h2>
+  </div>
+
+  <div class="table-wrap">
+    <% if (tenants.length === 0) { %>
+      <p style="text-align:center;padding:48px;color:#555">No restaurants yet. Create the first one.</p>
+    <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Restaurant</th>
+          <th>Subdomain</th>
+          <th>Admin Email</th>
+          <th>Views</th>
+          <th>Items</th>
+          <th>Orders</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tenants.forEach(t => { %>
+        <tr>
+          <td>
+            <strong style="color:#fff"><%= t.name %></strong>
+          </td>
+          <td><span style="color:#7c5cbf;font-family:monospace"><%= t.subdomain %></span></td>
+          <td style="color:#888"><%= t.admin_email || '—' %></td>
+          <td><%= (t.view_count || 0).toLocaleString() %></td>
+          <td><%= t.item_count || 0 %></td>
+          <td><%= t.order_count || 0 %></td>
+          <td>
+            <span class="badge <%= t.active ? 'badge-active' : 'badge-inactive' %>">
+              <%= t.active ? 'Active' : 'Inactive' %>
+            </span>
+          </td>
+          <td style="color:#666"><%= new Date(t.created_at).toLocaleDateString() %></td>
+          <td>
+            <div class="actions">
+              <a href="/superadmin/tenants/<%= t.id %>/login" class="btn btn-ghost btn-sm">Login</a>
+              <a href="/?tenant=<%= t.subdomain %>" target="_blank" class="btn btn-ghost btn-sm">View</a>
+              <form method="POST" action="/superadmin/tenants/<%= t.id %>/toggle" style="display:inline">
+                <button class="btn btn-sm <%= t.active ? 'btn-danger' : 'btn-success' %>" type="submit">
+                  <%= t.active ? 'Disable' : 'Enable' %>
+                </button>
+              </form>
+              <form method="POST" action="/superadmin/tenants/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= t.name %>? This cannot be undone.')">
+                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+
+<!-- Create Restaurant Modal -->
+<div class="overlay" id="createOverlay">
+  <div class="modal">
+    <h3>➕ New Restaurant</h3>
+    <form method="POST" action="/superadmin/tenants">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Restaurant Name *</label>
+          <input type="text" name="name" required placeholder="Burger House" />
+        </div>
+        <div class="form-group">
+          <label>Subdomain * (no spaces)</label>
+          <input type="text" name="subdomain" required placeholder="burgerhouse" pattern="[a-zA-Z0-9\-]+" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" name="description" placeholder="Best burgers in town" />
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Admin Email *</label>
+          <input type="email" name="admin_email" required placeholder="admin@burgerhouse.com" />
+        </div>
+        <div class="form-group">
+          <label>Admin Password *</label>
+          <input type="password" name="admin_password" required placeholder="Min 6 characters" minlength="6" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Restaurant</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
+  function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
+  document.getElementById('createOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreate(); });
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('success')) {
+    const t = document.getElementById('toast');
+    t.textContent = '✓ ' + decodeURIComponent(params.get('success'));
+    t.className = 'show success';
+    setTimeout(() => t.className = '', 3500);
+  }
+  if (params.get('error')) {
+    const t = document.getElementById('toast');
+    t.textContent = '✗ ' + decodeURIComponent(params.get('error'));
+    t.className = 'show error';
+    setTimeout(() => t.className = '', 4000);
+  }
+</script>
+</body>
+</html>

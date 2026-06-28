@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Admin Login</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .box { background: #1a1a2e; border-radius: 18px; padding: 40px; width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .logo { text-align: center; font-size: 2.4rem; margin-bottom: 8px; }
+    h1 { text-align: center; color: #fff; font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+    .sub { text-align: center; color: #666; font-size: .82rem; margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; color: #aaa; font-size: .78rem; font-weight: 600; margin-bottom: 6px; }
+    input { width: 100%; padding: 11px 14px; background: #0f0f1a; border: 1.5px solid #333; border-radius: 8px; color: #fff; font-size: .9rem; outline: none; font-family: inherit; transition: border-color .2s; }
+    input:focus { border-color: #7c5cbf; }
+    .btn { width: 100%; padding: 12px; background: #7c5cbf; color: #fff; border: none; border-radius: 8px; font-size: .95rem; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 8px; transition: opacity .2s; }
+    .btn:hover { opacity: .88; }
+    .error { background: rgba(255,71,87,.15); border: 1px solid rgba(255,71,87,.4); color: #ff6b7a; border-radius: 8px; padding: 10px 14px; font-size: .85rem; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">⚡</div>
+    <h1>Super Admin</h1>
+    <p class="sub">Platform management panel</p>
+    <% if (error) { %><div class="error"><%= error %></div><% } %>
+    <form method="POST" action="/superadmin/login">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" required autofocus />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" required />
+      </div>
+      <button class="btn" type="submit">Sign In</button>
+    </form>
+  </div>
+</body>
+</html>
