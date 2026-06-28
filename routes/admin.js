@@ -6,8 +6,12 @@ const multer = require('multer');
 const XLSX = require('xlsx');
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
+const { cacheBustByTenantId } = require('./menu');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Bust tenant menu cache after any POST that changes menu data
+function bust(req, res, next) { cacheBustByTenantId(req.user.tenantId); next(); }
 
 // ── Login ──────────────────────────────────────────
 router.get('/login', (req, res) => {
@@ -82,7 +86,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
 });
 
 // ── Items CRUD ─────────────────────────────────────
-router.post('/items', requireAuth, async (req, res) => {
+router.post('/items', requireAuth, bust, async (req, res) => {
   const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;
   try {
     await db.query(
@@ -97,7 +101,7 @@ router.post('/items', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/items/:id/edit', requireAuth, async (req, res) => {
+router.post('/items/:id/edit', requireAuth, bust, async (req, res) => {
   const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;
   try {
     await db.query(
@@ -112,7 +116,7 @@ router.post('/items/:id/edit', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/items/:id/delete', requireAuth, async (req, res) => {
+router.post('/items/:id/delete', requireAuth, bust, async (req, res) => {
   try {
     await db.query(
       'DELETE FROM menu_items WHERE id=$1 AND tenant_id=$2',
@@ -126,7 +130,7 @@ router.post('/items/:id/delete', requireAuth, async (req, res) => {
 });
 
 // ── Categories CRUD ────────────────────────────────
-router.post('/categories', requireAuth, async (req, res) => {
+router.post('/categories', requireAuth, bust, async (req, res) => {
   const { name, name_ar, name_ku, image_url } = req.body;
   try {
     await db.query(
@@ -140,7 +144,7 @@ router.post('/categories', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/categories/:id/edit', requireAuth, async (req, res) => {
+router.post('/categories/:id/edit', requireAuth, bust, async (req, res) => {
   const { name, name_ar, name_ku, image_url } = req.body;
   try {
     await db.query(
@@ -154,7 +158,7 @@ router.post('/categories/:id/edit', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/categories/:id/delete', requireAuth, async (req, res) => {
+router.post('/categories/:id/delete', requireAuth, bust, async (req, res) => {
   try {
     await db.query(
       'DELETE FROM categories WHERE id=$1 AND tenant_id=$2',
@@ -168,7 +172,7 @@ router.post('/categories/:id/delete', requireAuth, async (req, res) => {
 });
 
 // ── Toggle item availability ───────────────────────
-router.post('/items/:id/toggle', requireAuth, async (req, res) => {
+router.post('/items/:id/toggle', requireAuth, bust, async (req, res) => {
   try {
     await db.query(
       `UPDATE menu_items SET is_available = NOT is_available WHERE id=$1 AND tenant_id=$2`,
@@ -182,7 +186,7 @@ router.post('/items/:id/toggle', requireAuth, async (req, res) => {
 });
 
 // ── Feature / unfeature item ──────────────────────
-router.post('/items/:id/feature', requireAuth, async (req, res) => {
+router.post('/items/:id/feature', requireAuth, bust, async (req, res) => {
   try {
     await db.query(
       'UPDATE menu_items SET is_featured = NOT COALESCE(is_featured, false) WHERE id=$1 AND tenant_id=$2',
@@ -193,7 +197,7 @@ router.post('/items/:id/feature', requireAuth, async (req, res) => {
 });
 
 // ── Duplicate item ─────────────────────────────────
-router.post('/items/:id/duplicate', requireAuth, async (req, res) => {
+router.post('/items/:id/duplicate', requireAuth, bust, async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM menu_items WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
     if (r.rows.length === 0) return res.redirect('/admin/dashboard');
@@ -208,7 +212,7 @@ router.post('/items/:id/duplicate', requireAuth, async (req, res) => {
 });
 
 // ── Reorder items ──────────────────────────────────
-router.post('/items/reorder', requireAuth, async (req, res) => {
+router.post('/items/reorder', requireAuth, bust, async (req, res) => {
   try {
     const { order } = req.body;
     for (let idx = 0; idx < order.length; idx++) {
@@ -219,7 +223,7 @@ router.post('/items/reorder', requireAuth, async (req, res) => {
 });
 
 // ── Reorder categories ─────────────────────────────
-router.post('/categories/reorder', requireAuth, async (req, res) => {
+router.post('/categories/reorder', requireAuth, bust, async (req, res) => {
   try {
     const { order } = req.body;
     for (let idx = 0; idx < order.length; idx++) {
@@ -271,7 +275,7 @@ router.get('/settings', requireAuth, async (req, res) => {
   }
 });
 
-router.post('/settings', requireAuth, async (req, res) => {
+router.post('/settings', requireAuth, bust, async (req, res) => {
   const { name, description, logo_url, cover_image, theme_color, bg_video, whatsapp, cart_enabled, currency, is_always_open, open_time, close_time, valet_enabled, valet_whatsapp, menu_style, menu_layout, menu_font, nav_bg_color, nav_bg_opacity,
     fb_q1_en, fb_q1_ar, fb_q1_ku, fb_q2_en, fb_q2_ar, fb_q2_ku, fb_q3_en, fb_q3_ar, fb_q3_ku, fb_q4_en, fb_q4_ar, fb_q4_ku, fb_q5_en, fb_q5_ar, fb_q5_ku } = req.body;
   try {
@@ -314,7 +318,7 @@ router.get('/import/template', requireAuth, (req, res) => {
 });
 
 // Handle upload
-router.post('/import', requireAuth, upload.single('file'), async (req, res) => {
+router.post('/import', requireAuth, bust, upload.single('file'), async (req, res) => {
   const tenantRes = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
   const tenant = tenantRes.rows[0];
 

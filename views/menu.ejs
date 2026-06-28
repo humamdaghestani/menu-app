@@ -162,12 +162,15 @@
       box-shadow: var(--card-shadow); border: 1px solid var(--card-border);
       cursor: pointer; transition: transform .22s, box-shadow .22s; position: relative;
       animation: fadeUp .3s ease both;
+      content-visibility: auto; contain-intrinsic-size: 0 280px;
     }
     @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
     .card:hover { transform: translateY(-5px); box-shadow: 0 14px 36px rgba(0,0,0,0.20); }
     .card.unavailable { opacity: .6; cursor: not-allowed; }
     .card-img-wrap { position: relative; overflow: hidden; }
-    .card img { width: 100%; height: 170px; object-fit: cover; display: block; transition: transform .35s; }
+    .card img { width: 100%; height: 170px; object-fit: cover; display: block; transition: transform .35s, opacity .3s; }
+    .card-lazy-img { opacity: 0; }
+    .card-lazy-img.loaded { opacity: 1; }
     .card:hover .card-img-wrap img { transform: scale(1.06); }
     .unavailable-tag { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: .95rem; }
     .badge { position: absolute; top: 10px; padding: 4px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; background: var(--accent); color: #fff; }
@@ -1151,7 +1154,7 @@
         innerGrid.className = 'items-inner-grid';
         catItems.forEach((item, i) => {
           const card = buildCard(item, L);
-          card.style.animationDelay = (i * 40) + 'ms';
+          card.style.animationDelay = Math.min(i * 35, 180) + 'ms';
           innerGrid.appendChild(card);
         });
         section.appendChild(innerGrid);
@@ -1165,7 +1168,7 @@
         innerGrid.className = 'items-inner-grid';
         uncat.forEach((item, i) => {
           const card = buildCard(item, L);
-          card.style.animationDelay = (i * 40) + 'ms';
+          card.style.animationDelay = Math.min(i * 35, 180) + 'ms';
           innerGrid.appendChild(card);
         });
         grid.appendChild(innerGrid);
@@ -1176,7 +1179,7 @@
       innerGrid.className = 'items-inner-grid';
       filtered.forEach((item, i) => {
         const card = buildCard(item, L);
-        card.style.animationDelay = (i * 40) + 'ms';
+        card.style.animationDelay = Math.min(i * 35, 180) + 'ms';
         innerGrid.appendChild(card);
       });
       grid.appendChild(innerGrid);
@@ -1195,7 +1198,7 @@
 
     card.innerHTML = `
       <div class="card-img-wrap">
-        <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${localName}" loading="lazy" />
+        <img src="${item.image_url || 'https://placehold.co/400x300?text=No+Image'}" alt="${localName}" loading="lazy" decoding="async" class="card-lazy-img" />
         ${badgeHTML}${unavailHTML}
       </div>
       <div class="card-body">
@@ -1206,6 +1209,12 @@
           ${CART_ENABLED && item.is_available !== false ? `<button class="add-btn">${L.addToCart}</button>` : ''}
         </div>
       </div>`;
+
+    const lazyImg = card.querySelector('.card-lazy-img');
+    if (lazyImg) {
+      if (lazyImg.complete) lazyImg.classList.add('loaded');
+      else lazyImg.addEventListener('load', () => lazyImg.classList.add('loaded'));
+    }
 
     if (item.is_available !== false) {
       card.querySelector('.card-img-wrap').addEventListener('click', () => openModal(item));

@@ -70,6 +70,13 @@ CREATE TABLE IF NOT EXISTS feedback (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+-- ── Indexes for performance ───────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_menu_items_tenant_sort   ON menu_items(tenant_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_categories_tenant_sort   ON categories(tenant_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_tenants_subdomain        ON tenants(subdomain);
+CREATE INDEX IF NOT EXISTS idx_feedback_tenant          ON feedback(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_tenant            ON orders(tenant_id, created_at DESC);
+
 -- ── Migration: run this block if your database already exists ─────────────────
 -- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS description TEXT;
 -- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS cover_image TEXT;
