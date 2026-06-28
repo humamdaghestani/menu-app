@@ -959,11 +959,18 @@
     const ticket = document.getElementById('valetTicket').value.trim();
     const name   = document.getElementById('valetName').value.trim();
     if (!ticket) { document.getElementById('valetTicket').focus(); return; }
-    if (!VALET_WA) { alert('Valet WhatsApp not configured.'); return; }
-    let msg = `🚗 *${REST_NAME} — Valet Request*\n`;
-    msg += `🎟️ Ticket: ${ticket}`;
-    if (name) msg += `\n👤 ${name}`;
-    window.open(`https://wa.me/${VALET_WA.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    // Log request to DB so valet desk can see it
+    fetch('/api/valet-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant_id: TENANT_ID, ticket_no: ticket, customer_name: name || null })
+    }).catch(() => {});
+    if (VALET_WA) {
+      let msg = `🚗 *${REST_NAME} — Valet Request*\n`;
+      msg += `🎟️ Ticket: ${ticket}`;
+      if (name) msg += `\n👤 ${name}`;
+      window.open(`https://wa.me/${VALET_WA.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
     closeValet();
     document.getElementById('valetTicket').value = '';
     document.getElementById('valetName').value   = '';

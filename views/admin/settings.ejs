@@ -252,6 +252,15 @@
         <label>Valet WhatsApp Number <small style="color:#aaa;font-weight:400">(leave empty to use the main WhatsApp number)</small></label>
         <input type="text" name="valet_whatsapp" value="<%= tenant.valet_whatsapp || '' %>" placeholder="9647501234567" />
       </div>
+      <% if (tenant.valet_enabled) { %>
+      <div style="margin-top:18px;padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:#166534;">🖥️ Valet Staff Screen</div>
+          <div style="font-size:.78rem;color:#15803d;margin-top:2px;">Open this on the valet stand tablet — it shows incoming requests live.</div>
+        </div>
+        <a href="/valet-desk?tenant=<%= tenant.subdomain %>" target="_blank" style="background:#16a34a;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:700;white-space:nowrap;">Open Valet Desk →</a>
+      </div>
+      <% } %>
     </div>
 
     <!-- Cart Feature -->
