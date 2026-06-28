@@ -433,6 +433,7 @@
   const WHATSAPP   = '<%= tenant.whatsapp || "" %>';
   const REST_NAME  = '<%= tenant.name %>';
   const CART_ENABLED   = <%= tenant.cart_enabled !== false ? 'true' : 'false' %>;
+  const TENANT_ID      = <%= tenant.id %>;
   const CURRENCY       = <%- JSON.stringify(tenant.currency || '$') %>;
   const OPEN_TIME      = <%- JSON.stringify(tenant.open_time  ? String(tenant.open_time).substring(0,5)  : '') %>;
   const CLOSE_TIME     = <%- JSON.stringify(tenant.close_time ? String(tenant.close_time).substring(0,5) : '') %>;
@@ -446,7 +447,7 @@
       addToCart: 'Add to Cart', cart: 'Your Cart', emptyCart: 'Your cart is empty',
       totalItems: 'items', placeOrder: 'Place Order via WhatsApp',
       cartBtn: 'Cart', yourName: 'Your name', tableNo: 'Table no.',
-      closed: "We're currently closed", opensAt: 'Opens at',
+      closed: "We're currently closed", opensAt: 'Opens at', featured: 'Featured',
       badges: { spicy:'🌶 Spicy', popular:'⭐ Popular', new:'🆕 New', vegetarian:'🌱 Veg' }
     },
     ar: {
@@ -456,7 +457,7 @@
       addToCart: 'أضف إلى السلة', cart: 'سلة الطلبات', emptyCart: 'سلتك فارغة',
       totalItems: 'عناصر', placeOrder: 'اطلب عبر واتساب',
       cartBtn: 'السلة', yourName: 'اسمك', tableNo: 'رقم الطاولة',
-      closed: 'نحن مغلقون حاليًا', opensAt: 'يفتح الساعة',
+      closed: 'نحن مغلقون حاليًا', opensAt: 'يفتح الساعة', featured: 'المميزة',
       badges: { spicy:'🌶 حار', popular:'⭐ الأكثر طلباً', new:'🆕 جديد', vegetarian:'🌱 نباتي' }
     },
     ku: {
@@ -466,7 +467,7 @@
       addToCart: 'زیادبکە بۆ سەبەتە', cart: 'سەبەتەی داواکاری', emptyCart: 'سەبەتەکەت بەتاڵە',
       totalItems: 'کاڵا', placeOrder: 'داواکاری لە واتساپ',
       cartBtn: 'سەبەتە', yourName: 'ناوت', tableNo: 'ژمارەی مێز',
-      closed: 'ئێستا داخراوین', opensAt: 'دەکرێتەوە لە',
+      closed: 'ئێستا داخراوین', opensAt: 'دەکرێتەوە لە', featured: 'تایبەتمەندەکان',
       badges: { spicy:'🌶 تیژ', popular:'⭐ بەناوبانگ', new:'🆕 نوێ', vegetarian:'🌱 ڕووەکی' }
     }
   };
@@ -571,9 +572,23 @@
     if (table.trim()) msg += `🪑 ${L.tableNo}: ${table.trim()}\n`;
     msg += `\n${L.cart}:\n\n`;
     cart.forEach(({ item, qty }) => {
-      msg += `• ${getLocalized(item, 'name', currentLang)} x${qty} — ${item.price}\n`;
+      msg += `• ${getLocalized(item, 'name', currentLang)} x${qty} — ${CURRENCY}${item.price}\n`;
     });
     msg += `\n📦 ${L.totalItems}: ${cartTotalQty()}`;
+
+    // Log order (fire and forget)
+    fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant_id: TENANT_ID,
+        customer_name: name.trim() || null,
+        table_no: table.trim() || null,
+        items: cart.map(({ item, qty }) => ({ name: item.name, qty, price: item.price })),
+        item_count: cartTotalQty()
+      })
+    }).catch(() => {});
+
     window.open(`https://wa.me/${WHATSAPP.replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
@@ -691,6 +706,22 @@
     }
 
     if (activeCategory === 'all') {
+      // Featured section
+      const featured = filtered.filter(item => item.is_featured);
+      if (featured.length > 0 && !searchQuery) {
+        const sec = document.createElement('section');
+        sec.className = 'category-section';
+        const ttl = document.createElement('h2');
+        ttl.className = 'section-title';
+        ttl.innerHTML = `<span style="font-size:1.2rem">⭐</span> ${L.featured}`;
+        sec.appendChild(ttl);
+        const fg = document.createElement('div');
+        fg.className = 'items-inner-grid';
+        featured.forEach((item, i) => { const c = buildCard(item, L); c.style.animationDelay = (i*40)+'ms'; fg.appendChild(c); });
+        sec.appendChild(fg);
+        grid.appendChild(sec);
+      }
+
       // Group by category with section headers
       categories.forEach(cat => {
         const catItems = filtered.filter(item => Number(item.category_id) === Number(cat.id));

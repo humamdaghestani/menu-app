@@ -62,4 +62,20 @@ router.get('/print', async (req, res) => {
   }
 });
 
+// Public order-log endpoint (called from menu page before WhatsApp)
+router.post('/api/order', async (req, res) => {
+  try {
+    const { tenant_id, customer_name, table_no, items, item_count } = req.body;
+    if (!tenant_id) return res.json({ ok: false });
+    await db.query(
+      'INSERT INTO orders (tenant_id, customer_name, table_no, items, item_count) VALUES ($1,$2,$3,$4,$5)',
+      [tenant_id, customer_name || null, table_no || null, JSON.stringify(items || []), item_count || 0]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false });
+  }
+});
+
 module.exports = router;

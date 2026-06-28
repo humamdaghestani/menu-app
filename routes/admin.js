@@ -70,6 +70,8 @@ router.get('/dashboard', requireAuth, async (req, res) => {
       tenant: tenant.rows[0],
       categories: categories.rows,
       items: items.rows,
+      cloudinaryCloud:  process.env.CLOUDINARY_CLOUD_NAME   || '',
+      cloudinaryPreset: process.env.CLOUDINARY_UPLOAD_PRESET || '',
     });
   } catch (err) {
     console.error(err);
@@ -177,6 +179,17 @@ router.post('/items/:id/toggle', requireAuth, async (req, res) => {
   }
 });
 
+// ── Feature / unfeature item ──────────────────────
+router.post('/items/:id/feature', requireAuth, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE menu_items SET is_featured = NOT COALESCE(is_featured, false) WHERE id=$1 AND tenant_id=$2',
+      [req.params.id, req.user.tenantId]
+    );
+    res.redirect('/admin/dashboard');
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 // ── Duplicate item ─────────────────────────────────
 router.post('/items/:id/duplicate', requireAuth, async (req, res) => {
   try {
@@ -212,6 +225,18 @@ router.post('/categories/reorder', requireAuth, async (req, res) => {
     }
     res.json({ ok: true });
   } catch (err) { console.error(err); res.status(500).json({ ok: false }); }
+});
+
+// ── Orders ────────────────────────────────────────
+router.get('/orders', requireAuth, async (req, res) => {
+  try {
+    const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
+    const orders = await db.query(
+      'SELECT * FROM orders WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200',
+      [req.user.tenantId]
+    );
+    res.render('admin/orders', { tenant: tenant.rows[0], orders: orders.rows });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── QR Code ────────────────────────────────────────

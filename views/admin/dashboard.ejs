@@ -191,6 +191,17 @@
     .preset-btn:hover { background: #e4e4e4; border-color: #ccc; }
     .preset-btn.clear { color: #aaa; }
 
+    /* Image input row */
+    .img-row { display: flex; gap: 8px; align-items: center; }
+    .img-row input[type="url"] { flex: 1; min-width: 0; }
+    .upload-lbl { cursor: pointer; flex-shrink: 0; }
+    .btn-upload { background: #f0f4ff; color: #4c6ef5; border: 1px solid #c5d0fa; }
+    .btn-upload:hover { background: #dce4ff; }
+
+    /* Featured star */
+    .btn-star { background: #f5f5f5; color: #bbb; border: 1px solid #e0e0e0; }
+    .btn-star.active { background: #fff3d4; color: #d4880a; border-color: #f5d98e; }
+
     /* Image preview */
     .img-preview {
       width: 80px; height: 60px; border-radius: 8px;
@@ -283,6 +294,10 @@
     <a href="/admin/dashboard" class="active">
       <span class="icon">📊</span>
       <span>Dashboard</span>
+    </a>
+    <a href="/admin/orders">
+      <span class="icon">📋</span>
+      <span>Orders</span>
     </a>
     <a href="/admin/qrcode">
       <span class="icon">📱</span>
@@ -414,7 +429,13 @@
         </div>
         <div class="form-group">
           <label>Image URL</label>
-          <input type="url" name="image_url" placeholder="https://..." id="catImgUrl" oninput="previewImg(this,'catImgPreview')" />
+          <div class="img-row">
+            <input type="url" name="image_url" placeholder="https://…" id="catImgUrl" oninput="previewImg(this,'catImgPreview')" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="catUploadTxt">📷</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'catImgUrl','catImgPreview','catUploadTxt')" />
+            </label>
+          </div>
         </div>
         <div class="form-group">
           <label>الاسم (Arabic)</label>
@@ -487,7 +508,13 @@
         </div>
         <div class="form-group full">
           <label>Image URL</label>
-          <input type="url" name="image_url" placeholder="https://..." id="addImageUrl" oninput="previewImg(this,'addPreview')" />
+          <div class="img-row">
+            <input type="url" name="image_url" placeholder="https://… or use Upload →" id="addImageUrl" oninput="previewImg(this,'addPreview')" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="addUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'addImageUrl','addPreview','addUploadTxt')" />
+            </label>
+          </div>
           <img id="addPreview" class="img-preview" />
         </div>
       </div>
@@ -555,6 +582,9 @@
             </td>
             <td>
               <div class="actions-cell">
+                <form method="POST" action="/admin/items/<%= item.id %>/feature" style="margin:0">
+                  <button class="btn btn-star btn-sm <%= item.is_featured ? 'active' : '' %>" type="submit" title="<%= item.is_featured ? 'Unfeature' : 'Feature' %>">⭐</button>
+                </form>
                 <button class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
                 <form method="POST" action="/admin/items/<%= item.id %>/duplicate" style="margin:0">
                   <button class="btn btn-dupe btn-sm" type="submit" title="Duplicate">⧉ Copy</button>
@@ -594,7 +624,13 @@
         </div>
         <div class="form-group">
           <label>Image URL</label>
-          <input type="url" name="image_url" id="catEditImgUrl" oninput="previewImg(this,'catEditImgPreview')" placeholder="https://..." />
+          <div class="img-row">
+            <input type="url" name="image_url" id="catEditImgUrl" oninput="previewImg(this,'catEditImgPreview')" placeholder="https://…" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="catEditUploadTxt">📷</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'catEditImgUrl','catEditImgPreview','catEditUploadTxt')" />
+            </label>
+          </div>
           <img id="catEditImgPreview" class="img-preview" style="width:80px;height:80px;border-radius:50%;margin-top:8px" />
         </div>
       </div>
@@ -662,7 +698,13 @@
         </div>
         <div class="form-group full">
           <label>Image URL</label>
-          <input type="url" name="image_url" id="editImageUrl" oninput="previewImg(this,'editPreview')" />
+          <div class="img-row">
+            <input type="url" name="image_url" id="editImageUrl" placeholder="https://… or use Upload →" oninput="previewImg(this,'editPreview')" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="editUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'editImageUrl','editPreview','editUploadTxt')" />
+            </label>
+          </div>
           <img id="editPreview" class="img-preview" />
         </div>
       </div>
@@ -746,6 +788,36 @@
     document.body.classList.add('dark');
     document.getElementById('darkIcon').textContent  = '☀️';
     document.getElementById('darkLabel').textContent = 'Light Mode';
+  }
+
+  // Cloudinary image upload
+  const CLOUDINARY_CLOUD  = <%- JSON.stringify(cloudinaryCloud) %>;
+  const CLOUDINARY_PRESET = <%- JSON.stringify(cloudinaryPreset) %>;
+
+  async function uploadImg(fileInput, urlId, previewId, textId) {
+    if (!CLOUDINARY_CLOUD || !CLOUDINARY_PRESET) {
+      showToast('Add CLOUDINARY_CLOUD_NAME & CLOUDINARY_UPLOAD_PRESET to Railway env vars', 'error');
+      return;
+    }
+    const file = fileInput.files[0];
+    if (!file) return;
+    const textEl = document.getElementById(textId);
+    const orig = textEl.textContent;
+    textEl.textContent = '⏳ Uploading…';
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', CLOUDINARY_PRESET);
+    try {
+      const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:'POST', body:fd });
+      const d = await r.json();
+      if (d.secure_url) {
+        document.getElementById(urlId).value = d.secure_url;
+        previewImg(document.getElementById(urlId), previewId);
+        showToast('Image uploaded!');
+      } else { showToast(d.error?.message || 'Upload failed', 'error'); }
+    } catch { showToast('Upload failed', 'error'); }
+    textEl.textContent = orig;
+    fileInput.value = '';
   }
 
   // Badge preset helper
