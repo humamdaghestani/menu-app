@@ -144,8 +144,8 @@
     .overlay.open { display: flex; }
     .modal { background: #fff; border-radius: 20px; max-width: 500px; width: 100%; overflow: hidden; animation: popIn .22s ease; position: relative; max-height: 90vh; overflow-y: auto; }
     @keyframes popIn { from { transform: scale(.92) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-    .modal-img-wrap { position: relative; }
-    .modal-img { width: 100%; height: 260px; object-fit: cover; display: block; }
+    .modal-img-wrap { position: relative; background: #111; }
+    .modal-img { width: 100%; max-height: 420px; object-fit: contain; display: block; }
     .modal-badge { position: absolute; bottom: 14px; padding: 5px 14px; border-radius: 20px; font-size: .8rem; font-weight: 700; text-transform: uppercase; background: var(--accent); color: #fff; }
     [dir="ltr"] .modal-badge { left: 14px; }
     [dir="rtl"] .modal-badge { right: 14px; }
@@ -273,7 +273,7 @@
       .cart-fab { bottom: 16px; padding: 11px 16px; font-size: .88rem; }
       [dir="ltr"] .cart-fab { right: 14px; }
       [dir="rtl"] .cart-fab { left: 14px; }
-      .modal-img { height: 200px; }
+      .modal-img { max-height: 280px; }
       .order-field-row { flex-direction: column; }
       .section-title { font-size: 1rem; }
     }
