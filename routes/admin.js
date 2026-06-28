@@ -434,7 +434,7 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
     res.json({ ok: true, url: result.url });
   } catch (err) {
     console.error('ImageKit upload error:', err);
-    res.json({ ok: false, error: 'Upload failed' });
+    res.json({ ok: false, error: err.message || JSON.stringify(err) });
   }
 });
 
