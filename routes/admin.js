@@ -426,7 +426,7 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.json({ ok: false, error: 'No file' });
   try {
     const result = await imagekit.upload({
-      file: req.file.buffer,
+      file: req.file.buffer.toString('base64'),
       fileName: `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
       folder: `/menuapp/${req.user.tenantId}`,
       useUniqueFileName: true,
