@@ -75,7 +75,8 @@
     .top-header {
       background: var(--header-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border); padding: 14px 28px;
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative; gap: 16px;
     }
     .restaurant-info { display: flex; align-items: center; gap: 14px; }
     .restaurant-logo {
@@ -85,9 +86,10 @@
       font-size: 1.6rem; overflow: hidden;
     }
     .restaurant-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .restaurant-text { text-align: center; }
     .restaurant-text h1 { color: #fff; font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
     .restaurant-text p  { color: rgba(255,255,255,0.7); font-size: .8rem; margin-top: 2px; }
-    .header-right { display: flex; align-items: center; gap: 12px; }
+    .header-right { position: absolute; right: 28px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 12px; }
 
     /* ── Language ── */
     .lang-switcher { display: flex; gap: 4px; background: rgba(255,255,255,0.1); border-radius: 24px; padding: 4px; }
@@ -325,6 +327,7 @@
       .restaurant-logo { width: 40px; height: 40px; font-size: 1.2rem; }
       .restaurant-text h1 { font-size: .95rem; }
       .restaurant-text p { display: none; }
+      .header-right { right: 14px; }
       .lang-btn { padding: 4px 7px; font-size: .7rem; }
       .cat-img-wrap { width: 36px; height: 36px; font-size: 1rem; }
       nav button { font-size: .72rem; padding: 8px 10px; gap: 4px; }
