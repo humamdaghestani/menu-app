@@ -4,7 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= tenant.name %></title>
-  <% const _theme = tenant.menu_style || 'dark'; const _layout = tenant.menu_layout || 'grid'; const _font = tenant.menu_font || 'default'; %>
+  <% const _theme = tenant.menu_style || 'dark'; const _layout = tenant.menu_layout || 'grid'; const _font = tenant.menu_font || 'default';
+     let _navBg = null;
+     if (tenant.nav_bg_color) {
+       const _hex = tenant.nav_bg_color.replace('#','');
+       const _r = parseInt(_hex.substring(0,2),16), _g = parseInt(_hex.substring(2,4),16), _b = parseInt(_hex.substring(4,6),16);
+       const _a = ((tenant.nav_bg_opacity != null ? tenant.nav_bg_opacity : 90)) / 100;
+       _navBg = `rgba(${_r},${_g},${_b},${_a})`;
+     }
+  %>
   <% if (_font === 'elegant') { %><link rel="preconnect" href="https://fonts.googleapis.com" /><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;800&display=swap" rel="stylesheet" /><% } %>
   <% if (_font === 'rounded') { %><link rel="preconnect" href="https://fonts.googleapis.com" /><link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" /><% } %>
   <style>
@@ -60,6 +68,7 @@
         --card-shadow: 0 4px 20px rgba(0,0,0,0.22); --card-border: transparent;
         --page-overlay: rgba(0,0,0,0.30);
       <% } %>
+      <% if (_navBg) { %>--nav-bg: <%= _navBg %>;<% } %>
     }
 
     body { font-family: var(--font); color: #1a1a2e; min-height: 100vh; background: var(--page-bg); }

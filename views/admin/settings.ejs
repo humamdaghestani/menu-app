@@ -294,6 +294,25 @@
       </div>
     </div>
 
+    <!-- Nav Bar Style -->
+    <div class="card">
+      <h2>Navigation Bar Style</h2>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="margin-bottom:0">
+          <label style="margin-bottom:8px;display:block">Background Color</label>
+          <input type="color" name="nav_bg_color" id="navColorPicker" value="<%= tenant.nav_bg_color || '#0f1117' %>" style="width:56px;height:40px;border-radius:8px;border:1.5px solid #e8e8e8;cursor:pointer;padding:2px" />
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0">
+          <label style="margin-bottom:8px;display:block">Transparency — <span id="opacityLabel"><%= tenant.nav_bg_opacity != null ? tenant.nav_bg_opacity : 90 %>%</span></label>
+          <input type="range" name="nav_bg_opacity" id="navOpacity" min="0" max="100" value="<%= tenant.nav_bg_opacity != null ? tenant.nav_bg_opacity : 90 %>" style="width:100%;accent-color:var(--accent)" oninput="document.getElementById('opacityLabel').textContent=this.value+'%'; updateNavPreview()" />
+        </div>
+        <div style="margin-bottom:0">
+          <label style="margin-bottom:8px;display:block;font-size:.8rem;color:#aaa">Preview</label>
+          <div id="navPreview" style="width:120px;height:36px;border-radius:10px;border:1px solid #eee;transition:background .2s"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- Menu Appearance -->
     <div class="card">
       <h2>Menu Appearance</h2>
@@ -390,6 +409,20 @@
     t.className = 'show success';
     setTimeout(() => t.className = '', 3000);
   }
+
+  // Nav bar preview
+  function hexToRgba(hex, opacity) {
+    const h = hex.replace('#','');
+    const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+    return `rgba(${r},${g},${b},${opacity/100})`;
+  }
+  function updateNavPreview() {
+    const color = document.getElementById('navColorPicker').value;
+    const opacity = document.getElementById('navOpacity').value;
+    document.getElementById('navPreview').style.background = hexToRgba(color, opacity);
+  }
+  document.getElementById('navColorPicker').addEventListener('input', updateNavPreview);
+  updateNavPreview();
 
   // Theme / Layout / Font radio highlight
   function wireRadios(name, activeClass) {
