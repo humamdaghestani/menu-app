@@ -112,11 +112,13 @@ router.get('/api/valet-requests', async (req, res) => {
 // ── Feedback ──────────────────────────────────────
 router.post('/api/feedback', async (req, res) => {
   try {
-    const { tenant_id, rating, comment } = req.body;
-    if (!tenant_id || !rating) return res.json({ ok: false });
+    const { tenant_id, rating, q1, q2, q3, q4, q5, customer_name, mobile, table_no, comment } = req.body;
+    if (!tenant_id) return res.json({ ok: false });
     await db.query(
-      'INSERT INTO feedback (tenant_id, rating, comment) VALUES ($1,$2,$3)',
-      [tenant_id, parseInt(rating), comment || null]
+      `INSERT INTO feedback (tenant_id, rating, q1, q2, q3, q4, q5, customer_name, mobile, table_no, comment)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [tenant_id, rating ? parseInt(rating) : null, q1||null, q2||null, q3||null, q4||null, q5||null,
+       customer_name||null, mobile||null, table_no||null, comment||null]
     );
     res.json({ ok: true });
   } catch (err) { console.error(err); res.json({ ok: false }); }

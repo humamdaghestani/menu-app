@@ -389,25 +389,36 @@
     .valet-success p { color: rgba(255,255,255,.5); font-size: .85rem; }
 
     /* ── Feedback ── */
-    .fb-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px); }
+    .fb-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 500; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
     .fb-overlay.open { display: flex; }
     .fb-modal {
-      background: #fff; border-radius: 20px; padding: 32px 28px;
-      max-width: 380px; width: 100%; text-align: center; animation: popIn .22s ease;
+      background: #fff; border-radius: 20px; padding: 26px 22px 20px;
+      max-width: 420px; width: 100%; animation: popIn .22s ease;
+      max-height: 92vh; overflow-y: auto; scrollbar-width: none;
     }
-    .fb-icon { font-size: 2.5rem; margin-bottom: 10px; }
-    .fb-modal h2 { font-size: 1.2rem; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
-    .fb-modal .fb-sub { color: #888; font-size: .85rem; margin-bottom: 22px; }
-    .fb-stars { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
-    .fb-star {
-      font-size: 2.2rem; cursor: pointer; color: #ddd;
-      transition: color .15s, transform .12s; line-height: 1;
+    .fb-modal::-webkit-scrollbar { display: none; }
+    .fb-modal-head { text-align: center; margin-bottom: 20px; }
+    .fb-icon { font-size: 2rem; margin-bottom: 6px; }
+    .fb-modal h2 { font-size: 1.15rem; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
+    .fb-modal .fb-sub { color: #888; font-size: .82rem; }
+    .fb-question { margin-bottom: 16px; }
+    .fb-q-label { font-size: .82rem; font-weight: 700; color: #444; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .fb-q-stars { display: flex; gap: 4px; }
+    .fb-q-star { font-size: 1.7rem; cursor: pointer; color: #e0e0e0; transition: color .12s, transform .1s; line-height: 1; }
+    .fb-q-star.sel { color: #f5a623; }
+    .fb-q-star:hover { color: #f5a623; transform: scale(1.12); }
+    .fb-divider { height: 1px; background: #f0f0f0; margin: 16px 0; }
+    .fb-fields { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .fb-field {
+      width: 100%; padding: 10px 13px; border: 1.5px solid #e8e8e8; border-radius: 10px;
+      font-size: .87rem; font-family: inherit; color: #1a1a2e; outline: none; transition: border-color .2s; background: #fff;
     }
-    .fb-star:hover, .fb-star.selected { color: #f5a623; transform: scale(1.15); }
+    .fb-field:focus { border-color: var(--accent); }
+    .fb-field::placeholder { color: #bbb; }
     .fb-textarea {
-      width: 100%; padding: 12px 14px; border: 1.5px solid #e8e8e8; border-radius: 12px;
-      font-size: .88rem; font-family: inherit; resize: none; outline: none;
-      color: #1a1a2e; transition: border-color .2s; margin-bottom: 14px; height: 90px;
+      width: 100%; padding: 10px 13px; border: 1.5px solid #e8e8e8; border-radius: 10px;
+      font-size: .87rem; font-family: inherit; resize: none; outline: none;
+      color: #1a1a2e; transition: border-color .2s; margin-bottom: 12px; height: 70px; background: #fff;
     }
     .fb-textarea:focus { border-color: var(--accent); }
     .fb-textarea::placeholder { color: #bbb; }
@@ -418,9 +429,9 @@
     }
     .fb-submit:hover { opacity: .88; }
     .fb-submit:disabled { opacity: .5; cursor: default; }
-    .fb-cancel { margin-top: 10px; background: none; border: none; color: #aaa; font-size: .82rem; cursor: pointer; font-family: inherit; }
+    .fb-cancel { margin-top: 10px; background: none; border: none; color: #aaa; font-size: .82rem; cursor: pointer; font-family: inherit; display: block; width: 100%; text-align: center; }
     .fb-cancel:hover { color: #555; }
-    .fb-success { display: none; text-align: center; padding: 10px 0; }
+    .fb-success { display: none; text-align: center; padding: 20px 0; }
     .fb-success .fb-ok { font-size: 3rem; margin-bottom: 12px; }
     .fb-success h3 { font-size: 1.1rem; font-weight: 800; color: #1a1a2e; margin-bottom: 6px; }
     .fb-success p { color: #888; font-size: .85rem; }
@@ -651,19 +662,78 @@
 <!-- Feedback Modal -->
 <div class="fb-overlay" id="fbOverlay" onclick="fbOverlayClick(event)">
   <div class="fb-modal" id="fbModal">
-    <!-- Form state -->
     <div id="fbForm">
-      <div class="fb-icon">💬</div>
-      <h2 id="fbTitle">Share Your Feedback</h2>
-      <p class="fb-sub" id="fbSub">How was your experience today?</p>
-      <div class="fb-stars" id="fbStars">
-        <span class="fb-star" data-val="1" onclick="selectStar(1)">★</span>
-        <span class="fb-star" data-val="2" onclick="selectStar(2)">★</span>
-        <span class="fb-star" data-val="3" onclick="selectStar(3)">★</span>
-        <span class="fb-star" data-val="4" onclick="selectStar(4)">★</span>
-        <span class="fb-star" data-val="5" onclick="selectStar(5)">★</span>
+      <div class="fb-modal-head">
+        <div class="fb-icon">💬</div>
+        <h2 id="fbTitle">Share Your Feedback</h2>
+        <p class="fb-sub" id="fbSub">Rate your experience today</p>
       </div>
-      <textarea class="fb-textarea" id="fbComment" placeholder="Tell us more (optional)..."></textarea>
+
+      <div class="fb-question" id="fbQ1">
+        <div class="fb-q-label">🍽️ <span id="fbL1">Food Quality</span></div>
+        <div class="fb-q-stars">
+          <span class="fb-q-star" data-q="1" data-v="1" onclick="selectStar(1,1)">★</span>
+          <span class="fb-q-star" data-q="1" data-v="2" onclick="selectStar(1,2)">★</span>
+          <span class="fb-q-star" data-q="1" data-v="3" onclick="selectStar(1,3)">★</span>
+          <span class="fb-q-star" data-q="1" data-v="4" onclick="selectStar(1,4)">★</span>
+          <span class="fb-q-star" data-q="1" data-v="5" onclick="selectStar(1,5)">★</span>
+        </div>
+      </div>
+
+      <div class="fb-question" id="fbQ2">
+        <div class="fb-q-label">🙋 <span id="fbL2">Service</span></div>
+        <div class="fb-q-stars">
+          <span class="fb-q-star" data-q="2" data-v="1" onclick="selectStar(2,1)">★</span>
+          <span class="fb-q-star" data-q="2" data-v="2" onclick="selectStar(2,2)">★</span>
+          <span class="fb-q-star" data-q="2" data-v="3" onclick="selectStar(2,3)">★</span>
+          <span class="fb-q-star" data-q="2" data-v="4" onclick="selectStar(2,4)">★</span>
+          <span class="fb-q-star" data-q="2" data-v="5" onclick="selectStar(2,5)">★</span>
+        </div>
+      </div>
+
+      <div class="fb-question" id="fbQ3">
+        <div class="fb-q-label">🏡 <span id="fbL3">Atmosphere</span></div>
+        <div class="fb-q-stars">
+          <span class="fb-q-star" data-q="3" data-v="1" onclick="selectStar(3,1)">★</span>
+          <span class="fb-q-star" data-q="3" data-v="2" onclick="selectStar(3,2)">★</span>
+          <span class="fb-q-star" data-q="3" data-v="3" onclick="selectStar(3,3)">★</span>
+          <span class="fb-q-star" data-q="3" data-v="4" onclick="selectStar(3,4)">★</span>
+          <span class="fb-q-star" data-q="3" data-v="5" onclick="selectStar(3,5)">★</span>
+        </div>
+      </div>
+
+      <div class="fb-question" id="fbQ4">
+        <div class="fb-q-label">💰 <span id="fbL4">Value for Money</span></div>
+        <div class="fb-q-stars">
+          <span class="fb-q-star" data-q="4" data-v="1" onclick="selectStar(4,1)">★</span>
+          <span class="fb-q-star" data-q="4" data-v="2" onclick="selectStar(4,2)">★</span>
+          <span class="fb-q-star" data-q="4" data-v="3" onclick="selectStar(4,3)">★</span>
+          <span class="fb-q-star" data-q="4" data-v="4" onclick="selectStar(4,4)">★</span>
+          <span class="fb-q-star" data-q="4" data-v="5" onclick="selectStar(4,5)">★</span>
+        </div>
+      </div>
+
+      <div class="fb-question" id="fbQ5">
+        <div class="fb-q-label">⭐ <span id="fbL5">Overall Experience</span></div>
+        <div class="fb-q-stars">
+          <span class="fb-q-star" data-q="5" data-v="1" onclick="selectStar(5,1)">★</span>
+          <span class="fb-q-star" data-q="5" data-v="2" onclick="selectStar(5,2)">★</span>
+          <span class="fb-q-star" data-q="5" data-v="3" onclick="selectStar(5,3)">★</span>
+          <span class="fb-q-star" data-q="5" data-v="4" onclick="selectStar(5,4)">★</span>
+          <span class="fb-q-star" data-q="5" data-v="5" onclick="selectStar(5,5)">★</span>
+        </div>
+      </div>
+
+      <div class="fb-divider"></div>
+
+      <div class="fb-fields">
+        <input class="fb-field" type="text" id="fbName" placeholder="Your name (optional)" />
+        <input class="fb-field" type="tel" id="fbMobile" placeholder="Mobile number (optional)" />
+        <input class="fb-field" type="text" id="fbTable" placeholder="Table number (optional)" />
+      </div>
+
+      <textarea class="fb-textarea" id="fbComment" placeholder="Any other comments... (optional)"></textarea>
+
       <button class="fb-submit" id="fbSubmitBtn" onclick="submitFeedback()">Send Feedback</button>
       <button class="fb-cancel" onclick="closeFeedback()">Cancel</button>
     </div>
@@ -671,7 +741,7 @@
     <div class="fb-success" id="fbSuccess">
       <div class="fb-ok">🎉</div>
       <h3 id="fbSuccessTitle">Thank you!</h3>
-      <p id="fbSuccessDesc">Your feedback helps us improve.</p>
+      <p id="fbSuccessDesc">Your feedback means a lot to us.</p>
     </div>
   </div>
 </div>
@@ -1262,12 +1332,15 @@
   }
 
   // ── Feedback ──────────────────────────────────────
-  let fbRating = 0;
+  const fbRatings = [0, 0, 0, 0, 0];
 
   function openFeedback() {
-    fbRating = 0;
+    fbRatings.fill(0);
+    document.querySelectorAll('.fb-q-star').forEach(s => s.classList.remove('sel'));
     document.getElementById('fbComment').value = '';
-    document.querySelectorAll('.fb-star').forEach(s => s.classList.remove('selected'));
+    document.getElementById('fbName').value = '';
+    document.getElementById('fbMobile').value = '';
+    document.getElementById('fbTable').value = '';
     document.getElementById('fbForm').style.display = '';
     document.getElementById('fbSuccess').style.display = 'none';
     document.getElementById('fbSubmitBtn').disabled = false;
@@ -1284,28 +1357,41 @@
     if (e.target === document.getElementById('fbOverlay')) closeFeedback();
   }
 
-  function selectStar(val) {
-    fbRating = val;
-    document.querySelectorAll('.fb-star').forEach(s => {
-      s.classList.toggle('selected', parseInt(s.dataset.val) <= val);
+  function selectStar(q, val) {
+    fbRatings[q - 1] = val;
+    document.querySelectorAll(`.fb-q-star[data-q="${q}"]`).forEach(s => {
+      s.classList.toggle('sel', parseInt(s.dataset.v) <= val);
     });
   }
 
   async function submitFeedback() {
-    if (!fbRating) {
-      document.getElementById('fbStars').style.animation = 'none';
-      void document.getElementById('fbStars').offsetWidth;
-      document.getElementById('fbStars').style.animation = 'shake .3s ease';
+    if (fbRatings.every(r => r === 0)) {
+      const el = document.getElementById('fbQ1');
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = 'shake .3s ease';
       return;
     }
     const btn = document.getElementById('fbSubmitBtn');
     btn.disabled = true;
-    const comment = document.getElementById('fbComment').value.trim();
+    const avg = Math.round(fbRatings.filter(r => r > 0).reduce((a, b) => a + b, 0) / fbRatings.filter(r => r > 0).length);
     try {
       await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: TENANT_ID, rating: fbRating, comment })
+        body: JSON.stringify({
+          tenant_id: TENANT_ID,
+          rating: avg,
+          q1: fbRatings[0] || null,
+          q2: fbRatings[1] || null,
+          q3: fbRatings[2] || null,
+          q4: fbRatings[3] || null,
+          q5: fbRatings[4] || null,
+          customer_name: document.getElementById('fbName').value.trim() || null,
+          mobile: document.getElementById('fbMobile').value.trim() || null,
+          table_no: document.getElementById('fbTable').value.trim() || null,
+          comment: document.getElementById('fbComment').value.trim() || null
+        })
       });
     } catch(e) {}
     document.getElementById('fbForm').style.display = 'none';
