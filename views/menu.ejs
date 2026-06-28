@@ -522,9 +522,9 @@
       <button class="valet-btn" onclick="openValet()" title="Valet">🚗</button>
       <% } %>
       <div class="lang-switcher">
-        <button class="lang-btn active" onclick="setLang('en')">EN</button>
-        <button class="lang-btn" onclick="setLang('ar')">ع</button>
-        <button class="lang-btn" onclick="setLang('ku')">کو</button>
+        <button class="lang-btn active" onclick="showSplash()">EN</button>
+        <button class="lang-btn" onclick="showSplash()">ع</button>
+        <button class="lang-btn" onclick="showSplash()">کو</button>
       </div>
     </div>
   </header>
@@ -1175,6 +1175,13 @@
   }
 
   // ── Splash ────────────────────────────────────────
+  function showSplash() {
+    const splash = document.getElementById('splash');
+    splash.style.display = 'flex';
+    void splash.offsetWidth; // force reflow before removing 'out'
+    splash.classList.remove('out');
+  }
+
   function selectLang(lang) {
     setLang(lang);
     const splash = document.getElementById('splash');
