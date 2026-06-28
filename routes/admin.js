@@ -4,11 +4,10 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const XLSX = require('xlsx');
-const { Readable } = require('stream');
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
 const { cacheBustByTenantId } = require('./menu');
-const cloudinary = require('../utils/cloudinary');
+const imagekit = require('../utils/imagekit');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -422,20 +421,19 @@ router.get('/feedback', requireAuth, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
-// ── Image upload to Cloudinary ─────────────────────
+// ── Image upload to ImageKit ────────────────────────
 router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.json({ ok: false, error: 'No file' });
   try {
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        { folder: `menuapp/${req.user.tenantId}`, resource_type: 'image', transformation: [{ quality: 'auto', fetch_format: 'auto' }] },
-        (err, r) => err ? reject(err) : resolve(r)
-      );
-      Readable.from(req.file.buffer).pipe(stream);
+    const result = await imagekit.upload({
+      file: req.file.buffer,
+      fileName: `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+      folder: `/menuapp/${req.user.tenantId}`,
+      useUniqueFileName: true,
     });
-    res.json({ ok: true, url: result.secure_url });
+    res.json({ ok: true, url: result.url });
   } catch (err) {
-    console.error('Cloudinary upload error:', err);
+    console.error('ImageKit upload error:', err);
     res.json({ ok: false, error: 'Upload failed' });
   }
 });
