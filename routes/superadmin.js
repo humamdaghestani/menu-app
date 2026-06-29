@@ -101,7 +101,10 @@ router.post('/tenants/:id/delete', requireSuperAdmin, async (req, res) => {
 router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
   try {
     const features = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'];
-    const values = features.map(f => req.body[f] === '1');
+    const values = features.map(f => {
+      const v = req.body[f];
+      return Array.isArray(v) ? v.includes('1') : v === '1';
+    });
     await db.query(
       `UPDATE tenants SET
         feat_feedback=$1, feat_orders=$2, feat_import=$3,
