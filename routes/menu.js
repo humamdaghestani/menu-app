@@ -4,7 +4,7 @@ const db = require('../db');
 
 // ── In-memory cache (30s TTL per tenant) ─────────────
 const _cache = new Map();
-const CACHE_TTL = 30 * 1000;
+const CACHE_TTL = 10 * 1000;
 
 function cacheGet(key) {
   const e = _cache.get(key);
@@ -14,9 +14,11 @@ function cacheGet(key) {
 }
 function cacheSet(key, data) { _cache.set(key, { data, ts: Date.now() }); }
 function cacheBustByTenantId(tenantId) {
+  let busted = 0;
   for (const [key, entry] of _cache) {
-    if (entry.data.tenant && entry.data.tenant.id === tenantId) _cache.delete(key);
+    if (entry.data.tenant && entry.data.tenant.id === tenantId) { _cache.delete(key); busted++; }
   }
+  console.log(`[cache] bust tenantId=${tenantId} entries=${busted}`);
 }
 router.get('/', async (req, res) => {
   const slug = req.tenant;
@@ -48,7 +50,7 @@ router.get('/', async (req, res) => {
     // Fire-and-forget view count (never blocks render)
     db.query('UPDATE tenants SET view_count = COALESCE(view_count,0) + 1 WHERE id = $1', [cached.tenant.id]).catch(() => {});
 
-    res.set('Cache-Control', 'public, max-age=20, stale-while-revalidate=10');
+    res.set('Cache-Control', 'no-store');
     res.render('menu', cached);
   } catch (err) {
     console.error(err);
