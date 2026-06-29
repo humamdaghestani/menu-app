@@ -200,8 +200,8 @@
             </div>
           </div>
           <div class="toggle-wrap">
-            <input type="checkbox" name="<%= f.key %>" value="1" id="ft_<%= f.key %>" style="display:none" />
-            <div class="feat-toggle"></div>
+            <input type="hidden" name="<%= f.key %>" id="fv_<%= f.key %>" value="0" />
+            <div class="feat-toggle" id="ft_<%= f.key %>"></div>
           </div>
         </div>
         <% }) %>
@@ -261,24 +261,20 @@
   const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'];
 
   function toggleFeat(key) {
-    const cb = document.getElementById('ft_' + key);
-    cb.checked = !cb.checked;
+    const inp = document.getElementById('fv_' + key);
+    inp.value = inp.value === '1' ? '0' : '1';
     updateFeatUI(key);
   }
   function updateFeatUI(key) {
-    const cb = document.getElementById('ft_' + key);
-    const toggle = cb.parentElement.querySelector('.feat-toggle');
-    const row = cb.closest('.feat-row');
-    const on = cb.checked;
-    toggle.classList.toggle('on', on);
-    row.classList.toggle('on', on);
+    const on = document.getElementById('fv_' + key).value === '1';
+    document.getElementById('ft_' + key).classList.toggle('on', on);
+    document.querySelector('[data-key="' + key + '"]').classList.toggle('on', on);
   }
   function openFeatures(tenant) {
     document.getElementById('featRestName').textContent = tenant.name;
     document.getElementById('featuresForm').action = '/superadmin/tenants/' + tenant.id + '/features';
     FEAT_KEYS.forEach(key => {
-      const cb = document.getElementById('ft_' + key);
-      cb.checked = tenant[key] !== false;
+      document.getElementById('fv_' + key).value = (tenant[key] !== false) ? '1' : '0';
       updateFeatUI(key);
     });
     document.getElementById('featuresOverlay').classList.add('open');
