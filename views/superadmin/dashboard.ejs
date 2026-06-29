@@ -156,7 +156,12 @@
             <div class="actions">
               <a href="/superadmin/tenants/<%= t.id %>/login" class="btn btn-ghost btn-sm">Login</a>
               <a href="/?tenant=<%= t.subdomain %>" target="_blank" class="btn btn-ghost btn-sm">View</a>
-              <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">Features</button>
+              <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">
+                Features
+                <span style="margin-left:5px;font-size:.7rem;opacity:.7" title="Feedback / Orders / Import / CSS / Lang / Valet">
+                  <% ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'].forEach(f => { %><span style="color:<%= t[f] === false ? '#ff6b7a' : '#00b894' %>">●</span><% }) %>
+                </span>
+              </button>
               <form method="POST" action="/superadmin/tenants/<%= t.id %>/toggle" style="display:inline">
                 <button class="btn btn-sm <%= t.active ? 'btn-danger' : 'btn-success' %>" type="submit">
                   <%= t.active ? 'Disable' : 'Enable' %>
