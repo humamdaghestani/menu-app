@@ -14,11 +14,10 @@ function cacheGet(key) {
 }
 function cacheSet(key, data) { _cache.set(key, { data, ts: Date.now() }); }
 function cacheBustByTenantId(tenantId) {
-  let busted = 0;
-  for (const [key, entry] of _cache) {
-    if (entry.data.tenant && entry.data.tenant.id === tenantId) { _cache.delete(key); busted++; }
-  }
-  console.log(`[cache] bust tenantId=${tenantId} entries=${busted}`);
+  // Cache no longer stores tenant, so just clear all menuContent keys
+  // (we don't have slug here, so clear everything — TTL is short anyway)
+  _cache.clear();
+  console.log(`[cache] cleared for tenantId=${tenantId}`);
 }
 router.get('/', async (req, res) => {
   const slug = req.tenant;
@@ -28,30 +27,31 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    const cacheKey = 'menu:' + slug;
+    // Always fetch tenant fresh so feature flags and settings take effect immediately
+    const tenantResult = await db.query(
+      'SELECT * FROM tenants WHERE subdomain = $1 AND active = true',
+      [slug]
+    );
+    if (tenantResult.rows.length === 0) return res.status(404).render('404', { slug });
+    const tenant = tenantResult.rows[0];
+
+    // Cache only categories and items (they change via admin, which busts the cache)
+    const cacheKey = 'menuContent:' + slug;
     let cached = cacheGet(cacheKey);
-
     if (!cached) {
-      const tenantResult = await db.query(
-        'SELECT * FROM tenants WHERE subdomain = $1 AND active = true',
-        [slug]
-      );
-      if (tenantResult.rows.length === 0) return res.status(404).render('404', { slug });
-
       const [categoriesResult, itemsResult] = await Promise.all([
-        db.query('SELECT * FROM categories WHERE tenant_id = $1 ORDER BY sort_order', [tenantResult.rows[0].id]),
-        db.query('SELECT * FROM menu_items WHERE tenant_id = $1 ORDER BY sort_order', [tenantResult.rows[0].id]),
+        db.query('SELECT * FROM categories WHERE tenant_id = $1 ORDER BY sort_order', [tenant.id]),
+        db.query('SELECT * FROM menu_items WHERE tenant_id = $1 ORDER BY sort_order', [tenant.id]),
       ]);
-
-      cached = { tenant: tenantResult.rows[0], categories: categoriesResult.rows, items: itemsResult.rows };
+      cached = { categories: categoriesResult.rows, items: itemsResult.rows };
       cacheSet(cacheKey, cached);
     }
 
     // Fire-and-forget view count (never blocks render)
-    db.query('UPDATE tenants SET view_count = COALESCE(view_count,0) + 1 WHERE id = $1', [cached.tenant.id]).catch(() => {});
+    db.query('UPDATE tenants SET view_count = COALESCE(view_count,0) + 1 WHERE id = $1', [tenant.id]).catch(() => {});
 
     res.set('Cache-Control', 'no-store');
-    res.render('menu', cached);
+    res.render('menu', { tenant, ...cached });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
