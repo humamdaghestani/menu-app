@@ -62,6 +62,12 @@
     #toast.success { border-color: rgba(0,184,148,.5); color: #00b894; }
     #toast.error { border-color: rgba(255,71,87,.5); color: #ff6b7a; }
 
+    .feat-toggle { width: 44px; height: 24px; border-radius: 12px; background: #333; position: relative; transition: background .2s; cursor: pointer; flex-shrink: 0; }
+    .feat-toggle::after { content:''; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#666; transition: transform .2s, background .2s; }
+    .feat-toggle.on { background: #7c5cbf; }
+    .feat-toggle.on::after { transform: translateX(20px); background: #fff; }
+    .feat-row.on { border-color: #7c5cbf; }
+
     @media (max-width: 768px) {
       .stats { grid-template-columns: 1fr 1fr; }
       .main { padding: 16px; }
@@ -150,6 +156,7 @@
             <div class="actions">
               <a href="/superadmin/tenants/<%= t.id %>/login" class="btn btn-ghost btn-sm">Login</a>
               <a href="/?tenant=<%= t.subdomain %>" target="_blank" class="btn btn-ghost btn-sm">View</a>
+              <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">Features</button>
               <form method="POST" action="/superadmin/tenants/<%= t.id %>/toggle" style="display:inline">
                 <button class="btn btn-sm <%= t.active ? 'btn-danger' : 'btn-success' %>" type="submit">
                   <%= t.active ? 'Disable' : 'Enable' %>
@@ -165,6 +172,46 @@
       </tbody>
     </table>
     <% } %>
+  </div>
+</div>
+
+<!-- Features Modal -->
+<div class="overlay" id="featuresOverlay">
+  <div class="modal">
+    <h3>⚙️ Features — <span id="featRestName"></span></h3>
+    <p style="color:#666;font-size:.82rem;margin-bottom:20px">Control which features this restaurant can access. Disabled features are hidden from their admin panel.</p>
+    <form method="POST" id="featuresForm">
+      <% const FEATS = [
+        { key:'feat_feedback',   icon:'💬', label:'Customer Feedback',    desc:'Feedback button on menu + admin feedback page' },
+        { key:'feat_orders',     icon:'📋', label:'Orders Tracking',      desc:'Log customer orders, view order history' },
+        { key:'feat_import',     icon:'📥', label:'Excel Import',         desc:'Bulk import menu items via Excel file' },
+        { key:'feat_custom_css', icon:'🎨', label:'Custom CSS',           desc:'Custom styling for their menu page' },
+        { key:'feat_multilang',  icon:'🌐', label:'Multi-language (AR/KU)', desc:'Arabic and Kurdish language support' },
+        { key:'feat_valet',      icon:'🚗', label:'Valet Parking',        desc:'Valet request system for customers' },
+      ]; %>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <% FEATS.forEach(f => { %>
+        <label style="display:flex;align-items:center;justify-content:space-between;padding:14px;border:1.5px solid #333;border-radius:10px;cursor:pointer;transition:border-color .2s" class="feat-row" data-key="<%= f.key %>">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:1.3rem"><%= f.icon %></span>
+            <div>
+              <div style="color:#fff;font-weight:600;font-size:.88rem"><%= f.label %></div>
+              <div style="color:#666;font-size:.75rem;margin-top:2px"><%= f.desc %></div>
+            </div>
+          </div>
+          <div class="toggle-wrap">
+            <input type="hidden" name="<%= f.key %>" value="0" />
+            <input type="checkbox" name="<%= f.key %>" value="1" id="ft_<%= f.key %>" style="display:none" />
+            <div class="feat-toggle" onclick="toggleFeat('<%= f.key %>')"></div>
+          </div>
+        </label>
+        <% }) %>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeFeatures()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Features</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -211,6 +258,35 @@
   function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
   function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
   document.getElementById('createOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreate(); });
+
+  const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'];
+
+  function toggleFeat(key) {
+    const cb = document.getElementById('ft_' + key);
+    cb.checked = !cb.checked;
+    updateFeatUI(key);
+  }
+  function updateFeatUI(key) {
+    const cb = document.getElementById('ft_' + key);
+    const toggle = cb.parentElement.querySelector('.feat-toggle');
+    const row = cb.closest('.feat-row');
+    const on = cb.checked;
+    toggle.classList.toggle('on', on);
+    row.classList.toggle('on', on);
+  }
+  function openFeatures(tenant) {
+    document.getElementById('featRestName').textContent = tenant.name;
+    document.getElementById('featuresForm').action = '/superadmin/tenants/' + tenant.id + '/features';
+    FEAT_KEYS.forEach(key => {
+      const cb = document.getElementById('ft_' + key);
+      cb.checked = tenant[key] !== false && tenant[key] !== null ? true : false;
+      if (tenant[key] === false) cb.checked = false;
+      updateFeatUI(key);
+    });
+    document.getElementById('featuresOverlay').classList.add('open');
+  }
+  function closeFeatures() { document.getElementById('featuresOverlay').classList.remove('open'); }
+  document.getElementById('featuresOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeFeatures(); });
 
   const params = new URLSearchParams(location.search);
   if (params.get('success')) {

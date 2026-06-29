@@ -73,6 +73,15 @@ CREATE TABLE IF NOT EXISTS feedback (
 -- ── Users permissions column ─────────────────────────────────────────────────
 -- ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT '[]';
 
+-- ── Tenant feature flags (controlled by super admin) ──────────────────────────
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_feedback   BOOLEAN DEFAULT true;
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_orders     BOOLEAN DEFAULT true;
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_import     BOOLEAN DEFAULT true;
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_custom_css BOOLEAN DEFAULT true;
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_multilang  BOOLEAN DEFAULT true;
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_valet      BOOLEAN DEFAULT true;
+-- ALTER TABLE tenants ADD COLUMN IF NOT EXISTS custom_css      TEXT;
+
 -- ── Indexes for performance ───────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_menu_items_tenant_sort   ON menu_items(tenant_id, sort_order);
 CREATE INDEX IF NOT EXISTS idx_categories_tenant_sort   ON categories(tenant_id, sort_order);

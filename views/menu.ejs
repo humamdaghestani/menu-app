@@ -524,7 +524,7 @@
     <% } else { %>
     <div></div>
     <% } %>
-    <button class="splash-feedback-btn" onclick="splashFeedback()">💬 Feedback</button>
+    <% if (tenant.feat_feedback !== false) { %><button class="splash-feedback-btn" onclick="splashFeedback()">💬 Feedback</button><% } %>
   </div>
 
   <div class="splash-center">
@@ -538,10 +538,12 @@
 
     <div class="splash-langs">
       <button class="splash-lang-btn" onclick="selectLang('en')">English</button>
+      <% if (tenant.feat_multilang !== false) { %>
       <div class="splash-lang-row">
         <button class="splash-lang-btn" onclick="selectLang('ku')">كوردى</button>
         <button class="splash-lang-btn" onclick="selectLang('ar')">العربية</button>
       </div>
+      <% } %>
     </div>
   </div>
 

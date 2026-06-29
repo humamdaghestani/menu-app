@@ -97,6 +97,22 @@ router.post('/tenants/:id/delete', requireSuperAdmin, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/superadmin?error=Failed+to+delete'); }
 });
 
+// Update feature flags
+router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
+  try {
+    const features = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'];
+    const values = features.map(f => req.body[f] === '1');
+    await db.query(
+      `UPDATE tenants SET
+        feat_feedback=$1, feat_orders=$2, feat_import=$3,
+        feat_custom_css=$4, feat_multilang=$5, feat_valet=$6
+       WHERE id=$7`,
+      [...values, req.params.id]
+    );
+    res.redirect('/superadmin?success=Features+updated');
+  } catch (err) { console.error(err); res.redirect('/superadmin?error=Failed+to+update+features'); }
+});
+
 // Log in as a tenant's admin (impersonate)
 router.get('/tenants/:id/login', requireSuperAdmin, async (req, res) => {
   try {

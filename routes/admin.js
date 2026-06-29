@@ -14,6 +14,17 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
 // Bust tenant menu cache after any POST that changes menu data
 function bust(req, res, next) { cacheBustByTenantId(req.user.tenantId); next(); }
 
+// Tenant feature check (super admin controls these)
+function requireFeature(feat) {
+  return async (req, res, next) => {
+    try {
+      const r = await db.query('SELECT ' + feat + ' FROM tenants WHERE id=$1', [req.user.tenantId]);
+      if (r.rows[0]?.[feat] !== false) return next();
+      res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">This feature is not enabled for your account. Contact support.</h2>');
+    } catch { next(); }
+  };
+}
+
 // Permission helpers
 function requireAdmin(req, res, next) {
   if (req.user.role === 'admin') return next();
@@ -252,7 +263,7 @@ router.post('/categories/reorder', requireAuth, bust, async (req, res) => {
 });
 
 // ── Orders ────────────────────────────────────────
-router.get('/orders', requireAuth, requirePerm('orders'), async (req, res) => {
+router.get('/orders', requireAuth, requirePerm('orders'), requireFeature('feat_orders'), async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     const orders = await db.query(
@@ -340,7 +351,7 @@ router.post('/settings', requireAuth, requireAdmin, bust, async (req, res) => {
 });
 
 // ── Import ─────────────────────────────────────────
-router.get('/import', requireAuth, requirePerm('import'), async (req, res) => {
+router.get('/import', requireAuth, requirePerm('import'), requireFeature('feat_import'), async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     res.render('admin/import', { tenant: tenant.rows[0] });
@@ -454,7 +465,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
 });
 
 // ── Feedback ─────────────────────────────────────────
-router.get('/feedback', requireAuth, requirePerm('feedback'), async (req, res) => {
+router.get('/feedback', requireAuth, requirePerm('feedback'), requireFeature('feat_feedback'), async (req, res) => {
   try {
     const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     const feedback = await db.query(
