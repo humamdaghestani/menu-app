@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const { cacheBustByTenantId } = require('./menu');
 
 function requireSuperAdmin(req, res, next) {
   const token = req.cookies?.sa_token;
@@ -111,6 +112,7 @@ router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
       [...values, req.params.id]
     );
     console.log(`[features] rowCount=${result.rowCount}`);
+    cacheBustByTenantId(parseInt(req.params.id));
     res.redirect('/superadmin?success=Features+updated');
   } catch (err) {
     console.error('[features] error:', err.message);
