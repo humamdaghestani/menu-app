@@ -95,9 +95,9 @@
   </div>
   <nav class="sidebar-nav">
     <a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a>
-    <a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a>
-    <a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a>
-    <a href="/admin/import"><span class="icon">📥</span><span>Import</span></a>
+    <% if (tenant && tenant.feat_orders !== false) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
+    <% if (tenant && tenant.feat_feedback !== false) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
+    <% if (tenant && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
     <a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a>
     <a href="/admin/users" class="active"><span class="icon">👥</span><span>Users</span></a>
     <a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a>
