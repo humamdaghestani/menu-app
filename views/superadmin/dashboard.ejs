@@ -191,7 +191,7 @@
       ]; %>
       <div style="display:flex;flex-direction:column;gap:10px">
         <% FEATS.forEach(f => { %>
-        <label style="display:flex;align-items:center;justify-content:space-between;padding:14px;border:1.5px solid #333;border-radius:10px;cursor:pointer;transition:border-color .2s" class="feat-row" data-key="<%= f.key %>">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;border:1.5px solid #333;border-radius:10px;cursor:pointer;transition:border-color .2s" class="feat-row" data-key="<%= f.key %>" onclick="toggleFeat('<%= f.key %>')">
           <div style="display:flex;align-items:center;gap:12px">
             <span style="font-size:1.3rem"><%= f.icon %></span>
             <div>
@@ -200,11 +200,10 @@
             </div>
           </div>
           <div class="toggle-wrap">
-            <input type="hidden" name="<%= f.key %>" value="0" />
             <input type="checkbox" name="<%= f.key %>" value="1" id="ft_<%= f.key %>" style="display:none" />
-            <div class="feat-toggle" onclick="toggleFeat('<%= f.key %>')"></div>
+            <div class="feat-toggle"></div>
           </div>
-        </label>
+        </div>
         <% }) %>
       </div>
       <div class="modal-footer">
@@ -279,8 +278,7 @@
     document.getElementById('featuresForm').action = '/superadmin/tenants/' + tenant.id + '/features';
     FEAT_KEYS.forEach(key => {
       const cb = document.getElementById('ft_' + key);
-      cb.checked = tenant[key] !== false && tenant[key] !== null ? true : false;
-      if (tenant[key] === false) cb.checked = false;
+      cb.checked = tenant[key] !== false;
       updateFeatUI(key);
     });
     document.getElementById('featuresOverlay').classList.add('open');
