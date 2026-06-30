@@ -467,10 +467,18 @@
 
         <!-- Video -->
         <div id="splashVideoSection" class="form-group full" style="display:none">
-          <label>Splash Background Video URL <small style="color:#aaa">(mp4)</small></label>
-          <input type="url" name="splash_video_value" id="splashVideoUrl"
-            value="<%= (tenant.splash_bg_type||'color')==='video' ? (tenant.splash_bg_value||'') : '' %>"
-            placeholder="https://example.com/background.mp4" />
+          <label>Splash Background Video <small style="color:#aaa">(mp4 — upload or paste URL)</small></label>
+          <div class="img-row">
+            <input type="url" name="splash_video_value" id="splashVideoUrl"
+              value="<%= (tenant.splash_bg_type||'color')==='video' ? (tenant.splash_bg_value||'') : '' %>"
+              placeholder="https://example.com/background.mp4" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="splashVideoUploadTxt">🎬 Upload</span>
+              <input type="file" accept="video/mp4,video/webm,video/*" style="display:none"
+                onchange="uploadVideo(this)" />
+            </label>
+          </div>
+          <div style="color:#aaa;font-size:.78rem;margin-top:4px">Max 50 MB — use a short loop (5–15 sec) for best results</div>
         </div>
 
         <!-- Overlay (image/video only) -->
@@ -624,6 +632,29 @@
     t.textContent = (type === 'error' ? '✗ ' : '✓ ') + msg;
     t.className = 'show' + (type === 'error' ? '' : ' success');
     setTimeout(() => t.className = '', 3500);
+  }
+
+  async function uploadVideo(fileInput) {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const txtEl = document.getElementById('splashVideoUploadTxt');
+    txtEl.textContent = '⏳ Uploading…';
+    fileInput.disabled = true;
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await fetch('/admin/upload-video', { method: 'POST', body: fd });
+      const data = await r.json();
+      if (data.ok) {
+        document.getElementById('splashVideoUrl').value = data.url;
+        showToast('Video uploaded — save settings to apply');
+      } else {
+        showToast('Upload failed: ' + (data.error || 'unknown'), 'error');
+      }
+    } catch { showToast('Upload failed', 'error'); }
+    txtEl.textContent = '🎬 Upload';
+    fileInput.disabled = false;
+    fileInput.value = '';
   }
 
   function setSplashMode(mode) {

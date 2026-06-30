@@ -9,7 +9,8 @@ const requireAuth = require('../middleware/auth');
 const { cacheBustByTenantId } = require('./menu');
 const imagekit = require('../utils/imagekit');
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload      = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const uploadLarge = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 // Bust tenant menu cache after any POST that changes menu data
 function bust(req, res, next) { cacheBustByTenantId(req.user.tenantId); next(); }
@@ -554,6 +555,22 @@ router.post('/users/:id/delete', requireAuth, requireAdmin, async (req, res) => 
 });
 
 // ── Image upload to ImageKit ────────────────────────
+router.post('/upload-video', requireAuth, uploadLarge.single('file'), async (req, res) => {
+  if (!req.file) return res.json({ ok: false, error: 'No file' });
+  try {
+    const result = await imagekit.upload({
+      file: req.file.buffer.toString('base64'),
+      fileName: `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+      folder: `/menuapp/${req.user.tenantId}/videos`,
+      useUniqueFileName: true,
+    });
+    res.json({ ok: true, url: result.url });
+  } catch (err) {
+    console.error('Video upload error:', err);
+    res.json({ ok: false, error: err.message || JSON.stringify(err) });
+  }
+});
+
 router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
   if (!req.file) return res.json({ ok: false, error: 'No file' });
   try {
