@@ -155,7 +155,8 @@
           <td>
             <div class="actions">
               <a href="/superadmin/tenants/<%= t.id %>/login" class="btn btn-ghost btn-sm">Login</a>
-              <a href="/?tenant=<%= t.subdomain %>" target="_blank" class="btn btn-ghost btn-sm">View</a>
+              <a href="http://<%= t.subdomain %>.m-menus.com" target="_blank" class="btn btn-ghost btn-sm">View</a>
+              <button class="btn btn-ghost btn-sm" onclick="openEdit(<%= JSON.stringify(t) %>)" style="color:#00b894">Edit</button>
               <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">
                 Features
                 <span style="margin-left:5px;font-size:.7rem;opacity:.7" title="Feedback / Orders / Import / CSS / Lang / Valet">
@@ -259,10 +260,50 @@
 
 <div id="toast"></div>
 
+<!-- Edit Restaurant Modal -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <h3>✏️ Edit Restaurant</h3>
+    <form method="POST" id="editForm">
+      <div class="form-group">
+        <label>Restaurant Name</label>
+        <input type="text" name="name" id="editName" required />
+      </div>
+      <div class="form-group">
+        <label>Subdomain (no spaces)</label>
+        <input type="text" name="subdomain" id="editSubdomain" required pattern="[a-zA-Z0-9\-]+" />
+        <div style="color:#666;font-size:.75rem;margin-top:4px">URL: <span id="editPreview" style="color:#7c5cbf"></span>.m-menus.com</div>
+      </div>
+      <div class="form-group">
+        <label>Admin Email</label>
+        <input type="email" name="admin_email" id="editEmail" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
   function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
   function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
   document.getElementById('createOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreate(); });
+
+  function openEdit(t) {
+    document.getElementById('editForm').action = '/superadmin/tenants/' + t.id + '/edit';
+    document.getElementById('editName').value = t.name;
+    document.getElementById('editSubdomain').value = t.subdomain;
+    document.getElementById('editEmail').value = t.admin_email || '';
+    document.getElementById('editPreview').textContent = t.subdomain;
+    document.getElementById('editOverlay').classList.add('open');
+  }
+  function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+  document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
+  document.getElementById('editSubdomain').addEventListener('input', function() {
+    document.getElementById('editPreview').textContent = this.value;
+  });
 
   const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'];
 
