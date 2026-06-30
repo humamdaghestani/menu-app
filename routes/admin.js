@@ -39,6 +39,8 @@ function requirePerm(perm) {
 }
 
 // ── Login ──────────────────────────────────────────
+router.get('/', (req, res) => res.redirect('/admin/dashboard'));
+
 router.get('/login', (req, res) => {
   res.render('admin/login', { error: null });
 });
