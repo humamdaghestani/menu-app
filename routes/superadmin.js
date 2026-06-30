@@ -85,7 +85,7 @@ router.post('/tenants', requireSuperAdmin, async (req, res) => {
 });
 
 router.post('/tenants/:id/edit', requireSuperAdmin, async (req, res) => {
-  const { name, subdomain, admin_email } = req.body;
+  const { name, subdomain, admin_email, admin_password } = req.body;
   try {
     await db.query(
       'UPDATE tenants SET name=$1, subdomain=$2 WHERE id=$3',
@@ -93,6 +93,10 @@ router.post('/tenants/:id/edit', requireSuperAdmin, async (req, res) => {
     );
     if (admin_email) {
       await db.query('UPDATE users SET email=$1 WHERE tenant_id=$2 AND role=$3', [admin_email, req.params.id, 'admin']);
+    }
+    if (admin_password && admin_password.trim().length >= 6) {
+      const hash = await bcrypt.hash(admin_password.trim(), 10);
+      await db.query('UPDATE users SET password_hash=$1 WHERE tenant_id=$2 AND role=$3', [hash, req.params.id, 'admin']);
     }
     res.redirect('/superadmin?success=Restaurant+updated');
   } catch (err) { console.error(err); res.redirect('/superadmin?error=' + encodeURIComponent(err.message)); }

@@ -279,6 +279,10 @@
         <label>Admin Email</label>
         <input type="email" name="admin_email" id="editEmail" />
       </div>
+      <div class="form-group">
+        <label>New Password <span style="color:#666;font-weight:400;font-size:.75rem">(leave blank to keep current)</span></label>
+        <input type="password" name="admin_password" id="editPassword" placeholder="Enter new password" minlength="6" />
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -296,7 +300,8 @@
     document.getElementById('editForm').action = '/superadmin/tenants/' + t.id + '/edit';
     document.getElementById('editName').value = t.name;
     document.getElementById('editSubdomain').value = t.subdomain;
-    document.getElementById('editEmail').value = t.admin_email || '';
+    document.getElementById('editEmail').value    = t.admin_email || '';
+    document.getElementById('editPassword').value = '';
     document.getElementById('editPreview').textContent = t.subdomain;
     document.getElementById('editOverlay').classList.add('open');
   }
