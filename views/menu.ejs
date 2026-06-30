@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><%= tenant.name %></title>
+  <meta name="theme-color" content="<%= tenant.theme_color || '#e94560' %>" />
+  <meta name="description" content="<%= tenant.name %> — Digital Menu" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="<%= tenant.name %>" />
+  <% if (tenant.logo_url) { %><link rel="apple-touch-icon" href="<%= tenant.logo_url %>" /><% } %>
+  <link rel="manifest" href="/manifest.json?tenant=<%= tenant.subdomain %>" />
   <% const _theme = tenant.menu_style || 'dark'; const _layout = tenant.menu_layout || 'grid'; const _font = tenant.menu_font || 'default';
      let _navBg = null;
      if (tenant.nav_bg_color) {
@@ -1461,6 +1469,10 @@
     document.getElementById('fbForm').style.display = 'none';
     document.getElementById('fbSuccess').style.display = 'block';
     setTimeout(() => closeFeedback(), 2800);
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 </script>
 </body>
