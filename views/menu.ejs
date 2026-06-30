@@ -851,7 +851,7 @@
     en: {
       dir: 'ltr', lang: 'en',
       all: 'All', search: 'Search items...', notFound: 'No items found.',
-      unavailable: 'Unavailable', footer: 'Powered by MenuApp',
+      unavailable: 'Unavailable', footer: 'Powered by m-menus.com',
       addToCart: 'Add to Cart', cart: 'Your Cart', emptyCart: 'Your cart is empty',
       totalItems: 'items', placeOrder: 'Place Order via WhatsApp',
       cartBtn: 'Cart', yourName: 'Your name', tableNo: 'Table no.',
@@ -865,7 +865,7 @@
     ar: {
       dir: 'rtl', lang: 'ar',
       all: 'الكل', search: 'ابحث عن الأصناف...', notFound: 'لا توجد أصناف.',
-      unavailable: 'غير متوفر', footer: 'مدعوم من MenuApp',
+      unavailable: 'غير متوفر', footer: 'Powered by m-menus.com',
       addToCart: 'أضف إلى السلة', cart: 'سلة الطلبات', emptyCart: 'سلتك فارغة',
       totalItems: 'عناصر', placeOrder: 'اطلب عبر واتساب',
       cartBtn: 'السلة', yourName: 'اسمك', tableNo: 'رقم الطاولة',
@@ -879,7 +879,7 @@
     ku: {
       dir: 'rtl', lang: 'ku',
       all: 'هەمووی', search: 'بگەڕێ بۆ بەرهەم...', notFound: 'هیچ بەرهەمێک نەدۆزرایەوە.',
-      unavailable: 'بەردەست نییە', footer: 'دروستکراوە لەلایەن MenuApp',
+      unavailable: 'بەردەست نییە', footer: 'Powered by m-menus.com',
       addToCart: 'زیادبکە بۆ سەبەتە', cart: 'سەبەتەی داواکاری', emptyCart: 'سەبەتەکەت بەتاڵە',
       totalItems: 'کاڵا', placeOrder: 'داواکاری لە واتساپ',
       cartBtn: 'سەبەتە', yourName: 'ناوت', tableNo: 'ژمارەی مێز',
@@ -1060,7 +1060,7 @@
       btn.classList.toggle('active', ['en','ar','ku'][i] === lang);
     });
     document.getElementById('searchInput').placeholder = L.search;
-    document.getElementById('footer').textContent      = L.footer;
+    document.getElementById('footer').innerHTML = `<a href="https://m-menus.com" target="_blank" style="color:inherit;text-decoration:none">${L.footer}</a>`;
     if (CART_ENABLED) {
       document.getElementById('cartFabLabel').textContent = L.cartBtn;
       if (document.getElementById('modalAddBtnText'))
