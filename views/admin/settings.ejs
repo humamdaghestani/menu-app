@@ -258,6 +258,7 @@
     </div>
 
     <!-- Valet -->
+    <% if (tenant.feat_valet !== false) { %>
     <div class="card">
       <h2>Valet Service</h2>
       <div class="toggle-row" style="margin-bottom:20px">
@@ -284,6 +285,7 @@
       </div>
       <% } %>
     </div>
+    <% } %>
 
     <!-- Cart Feature -->
     <div class="card">
@@ -386,6 +388,7 @@
     </div>
 
     <!-- Feedback Questions -->
+    <% if (tenant.feat_feedback !== false) { %>
     <div class="card">
       <h2>💬 Feedback Questions</h2>
       <p style="color:#888;font-size:.85rem;margin-bottom:20px">The 5 questions shown to customers in the feedback form. Leave blank to use the default text.</p>
@@ -411,6 +414,7 @@
         <% }) %>
       </div>
     </div>
+    <% } %>
 
     <!-- Custom CSS -->
     <% if (tenant.feat_splash_custom !== false) { %>
