@@ -688,7 +688,7 @@
         <div class="modal-price" id="modalPrice"></div>
         <p class="modal-desc" id="modalDesc"></p>
         <div class="opt-groups" id="modalOptions" style="display:none"></div>
-        <% if (tenant.cart_enabled !== false) { %>
+        <% if (tenant.cart_enabled !== false && tenant.feat_cart !== false) { %>
         <div class="modal-cart-row">
           <div class="qty-ctrl">
             <button class="qty-btn" id="modalQtyMinus">−</button>
@@ -822,7 +822,7 @@
   </div>
 </div>
 
-<% if (tenant.cart_enabled !== false) { %>
+<% if (tenant.cart_enabled !== false && tenant.feat_cart !== false) { %>
 <!-- Floating Cart Button -->
 <button class="cart-fab hidden" id="cartFab" onclick="openCart()">
   🛒 <span id="cartFabLabel"></span>
@@ -868,7 +868,7 @@
   const categories = <%- JSON.stringify(categories) %>;
   const WHATSAPP   = '<%= tenant.whatsapp || "" %>';
   const REST_NAME  = '<%= tenant.name %>';
-  const CART_ENABLED   = <%= tenant.cart_enabled !== false ? 'true' : 'false' %>;
+  const CART_ENABLED   = <%= (tenant.cart_enabled !== false && tenant.feat_cart !== false) ? 'true' : 'false' %>;
   const TENANT_ID      = <%= tenant.id %>;
   const VALET_ENABLED  = <%= tenant.valet_enabled ? 'true' : 'false' %>;
   const VALET_WA       = <%- JSON.stringify(tenant.valet_whatsapp || tenant.whatsapp || '') %>;

@@ -23,6 +23,7 @@ const pool = new Pool({
     `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS splash_overlay_opacity INTEGER DEFAULT 0`,
     `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS splash_text_color TEXT`,
     `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS feat_splash_custom BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS feat_cart          BOOLEAN DEFAULT true`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

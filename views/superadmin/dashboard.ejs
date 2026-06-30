@@ -160,7 +160,7 @@
               <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">
                 Features
                 <span style="margin-left:5px;font-size:.7rem;opacity:.7" title="Feedback / Orders / Import / CSS / Lang / Valet">
-                  <% ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom'].forEach(f => { %><span style="color:<%= t[f] === false ? '#ff6b7a' : '#00b894' %>">●</span><% }) %>
+                  <% ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart'].forEach(f => { %><span style="color:<%= t[f] === false ? '#ff6b7a' : '#00b894' %>">●</span><% }) %>
                 </span>
               </button>
               <form method="POST" action="/superadmin/tenants/<%= t.id %>/toggle" style="display:inline">
@@ -195,6 +195,7 @@
         { key:'feat_multilang',  icon:'🌐', label:'Multi-language (AR/KU)', desc:'Arabic and Kurdish language support' },
         { key:'feat_valet',      icon:'🚗', label:'Valet Parking',        desc:'Valet request system for customers' },
         { key:'feat_splash_custom', icon:'🖼️', label:'Splash Screen Style', desc:'Customize splash background, colors, and overlay' },
+        { key:'feat_cart',         icon:'🛒', label:'Shopping Cart',        desc:'Cart & WhatsApp ordering on the menu' },
       ]; %>
       <div style="display:flex;flex-direction:column;gap:10px">
         <% FEATS.forEach(f => { %>
@@ -311,7 +312,7 @@
     document.getElementById('editPreview').textContent = this.value;
   });
 
-  const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom'];
+  const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart'];
 
   function toggleFeat(key) {
     const inp = document.getElementById('fv_' + key);
