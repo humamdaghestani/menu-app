@@ -115,14 +115,14 @@ router.post('/tenants/:id/delete', requireSuperAdmin, async (req, res) => {
 // Update feature flags
 router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
   try {
-    const features = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet'];
+    const features = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom'];
     const values = features.map(f => req.body[f] === '1');
     console.log(`[features] tenant=${req.params.id} body=${JSON.stringify(req.body)} values=${JSON.stringify(values)}`);
     const result = await db.query(
       `UPDATE tenants SET
         feat_feedback=$1, feat_orders=$2, feat_import=$3,
-        feat_custom_css=$4, feat_multilang=$5, feat_valet=$6
-       WHERE id=$7`,
+        feat_custom_css=$4, feat_multilang=$5, feat_valet=$6, feat_splash_custom=$7
+       WHERE id=$8`,
       [...values, req.params.id]
     );
     console.log(`[features] rowCount=${result.rowCount}`);

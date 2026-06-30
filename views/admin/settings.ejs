@@ -412,6 +412,97 @@
     </div>
 
     <!-- Custom CSS -->
+    <% if (tenant.feat_splash_custom !== false) { %>
+    <div class="card">
+      <h2>🖼️ Splash Screen Style</h2>
+      <p style="color:#888;font-size:.85rem;margin-bottom:20px">Customize the welcome screen customers see when they first open your menu.</p>
+
+      <!-- Background type -->
+      <div class="form-group full" style="margin-bottom:20px">
+        <label style="margin-bottom:10px;display:block">Background Type</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <% [['color','🎨 Color'],['image','🖼️ Image'],['video','🎬 Video']].forEach(([val,lbl]) => { %>
+            <button type="button" class="splash-mode-btn <%= (tenant.splash_bg_type||'color')===val?'active':'' %>"
+              data-mode="<%= val %>" onclick="setSplashMode('<%= val %>')"><%= lbl %></button>
+          <% }) %>
+        </div>
+        <input type="hidden" name="splash_bg_type" id="splashBgType" value="<%= tenant.splash_bg_type || 'color' %>" />
+      </div>
+
+      <div class="form-grid">
+        <!-- Color -->
+        <div id="splashColorSection" class="form-group">
+          <label>Background Color</label>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input type="color" name="splash_color_value" id="splashColorPicker"
+              value="<%= (tenant.splash_bg_type||'color')==='color' ? (tenant.splash_bg_value||'#ffffff') : '#ffffff' %>"
+              style="width:48px;height:36px;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;padding:2px" />
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <% ['#ffffff','#0f0f1a','#1a1a2e','#f5f0e8','#111827','#fdf6ec'].forEach(c => { %>
+                <div onclick="document.getElementById('splashColorPicker').value='<%= c %>'"
+                  title="<%= c %>"
+                  style="width:28px;height:28px;border-radius:6px;background:<%= c %>;border:2px solid #ccc;cursor:pointer"></div>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Image -->
+        <div id="splashImageSection" class="form-group full" style="display:none">
+          <label>Splash Background Image</label>
+          <div class="img-row">
+            <input type="url" name="splash_image_value" id="splashImageUrl"
+              value="<%= (tenant.splash_bg_type||'color')==='image' ? (tenant.splash_bg_value||'') : '' %>"
+              placeholder="https://... or upload →"
+              oninput="previewImg(this,'splashImgPreview')" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="splashUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none"
+                onchange="uploadImg(this,'splashImageUrl','splashImgPreview','splashUploadTxt')" />
+            </label>
+          </div>
+          <img id="splashImgPreview" class="img-preview <%= (tenant.splash_bg_type==='image'&&tenant.splash_bg_value)?'show':'' %>"
+            src="<%= (tenant.splash_bg_type==='image'&&tenant.splash_bg_value) ? tenant.splash_bg_value : '' %>" style="width:200px;height:110px" />
+        </div>
+
+        <!-- Video -->
+        <div id="splashVideoSection" class="form-group full" style="display:none">
+          <label>Splash Background Video URL <small style="color:#aaa">(mp4)</small></label>
+          <input type="url" name="splash_video_value" id="splashVideoUrl"
+            value="<%= (tenant.splash_bg_type||'color')==='video' ? (tenant.splash_bg_value||'') : '' %>"
+            placeholder="https://example.com/background.mp4" />
+        </div>
+
+        <!-- Overlay (image/video only) -->
+        <div id="splashOverlaySection" class="form-group" style="<%= (tenant.splash_bg_type&&tenant.splash_bg_type!=='color')?'':'display:none' %>">
+          <label>Dark Overlay — <span id="overlayValLabel"><%= tenant.splash_overlay_opacity || 0 %>%</span></label>
+          <input type="range" name="splash_overlay_opacity" min="0" max="80" step="5"
+            value="<%= tenant.splash_overlay_opacity || 0 %>"
+            oninput="document.getElementById('overlayValLabel').textContent=this.value+'%'"
+            style="width:100%;margin-top:6px" />
+          <div style="color:#aaa;font-size:.78rem;margin-top:4px">Makes text easier to read over busy backgrounds</div>
+        </div>
+
+        <!-- Text & button color -->
+        <div class="form-group">
+          <label>Text & Button Color <small style="color:#aaa">(defaults to theme color)</small></label>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input type="color" id="splashTextColorPicker"
+              value="<%= tenant.splash_text_color || tenant.theme_color || '#e94560' %>"
+              style="width:48px;height:36px;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;padding:2px"
+              oninput="document.getElementById('splashTextColorVal').value=this.value" />
+            <input type="hidden" name="splash_text_color" id="splashTextColorVal" value="<%= tenant.splash_text_color || '' %>" />
+            <button type="button"
+              onclick="document.getElementById('splashTextColorVal').value=''"
+              style="font-size:.78rem;padding:5px 12px;background:#f0f0f0;border:1.5px solid #e0e0e0;border-radius:7px;cursor:pointer;font-family:inherit">
+              Reset to theme color
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
     <% if (tenant.feat_custom_css !== false) { %>
     <div class="card">
       <h2>🎨 Custom CSS</h2>
@@ -535,6 +626,17 @@
     setTimeout(() => t.className = '', 3500);
   }
 
+  function setSplashMode(mode) {
+    if (!document.getElementById('splashBgType')) return;
+    document.getElementById('splashBgType').value = mode;
+    document.getElementById('splashColorSection').style.display  = mode === 'color' ? '' : 'none';
+    document.getElementById('splashImageSection').style.display  = mode === 'image' ? '' : 'none';
+    document.getElementById('splashVideoSection').style.display  = mode === 'video' ? '' : 'none';
+    document.getElementById('splashOverlaySection').style.display = mode !== 'color' ? '' : 'none';
+    document.querySelectorAll('.splash-mode-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.mode === mode));
+  }
+
   async function uploadImg(fileInput, urlId, previewId, textId) {
     const file = fileInput.files[0];
     if (!file) return;
@@ -562,6 +664,8 @@
 </script>
 <style>
   .theme-active { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(var(--accent-rgb,233,69,96),.15); }
+  .splash-mode-btn { padding: 8px 18px; border: 1.5px solid #ddd; border-radius: 8px; background: #f8f8f8; cursor: pointer; font-size: .85rem; font-family: inherit; transition: border-color .15s, background .15s; }
+  .splash-mode-btn.active { border-color: var(--accent); background: #fff; color: var(--accent); font-weight: 700; }
   .layout-active { border-color: var(--accent) !important; color: var(--accent); }
   .layout-active div { color: var(--accent) !important; }
 </style>
