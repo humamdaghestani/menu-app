@@ -133,12 +133,14 @@ router.post('/items', requireAuth, bust, async (req, res) => {
 });
 
 router.post('/items/:id/edit', requireAuth, bust, async (req, res) => {
-  const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;
+  const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge, options } = req.body;
+  let optionsJson = '[]';
+  try { optionsJson = JSON.stringify(JSON.parse(options || '[]')); } catch {}
   try {
     await db.query(
-      `UPDATE menu_items SET name=$1, name_ar=$2, name_ku=$3, price=$4, description=$5, description_ar=$6, description_ku=$7, image_url=$8, category_id=$9, badge=$10
-       WHERE id=$11 AND tenant_id=$12`,
-      [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, req.params.id, req.user.tenantId]
+      `UPDATE menu_items SET name=$1, name_ar=$2, name_ku=$3, price=$4, description=$5, description_ar=$6, description_ku=$7, image_url=$8, category_id=$9, badge=$10, options=$11
+       WHERE id=$12 AND tenant_id=$13`,
+      [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, optionsJson, req.params.id, req.user.tenantId]
     );
     res.redirect('/admin/dashboard?success=Item+updated');
   } catch (err) {

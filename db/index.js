@@ -17,6 +17,7 @@ const pool = new Pool({
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_valet      BOOLEAN DEFAULT true`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS custom_css      TEXT`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS view_count      INTEGER DEFAULT 0`,
+    `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS options      JSONB   DEFAULT '[]'`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

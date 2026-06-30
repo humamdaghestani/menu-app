@@ -223,7 +223,17 @@
     .modal-body { padding: 22px 24px 28px; }
     .modal-body h2 { font-size: 1.35rem; font-weight: 800; margin-bottom: 8px; color: #1a1a2e; }
     .modal-price { color: var(--accent); font-size: 1.25rem; font-weight: 800; margin-bottom: 12px; }
-    .modal-desc { color: #666; line-height: 1.7; font-size: .92rem; margin-bottom: 20px; }
+    .modal-desc { color: #666; line-height: 1.7; font-size: .92rem; margin-bottom: 16px; }
+    .opt-groups { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+    .opt-group-name { font-size: .82rem; font-weight: 700; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .opt-req { font-size: .7rem; background: var(--accent); color: #fff; border-radius: 4px; padding: 1px 6px; }
+    .opt-choices { display: flex; flex-direction: column; gap: 5px; }
+    .opt-choice { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s; font-size: .88rem; color: var(--text); }
+    .opt-choice:hover { border-color: var(--accent); }
+    .opt-choice input { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+    .opt-choice input:checked + span { color: var(--accent); font-weight: 600; }
+    .opt-price-tag { margin-left: auto; font-size: .8rem; color: var(--accent); font-weight: 600; }
+    .cart-item-opts { font-size: .75rem; color: #888; margin-top: 2px; }
     .modal-cart-row { display: flex; align-items: center; gap: 12px; }
     .qty-ctrl { display: flex; align-items: center; border: 1.5px solid #e8e8e8; border-radius: 10px; overflow: hidden; }
     .qty-btn { background: #f5f5f5; border: none; width: 36px; height: 36px; font-size: 1.1rem; cursor: pointer; font-family: inherit; transition: background .15s; }
@@ -646,6 +656,7 @@
         <h2 id="modalName"></h2>
         <div class="modal-price" id="modalPrice"></div>
         <p class="modal-desc" id="modalDesc"></p>
+        <div class="opt-groups" id="modalOptions" style="display:none"></div>
         <% if (tenant.cart_enabled !== false) { %>
         <div class="modal-cart-row">
           <div class="qty-ctrl">
@@ -893,18 +904,23 @@
   let cart = [];
   function cartTotalQty() { return cart.reduce((s, e) => s + e.qty, 0); }
 
-  function addToCart(item, qty) {
-    const existing = cart.find(e => e.item.id === item.id);
+  let _cartSeq = 0;
+
+  function addToCart(item, qty, selectedOptions) {
+    selectedOptions = selectedOptions || [];
+    const extraPrice = selectedOptions.reduce((s, g) => s + g.choices.reduce((a, c) => a + (c.price || 0), 0), 0);
+    const sig = selectedOptions.length ? JSON.stringify(selectedOptions) : '';
+    const existing = cart.find(e => e.item.id === item.id && e.sig === sig);
     if (existing) existing.qty += qty;
-    else cart.push({ item, qty });
+    else cart.push({ cid: ++_cartSeq, item, qty, selectedOptions, extraPrice, sig });
     updateCartFab();
   }
 
-  function changeQty(itemId, delta) {
-    const entry = cart.find(e => e.item.id === itemId);
+  function changeQty(cid, delta) {
+    const entry = cart.find(e => e.cid === cid);
     if (!entry) return;
     entry.qty += delta;
-    if (entry.qty <= 0) cart = cart.filter(e => e.item.id !== itemId);
+    if (entry.qty <= 0) cart = cart.filter(e => e.cid !== cid);
     updateCartFab();
     renderCartItems();
   }
@@ -953,18 +969,21 @@
     if (document.getElementById('orderName')) document.getElementById('orderName').placeholder = L.yourName;
     if (document.getElementById('orderTable')) document.getElementById('orderTable').placeholder = L.tableNo;
 
-    el.innerHTML = cart.map(({ item, qty }) => {
+    el.innerHTML = cart.map(({ cid, item, qty, selectedOptions, extraPrice }) => {
       const name = getLocalized(item, 'name', currentLang);
+      const unitPrice = (parseFloat(item.price) + (extraPrice || 0)).toFixed(2);
+      const optLines = (selectedOptions || []).map(g => g.name + ': ' + g.choices.map(c => c.label).join(', ')).join(' · ');
       return `<div class="cart-item">
         <img class="cart-item-img" src="${item.image_url || 'https://placehold.co/60x50?text=?'}" alt="${name}" />
         <div class="cart-item-info">
           <div class="cart-item-name">${name}</div>
-          <div class="cart-item-price">${item.price}</div>
+          ${optLines ? `<div class="cart-item-opts">${optLines}</div>` : ''}
+          <div class="cart-item-price">${CURRENCY}${unitPrice}</div>
         </div>
         <div class="cart-item-controls">
-          <button class="cart-qty-btn" onclick="changeQty(${item.id}, -1)">−</button>
+          <button class="cart-qty-btn" onclick="changeQty(${cid}, -1)">−</button>
           <span class="cart-qty-val">${qty}</span>
-          <button class="cart-qty-btn" onclick="changeQty(${item.id}, 1)">+</button>
+          <button class="cart-qty-btn" onclick="changeQty(${cid}, 1)">+</button>
         </div>
       </div>`;
     }).join('');
@@ -980,8 +999,12 @@
     if (name.trim())  msg += `👤 ${name.trim()}\n`;
     if (table.trim()) msg += `🪑 ${L.tableNo}: ${table.trim()}\n`;
     msg += `\n${L.cart}:\n\n`;
-    cart.forEach(({ item, qty }) => {
-      msg += `• ${getLocalized(item, 'name', currentLang)} x${qty} — ${CURRENCY}${item.price}\n`;
+    cart.forEach(({ item, qty, selectedOptions, extraPrice }) => {
+      const unitPrice = (parseFloat(item.price) + (extraPrice || 0)).toFixed(2);
+      msg += `• ${getLocalized(item, 'name', currentLang)} x${qty} — ${CURRENCY}${unitPrice}\n`;
+      (selectedOptions || []).forEach(g => {
+        msg += `  └ ${g.name}: ${g.choices.map(c => c.label).join(', ')}\n`;
+      });
     });
     msg += `\n📦 ${L.totalItems}: ${cartTotalQty()}`;
 
@@ -1249,10 +1272,14 @@
       if (addBtn) {
         addBtn.addEventListener('click', e => {
           e.stopPropagation();
-          addToCart(item, 1);
-          const btn = e.currentTarget;
-          btn.textContent = '✓';
-          setTimeout(() => { btn.textContent = LANG[currentLang].addToCart; }, 800);
+          if (item.options && item.options.length) {
+            openModal(item);
+          } else {
+            addToCart(item, 1);
+            const btn = e.currentTarget;
+            btn.textContent = '✓';
+            setTimeout(() => { btn.textContent = LANG[currentLang].addToCart; }, 800);
+          }
         });
       }
     }
@@ -1270,6 +1297,36 @@
     document.getElementById('modalName').textContent  = getLocalized(item, 'name', currentLang);
     document.getElementById('modalPrice').textContent = CURRENCY + item.price;
     document.getElementById('modalDesc').textContent  = getLocalized(item, 'description', currentLang);
+
+    const optContainer = document.getElementById('modalOptions');
+    const opts = (item.options && item.options.length) ? item.options : [];
+    if (opts.length && CART_ENABLED) {
+      optContainer.style.display = '';
+      optContainer.innerHTML = opts.map((g, gi) => `
+        <div>
+          <div class="opt-group-name">${g.name}${g.required ? ' <span class="opt-req">Required</span>' : ''}</div>
+          <div class="opt-choices">
+            ${g.choices.map((c, ci) => `
+            <label class="opt-choice">
+              <input type="${g.multi ? 'checkbox' : 'radio'}" name="opt_g${gi}" data-gi="${gi}" data-ci="${ci}" data-price="${c.price||0}" />
+              <span>${c.label}</span>
+              ${c.price > 0 ? `<span class="opt-price-tag">+${CURRENCY}${parseFloat(c.price).toFixed(2)}</span>` : ''}
+            </label>`).join('')}
+          </div>
+        </div>`).join('');
+      opts.forEach((g, gi) => {
+        if (g.required && !g.multi) {
+          const first = optContainer.querySelector(`input[name="opt_g${gi}"]`);
+          if (first) first.checked = true;
+        }
+      });
+      optContainer.querySelectorAll('input').forEach(inp => inp.addEventListener('change', _updateModalPrice));
+      _updateModalPrice();
+    } else {
+      optContainer.style.display = 'none';
+      optContainer.innerHTML = '';
+    }
+
     if (CART_ENABLED && document.getElementById('modalAddBtnText'))
       document.getElementById('modalAddBtnText').textContent = L.addToCart;
 
@@ -1284,6 +1341,24 @@
     document.body.style.overflow = 'hidden';
   }
 
+  function _updateModalPrice() {
+    if (!modalItem) return;
+    const base  = parseFloat(modalItem.price) || 0;
+    const extra = Array.from(document.querySelectorAll('#modalOptions input:checked'))
+                       .reduce((s, inp) => s + (parseFloat(inp.dataset.price) || 0), 0);
+    document.getElementById('modalPrice').textContent = CURRENCY + (base + extra).toFixed(2);
+  }
+
+  function _getSelectedOptions() {
+    if (!modalItem) return [];
+    const opts = modalItem.options || [];
+    return opts.map((g, gi) => {
+      const checked = document.querySelectorAll(`#modalOptions input[data-gi="${gi}"]:checked`);
+      const choices = Array.from(checked).map(inp => g.choices[parseInt(inp.dataset.ci)]);
+      return choices.length ? { name: g.name, choices } : null;
+    }).filter(Boolean);
+  }
+
   if (CART_ENABLED) {
     document.getElementById('modalQtyMinus').addEventListener('click', () => {
       if (modalQty > 1) { modalQty--; document.getElementById('modalQtyVal').textContent = modalQty; }
@@ -1293,7 +1368,19 @@
     });
     document.getElementById('modalAddBtn').addEventListener('click', () => {
       if (!modalItem) return;
-      addToCart(modalItem, modalQty);
+      const opts = modalItem.options || [];
+      for (let gi = 0; gi < opts.length; gi++) {
+        if (opts[gi].required) {
+          const checked = document.querySelectorAll(`#modalOptions input[data-gi="${gi}"]:checked`);
+          if (!checked.length) {
+            const grpName = document.querySelector(`#modalOptions .opt-group-name`);
+            const names = document.querySelectorAll('#modalOptions .opt-group-name');
+            if (names[gi]) { names[gi].style.color = 'var(--accent)'; setTimeout(() => names[gi].style.color = '', 2000); }
+            return;
+          }
+        }
+      }
+      addToCart(modalItem, modalQty, _getSelectedOptions());
       closeModal();
     });
   }

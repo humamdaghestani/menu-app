@@ -700,6 +700,16 @@
           <img id="editPreview" class="img-preview" />
         </div>
       </div>
+      <!-- Options / Add-ons -->
+      <div class="form-group full" style="margin-top:4px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <label style="margin:0">Options / Add-ons</label>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addOptionGroup()">+ Add Group</button>
+        </div>
+        <div id="optionGroups" style="display:flex;flex-direction:column;gap:8px"></div>
+        <input type="hidden" name="options" id="editOptions" value="[]" />
+      </div>
+
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -726,6 +736,71 @@
     if (e.target === document.getElementById('catEditOverlay')) closeCatEdit();
   });
 
+  let _optGroups = [];
+
+  function renderOptionGroups() {
+    const container = document.getElementById('optionGroups');
+    if (!container) return;
+    if (_optGroups.length === 0) { container.innerHTML = '<div style="color:#bbb;font-size:.8rem;padding:4px 0">No options yet. Click "+ Add Group" to add size, extras, etc.</div>'; return; }
+    container.innerHTML = _optGroups.map((g, gi) => `
+      <div style="border:1.5px solid #e0e0e0;border-radius:8px;padding:12px">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <input type="text" value="${g.name.replace(/"/g,'&quot;')}" placeholder="Group name (e.g. Size, Sauce)"
+            style="flex:1;min-width:100px;padding:6px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"
+            oninput="_optGroups[${gi}].name=this.value;syncOptions()" />
+          <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer;white-space:nowrap">
+            <input type="checkbox" ${g.required?'checked':''} onchange="_optGroups[${gi}].required=this.checked;syncOptions()"> Required
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer;white-space:nowrap">
+            <input type="checkbox" ${g.multi?'checked':''} onchange="_optGroups[${gi}].multi=this.checked;syncOptions()"> Multi-select
+          </label>
+          <button type="button" onclick="removeOptionGroup(${gi})" style="background:none;border:none;color:#ff6b7a;cursor:pointer;font-size:1.2rem;line-height:1">×</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:8px">
+          ${g.choices.map((c, ci) => `
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="text" value="${c.label.replace(/"/g,'&quot;')}" placeholder="Choice (e.g. Large)"
+              style="flex:1;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit"
+              oninput="_optGroups[${gi}].choices[${ci}].label=this.value;syncOptions()" />
+            <span style="color:#999;font-size:.8rem;white-space:nowrap">extra price</span>
+            <input type="number" value="${c.price}" min="0" step="0.25" placeholder="0"
+              style="width:72px;padding:5px 8px;border:1.5px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit"
+              oninput="_optGroups[${gi}].choices[${ci}].price=parseFloat(this.value)||0;syncOptions()" />
+            <button type="button" onclick="removeChoice(${gi},${ci})" style="background:none;border:none;color:#ff6b7a;cursor:pointer;font-size:1.1rem;line-height:1">×</button>
+          </div>`).join('')}
+        </div>
+        <button type="button" onclick="addChoice(${gi})" style="font-size:.78rem;padding:4px 10px;background:rgba(124,92,191,.08);color:#7c5cbf;border:1px solid rgba(124,92,191,.3);border-radius:6px;cursor:pointer">+ Add Choice</button>
+      </div>
+    `).join('');
+  }
+
+  function syncOptions() {
+    document.getElementById('editOptions').value = JSON.stringify(_optGroups);
+  }
+
+  function addOptionGroup() {
+    _optGroups.push({ name: '', required: false, multi: false, choices: [{ label: '', price: 0 }] });
+    renderOptionGroups();
+    syncOptions();
+  }
+
+  function removeOptionGroup(gi) {
+    _optGroups.splice(gi, 1);
+    renderOptionGroups();
+    syncOptions();
+  }
+
+  function addChoice(gi) {
+    _optGroups[gi].choices.push({ label: '', price: 0 });
+    renderOptionGroups();
+  }
+
+  function removeChoice(gi, ci) {
+    _optGroups[gi].choices.splice(ci, 1);
+    renderOptionGroups();
+    syncOptions();
+  }
+
   function openEdit(item) {
     document.getElementById('editName').value          = item.name;
     document.getElementById('editNameAr').value        = item.name_ar || '';
@@ -738,6 +813,9 @@
     document.getElementById('editCategory').value      = item.category_id || '';
     document.getElementById('editBadge').value         = item.badge || '';
     document.getElementById('editForm').action         = '/admin/items/' + item.id + '/edit';
+    _optGroups = item.options ? JSON.parse(JSON.stringify(item.options)) : [];
+    renderOptionGroups();
+    syncOptions();
     previewImg(document.getElementById('editImageUrl'), 'editPreview');
     document.getElementById('editOverlay').classList.add('open');
   }
