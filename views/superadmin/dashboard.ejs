@@ -49,6 +49,14 @@
     .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200; align-items: center; justify-content: center; }
     .overlay.open { display: flex; }
     .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 480px; max-width: calc(100% - 32px); border: 1px solid rgba(255,255,255,.1); }
+    .modal.wide { width: 620px; max-height: 90vh; overflow-y: auto; }
+    .style-options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .style-opt { padding: 8px 14px; border: 2px solid #333; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 600; color: #888; transition: all .15s; background: #0f0f1a; user-select: none; }
+    .style-opt:hover { border-color: #555; color: #ccc; }
+    .style-opt.active { border-color: #7c5cbf; color: #fff; background: rgba(124,92,191,.15); }
+    .style-swatch { width: 28px; height: 28px; border-radius: 6px; border: 2px solid #333; cursor: pointer; flex-shrink: 0; }
+    .color-row { display: flex; align-items: center; gap: 10px; }
+    .color-hex { font-family: monospace; font-size: .85rem; color: #888; }
     .modal h3 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 20px; }
     .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
     .form-group { margin-bottom: 14px; }
@@ -157,6 +165,7 @@
               <a href="/superadmin/tenants/<%= t.id %>/login" class="btn btn-ghost btn-sm">Login</a>
               <a href="http://<%= t.subdomain %>.m-menus.com" target="_blank" class="btn btn-ghost btn-sm">View</a>
               <button class="btn btn-ghost btn-sm" onclick="openEdit(<%= JSON.stringify(t) %>)" style="color:#00b894">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="openStyle(<%= JSON.stringify(t) %>)" style="color:#f39c12">Style</button>
               <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">
                 Features
                 <span style="margin-left:5px;font-size:.7rem;opacity:.7" title="Feedback / Orders / Import / CSS / Lang / Valet">
@@ -260,6 +269,70 @@
   </div>
 </div>
 
+<!-- Style Modal -->
+<div class="overlay" id="styleOverlay">
+  <div class="modal wide">
+    <h3>🎨 Style — <span id="styleRestName"></span></h3>
+    <form method="POST" id="styleForm">
+
+      <!-- Theme Color -->
+      <div class="form-group">
+        <label>Theme Color</label>
+        <div class="color-row">
+          <input type="color" id="styleColorPicker" value="#7c5cbf" style="width:44px;height:36px;padding:2px;background:#0f0f1a;border:2px solid #333;border-radius:8px;cursor:pointer" oninput="document.getElementById('styleColorHex').value=this.value;document.getElementById('styleColorInput').value=this.value" />
+          <input type="text" id="styleColorHex" maxlength="7" placeholder="#7c5cbf" style="width:110px" oninput="syncColorHex(this.value)" />
+          <input type="hidden" name="theme_color" id="styleColorInput" />
+          <span class="color-hex">Used for buttons, highlights, and accents</span>
+        </div>
+      </div>
+
+      <!-- Menu Style -->
+      <div class="form-group">
+        <label>Menu Style</label>
+        <div class="style-options" id="styleStyleOpts">
+          <div class="style-opt" data-val="dark" onclick="pickOpt('styleStyleOpts','stylMenuStyle',this)">🌑 Dark</div>
+          <div class="style-opt" data-val="light" onclick="pickOpt('styleStyleOpts','stylMenuStyle',this)">☀️ Light</div>
+          <div class="style-opt" data-val="warm" onclick="pickOpt('styleStyleOpts','stylMenuStyle',this)">🍂 Warm</div>
+        </div>
+        <input type="hidden" name="menu_style" id="stylMenuStyle" value="dark" />
+      </div>
+
+      <!-- Menu Layout -->
+      <div class="form-group">
+        <label>Menu Layout</label>
+        <div class="style-options" id="styleLayoutOpts">
+          <div class="style-opt" data-val="grid" onclick="pickOpt('styleLayoutOpts','stylMenuLayout',this)">▦ Grid</div>
+          <div class="style-opt" data-val="list" onclick="pickOpt('styleLayoutOpts','stylMenuLayout',this)">☰ List</div>
+          <div class="style-opt" data-val="large" onclick="pickOpt('styleLayoutOpts','stylMenuLayout',this)">▬ Large</div>
+        </div>
+        <input type="hidden" name="menu_layout" id="stylMenuLayout" value="grid" />
+      </div>
+
+      <!-- Menu Font -->
+      <div class="form-group">
+        <label>Menu Font</label>
+        <div class="style-options" id="styleFontOpts">
+          <div class="style-opt" data-val="default" onclick="pickOpt('styleFontOpts','stylMenuFont',this)">Default</div>
+          <div class="style-opt" data-val="elegant" onclick="pickOpt('styleFontOpts','stylMenuFont',this)">Elegant</div>
+          <div class="style-opt" data-val="rounded" onclick="pickOpt('styleFontOpts','stylMenuFont',this)">Rounded</div>
+        </div>
+        <input type="hidden" name="menu_font" id="stylMenuFont" value="default" />
+      </div>
+
+      <!-- Custom CSS -->
+      <div class="form-group">
+        <label>Custom CSS <span style="color:#555;font-weight:400;font-size:.73rem">— injected into the customer menu page</span></label>
+        <textarea name="custom_css" id="styleCSS" rows="7" placeholder="/* e.g. change card corners */&#10;.card { border-radius: 0; }&#10;&#10;/* e.g. custom background */&#10;body { background: #111; }" style="font-family:monospace;font-size:.82rem;resize:vertical"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeStyle()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Style</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <!-- Edit Restaurant Modal -->
@@ -337,6 +410,39 @@
   }
   function closeFeatures() { document.getElementById('featuresOverlay').classList.remove('open'); }
   document.getElementById('featuresOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeFeatures(); });
+
+  function pickOpt(groupId, hiddenId, el) {
+    document.querySelectorAll('#' + groupId + ' .style-opt').forEach(o => o.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(hiddenId).value = el.dataset.val;
+  }
+  function setOpt(groupId, hiddenId, val) {
+    document.querySelectorAll('#' + groupId + ' .style-opt').forEach(o => {
+      o.classList.toggle('active', o.dataset.val === val);
+    });
+    document.getElementById(hiddenId).value = val;
+  }
+  function syncColorHex(v) {
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      document.getElementById('styleColorPicker').value = v;
+      document.getElementById('styleColorInput').value = v;
+    }
+  }
+  function openStyle(t) {
+    document.getElementById('styleForm').action = '/superadmin/tenants/' + t.id + '/style';
+    document.getElementById('styleRestName').textContent = t.name;
+    const color = t.theme_color || '#7c5cbf';
+    document.getElementById('styleColorPicker').value = color;
+    document.getElementById('styleColorHex').value = color;
+    document.getElementById('styleColorInput').value = color;
+    setOpt('styleStyleOpts', 'stylMenuStyle', t.menu_style || 'dark');
+    setOpt('styleLayoutOpts', 'stylMenuLayout', t.menu_layout || 'grid');
+    setOpt('styleFontOpts', 'stylMenuFont', t.menu_font || 'default');
+    document.getElementById('styleCSS').value = t.custom_css || '';
+    document.getElementById('styleOverlay').classList.add('open');
+  }
+  function closeStyle() { document.getElementById('styleOverlay').classList.remove('open'); }
+  document.getElementById('styleOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeStyle(); });
 
   const params = new URLSearchParams(location.search);
   if (params.get('success')) {

@@ -116,6 +116,22 @@ router.post('/tenants/:id/delete', requireSuperAdmin, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/superadmin?error=Failed+to+delete'); }
 });
 
+// Update style settings
+router.post('/tenants/:id/style', requireSuperAdmin, async (req, res) => {
+  const { theme_color, menu_style, menu_layout, menu_font, custom_css } = req.body;
+  try {
+    await db.query(
+      `UPDATE tenants SET theme_color=$1, menu_style=$2, menu_layout=$3, menu_font=$4, custom_css=$5 WHERE id=$6`,
+      [theme_color || null, menu_style || 'dark', menu_layout || 'grid', menu_font || 'default', custom_css || null, req.params.id]
+    );
+    cacheBustByTenantId(parseInt(req.params.id));
+    res.redirect('/superadmin?success=Style+updated');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/superadmin?error=' + encodeURIComponent(err.message));
+  }
+});
+
 // Update feature flags
 router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
   try {
