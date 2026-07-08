@@ -24,6 +24,14 @@ const pool = new Pool({
     `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS splash_text_color TEXT`,
     `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS feat_splash_custom BOOLEAN DEFAULT true`,
     `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS feat_cart          BOOLEAN DEFAULT true`,
+    `CREATE TABLE IF NOT EXISTS valet_requests (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      ticket_no     VARCHAR(50) NOT NULL,
+      customer_name VARCHAR(120),
+      status        VARCHAR(20) DEFAULT 'pending',
+      created_at    TIMESTAMP DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);
