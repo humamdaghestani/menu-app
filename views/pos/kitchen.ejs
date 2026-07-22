@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kitchen Display — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #111; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid #222; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: .95rem; display: flex; align-items: center; gap: 10px; }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #00b894; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .btn { padding: 6px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .78rem; font-weight: 600; font-family: inherit; text-decoration: none; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+
+    .main { padding: 16px; }
+    .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    .order-ticket { background: #1a1a2e; border-radius: 12px; border: 2px solid #2a2a3e; overflow: hidden; }
+    .ticket-header { background: #13132a; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a2a3e; }
+    .ticket-table { font-size: 1rem; font-weight: 700; color: #fff; }
+    .ticket-time { font-size: .72rem; color: #555; }
+    .ticket-order { font-size: .72rem; color: #666; margin-top: 2px; }
+    .ticket-items { padding: 12px 16px; }
+    .ticket-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .ticket-item:last-child { border-bottom: none; }
+    .ti-name { font-size: .9rem; color: #fff; font-weight: 600; }
+    .ti-qty { font-size: .9rem; color: #7c5cbf; font-weight: 700; min-width: 28px; }
+    .ti-note { font-size: .72rem; color: #555; margin-top: 3px; }
+    .ticket-note { padding: 10px 16px; background: rgba(255,200,0,.06); border-top: 1px solid rgba(255,200,0,.1); font-size: .78rem; color: #f0b429; }
+    .ticket-footer { padding: 12px 16px; border-top: 1px solid #2a2a3e; display: flex; gap: 8px; }
+    .btn-done { flex: 1; padding: 9px; border: none; border-radius: 8px; background: #00b894; color: #fff; font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-done:hover { opacity: .88; }
+    .btn-view { padding: 9px 14px; border-radius: 8px; background: rgba(255,255,255,.07); color: #888; font-size: .82rem; font-weight: 600; text-decoration: none; border: none; cursor: pointer; font-family: inherit; }
+
+    .elapsed { font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+    .elapsed-ok { background: rgba(0,184,148,.15); color: #00b894; }
+    .elapsed-warn { background: rgba(243,156,18,.15); color: #f39c12; }
+    .elapsed-late { background: rgba(231,76,60,.15); color: #e74c3c; }
+
+    .empty { text-align: center; padding: 100px 24px; color: #333; }
+    .empty-icon { font-size: 4rem; margin-bottom: 16px; }
+    .empty p { font-size: 1rem; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="live-dot"></div>
+    🍳 Kitchen Display — <%= tenant.name %>
+  </div>
+  <a href="/pos" class="btn btn-ghost">← Table Map</a>
+</div>
+
+<div class="main">
+  <div class="orders-grid" id="ordersGrid">
+    <% if (orders.length === 0) { %>
+    <div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">✅</div>
+      <p>All clear — no open orders</p>
+    </div>
+    <% } %>
+    <% orders.forEach(o => { %>
+    <% const mins = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000); %>
+    <div class="order-ticket" id="ticket_<%= o.id %>">
+      <div class="ticket-header">
+        <div>
+          <div class="ticket-table">🪑 <%= o.table_name %></div>
+          <div class="ticket-order">Order #<%= o.id %></div>
+        </div>
+        <span class="elapsed <%= mins < 10 ? 'elapsed-ok' : mins < 20 ? 'elapsed-warn' : 'elapsed-late' %>">
+          <%= mins %>m ago
+        </span>
+      </div>
+      <div class="ticket-items">
+        <% (o.items || []).forEach(item => { %>
+        <div class="ticket-item">
+          <div>
+            <div class="ti-name"><%= item.name %></div>
+            <% if (item.notes) { %><div class="ti-note">📝 <%= item.notes %></div><% } %>
+          </div>
+          <div class="ti-qty">×<%= item.quantity %></div>
+        </div>
+        <% }) %>
+      </div>
+      <% if (o.note) { %>
+      <div class="ticket-note">📋 <%= o.note %></div>
+      <% } %>
+      <div class="ticket-footer">
+        <button class="btn-done" onclick="markDone(<%= o.id %>)">✓ Done — Close Order</button>
+        <a href="/pos/order/<%= o.id %>" class="btn-view">View</a>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+</div>
+
+<script>
+  async function markDone(orderId) {
+    if (!confirm('Mark this order as paid/done?')) return;
+    window.location.href = '/pos/order/' + orderId + '/pay';
+  }
+
+  // Auto-refresh every 8 seconds
+  async function refresh() {
+    try {
+      const r = await fetch('/pos/api/kitchen');
+      const data = await r.json();
+      if (data.orders.length === 0) {
+        document.getElementById('ordersGrid').innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✅</div><p>All clear — no open orders</p></div>';
+        return;
+      }
+      const now = Date.now();
+      let html = '';
+      data.orders.forEach(o => {
+        const mins = Math.floor((now - new Date(o.created_at).getTime()) / 60000);
+        const cls = mins < 10 ? 'elapsed-ok' : mins < 20 ? 'elapsed-warn' : 'elapsed-late';
+        const items = (o.items || []).map(item =>
+          `<div class="ticket-item"><div><div class="ti-name">${item.name}</div>${item.notes ? `<div class="ti-note">📝 ${item.notes}</div>` : ''}</div><div class="ti-qty">×${item.quantity}</div></div>`
+        ).join('');
+        html += `<div class="order-ticket" id="ticket_${o.id}">
+          <div class="ticket-header">
+            <div><div class="ticket-table">🪑 ${o.table_name}</div><div class="ticket-order">Order #${o.id}</div></div>
+            <span class="elapsed ${cls}">${mins}m ago</span>
+          </div>
+          <div class="ticket-items">${items}</div>
+          ${o.note ? `<div class="ticket-note">📋 ${o.note}</div>` : ''}
+          <div class="ticket-footer">
+            <button class="btn-done" onclick="markDone(${o.id})">✓ Done — Close Order</button>
+            <a href="/pos/order/${o.id}" class="btn-view">View</a>
+          </div>
+        </div>`;
+      });
+      document.getElementById('ordersGrid').innerHTML = html;
+    } catch {}
+  }
+
+  setInterval(refresh, 8000);
+</script>
+</body>
+</html>

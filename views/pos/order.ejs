@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order — <%= order.table_name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; }
+
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0; }
+    .topbar-title { font-weight: 700; color: #fff; font-size: .95rem; }
+    .topbar-sub { font-size: .75rem; color: #666; margin-top: 2px; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: opacity .15s; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-danger { background: rgba(255,71,87,.15); color: #ff6b7a; border: 1px solid rgba(255,71,87,.3); }
+    .btn-success { background: #00b894; color: #fff; }
+    .btn-success:hover { opacity: .88; }
+
+    .layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 56px); }
+
+    /* ── Menu Panel ── */
+    .menu-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid rgba(255,255,255,.06); }
+    .cat-bar { display: flex; gap: 6px; padding: 12px 16px; overflow-x: auto; background: #13132a; scrollbar-width: none; flex-shrink: 0; }
+    .cat-bar::-webkit-scrollbar { display: none; }
+    .cat-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #888; font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; transition: all .15s; }
+    .cat-btn.active { background: #7c5cbf; border-color: #7c5cbf; color: #fff; }
+    .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 14px; overflow-y: auto; flex: 1; }
+    .item-card { background: #1a1a2e; border-radius: 10px; border: 1.5px solid #2a2a3e; padding: 12px; cursor: pointer; transition: all .15s; }
+    .item-card:hover { border-color: #7c5cbf; background: rgba(124,92,191,.08); }
+    .item-card-name { font-size: .82rem; font-weight: 600; color: #fff; margin-bottom: 4px; line-height: 1.3; }
+    .item-card-price { font-size: .8rem; color: #7c5cbf; font-weight: 700; }
+
+    /* ── Order Panel ── */
+    .order-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: #13132a; }
+    .order-header { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .order-header h2 { font-size: .9rem; font-weight: 700; color: #fff; }
+    .order-header p { font-size: .75rem; color: #555; margin-top: 2px; }
+    .order-items { flex: 1; overflow-y: auto; padding: 10px; }
+    .order-empty { text-align: center; padding: 40px 16px; color: #444; font-size: .85rem; }
+
+    .order-item { display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 8px; margin-bottom: 6px; background: #1a1a2e; }
+    .oi-name { flex: 1; font-size: .82rem; color: #ddd; line-height: 1.3; }
+    .oi-note { font-size: .7rem; color: #555; margin-top: 2px; }
+    .oi-price { font-size: .82rem; color: #7c5cbf; font-weight: 700; white-space: nowrap; }
+    .qty-ctrl { display: flex; align-items: center; gap: 4px; }
+    .qty-btn { width: 24px; height: 24px; border-radius: 6px; border: none; background: #2a2a3e; color: #ccc; cursor: pointer; font-size: .85rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .qty-btn:hover { background: #7c5cbf; color: #fff; }
+    .qty-num { font-size: .82rem; color: #fff; font-weight: 700; width: 20px; text-align: center; }
+
+    .order-footer { padding: 14px 16px; border-top: 1px solid rgba(255,255,255,.06); }
+    .total-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .total-label { font-size: .85rem; color: #888; }
+    .total-amount { font-size: 1.3rem; font-weight: 700; color: #fff; }
+    .footer-btns { display: flex; gap: 8px; }
+    .footer-btns .btn { flex: 1; justify-content: center; padding: 10px; font-size: .85rem; }
+
+    .note-form { padding: 0 16px 12px; }
+    .note-input { width: 100%; padding: 8px 10px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #ccc; font-size: .78rem; font-family: inherit; resize: none; outline: none; }
+    .note-input:focus { border-color: #7c5cbf; }
+
+    @media (max-width: 700px) {
+      .layout { flex-direction: column; height: auto; overflow: visible; }
+      .order-panel { width: 100%; }
+      .menu-panel { height: 55vh; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">🪑 <%= order.table_name %></div>
+    <div class="topbar-sub">Order #<%= order.id %></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <form method="POST" action="/pos/order/<%= order.id %>/void" onsubmit="return confirm('Void this order?')">
+      <button class="btn btn-danger" type="submit">Void</button>
+    </form>
+    <a href="/pos" class="btn btn-ghost">← Tables</a>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Menu Panel -->
+  <div class="menu-panel">
+    <div class="cat-bar">
+      <button class="cat-btn active" data-cat="all" onclick="filterCat('all', this)">All</button>
+      <% categories.forEach(c => { %>
+      <button class="cat-btn" data-cat="<%= c.id %>" onclick="filterCat('<%= c.id %>', this)"><%= c.name %></button>
+      <% }) %>
+    </div>
+    <div class="items-grid" id="itemsGrid">
+      <% menuItems.forEach(item => { %>
+      <div class="item-card" data-cat="<%= item.category_id %>" onclick="addItem('<%= item.id %>')">
+        <div class="item-card-name"><%= item.name %></div>
+        <div class="item-card-price"><%= tenant.currency || '$' %><%= item.price %></div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Order Panel -->
+  <div class="order-panel">
+    <div class="order-header">
+      <h2>Current Order</h2>
+      <p><%= orderItems.length %> item<%= orderItems.length !== 1 ? 's' : '' %></p>
+    </div>
+
+    <div class="order-items" id="orderItems">
+      <% if (orderItems.length === 0) { %>
+      <div class="order-empty">Tap items on the left to add them to the order</div>
+      <% } else { %>
+      <% orderItems.forEach(oi => { %>
+      <div class="order-item">
+        <div style="flex:1">
+          <div class="oi-name"><%= oi.name %></div>
+          <% if (oi.notes) { %><div class="oi-note">📝 <%= oi.notes %></div><% } %>
+        </div>
+        <div class="qty-ctrl">
+          <form method="POST" action="/pos/order/<%= order.id %>/item/<%= oi.id %>/qty" style="display:contents">
+            <input type="hidden" name="delta" value="-1" />
+            <button type="submit" class="qty-btn">−</button>
+          </form>
+          <span class="qty-num"><%= oi.quantity %></span>
+          <form method="POST" action="/pos/order/<%= order.id %>/item/<%= oi.id %>/qty" style="display:contents">
+            <input type="hidden" name="delta" value="1" />
+            <button type="submit" class="qty-btn">+</button>
+          </form>
+        </div>
+        <div class="oi-price"><%= tenant.currency || '$' %><%= (oi.price * oi.quantity).toFixed(2) %></div>
+      </div>
+      <% }) %>
+      <% } %>
+    </div>
+
+    <div class="note-form">
+      <form method="POST" action="/pos/order/<%= order.id %>/note">
+        <textarea class="note-input" name="note" rows="2" placeholder="Order note..." onblur="this.form.submit()"><%= order.note || '' %></textarea>
+      </form>
+    </div>
+
+    <div class="order-footer">
+      <div class="total-row">
+        <span class="total-label">Total</span>
+        <span class="total-amount"><%= tenant.currency || '$' %><%= total.toFixed(2) %></span>
+      </div>
+      <div class="footer-btns">
+        <% if (orderItems.length > 0) { %>
+        <a href="/pos/order/<%= order.id %>/pay" class="btn btn-success">💳 Pay</a>
+        <% } else { %>
+        <button class="btn btn-success" disabled style="opacity:.4;cursor:not-allowed;flex:1">💳 Pay</button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden add-item form -->
+<form method="POST" id="addForm" style="display:none" action="/pos/order/<%= order.id %>/add-item">
+  <input type="hidden" name="menu_item_id" id="addItemId" />
+</form>
+
+<script>
+  function addItem(id) {
+    document.getElementById('addItemId').value = id;
+    document.getElementById('addForm').submit();
+  }
+
+  function filterCat(cat, btn) {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.item-card').forEach(card => {
+      card.style.display = (cat === 'all' || card.dataset.cat == cat) ? '' : 'none';
+    });
+  }
+</script>
+</body>
+</html>

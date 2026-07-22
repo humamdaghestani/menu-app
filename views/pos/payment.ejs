@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment — <%= order.table_name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+
+    .card { background: #1a1a2e; border-radius: 16px; border: 1px solid rgba(255,255,255,.08); padding: 32px; width: 100%; max-width: 440px; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .sub { font-size: .82rem; color: #555; margin-bottom: 28px; }
+
+    .order-summary { background: #0f0f1a; border-radius: 10px; padding: 14px; margin-bottom: 24px; }
+    .summary-row { display: flex; justify-content: space-between; font-size: .82rem; color: #888; padding: 4px 0; }
+    .summary-row.total { font-size: 1.1rem; font-weight: 700; color: #fff; border-top: 1px solid #2a2a3e; margin-top: 8px; padding-top: 10px; }
+
+    .method-row { display: flex; gap: 10px; margin-bottom: 20px; }
+    .method-btn { flex: 1; padding: 12px; border: 2px solid #2a2a3e; border-radius: 10px; background: #0f0f1a; color: #888; font-size: .88rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; text-align: center; }
+    .method-btn.active { border-color: #7c5cbf; color: #fff; background: rgba(124,92,191,.12); }
+
+    label { display: block; font-size: .78rem; font-weight: 600; color: #666; margin-bottom: 6px; }
+    .amount-input { width: 100%; padding: 12px 14px; background: #0f0f1a; border: 2px solid #2a2a3e; border-radius: 10px; color: #fff; font-size: 1.3rem; font-weight: 700; outline: none; font-family: inherit; margin-bottom: 16px; }
+    .amount-input:focus { border-color: #7c5cbf; }
+
+    .change-box { background: rgba(0,184,148,.08); border: 1px solid rgba(0,184,148,.25); border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .change-label { font-size: .82rem; color: #00b894; font-weight: 600; }
+    .change-amount { font-size: 1.2rem; font-weight: 700; color: #00b894; }
+
+    .btn { width: 100%; padding: 13px; border: none; border-radius: 10px; cursor: pointer; font-size: .95rem; font-weight: 700; font-family: inherit; transition: opacity .15s; }
+    .btn-pay { background: #00b894; color: #fff; }
+    .btn-pay:hover { opacity: .88; }
+    .btn-back { background: rgba(255,255,255,.07); color: #888; margin-top: 10px; }
+    .btn-back:hover { background: rgba(255,255,255,.12); color: #ccc; }
+
+    .quick-amounts { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .quick-btn { padding: 7px 14px; border: 1.5px solid #2a2a3e; border-radius: 8px; background: #0f0f1a; color: #888; font-size: .8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .quick-btn:hover { border-color: #7c5cbf; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>💳 Payment</h1>
+  <div class="sub"><%= order.table_name %> · Order #<%= order.id %></div>
+
+  <div class="order-summary">
+    <% orderItems.forEach(oi => { %>
+    <div class="summary-row">
+      <span><%= oi.quantity %>× <%= oi.name %></span>
+      <span><%= tenant.currency || '$' %><%= (oi.price * oi.quantity).toFixed(2) %></span>
+    </div>
+    <% }) %>
+    <div class="summary-row total">
+      <span>Total</span>
+      <span><%= tenant.currency || '$' %><%= total.toFixed(2) %></span>
+    </div>
+  </div>
+
+  <form method="POST" action="/pos/order/<%= order.id %>/pay" id="payForm">
+    <!-- Payment Method -->
+    <div class="method-row">
+      <div class="method-btn active" id="btnCash" onclick="setMethod('cash')">💵 Cash</div>
+      <div class="method-btn" id="btnCard" onclick="setMethod('card')">💳 Card</div>
+    </div>
+    <input type="hidden" name="method" id="methodInput" value="cash" />
+
+    <!-- Amount Paid -->
+    <div id="cashSection">
+      <label>Amount Received</label>
+      <div class="quick-amounts">
+        <% [total, Math.ceil(total/5)*5, Math.ceil(total/10)*10, Math.ceil(total/50)*50].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
+        <button type="button" class="quick-btn" onclick="setAmount(<%= amt.toFixed(2) %>)"><%= tenant.currency || '$' %><%= amt.toFixed(2) %></button>
+        <% }) %>
+      </div>
+      <input type="number" class="amount-input" name="amount_paid" id="amountInput"
+        value="<%= total.toFixed(2) %>" min="<%= total.toFixed(2) %>" step="0.01"
+        oninput="calcChange()" />
+
+      <div class="change-box">
+        <span class="change-label">Change</span>
+        <span class="change-amount" id="changeAmt"><%= tenant.currency || '$' %>0.00</span>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-pay" onclick="return validatePay()">✓ Confirm Payment</button>
+  </form>
+  <a href="/pos/order/<%= order.id %>" class="btn btn-back" style="display:block;text-align:center;text-decoration:none;margin-top:10px">← Back to Order</a>
+</div>
+
+<script>
+  const TOTAL = <%= total.toFixed(2) %>;
+  const CUR   = '<%= tenant.currency || "$" %>';
+
+  function setMethod(m) {
+    document.getElementById('methodInput').value = m;
+    document.getElementById('btnCash').classList.toggle('active', m === 'cash');
+    document.getElementById('btnCard').classList.toggle('active', m === 'card');
+    document.getElementById('cashSection').style.display = m === 'cash' ? '' : 'none';
+    if (m === 'card') document.getElementById('amountInput').value = TOTAL.toFixed(2);
+  }
+
+  function setAmount(v) {
+    document.getElementById('amountInput').value = v.toFixed(2);
+    calcChange();
+  }
+
+  function calcChange() {
+    const paid = parseFloat(document.getElementById('amountInput').value) || 0;
+    const change = Math.max(0, paid - TOTAL);
+    document.getElementById('changeAmt').textContent = CUR + change.toFixed(2);
+  }
+
+  function validatePay() {
+    const paid = parseFloat(document.getElementById('amountInput').value) || 0;
+    if (document.getElementById('methodInput').value === 'cash' && paid < TOTAL) {
+      alert('Amount received must be at least ' + CUR + TOTAL.toFixed(2));
+      return false;
+    }
+    return true;
+  }
+
+  calcChange();
+</script>
+</body>
+</html>

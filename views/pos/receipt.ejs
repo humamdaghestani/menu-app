@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt #<%= order.id %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Courier New', monospace; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+
+    .actions { display: flex; gap: 10px; margin-bottom: 24px; }
+    .btn { padding: 9px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; font-family: 'Segoe UI', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+
+    .receipt { background: #fff; color: #111; width: 320px; padding: 24px 20px; border-radius: 4px; }
+    .receipt-header { text-align: center; margin-bottom: 16px; }
+    .receipt-logo { font-size: 1.5rem; margin-bottom: 4px; }
+    .receipt-name { font-size: 1rem; font-weight: 700; }
+    .receipt-sub { font-size: .72rem; color: #888; margin-top: 2px; }
+    .divider { border: none; border-top: 1px dashed #ccc; margin: 12px 0; }
+    .receipt-meta { font-size: .72rem; color: #666; margin-bottom: 12px; }
+    .receipt-meta div { display: flex; justify-content: space-between; padding: 2px 0; }
+
+    .receipt-items { margin-bottom: 12px; }
+    .receipt-item { display: flex; justify-content: space-between; font-size: .8rem; padding: 4px 0; }
+    .ri-name { flex: 1; }
+    .ri-qty { color: #666; margin: 0 8px; }
+    .ri-price { font-weight: 700; }
+    .ri-note { font-size: .68rem; color: #888; padding-left: 8px; }
+
+    .receipt-total { display: flex; justify-content: space-between; font-size: 1rem; font-weight: 700; padding: 8px 0; border-top: 2px solid #111; margin-top: 8px; }
+    .receipt-payment { font-size: .78rem; color: #555; margin-top: 8px; }
+    .receipt-payment div { display: flex; justify-content: space-between; padding: 2px 0; }
+    .receipt-footer { text-align: center; margin-top: 16px; font-size: .68rem; color: #aaa; }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .actions { display: none; }
+      .receipt { box-shadow: none; border-radius: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="actions">
+  <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
+  <a href="/pos" class="btn btn-ghost">← Tables</a>
+  <a href="/pos/order/<%= order.id %>" class="btn btn-ghost">View Order</a>
+</div>
+
+<div class="receipt">
+  <div class="receipt-header">
+    <div class="receipt-logo">🍽️</div>
+    <div class="receipt-name"><%= tenant.name %></div>
+    <% if (tenant.description) { %><div class="receipt-sub"><%= tenant.description %></div><% } %>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="receipt-meta">
+    <div><span>Receipt #</span><span><%= order.id %></span></div>
+    <div><span>Table</span><span><%= order.table_name %></span></div>
+    <div><span>Date</span><span><%= new Date(order.paid_at || order.created_at).toLocaleString() %></span></div>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="receipt-items">
+    <% orderItems.forEach(oi => { %>
+    <div>
+      <div class="receipt-item">
+        <span class="ri-name"><%= oi.name %></span>
+        <span class="ri-qty">×<%= oi.quantity %></span>
+        <span class="ri-price"><%= tenant.currency || '$' %><%= (oi.price * oi.quantity).toFixed(2) %></span>
+      </div>
+      <% if (oi.notes) { %><div class="ri-note">↳ <%= oi.notes %></div><% } %>
+    </div>
+    <% }) %>
+  </div>
+
+  <div class="receipt-total">
+    <span>TOTAL</span>
+    <span><%= tenant.currency || '$' %><%= parseFloat(order.total).toFixed(2) %></span>
+  </div>
+
+  <div class="receipt-payment">
+    <div><span>Payment</span><span style="text-transform:capitalize"><%= order.method || 'cash' %></span></div>
+    <% if (order.amount_paid) { %>
+    <div><span>Received</span><span><%= tenant.currency || '$' %><%= parseFloat(order.amount_paid).toFixed(2) %></span></div>
+    <% if (order.change_given > 0) { %>
+    <div><span>Change</span><span><%= tenant.currency || '$' %><%= parseFloat(order.change_given).toFixed(2) %></span></div>
+    <% } %>
+    <% } %>
+  </div>
+
+  <hr class="divider" />
+  <div class="receipt-footer">
+    Thank you for dining with us!<br />
+    Powered by m-menus.com
+  </div>
+</div>
+
+</body>
+</html>

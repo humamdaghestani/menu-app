@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
+    .topbar-left { display: flex; align-items: center; gap: 16px; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-right { display: flex; gap: 10px; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+
+    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .page-header h1 { font-size: 1.3rem; font-weight: 700; color: #fff; }
+
+    .legend { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 7px; font-size: .8rem; color: #888; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+    .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+
+    .table-card { background: #1a1a2e; border-radius: 14px; border: 2px solid #2a2a3e; padding: 20px; cursor: pointer; transition: all .2s; position: relative; }
+    .table-card:hover { transform: translateY(-2px); border-color: #7c5cbf; }
+    .table-card.occupied { border-color: rgba(231,76,60,.5); background: rgba(231,76,60,.06); }
+    .table-card.free { border-color: rgba(0,184,148,.3); }
+    .table-card.free:hover { border-color: #00b894; }
+
+    .table-icon { font-size: 2rem; margin-bottom: 10px; }
+    .table-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .table-cap { font-size: .75rem; color: #555; margin-bottom: 12px; }
+    .table-status { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
+    .status-free { background: rgba(0,184,148,.15); color: #00b894; }
+    .status-occupied { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .table-order-info { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.06); font-size: .78rem; color: #888; }
+    .table-order-total { color: #fff; font-weight: 700; font-size: .95rem; margin-top: 4px; }
+
+    .empty-state { text-align: center; padding: 80px 24px; color: #444; }
+    .empty-state p { margin-top: 12px; font-size: .9rem; }
+
+    @media (max-width: 600px) { .main { padding: 16px; } .tables-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-brand">🖥️ POS — <%= tenant.name %></div>
+  </div>
+  <div class="topbar-right">
+    <a href="/pos/kitchen" class="btn btn-ghost">🍳 Kitchen</a>
+    <a href="/pos/settings" class="btn btn-ghost">⚙️ Tables</a>
+    <a href="/admin/dashboard" class="btn btn-ghost">← Admin</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-header">
+    <h1>Table Map</h1>
+    <span style="color:#555;font-size:.82rem">Click a table to open or view its order</span>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> Free</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Occupied</div>
+  </div>
+
+  <% if (tables.length === 0) { %>
+  <div class="empty-state">
+    <div style="font-size:3rem">🪑</div>
+    <p>No tables configured yet.</p>
+    <a href="/pos/settings" class="btn btn-primary" style="margin-top:16px">Set Up Tables</a>
+  </div>
+  <% } else { %>
+  <div class="tables-grid">
+    <% tables.forEach(t => { %>
+    <% const occupied = !!t.order_id; %>
+    <div class="table-card <%= occupied ? 'occupied' : 'free' %>" onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')">
+      <div class="table-icon"><%= occupied ? '🔴' : '🟢' %></div>
+      <div class="table-name"><%= t.name %></div>
+      <div class="table-cap">Capacity: <%= t.capacity %></div>
+      <span class="table-status <%= occupied ? 'status-occupied' : 'status-free' %>">
+        <%= occupied ? 'Occupied' : 'Free' %>
+      </span>
+      <% if (occupied) { %>
+      <div class="table-order-info">
+        <div><%= t.item_count %> item<%= t.item_count != 1 ? 's' : '' %></div>
+        <div class="table-order-total"><%= tenant.currency || '$' %><%= parseFloat(t.order_total).toFixed(2) %></div>
+      </div>
+      <% } %>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+
+<form method="POST" id="openForm" style="display:none">
+  <input type="hidden" name="_method" value="POST" />
+</form>
+
+<script>
+  function openTable(tableId, orderId) {
+    if (orderId) {
+      window.location.href = '/pos/order/' + orderId;
+    } else {
+      const form = document.getElementById('openForm');
+      form.action = '/pos/tables/' + tableId + '/open';
+      form.submit();
+    }
+  }
+
+  // Auto-refresh every 15 seconds
+  setTimeout(() => location.reload(), 15000);
+</script>
+</body>
+</html>

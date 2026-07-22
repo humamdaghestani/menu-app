@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS Settings — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .topbar-title { font-weight: 700; color: #fff; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-danger { background: rgba(255,71,87,.15); color: #ff6b7a; border: 1px solid rgba(255,71,87,.3); }
+
+    .main { padding: 28px 24px; max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .desc { font-size: .82rem; color: #555; margin-bottom: 28px; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); padding: 24px; margin-bottom: 24px; }
+    .card h2 { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 18px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 16px; }
+    label { display: block; font-size: .75rem; font-weight: 600; color: #666; margin-bottom: 5px; }
+    input { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    input:focus { border-color: #7c5cbf; }
+
+    .tables-list { display: flex; flex-direction: column; gap: 8px; }
+    .table-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #0f0f1a; border-radius: 10px; border: 1px solid #2a2a3e; }
+    .table-row-name { flex: 1; font-size: .88rem; font-weight: 600; color: #fff; }
+    .table-row-cap { font-size: .78rem; color: #555; }
+    .table-actions { display: flex; gap: 6px; }
+    .btn-sm { padding: 5px 10px; font-size: .75rem; }
+
+    .edit-form { display: none; background: #13132a; border-radius: 10px; padding: 14px; margin-top: 8px; }
+    .edit-form.open { display: block; }
+    .edit-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">⚙️ POS Table Settings</div>
+  <a href="/pos" class="btn btn-ghost">← Back to POS</a>
+</div>
+
+<div class="main">
+  <h1>Table Setup</h1>
+  <p class="desc">Add and manage the tables in your restaurant. Each table appears on the POS table map.</p>
+
+  <div class="card">
+    <h2>Add New Table</h2>
+    <form method="POST" action="/pos/settings/tables">
+      <div class="form-row">
+        <div>
+          <label>Table Name *</label>
+          <input type="text" name="name" required placeholder="e.g. Table 1, Bar, Terrace" />
+        </div>
+        <div>
+          <label>Capacity</label>
+          <input type="number" name="capacity" value="4" min="1" max="50" />
+        </div>
+        <button type="submit" class="btn btn-primary">Add Table</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Your Tables (<%= tables.length %>)</h2>
+    <% if (tables.length === 0) { %>
+    <p style="color:#444;font-size:.85rem;text-align:center;padding:24px">No tables yet. Add one above.</p>
+    <% } else { %>
+    <div class="tables-list">
+      <% tables.forEach(t => { %>
+      <div>
+        <div class="table-row">
+          <div>
+            <div class="table-row-name">🪑 <%= t.name %></div>
+            <div class="table-row-cap">Capacity: <%= t.capacity %></div>
+          </div>
+          <div class="table-actions">
+            <button class="btn btn-ghost btn-sm" onclick="toggleEdit(<%= t.id %>)">Edit</button>
+            <form method="POST" action="/pos/settings/tables/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= t.name %>?')">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
+        <div class="edit-form" id="edit_<%= t.id %>">
+          <form method="POST" action="/pos/settings/tables/<%= t.id %>/edit">
+            <div class="edit-row">
+              <div>
+                <label>Name</label>
+                <input type="text" name="name" value="<%= t.name %>" required />
+              </div>
+              <div>
+                <label>Capacity</label>
+                <input type="number" name="capacity" value="<%= t.capacity %>" min="1" />
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+  function toggleEdit(id) {
+    const el = document.getElementById('edit_' + id);
+    el.classList.toggle('open');
+  }
+</script>
+</body>
+</html>

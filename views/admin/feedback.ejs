@@ -117,6 +117,7 @@
     <% if (_can('feedback') && tenant.feat_feedback !== false) { %><a href="/admin/feedback" class="active"><span class="icon">💬</span><span>Feedback</span></a><% } %>
     <% if (_can('import') && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
     <% if (_isAdmin) { %><a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a><% } %>
+    <% if (tenant.feat_pos) { %><a href="/pos"><span class="icon">🖥️</span><span>POS</span></a><% } %>
     <% if (_isAdmin) { %><a href="/admin/users"><span class="icon">👥</span><span>Users</span></a><% } %>
     <% if (_isAdmin) { %><a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a><% } %>
     <form method="POST" action="/admin/logout" style="margin-top:auto">
