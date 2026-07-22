@@ -74,7 +74,7 @@
       <div class="module-icon">🍽️</div>
       <div>
         <div class="module-name">Menu</div>
-        <div class="module-desc">Manage items, categories, images, prices, and your digital menu settings</div>
+        <div class="module-desc">Items, categories, orders, feedback, settings, staff, QR codes and more</div>
       </div>
       <span class="module-badge">Active</span>
     </a>
@@ -91,74 +91,24 @@
     </a>
     <% } %>
 
-    <!-- Orders -->
-    <% if (tenant.feat_orders !== false) { %>
-    <a href="/admin/orders" class="module-card" style="--accent:#f39c12">
-      <div class="module-icon">📋</div>
+    <!-- Future modules placeholder -->
+    <div class="module-card" style="--accent:#2a2a3e;opacity:.35;cursor:not-allowed">
+      <div class="module-icon">📦</div>
       <div>
-        <div class="module-name">Orders</div>
-        <div class="module-desc">View and track WhatsApp orders placed through your digital menu</div>
+        <div class="module-name">Inventory</div>
+        <div class="module-desc">Stock management, ingredients, low stock alerts and purchase orders</div>
       </div>
-      <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Active</span>
-    </a>
-    <% } %>
+      <span class="module-badge" style="background:rgba(255,255,255,.05);color:#444">Coming Soon</span>
+    </div>
 
-    <!-- Feedback -->
-    <% if (tenant.feat_feedback !== false) { %>
-    <a href="/admin/feedback" class="module-card" style="--accent:#e74c3c">
-      <div class="module-icon">💬</div>
+    <div class="module-card" style="--accent:#2a2a3e;opacity:.35;cursor:not-allowed">
+      <div class="module-icon">💰</div>
       <div>
-        <div class="module-name">Feedback</div>
-        <div class="module-desc">Customer survey responses, ratings, and comments from your menu</div>
+        <div class="module-name">Accounting</div>
+        <div class="module-desc">Revenue, expenses, profit & loss reports and daily summaries</div>
       </div>
-      <span class="module-badge" style="background:rgba(231,76,60,.15);color:#e74c3c">Active</span>
-    </a>
-    <% } %>
-
-    <!-- Valet -->
-    <% if (tenant.feat_valet !== false && tenant.valet_enabled) { %>
-    <a href="/valet-desk" class="module-card" style="--accent:#3498db">
-      <div class="module-icon">🚗</div>
-      <div>
-        <div class="module-name">Valet Desk</div>
-        <div class="module-desc">Real-time valet parking requests from customers</div>
-      </div>
-      <span class="module-badge" style="background:rgba(52,152,219,.15);color:#3498db">Active</span>
-    </a>
-    <% } %>
-
-    <!-- Settings -->
-    <a href="/admin/settings" class="module-card" style="--accent:#95a5a6">
-      <div class="module-icon">⚙️</div>
-      <div>
-        <div class="module-name">Settings</div>
-        <div class="module-desc">Restaurant profile, appearance, hours, WhatsApp, and integrations</div>
-      </div>
-      <span class="module-badge" style="background:rgba(149,165,166,.12);color:#95a5a6">Admin</span>
-    </a>
-
-    <!-- Users -->
-    <% const _isAdmin = currentUser && currentUser.role === 'admin'; %>
-    <% if (_isAdmin) { %>
-    <a href="/admin/users" class="module-card" style="--accent:#9b59b6">
-      <div class="module-icon">👥</div>
-      <div>
-        <div class="module-name">Staff</div>
-        <div class="module-desc">Manage staff accounts and control which modules each user can access</div>
-      </div>
-      <span class="module-badge" style="background:rgba(155,89,182,.15);color:#9b59b6">Admin</span>
-    </a>
-    <% } %>
-
-    <!-- QR Codes -->
-    <a href="/admin/qrcode" class="module-card" style="--accent:#1abc9c">
-      <div class="module-icon">📱</div>
-      <div>
-        <div class="module-name">QR Codes</div>
-        <div class="module-desc">Generate and print QR codes for tables and your main menu link</div>
-      </div>
-      <span class="module-badge" style="background:rgba(26,188,156,.15);color:#1abc9c">Active</span>
-    </a>
+      <span class="module-badge" style="background:rgba(255,255,255,.05);color:#444">Coming Soon</span>
+    </div>
 
   </div>
 </div>
