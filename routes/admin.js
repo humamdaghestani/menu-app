@@ -39,8 +39,14 @@ function requirePerm(perm) {
   };
 }
 
-// ── Login ──────────────────────────────────────────
-router.get('/', (req, res) => res.redirect('/admin/dashboard'));
+// ── Module Home ────────────────────────────────────
+router.get('/', requireAuth, async (req, res) => {
+  try {
+    const r = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
+    const tenant = r.rows[0];
+    res.render('admin/home', { tenant, currentUser: req.user });
+  } catch (err) { console.error(err); res.redirect('/admin/dashboard'); }
+});
 
 router.get('/login', (req, res) => {
   res.render('admin/login', { error: null });
@@ -77,14 +83,7 @@ router.post('/login', async (req, res) => {
 
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
 
-    let redirectTo = '/admin/dashboard';
-    if (user.role !== 'admin') {
-      if (permissions.includes('items'))         redirectTo = '/admin/dashboard';
-      else if (permissions.includes('orders'))   redirectTo = '/admin/orders';
-      else if (permissions.includes('feedback')) redirectTo = '/admin/feedback';
-      else if (permissions.includes('import'))   redirectTo = '/admin/import';
-    }
-    res.redirect(redirectTo);
+    res.redirect('/admin');
   } catch (err) {
     console.error(err);
     res.render('admin/login', { error: 'Server error, try again' });

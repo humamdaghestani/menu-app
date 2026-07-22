@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= tenant.name %> — Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .topbar-logo { width: 36px; height: 36px; border-radius: 10px; object-fit: cover; background: #2a2a3e; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; overflow: hidden; flex-shrink: 0; }
+    .topbar-logo img { width: 100%; height: 100%; object-fit: cover; }
+    .topbar-name { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; margin-top: 1px; }
+    .topbar-actions { display: flex; align-items: center; gap: 10px; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { padding: 40px 28px; max-width: 960px; margin: 0 auto; }
+
+    .welcome { margin-bottom: 40px; }
+    .welcome h1 { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .welcome p { font-size: .88rem; color: #555; }
+
+    .modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+
+    .module-card { background: #1a1a2e; border-radius: 16px; border: 1.5px solid #2a2a3e; padding: 28px 24px; text-decoration: none; display: flex; flex-direction: column; gap: 14px; transition: all .2s; cursor: pointer; }
+    .module-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,.3); background: rgba(255,255,255,.03); }
+    .module-icon { font-size: 2.2rem; }
+    .module-name { font-size: 1rem; font-weight: 700; color: #fff; }
+    .module-desc { font-size: .78rem; color: #555; line-height: 1.5; }
+    .module-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .68rem; font-weight: 700; background: rgba(124,92,191,.15); color: #7c5cbf; margin-top: auto; width: fit-content; }
+
+    .section-label { font-size: .72rem; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 14px; margin-top: 36px; }
+
+    @media (max-width: 600px) { .main { padding: 24px 16px; } .modules-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 380px) { .modules-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">
+      <% if (tenant.logo_url) { %><img src="<%= tenant.logo_url %>" alt="" /><% } else { %>🍽️<% } %>
+    </div>
+    <div>
+      <div class="topbar-name"><%= tenant.name %></div>
+      <div class="topbar-sub"><%= tenant.subdomain %>.m-menus.com</div>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <a href="http://<%= tenant.subdomain %>.m-menus.com" target="_blank" class="btn btn-ghost">👁️ View Menu</a>
+    <form method="POST" action="/admin/logout" style="display:inline">
+      <button class="btn btn-ghost" type="submit">Logout</button>
+    </form>
+  </div>
+</div>
+
+<div class="main">
+  <div class="welcome">
+    <h1>Welcome back 👋</h1>
+    <p>Select a module to get started</p>
+  </div>
+
+  <div class="section-label">Your Modules</div>
+  <div class="modules-grid">
+
+    <!-- Menu — always available -->
+    <a href="/admin/dashboard" class="module-card" style="--accent:#7c5cbf">
+      <div class="module-icon">🍽️</div>
+      <div>
+        <div class="module-name">Menu</div>
+        <div class="module-desc">Manage items, categories, images, prices, and your digital menu settings</div>
+      </div>
+      <span class="module-badge">Active</span>
+    </a>
+
+    <!-- POS -->
+    <% if (tenant.feat_pos) { %>
+    <a href="/pos" class="module-card" style="--accent:#00b894">
+      <div class="module-icon">🖥️</div>
+      <div>
+        <div class="module-name">Point of Sale</div>
+        <div class="module-desc">Table management, order taking, cash & card payments, kitchen display</div>
+      </div>
+      <span class="module-badge" style="background:rgba(0,184,148,.15);color:#00b894">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Orders -->
+    <% if (tenant.feat_orders !== false) { %>
+    <a href="/admin/orders" class="module-card" style="--accent:#f39c12">
+      <div class="module-icon">📋</div>
+      <div>
+        <div class="module-name">Orders</div>
+        <div class="module-desc">View and track WhatsApp orders placed through your digital menu</div>
+      </div>
+      <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Feedback -->
+    <% if (tenant.feat_feedback !== false) { %>
+    <a href="/admin/feedback" class="module-card" style="--accent:#e74c3c">
+      <div class="module-icon">💬</div>
+      <div>
+        <div class="module-name">Feedback</div>
+        <div class="module-desc">Customer survey responses, ratings, and comments from your menu</div>
+      </div>
+      <span class="module-badge" style="background:rgba(231,76,60,.15);color:#e74c3c">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Valet -->
+    <% if (tenant.feat_valet !== false && tenant.valet_enabled) { %>
+    <a href="/valet-desk" class="module-card" style="--accent:#3498db">
+      <div class="module-icon">🚗</div>
+      <div>
+        <div class="module-name">Valet Desk</div>
+        <div class="module-desc">Real-time valet parking requests from customers</div>
+      </div>
+      <span class="module-badge" style="background:rgba(52,152,219,.15);color:#3498db">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Settings -->
+    <a href="/admin/settings" class="module-card" style="--accent:#95a5a6">
+      <div class="module-icon">⚙️</div>
+      <div>
+        <div class="module-name">Settings</div>
+        <div class="module-desc">Restaurant profile, appearance, hours, WhatsApp, and integrations</div>
+      </div>
+      <span class="module-badge" style="background:rgba(149,165,166,.12);color:#95a5a6">Admin</span>
+    </a>
+
+    <!-- Users -->
+    <% const _isAdmin = currentUser && currentUser.role === 'admin'; %>
+    <% if (_isAdmin) { %>
+    <a href="/admin/users" class="module-card" style="--accent:#9b59b6">
+      <div class="module-icon">👥</div>
+      <div>
+        <div class="module-name">Staff</div>
+        <div class="module-desc">Manage staff accounts and control which modules each user can access</div>
+      </div>
+      <span class="module-badge" style="background:rgba(155,89,182,.15);color:#9b59b6">Admin</span>
+    </a>
+    <% } %>
+
+    <!-- QR Codes -->
+    <a href="/admin/qrcode" class="module-card" style="--accent:#1abc9c">
+      <div class="module-icon">📱</div>
+      <div>
+        <div class="module-name">QR Codes</div>
+        <div class="module-desc">Generate and print QR codes for tables and your main menu link</div>
+      </div>
+      <span class="module-badge" style="background:rgba(26,188,156,.15);color:#1abc9c">Active</span>
+    </a>
+
+  </div>
+</div>
+
+</body>
+</html>
