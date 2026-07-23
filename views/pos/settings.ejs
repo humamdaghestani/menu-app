@@ -16,13 +16,15 @@
     .btn-primary:hover { opacity: .88; }
     .btn-danger { background: rgba(255,71,87,.15); color: #ff6b7a; border: 1px solid rgba(255,71,87,.3); }
     .btn-sm { padding: 5px 12px; font-size: .76rem; }
+    .btn-test { background: rgba(52,152,219,.15); color: #3498db; border: 1px solid rgba(52,152,219,.3); }
+    .btn-test:hover { background: rgba(52,152,219,.25); }
 
     .tabs { background: #1a1a2e; display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,.07); padding: 0 24px; }
     .tab { padding: 14px 20px; font-size: .85rem; font-weight: 600; color: #555; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
     .tab.active { color: #fff; border-bottom-color: #7c5cbf; }
     .tab:hover { color: #ccc; }
 
-    .main { padding: 28px 24px; max-width: 700px; margin: 0 auto; }
+    .main { padding: 28px 24px; max-width: 760px; margin: 0 auto; }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
@@ -32,8 +34,9 @@
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 16px; }
     label { display: block; font-size: .75rem; font-weight: 600; color: #666; margin-bottom: 5px; }
-    input[type=text], input[type=number] { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
-    input:focus { border-color: #7c5cbf; }
+    input[type=text], input[type=number], select { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    input:focus, select:focus { border-color: #7c5cbf; }
+    select option { background: #1a1a2e; }
 
     .tables-list { display: flex; flex-direction: column; gap: 8px; }
     .table-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: #0f0f1a; border-radius: 10px; border: 1px solid #2a2a3e; }
@@ -58,6 +61,36 @@
     .toggle-wrap input:checked + .toggle-slider:before { transform: translateX(20px); background: #fff; }
 
     .save-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+    /* Printer cards */
+    .printer-list { display: flex; flex-direction: column; gap: 10px; }
+    .printer-card { background: #0f0f1a; border: 1px solid #2a2a3e; border-radius: 12px; overflow: hidden; }
+    .printer-card.inactive { opacity: .55; }
+    .printer-main { display: flex; align-items: center; gap: 14px; padding: 14px 16px; flex-wrap: wrap; }
+    .printer-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .printer-info { flex: 1; min-width: 0; }
+    .printer-name { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 3px; }
+    .printer-meta { font-size: .75rem; color: #555; display: flex; gap: 10px; flex-wrap: wrap; }
+    .printer-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .role-badge { padding: 3px 9px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
+    .role-receipt { background: rgba(124,92,191,.15); color: #c4b0f0; }
+    .role-kitchen { background: rgba(231,76,60,.12); color: #e74c3c; }
+    .role-both    { background: rgba(0,184,148,.12); color: #00b894; }
+    .active-dot { width: 8px; height: 8px; border-radius: 50%; background: #00b894; display: inline-block; margin-right: 4px; }
+    .inactive-dot { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; margin-right: 4px; }
+    .test-result { font-size: .73rem; padding: 4px 10px; border-radius: 6px; display: none; }
+    .test-result.ok  { background: rgba(0,184,148,.12); color: #00b894; }
+    .test-result.err { background: rgba(231,76,60,.12); color: #e74c3c; }
+
+    .printer-edit-form { display: none; background: #13132a; border-top: 1px solid #2a2a3e; padding: 16px; }
+    .printer-edit-form.open { display: block; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    .grid4 { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+    /* Add printer form */
+    .add-printer-form { border: 1.5px dashed #2a2a3e; border-radius: 12px; padding: 20px; }
+    .add-printer-form h3 { font-size: .85rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -70,6 +103,7 @@
 <div class="tabs">
   <div class="tab active" onclick="switchTab('tables', this)">🪑 Tables</div>
   <div class="tab" onclick="switchTab('permissions', this)">🔐 Permissions</div>
+  <div class="tab" onclick="switchTab('printers', this)">🖨️ Printers</div>
 </div>
 
 <div class="main">
@@ -108,13 +142,13 @@
               <div class="table-row-cap">Capacity: <%= t.capacity %></div>
             </div>
             <div class="table-actions">
-              <button class="btn btn-ghost btn-sm" onclick="toggleEdit(<%= t.id %>)">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleEdit('t_<%= t.id %>')">Edit</button>
               <form method="POST" action="/pos/settings/tables/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= t.name %>?')">
                 <button class="btn btn-danger btn-sm" type="submit">Delete</button>
               </form>
             </div>
           </div>
-          <div class="edit-form" id="edit_<%= t.id %>">
+          <div class="edit-form" id="t_<%= t.id %>">
             <form method="POST" action="/pos/settings/tables/<%= t.id %>/edit">
               <div class="edit-row">
                 <div><label>Name</label><input type="text" name="name" value="<%= t.name %>" required /></div>
@@ -139,14 +173,13 @@
         <div class="perm-row">
           <div class="perm-info">
             <div class="perm-label">Void Orders</div>
-            <div class="perm-desc">Allow cashiers to cancel / void a paid or open order</div>
+            <div class="perm-desc">Allow cashiers to cancel / void an order</div>
           </div>
           <label class="toggle-wrap">
             <input type="checkbox" name="pos_allow_void" value="1" <%= tenant.pos_allow_void !== false ? 'checked' : '' %> />
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="perm-row">
           <div class="perm-info">
             <div class="perm-label">Apply Discounts</div>
@@ -157,18 +190,16 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="perm-row">
           <div class="perm-info">
             <div class="perm-label">Open Takeaway Orders</div>
-            <div class="perm-desc">Allow cashiers to create takeaway orders (not linked to a table)</div>
+            <div class="perm-desc">Allow cashiers to create takeaway orders</div>
           </div>
           <label class="toggle-wrap">
             <input type="checkbox" name="pos_allow_takeaway" value="1" <%= tenant.pos_allow_takeaway !== false ? 'checked' : '' %> />
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="perm-row">
           <div class="perm-info">
             <div class="perm-label">Print Receipts</div>
@@ -179,7 +210,6 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="save-row">
           <button type="submit" class="btn btn-primary">Save Permissions</button>
         </div>
@@ -200,7 +230,6 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="perm-row">
           <div class="perm-info">
             <div class="perm-label">Show Item Images</div>
@@ -211,7 +240,6 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="perm-row">
           <div class="perm-info">
             <div class="perm-label">Show Table Capacity</div>
@@ -222,11 +250,148 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-
         <div class="save-row">
           <button type="submit" class="btn btn-primary">Save Display</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- PRINTERS TAB -->
+  <div class="tab-panel" id="tab-printers">
+
+    <!-- Add Printer -->
+    <div class="card">
+      <h2>Add Printer</h2>
+      <p class="card-desc">Configure a network (IP-based) thermal printer for receipts or kitchen tickets.</p>
+      <form method="POST" action="/pos/settings/printers" class="add-printer-form">
+        <div class="grid2">
+          <div>
+            <label>Printer Name *</label>
+            <input type="text" name="name" required placeholder="e.g. Kitchen Printer, Counter" />
+          </div>
+          <div>
+            <label>Role *</label>
+            <select name="role">
+              <option value="receipt">🧾 Receipt — prints customer receipts</option>
+              <option value="kitchen">🍳 Kitchen — prints kitchen order tickets</option>
+              <option value="both">📋 Both — receipts & kitchen tickets</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid4">
+          <div>
+            <label>IP Address *</label>
+            <input type="text" name="ip_address" placeholder="192.168.1.100" pattern="[\d\.]+" />
+          </div>
+          <div>
+            <label>Port</label>
+            <input type="number" name="port" value="9100" min="1" max="65535" />
+          </div>
+          <div>
+            <label>Paper Width</label>
+            <select name="paper_width">
+              <option value="80mm">80 mm</option>
+              <option value="58mm">58 mm</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end">
+            <button type="submit" class="btn btn-primary" style="width:100%">Add Printer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Existing Printers -->
+    <div class="card">
+      <h2>Configured Printers (<%= printers.length %>)</h2>
+      <% if (printers.length === 0) { %>
+      <p style="color:#444;font-size:.85rem;text-align:center;padding:28px">No printers configured yet.</p>
+      <% } else { %>
+      <div class="printer-list" style="margin-top:4px">
+        <% printers.forEach(p => { %>
+        <div class="printer-card <%= p.is_active ? '' : 'inactive' %>">
+          <div class="printer-main">
+            <div class="printer-icon"><% if(p.role==='kitchen'){%>🍳<%}else if(p.role==='both'){%>📋<%}else{%>🧾<%}%></div>
+            <div class="printer-info">
+              <div class="printer-name">
+                <% if (p.is_active) { %><span class="active-dot"></span><% } else { %><span class="inactive-dot"></span><% } %>
+                <%= p.name %>
+                <span class="role-badge role-<%= p.role %>"><%= p.role === 'receipt' ? 'Receipt' : p.role === 'kitchen' ? 'Kitchen' : 'Both' %></span>
+              </div>
+              <div class="printer-meta">
+                <% if (p.connection_type === 'network') { %>
+                  <span>🌐 <%= p.ip_address || 'No IP' %>:<%= p.port || 9100 %></span>
+                <% } %>
+                <span>📄 <%= p.paper_width || '80mm' %></span>
+              </div>
+            </div>
+            <div class="printer-actions">
+              <span class="test-result" id="test_<%= p.id %>"></span>
+              <% if (p.connection_type === 'network' && p.ip_address) { %>
+              <button class="btn btn-test btn-sm" onclick="testPrinter(<%= p.id %>)">Test</button>
+              <% } %>
+              <button class="btn btn-ghost btn-sm" onclick="toggleEdit('p_<%= p.id %>')">Edit</button>
+              <form method="POST" action="/pos/settings/printers/<%= p.id %>/delete" style="display:inline" onsubmit="return confirm('Delete printer <%= p.name %>?')">
+                <button class="btn btn-danger btn-sm" type="submit">✕</button>
+              </form>
+            </div>
+          </div>
+          <div class="printer-edit-form" id="p_<%= p.id %>">
+            <form method="POST" action="/pos/settings/printers/<%= p.id %>/edit">
+              <div class="grid2">
+                <div>
+                  <label>Printer Name</label>
+                  <input type="text" name="name" value="<%= p.name %>" required />
+                </div>
+                <div>
+                  <label>Role</label>
+                  <select name="role">
+                    <option value="receipt" <%= p.role==='receipt'?'selected':'' %>>🧾 Receipt</option>
+                    <option value="kitchen" <%= p.role==='kitchen'?'selected':'' %>>🍳 Kitchen</option>
+                    <option value="both"    <%= p.role==='both'   ?'selected':'' %>>📋 Both</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid3">
+                <div>
+                  <label>IP Address</label>
+                  <input type="text" name="ip_address" value="<%= p.ip_address || '' %>" placeholder="192.168.1.100" />
+                </div>
+                <div>
+                  <label>Port</label>
+                  <input type="number" name="port" value="<%= p.port || 9100 %>" min="1" max="65535" />
+                </div>
+                <div>
+                  <label>Paper Width</label>
+                  <select name="paper_width">
+                    <option value="80mm" <%= (p.paper_width||'80mm')==='80mm'?'selected':'' %>>80 mm</option>
+                    <option value="58mm" <%= p.paper_width==='58mm'?'selected':'' %>>58 mm</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+                <label style="display:flex;align-items:center;gap:8px;margin:0;cursor:pointer">
+                  <input type="checkbox" name="is_active" value="1" <%= p.is_active ? 'checked' : '' %> style="width:14px;height:14px;accent-color:#7c5cbf" />
+                  <span style="font-size:.82rem;color:#ccc">Active</span>
+                </label>
+                <div style="display:flex;gap:8px">
+                  <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEdit('p_<%= p.id %>')">Cancel</button>
+                  <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Info box -->
+    <div style="background:rgba(52,152,219,.06);border:1px solid rgba(52,152,219,.2);border-radius:12px;padding:16px 20px;font-size:.78rem;color:#666;line-height:1.7">
+      <strong style="color:#3498db">ℹ️ How network printing works</strong><br>
+      Your printer must be on the same local network as the POS device. Most ESC/POS thermal printers use port <strong style="color:#ccc">9100</strong> by default. Check your printer's settings page or manual for its IP address. The <strong style="color:#ccc">Test</strong> button checks if the printer is reachable over the network.
     </div>
   </div>
 
@@ -240,8 +405,26 @@ function switchTab(name, el) {
   document.getElementById('tab-' + name).classList.add('active');
 }
 function toggleEdit(id) {
-  document.getElementById('edit_' + id).classList.toggle('open');
+  document.getElementById(id).classList.toggle('open');
 }
+
+async function testPrinter(id) {
+  const resultEl = document.getElementById('test_' + id);
+  resultEl.style.display = 'inline-block';
+  resultEl.className = 'test-result';
+  resultEl.textContent = '⏳ Testing…';
+  try {
+    const r = await fetch('/pos/settings/printers/' + id + '/test', { method: 'POST' });
+    const d = await r.json();
+    resultEl.className = 'test-result ' + (d.ok ? 'ok' : 'err');
+    resultEl.textContent = d.ok ? '✓ ' + d.message : '✗ ' + d.error;
+  } catch (e) {
+    resultEl.className = 'test-result err';
+    resultEl.textContent = '✗ Network error';
+  }
+  setTimeout(() => { resultEl.style.display = 'none'; }, 5000);
+}
+
 // Auto-activate tab from URL ?tab=
 const urlTab = new URLSearchParams(location.search).get('tab');
 if (urlTab) {

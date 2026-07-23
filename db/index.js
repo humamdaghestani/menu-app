@@ -99,6 +99,18 @@ const pool = new Pool({
       used_at     TIMESTAMP,
       expires_at  TIMESTAMP NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS pos_printers (
+      id              SERIAL PRIMARY KEY,
+      tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name            VARCHAR(80) NOT NULL,
+      role            VARCHAR(20) DEFAULT 'receipt',
+      connection_type VARCHAR(20) DEFAULT 'network',
+      ip_address      VARCHAR(80),
+      port            INTEGER DEFAULT 9100,
+      paper_width     VARCHAR(10) DEFAULT '80mm',
+      is_active       BOOLEAN DEFAULT true,
+      created_at      TIMESTAMP DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS pos_activity_log (
       id          SERIAL PRIMARY KEY,
       tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
