@@ -7,25 +7,32 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
-
     .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
     .topbar-title { font-weight: 700; color: #fff; }
     .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
     .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
     .btn-danger { background: rgba(255,71,87,.15); color: #ff6b7a; border: 1px solid rgba(255,71,87,.3); }
+    .btn-sm { padding: 5px 12px; font-size: .76rem; }
+
+    .tabs { background: #1a1a2e; display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,.07); padding: 0 24px; }
+    .tab { padding: 14px 20px; font-size: .85rem; font-weight: 600; color: #555; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab.active { color: #fff; border-bottom-color: #7c5cbf; }
+    .tab:hover { color: #ccc; }
 
     .main { padding: 28px 24px; max-width: 700px; margin: 0 auto; }
-    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
-    .desc { font-size: .82rem; color: #555; margin-bottom: 28px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
 
-    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); padding: 24px; margin-bottom: 24px; }
-    .card h2 { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 18px; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .card-desc { font-size: .78rem; color: #555; margin-bottom: 18px; }
 
     .form-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 16px; }
     label { display: block; font-size: .75rem; font-weight: 600; color: #666; margin-bottom: 5px; }
-    input { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    input[type=text], input[type=number] { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
     input:focus { border-color: #7c5cbf; }
 
     .tables-list { display: flex; flex-direction: column; gap: 8px; }
@@ -33,88 +40,214 @@
     .table-row-name { flex: 1; font-size: .88rem; font-weight: 600; color: #fff; }
     .table-row-cap { font-size: .78rem; color: #555; }
     .table-actions { display: flex; gap: 6px; }
-    .btn-sm { padding: 5px 10px; font-size: .75rem; }
-
     .edit-form { display: none; background: #13132a; border-radius: 10px; padding: 14px; margin-top: 8px; }
     .edit-form.open { display: block; }
     .edit-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+
+    /* Toggle switch */
+    .perm-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .perm-row:last-child { border-bottom: none; }
+    .perm-info { flex: 1; }
+    .perm-label { font-size: .88rem; font-weight: 600; color: #ccc; margin-bottom: 2px; }
+    .perm-desc  { font-size: .75rem; color: #555; }
+    .toggle-wrap { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #2a2a3e; border-radius: 24px; cursor: pointer; transition: .2s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #555; border-radius: 50%; transition: .2s; }
+    .toggle-wrap input:checked + .toggle-slider { background: #7c5cbf; }
+    .toggle-wrap input:checked + .toggle-slider:before { transform: translateX(20px); background: #fff; }
+
+    .save-row { display: flex; justify-content: flex-end; margin-top: 8px; }
   </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="topbar-title">⚙️ POS Table Settings</div>
-  <a href="/pos" class="btn btn-ghost">← Back to POS</a>
+  <div class="topbar-title">⚙️ POS Settings</div>
+  <a href="/pos" class="btn btn-ghost">← POS Home</a>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('tables', this)">🪑 Tables</div>
+  <div class="tab" onclick="switchTab('permissions', this)">🔐 Permissions</div>
 </div>
 
 <div class="main">
-  <h1>Table Setup</h1>
-  <p class="desc">Add and manage the tables in your restaurant. Each table appears on the POS table map.</p>
 
-  <div class="card">
-    <h2>Add New Table</h2>
-    <form method="POST" action="/pos/settings/tables">
-      <div class="form-row">
-        <div>
-          <label>Table Name *</label>
-          <input type="text" name="name" required placeholder="e.g. Table 1, Bar, Terrace" />
-        </div>
-        <div>
-          <label>Capacity</label>
-          <input type="number" name="capacity" value="4" min="1" max="50" />
-        </div>
-        <button type="submit" class="btn btn-primary">Add Table</button>
-      </div>
-    </form>
-  </div>
-
-  <div class="card">
-    <h2>Your Tables (<%= tables.length %>)</h2>
-    <% if (tables.length === 0) { %>
-    <p style="color:#444;font-size:.85rem;text-align:center;padding:24px">No tables yet. Add one above.</p>
-    <% } else { %>
-    <div class="tables-list">
-      <% tables.forEach(t => { %>
-      <div>
-        <div class="table-row">
+  <!-- TABLES TAB -->
+  <div class="tab-panel active" id="tab-tables">
+    <div class="card">
+      <h2>Add New Table</h2>
+      <p class="card-desc">Each table appears on the POS table map. Tables are shared across sessions.</p>
+      <form method="POST" action="/pos/settings/tables">
+        <div class="form-row">
           <div>
-            <div class="table-row-name">🪑 <%= t.name %></div>
-            <div class="table-row-cap">Capacity: <%= t.capacity %></div>
+            <label>Table Name *</label>
+            <input type="text" name="name" required placeholder="e.g. Table 1, Bar, Terrace" />
           </div>
-          <div class="table-actions">
-            <button class="btn btn-ghost btn-sm" onclick="toggleEdit(<%= t.id %>)">Edit</button>
-            <form method="POST" action="/pos/settings/tables/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= t.name %>?')">
-              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+          <div>
+            <label>Capacity</label>
+            <input type="number" name="capacity" value="4" min="1" max="50" />
+          </div>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Your Tables (<%= tables.length %>)</h2>
+      <% if (tables.length === 0) { %>
+      <p style="color:#444;font-size:.85rem;text-align:center;padding:24px">No tables yet. Add one above.</p>
+      <% } else { %>
+      <div class="tables-list">
+        <% tables.forEach(t => { %>
+        <div>
+          <div class="table-row">
+            <div>
+              <div class="table-row-name">🪑 <%= t.name %></div>
+              <div class="table-row-cap">Capacity: <%= t.capacity %></div>
+            </div>
+            <div class="table-actions">
+              <button class="btn btn-ghost btn-sm" onclick="toggleEdit(<%= t.id %>)">Edit</button>
+              <form method="POST" action="/pos/settings/tables/<%= t.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= t.name %>?')">
+                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+              </form>
+            </div>
+          </div>
+          <div class="edit-form" id="edit_<%= t.id %>">
+            <form method="POST" action="/pos/settings/tables/<%= t.id %>/edit">
+              <div class="edit-row">
+                <div><label>Name</label><input type="text" name="name" value="<%= t.name %>" required /></div>
+                <div><label>Capacity</label><input type="number" name="capacity" value="<%= t.capacity %>" min="1" /></div>
+                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+              </div>
             </form>
           </div>
         </div>
-        <div class="edit-form" id="edit_<%= t.id %>">
-          <form method="POST" action="/pos/settings/tables/<%= t.id %>/edit">
-            <div class="edit-row">
-              <div>
-                <label>Name</label>
-                <input type="text" name="name" value="<%= t.name %>" required />
-              </div>
-              <div>
-                <label>Capacity</label>
-                <input type="number" name="capacity" value="<%= t.capacity %>" min="1" />
-              </div>
-              <button type="submit" class="btn btn-primary btn-sm">Save</button>
-            </div>
-          </form>
-        </div>
+        <% }) %>
       </div>
-      <% }) %>
+      <% } %>
     </div>
-    <% } %>
   </div>
+
+  <!-- PERMISSIONS TAB -->
+  <div class="tab-panel" id="tab-permissions">
+    <div class="card">
+      <h2>Cashier Permissions</h2>
+      <p class="card-desc">Control what a POS cashier can do without manager approval.</p>
+      <form method="POST" action="/pos/settings/permissions">
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Void Orders</div>
+            <div class="perm-desc">Allow cashiers to cancel / void a paid or open order</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_allow_void" value="1" <%= tenant.pos_allow_void !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Apply Discounts</div>
+            <div class="perm-desc">Allow cashiers to add percent or fixed discounts on orders</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_allow_discount" value="1" <%= tenant.pos_allow_discount !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Open Takeaway Orders</div>
+            <div class="perm-desc">Allow cashiers to create takeaway orders (not linked to a table)</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_allow_takeaway" value="1" <%= tenant.pos_allow_takeaway !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Print Receipts</div>
+            <div class="perm-desc">Allow cashiers to view and print the receipt after payment</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_allow_receipt" value="1" <%= tenant.pos_allow_receipt !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="save-row">
+          <button type="submit" class="btn btn-primary">Save Permissions</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Display Settings</h2>
+      <p class="card-desc">Control what appears on the POS screen for cashiers.</p>
+      <form method="POST" action="/pos/settings/display">
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Show Kitchen Button</div>
+            <div class="perm-desc">Show the Kitchen Display link in the POS topbar</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_show_kitchen" value="1" <%= tenant.pos_show_kitchen !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Show Item Images</div>
+            <div class="perm-desc">Display menu item images on the order screen</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_show_images" value="1" <%= tenant.pos_show_images !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Show Table Capacity</div>
+            <div class="perm-desc">Show seat count under each table on the table map</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_show_capacity" value="1" <%= tenant.pos_show_capacity !== false ? 'checked' : '' %> />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="save-row">
+          <button type="submit" class="btn btn-primary">Save Display</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
 </div>
 
 <script>
-  function toggleEdit(id) {
-    const el = document.getElementById('edit_' + id);
-    el.classList.toggle('open');
-  }
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+function toggleEdit(id) {
+  document.getElementById('edit_' + id).classList.toggle('open');
+}
+// Auto-activate tab from URL ?tab=
+const urlTab = new URLSearchParams(location.search).get('tab');
+if (urlTab) {
+  const tabEl = document.querySelector(`.tab[onclick*="${urlTab}"]`);
+  if (tabEl) switchTab(urlTab, tabEl);
+}
 </script>
 </body>
 </html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sessions — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .topbar-title { font-weight: 700; color: #fff; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 22px; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .stat { background: #1a1a2e; border-radius: 12px; border: 1px solid rgba(255,255,255,.06); padding: 16px 18px; }
+    .stat-label { font-size: .7rem; color: #555; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-val { font-size: 1.3rem; font-weight: 700; color: #fff; }
+    .stat-val.green { color: #00b894; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: #444; padding: 10px 14px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    td { padding: 12px 14px; font-size: .82rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .badge { padding: 3px 9px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
+    .badge-open   { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-closed { background: rgba(255,255,255,.08); color: #666; }
+
+    .session-detail { cursor: pointer; }
+    .expand-btn { color: #444; font-size: .75rem; padding: 3px 8px; background: rgba(255,255,255,.06); border-radius: 6px; border: none; cursor: pointer; font-family: inherit; }
+    .expand-btn:hover { color: #ccc; }
+
+    .orders-sub { display: none; background: #0f0f1a; }
+    .orders-sub.open { display: table-row-group; }
+    .orders-sub td { padding: 6px 14px 6px 30px; font-size: .77rem; color: #555; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .orders-sub td:first-child { color: #666; }
+
+    .empty { text-align: center; padding: 60px; color: #333; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-title">📅 Sessions History</div>
+  <a href="/pos" class="btn btn-ghost">← POS Home</a>
+</div>
+
+<div class="main">
+  <h1>All Sessions</h1>
+
+  <div class="summary-grid">
+    <div class="stat"><div class="stat-label">Total Sessions</div><div class="stat-val"><%= sessions.length %></div></div>
+    <div class="stat"><div class="stat-label">Total Orders</div><div class="stat-val"><%= totals.orders %></div></div>
+    <div class="stat"><div class="stat-label">Total Sales</div><div class="stat-val green"><%= tenant.currency || '$' %><%= totals.sales.toFixed(2) %></div></div>
+    <div class="stat"><div class="stat-label">Cash</div><div class="stat-val"><%= tenant.currency || '$' %><%= totals.cash.toFixed(2) %></div></div>
+    <div class="stat"><div class="stat-label">Card</div><div class="stat-val"><%= tenant.currency || '$' %><%= totals.card.toFixed(2) %></div></div>
+  </div>
+
+  <div class="card">
+    <% if (sessions.length === 0) { %>
+    <div class="empty">No sessions yet</div>
+    <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th>Opened By</th>
+          <th>Opening Cash</th>
+          <th>Orders</th>
+          <th>Sales</th>
+          <th>Cash</th>
+          <th>Card</th>
+          <th>Closing Cash</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <% sessions.forEach(s => { %>
+      <tbody>
+        <tr class="session-detail" onclick="toggleSession(<%= s.id %>)">
+          <td style="color:#555">#<%= s.id %></td>
+          <td><%= new Date(s.opened_at).toLocaleDateString() %><br><span style="color:#444;font-size:.72rem"><%= new Date(s.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% if (s.closed_at) { %> → <%= new Date(s.closed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% } %></span></td>
+          <td><%= s.opened_by_name || '—' %></td>
+          <td><%= tenant.currency || '$' %><%= parseFloat(s.opening_cash).toFixed(2) %></td>
+          <td><%= s.order_count %></td>
+          <td><strong style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(s.total_sales).toFixed(2) %></strong></td>
+          <td style="color:#ccc"><%= tenant.currency || '$' %><%= parseFloat(s.cash_sales).toFixed(2) %></td>
+          <td style="color:#ccc"><%= tenant.currency || '$' %><%= parseFloat(s.card_sales).toFixed(2) %></td>
+          <td style="color:#666"><%= s.closing_cash != null ? (tenant.currency || '$') + parseFloat(s.closing_cash).toFixed(2) : '—' %></td>
+          <td><span class="badge badge-<%= s.status %>"><%= s.status %></span></td>
+          <td><button class="expand-btn" id="btn_<%= s.id %>">▼</button></td>
+        </tr>
+      </tbody>
+      <tbody class="orders-sub" id="sub_<%= s.id %>">
+        <% if (s.orders && s.orders.length > 0) { %>
+          <% s.orders.forEach(o => { %>
+          <tr>
+            <td>#<%= o.id %></td>
+            <td><%= o.table_name %></td>
+            <td colspan="2"><%= o.item_count %> items</td>
+            <td colspan="2" style="text-transform:capitalize"><%= o.pay_method || '—' %></td>
+            <td colspan="3" style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(o.total || 0).toFixed(2) %></td>
+            <td><span class="badge badge-<%= o.status %>"><%= o.status %></span></td>
+            <td><% if (o.status === 'paid') { %><a href="/pos/receipt/<%= o.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none">Receipt</a><% } %></td>
+          </tr>
+          <% }) %>
+        <% } else { %>
+        <tr><td colspan="11" style="color:#333;text-align:center;padding:12px">No completed orders in this session</td></tr>
+        <% } %>
+      </tbody>
+      <% }) %>
+    </table>
+    <% } %>
+  </div>
+</div>
+
+<script>
+function toggleSession(id) {
+  const sub = document.getElementById('sub_' + id);
+  const btn = document.getElementById('btn_' + id);
+  const open = sub.classList.toggle('open');
+  btn.textContent = open ? '▲' : '▼';
+}
+</script>
+</body>
+</html>

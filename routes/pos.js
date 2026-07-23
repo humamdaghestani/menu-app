@@ -128,8 +128,67 @@ router.get('/orders', requireAuth, requirePOS, requireSession, async (req, res) 
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
+// ── POS Home ─────────────────────────────────────────────────────────────────
+router.get('/', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant  = await getTenant(req.user.tenantId);
+    const session = await getOpenSession(req.user.tenantId);
+    let stats = { cnt: 0, sales: 0 };
+    if (session) {
+      const r = await db.query(
+        "SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS sales FROM pos_orders WHERE session_id=$1 AND status='paid'",
+        [session.id]
+      );
+      stats = r.rows[0];
+    }
+    res.render('pos/home', { tenant, session, stats, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// ── Sessions History ──────────────────────────────────────────────────────────
+router.get('/sessions', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const sessionsRes = await db.query(
+      `SELECT ps.*, u.name AS opened_by_name,
+        COUNT(DISTINCT po.id) AS order_count,
+        COALESCE(SUM(CASE WHEN po.status='paid' THEN po.total ELSE 0 END), 0) AS total_sales,
+        COALESCE(SUM(CASE WHEN po.status='paid' AND pp.method='cash' THEN po.total ELSE 0 END), 0) AS cash_sales,
+        COALESCE(SUM(CASE WHEN po.status='paid' AND pp.method='card' THEN po.total ELSE 0 END), 0) AS card_sales
+       FROM pos_sessions ps
+       LEFT JOIN users u ON u.id = ps.opened_by
+       LEFT JOIN pos_orders po ON po.session_id = ps.id
+       LEFT JOIN pos_payments pp ON pp.order_id = po.id
+       WHERE ps.tenant_id=$1
+       GROUP BY ps.id, u.name ORDER BY ps.opened_at DESC`,
+      [req.user.tenantId]
+    );
+    // Fetch orders per session
+    const sessions = await Promise.all(sessionsRes.rows.map(async s => {
+      const ordersRes = await db.query(
+        `SELECT po.*, COALESCE(pp.method,'—') AS pay_method, COUNT(poi.id) AS item_count
+         FROM pos_orders po
+         LEFT JOIN pos_payments pp ON pp.order_id = po.id
+         LEFT JOIN pos_order_items poi ON poi.order_id = po.id
+         WHERE po.session_id=$1 AND po.status='paid'
+         GROUP BY po.id, pp.method ORDER BY po.paid_at`,
+        [s.id]
+      );
+      return { ...s, orders: ordersRes.rows };
+    }));
+    const totals = sessions.reduce((t, s) => {
+      t.orders += parseInt(s.order_count) || 0;
+      t.sales  += parseFloat(s.total_sales) || 0;
+      t.cash   += parseFloat(s.cash_sales) || 0;
+      t.card   += parseFloat(s.card_sales) || 0;
+      return t;
+    }, { orders: 0, sales: 0, cash: 0, card: 0 });
+    res.render('pos/sessions', { tenant, sessions, totals, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 // ── Table Map ────────────────────────────────────────────────────────────────
-router.get('/', requireAuth, requirePOS, requireSession, async (req, res) => {
+router.get('/tables', requireAuth, requirePOS, requireSession, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
     const tables = await db.query(
@@ -354,8 +413,8 @@ router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => 
 router.post('/order/:orderId/void', requireAuth, requirePOS, async (req, res) => {
   try {
     await db.query('UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3', ['void', req.params.orderId, req.user.tenantId]);
-    res.redirect('/pos');
-  } catch (err) { res.redirect('/pos'); }
+    res.redirect('/pos/tables');
+  } catch (err) { res.redirect('/pos/tables'); }
 });
 
 // ── Receipt ───────────────────────────────────────────────────────────────────
@@ -400,13 +459,37 @@ router.get('/api/kitchen', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { res.json({ orders: [] }); }
 });
 
-// ── Table settings ────────────────────────────────────────────────────────────
+// ── POS Settings ─────────────────────────────────────────────────────────────
 router.get('/settings', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
     const tables = await db.query('SELECT * FROM restaurant_tables WHERE tenant_id=$1 ORDER BY sort_order, name', [req.user.tenantId]);
     res.render('pos/settings', { tenant, tables: tables.rows, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/settings/permissions', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const b = req.body;
+    await db.query(
+      `UPDATE tenants SET
+        pos_allow_void=$1, pos_allow_discount=$2, pos_allow_takeaway=$3, pos_allow_receipt=$4
+       WHERE id=$5`,
+      [b.pos_allow_void === '1', b.pos_allow_discount === '1', b.pos_allow_takeaway === '1', b.pos_allow_receipt === '1', req.user.tenantId]
+    );
+    res.redirect('/pos/settings?tab=permissions');
+  } catch (err) { console.error(err); res.redirect('/pos/settings'); }
+});
+
+router.post('/settings/display', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const b = req.body;
+    await db.query(
+      `UPDATE tenants SET pos_show_kitchen=$1, pos_show_images=$2, pos_show_capacity=$3 WHERE id=$4`,
+      [b.pos_show_kitchen === '1', b.pos_show_images === '1', b.pos_show_capacity === '1', req.user.tenantId]
+    );
+    res.redirect('/pos/settings?tab=permissions');
+  } catch (err) { console.error(err); res.redirect('/pos/settings'); }
 });
 
 router.post('/settings/tables', requireAuth, requirePOS, async (req, res) => {

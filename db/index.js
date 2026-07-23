@@ -78,6 +78,13 @@ const pool = new Pool({
     )`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS session_id INTEGER REFERENCES pos_sessions(id) ON DELETE SET NULL`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'dine-in'`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_allow_void      BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_allow_discount   BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_allow_takeaway   BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_allow_receipt    BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_show_kitchen     BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_show_images      BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_show_capacity    BOOLEAN DEFAULT true`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,
