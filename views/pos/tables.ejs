@@ -30,6 +30,8 @@
     .table-card.occupied { border-color: rgba(231,76,60,.5); background: rgba(231,76,60,.06); }
     .table-card.free { border-color: rgba(0,184,148,.3); }
     .table-card.free:hover { border-color: #00b894; }
+    .table-card.bill-req { border-color: #f39c12; background: rgba(243,156,18,.07); }
+    .table-card.bill-req:hover { border-color: #e67e22; }
 
     .table-icon { font-size: 2rem; margin-bottom: 10px; }
     .table-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
@@ -37,6 +39,7 @@
     .table-status { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
     .status-free { background: rgba(0,184,148,.15); color: #00b894; }
     .status-occupied { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .status-bill { background: rgba(243,156,18,.15); color: #f39c12; }
     .table-order-info { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.06); font-size: .78rem; color: #888; }
     .table-order-total { color: #fff; font-weight: 700; font-size: .95rem; margin-top: 4px; }
 
@@ -144,12 +147,13 @@
   <div class="tables-grid">
     <% tables.forEach(t => { %>
     <% const occupied = !!t.order_id; %>
-    <div class="table-card <%= occupied ? 'occupied' : 'free' %>" onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')">
-      <div class="table-icon"><%= occupied ? '🔴' : '🟢' %></div>
+    <div class="table-card <%= t.bill_requested ? 'bill-req' : occupied ? 'occupied' : 'free' %>" onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')">
+      <% if (t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#f39c12;color:#000;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:10px">🔔 BILL</span><% } %>
+      <div class="table-icon"><%= t.bill_requested ? '🔔' : occupied ? '🔴' : '🟢' %></div>
       <div class="table-name"><%= t.name %></div>
       <div class="table-cap">Capacity: <%= t.capacity %></div>
-      <span class="table-status <%= occupied ? 'status-occupied' : 'status-free' %>">
-        <%= occupied ? 'Occupied' : 'Free' %>
+      <span class="table-status <%= t.bill_requested ? 'status-bill' : occupied ? 'status-occupied' : 'status-free' %>">
+        <%= t.bill_requested ? 'Bill Requested' : occupied ? 'Occupied' : 'Free' %>
       </span>
       <% if (occupied) { %>
       <div class="table-order-info">

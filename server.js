@@ -7,7 +7,8 @@ const compression = require('compression');
 const menuRouter = require('./routes/menu');
 const adminRouter = require('./routes/admin');
 const superAdminRouter = require('./routes/superadmin');
-const posRouter = require('./routes/pos');
+const posRouter     = require('./routes/pos');
+const captainRouter = require('./routes/captain');
 const db = require('./db');
 
 const app = express();
@@ -69,7 +70,8 @@ app.get('/manifest.json', async (req, res) => {
 
 app.use('/superadmin', superAdminRouter);
 app.use('/admin', adminRouter);
-app.use('/pos', posRouter);
+app.use('/pos',     posRouter);
+app.use('/captain', captainRouter);
 app.use('/', menuRouter);
 
 const PORT = process.env.PORT || 3000;

@@ -142,6 +142,7 @@
           <% } else { %>
             <% if (perms.includes('access_menu')) { %><span class="mbadge mbadge-menu">🍽️ Menu</span><% } %>
             <% if (perms.includes('access_pos')) { %><span class="mbadge mbadge-pos">🖥️ POS</span><% } %>
+            <% if (perms.includes('access_captain')) { %><span class="mbadge" style="background:rgba(124,92,191,.15);color:#a78bdf">🍽️ Captain</span><% } %>
           <% } %>
         </div>
         <div class="user-actions">
@@ -266,6 +267,19 @@
       </div>
       <% } %>
 
+      <!-- Captain Module (only if enabled) -->
+      <% if (tenant.feat_captain) { %>
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">🍽️ Captain / Waiter</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_captain" id="c_access_captain" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <% } %>
+
       <div class="drawer-footer">
         <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
         <button type="submit" class="btn btn-primary">Create User</button>
@@ -330,6 +344,19 @@
           <label class="perm-item"><input type="checkbox" name="permissions" value="pos_kitchen" id="ep_pos_kitchen" /><span class="perm-item-label">🍳 Kitchen display</span></label>
           <label class="perm-item"><input type="checkbox" name="permissions" value="pos_sessions" id="ep_pos_sessions" /><span class="perm-item-label">📅 View sessions</span></label>
           <label class="perm-item"><input type="checkbox" name="permissions" value="pos_settings" id="ep_pos_settings" /><span class="perm-item-label">⚙️ POS settings</span></label>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- Captain Module -->
+      <% if (tenant.feat_captain) { %>
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">🍽️ Captain / Waiter</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_captain" id="e_access_captain" />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
       </div>
       <% } %>
@@ -402,6 +429,12 @@ function openEdit(user) {
       const el = document.getElementById('ep_' + p);
       if (el) { el.disabled = !hasPos; el.checked = hasPos && perms.includes(p); }
     });
+  }
+
+  // Captain module
+  const captainToggle = document.getElementById('e_access_captain');
+  if (captainToggle) {
+    captainToggle.checked = perms.includes('access_captain');
   }
 
   document.getElementById('editOverlay').classList.add('open');

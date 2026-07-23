@@ -99,6 +99,18 @@
     </a>
     <% } %>
 
+    <!-- Captain -->
+    <% if (tenant.feat_captain && (_isAdmin || _can('access_captain'))) { %>
+    <a href="/captain" class="module-card" style="--accent:#7c5cbf">
+      <div class="module-icon">🍽️</div>
+      <div>
+        <div class="module-name">Captain / Waiter</div>
+        <div class="module-desc">Tablet ordering system — take orders at tables, send to kitchen, request bill</div>
+      </div>
+      <span class="module-badge" style="background:rgba(124,92,191,.15);color:#a78bdf">Active</span>
+    </a>
+    <% } %>
+
     <!-- Settings (admin only) -->
     <% if (_isAdmin) { %>
     <a href="/admin/workspace" class="module-card" style="--accent:#f39c12">

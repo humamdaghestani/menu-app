@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Captain — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #1a1a2e; height: 58px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 10; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-title { font-size: 1rem; font-weight: 700; color: #fff; }
+    .topbar-sub { font-size: .78rem; color: #555; }
+    .btn { padding: 8px 18px; border: none; border-radius: 9px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.07); color: #aaa; }
+    .btn-ghost:hover { background: rgba(255,255,255,.13); color: #fff; }
+
+    /* Legend */
+    .legend { display: flex; gap: 16px; padding: 14px 20px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); font-size: .75rem; color: #555; flex-wrap: wrap; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+
+    /* Table grid */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; padding: 20px; }
+
+    .table-card { border-radius: 16px; padding: 20px 16px; cursor: pointer; border: 2px solid transparent; transition: all .15s; position: relative; text-align: center; user-select: none; }
+    .table-card:active { transform: scale(.96); }
+
+    /* States */
+    .table-card.empty    { background: #1a1a2e; border-color: #2a2a3e; }
+    .table-card.empty:hover { border-color: #7c5cbf; }
+    .table-card.occupied { background: rgba(124,92,191,.12); border-color: #7c5cbf; }
+    .table-card.bill     { background: rgba(243,156,18,.1); border-color: #f39c12; }
+
+    .tc-name { font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .tc-cap  { font-size: .72rem; color: #444; margin-bottom: 14px; }
+    .tc-status { font-size: .78rem; font-weight: 600; margin-bottom: 10px; }
+    .tc-status.empty    { color: #444; }
+    .tc-status.occupied { color: #a78bdf; }
+    .tc-status.bill     { color: #f39c12; }
+    .tc-items { font-size: .72rem; color: #666; }
+    .tc-total { font-size: 1rem; font-weight: 700; color: #00b894; margin-top: 6px; }
+
+    .bill-badge { position: absolute; top: -6px; right: -6px; background: #f39c12; color: #000; font-size: .65rem; font-weight: 800; padding: 3px 7px; border-radius: 10px; }
+
+    .open-btn { margin-top: 14px; width: 100%; padding: 10px; border: none; border-radius: 10px; font-size: .82rem; font-weight: 700; font-family: inherit; cursor: pointer; }
+    .open-btn.empty    { background: #7c5cbf; color: #fff; }
+    .open-btn.occupied { background: rgba(124,92,191,.25); color: #c4b5fd; }
+    .open-btn.bill     { background: rgba(243,156,18,.2); color: #f39c12; }
+
+    .empty-state { text-align: center; padding: 80px 20px; color: #333; }
+    .empty-state h2 { font-size: 1.1rem; color: #444; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <div>
+      <div class="topbar-title">🍽️ Captain — <%= tenant.name %></div>
+      <div class="topbar-sub">Waiter order system</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/pos" class="btn btn-ghost">💳 POS</a>
+    <a href="/admin/workspace" class="btn btn-ghost">⚙️ Admin</a>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="legend-dot" style="background:#2a2a3e;border:1.5px solid #555"></span>Empty</span>
+  <span><span class="legend-dot" style="background:#7c5cbf"></span>Has order</span>
+  <span><span class="legend-dot" style="background:#f39c12"></span>Bill requested</span>
+</div>
+
+<% if (tables.length === 0) { %>
+<div class="empty-state">
+  <h2>No tables configured</h2>
+  <p>Go to POS Settings to add tables first.</p>
+</div>
+<% } else { %>
+<div class="grid">
+  <% tables.forEach(t => {
+    const state = t.bill_requested ? 'bill' : t.order_id ? 'occupied' : 'empty';
+    const label = state === 'bill' ? '🔔 Bill Requested' : state === 'occupied' ? '🟣 Order Open' : 'Available';
+    const btnLabel = state === 'empty' ? '+ Open Order' : state === 'bill' ? '🔔 View Order' : '📋 View Order';
+  %>
+  <div class="table-card <%= state %>">
+    <% if (t.bill_requested) { %><span class="bill-badge">BILL</span><% } %>
+    <div class="tc-name"><%= t.name %></div>
+    <% if (t.capacity) { %><div class="tc-cap"><%= t.capacity %> seats</div><% } %>
+    <div class="tc-status <%= state %>"><%= label %></div>
+    <% if (t.order_id) { %>
+    <div class="tc-items"><%= t.item_count %> items</div>
+    <div class="tc-total"><%= tenant.currency || '$' %><%= parseFloat(t.order_total).toFixed(2) %></div>
+    <% } %>
+    <form method="POST" action="/captain/table/<%= t.id %>/open">
+      <button type="submit" class="open-btn <%= state %>"><%= btnLabel %></button>
+    </form>
+  </div>
+  <% }) %>
+</div>
+<% } %>
+
+<script>
+// Auto-refresh every 30 seconds to catch bill_requested changes from POS
+setTimeout(() => location.reload(), 30000);
+</script>
+</body>
+</html>

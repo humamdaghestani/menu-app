@@ -232,14 +232,14 @@ router.get('/tables', requireAuth, requirePOS, requireSession, async (req, res) 
     const tenant = await getTenant(req.user.tenantId);
     const tables = await db.query(
       `SELECT t.*,
-        o.id AS order_id, o.status AS order_status,
+        o.id AS order_id, o.status AS order_status, o.bill_requested,
         COALESCE(SUM(oi.price * oi.quantity),0) AS order_total,
         COUNT(oi.id) AS item_count
        FROM restaurant_tables t
        LEFT JOIN pos_orders o ON o.table_id = t.id AND o.status = 'open'
        LEFT JOIN pos_order_items oi ON oi.order_id = o.id
        WHERE t.tenant_id = $1
-       GROUP BY t.id, o.id, o.status
+       GROUP BY t.id, o.id, o.status, o.bill_requested
        ORDER BY t.sort_order, t.name`,
       [req.user.tenantId]
     );

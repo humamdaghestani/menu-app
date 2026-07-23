@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title><%= order.table_name %> — Captain</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── Topbar ── */
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0; gap: 10px; }
+    .table-chip { background: rgba(124,92,191,.2); color: #a78bdf; font-weight: 700; font-size: .9rem; padding: 5px 14px; border-radius: 20px; }
+    .order-num  { font-size: .75rem; color: #444; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost  { background: rgba(255,255,255,.07); color: #999; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    /* ── Layout ── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Menu panel ── */
+    .menu-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .search-bar { padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); flex-shrink: 0; }
+    .search-wrap { position: relative; }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; }
+    .search-input { width: 100%; padding: 9px 14px 9px 34px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 9px; color: #fff; font-size: .9rem; outline: none; font-family: inherit; }
+    .search-input:focus { border-color: #7c5cbf; }
+
+    .cat-bar { display: flex; gap: 7px; padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
+    .cat-bar::-webkit-scrollbar { display: none; }
+    .cat-btn { padding: 7px 16px; border-radius: 22px; border: 1.5px solid #2a2a3e; background: none; color: #666; font-size: .82rem; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: inherit; transition: all .15s; }
+    .cat-btn.active { background: #7c5cbf; border-color: #7c5cbf; color: #fff; }
+    .cat-btn:hover:not(.active) { border-color: #555; color: #ccc; }
+
+    .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 12px; overflow-y: auto; flex: 1; align-content: start; }
+    .item-card { background: #1a1a2e; border-radius: 12px; border: 1.5px solid #2a2a3e; cursor: pointer; transition: all .15s; overflow: hidden; }
+    .item-card:hover  { border-color: #7c5cbf; transform: translateY(-2px); }
+    .item-card:active { transform: scale(.96); }
+    .item-card.hidden { display: none; }
+    .item-img  { width: 100%; height: 80px; object-fit: cover; background: #2a2a3e; }
+    .item-placeholder { width: 100%; height: 80px; background: linear-gradient(135deg,#1e1e3a,#2a2a4e); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+    .item-body  { padding: 10px 12px; }
+    .item-name  { font-size: .85rem; font-weight: 600; color: #ddd; line-height: 1.3; margin-bottom: 4px; }
+    .item-price { font-size: .88rem; color: #7c5cbf; font-weight: 700; }
+
+    /* ── Order panel ── */
+    .order-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: #13132a; border-left: 1px solid rgba(255,255,255,.06); }
+
+    .order-list { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; }
+    .order-empty { text-align: center; padding: 40px 12px; color: #333; font-size: .85rem; line-height: 1.7; }
+
+    .order-item { display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .order-item:last-child { border-bottom: none; }
+    .oi-name  { flex: 1; font-size: .85rem; font-weight: 600; color: #ddd; }
+    .qty-ctrl { display: flex; align-items: center; gap: 4px; }
+    .qty-btn  { width: 28px; height: 28px; border-radius: 7px; border: none; background: #2a2a3e; color: #ccc; cursor: pointer; font-size: 1rem; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+    .qty-btn:hover { background: #7c5cbf; color: #fff; }
+    .qty-num  { font-size: .9rem; color: #fff; font-weight: 700; width: 22px; text-align: center; }
+    .oi-price { font-size: .85rem; color: #7c5cbf; font-weight: 700; min-width: 56px; text-align: right; }
+
+    /* ── Total bar ── */
+    .total-bar { padding: 10px 14px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
+    .total-row { display: flex; justify-content: space-between; font-size: .82rem; color: #666; padding: 2px 0; }
+    .total-row.grand { font-size: 1.05rem; font-weight: 700; color: #fff; padding-top: 8px; border-top: 1px solid #2a2a3e; margin-top: 6px; }
+
+    /* ── Action buttons ── */
+    .action-row { display: flex; gap: 8px; padding: 10px 12px 14px; flex-shrink: 0; }
+    .btn-fire { flex: 1; padding: 14px 8px; border: none; border-radius: 12px; background: #e17055; color: #fff; font-size: .88rem; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .btn-fire:hover { background: #c0392b; }
+    .btn-fire:active { transform: scale(.97); }
+    .btn-fire .big { font-size: 1.3rem; }
+    .btn-bill { flex: 1; padding: 14px 8px; border: none; border-radius: 12px; background: rgba(243,156,18,.15); color: #f39c12; border: 1.5px solid #f39c12; font-size: .88rem; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .btn-bill:hover { background: rgba(243,156,18,.25); }
+    .btn-bill:active { transform: scale(.97); }
+    .btn-bill .big { font-size: 1.3rem; }
+
+    /* ── Sent toast ── */
+    .sent-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); background: #00b894; color: #fff; padding: 10px 28px; border-radius: 10px; font-size: .88rem; font-weight: 700; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
+
+    /* ── Kitchen status chip ── */
+    .kitchen-chip { margin: 6px 12px 0; padding: 6px 12px; border-radius: 8px; font-size: .75rem; font-weight: 600; text-align: center; }
+    .kitchen-chip.sent { background: rgba(0,184,148,.1); color: #00b894; }
+    .kitchen-chip.unsent { background: rgba(231,76,60,.1); color: #e74c3c; }
+
+    @media (max-width: 700px) {
+      .order-panel { width: 100%; position: fixed; bottom: 0; left: 0; right: 0; max-height: 60vh; border-top: 2px solid #7c5cbf; border-left: none; z-index: 10; }
+      .menu-panel  { padding-bottom: 60vh; }
+      body { overflow: auto; height: auto; }
+      .layout { flex-direction: column; height: auto; overflow: visible; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/captain" class="btn btn-ghost">← Tables</a>
+    <span class="table-chip">🪑 <%= order.table_name %></span>
+    <span class="order-num">#<%= order.id %></span>
+  </div>
+  <div style="display:flex;gap:6px">
+    <% if (order.kitchen_sent_at) { %>
+    <span style="font-size:.72rem;color:#00b894;background:rgba(0,184,148,.1);padding:4px 10px;border-radius:8px;font-weight:600">✓ Sent to kitchen</span>
+    <% } %>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Menu panel -->
+  <div class="menu-panel">
+    <div class="search-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="searchInput" placeholder="Search menu..." oninput="filterItems()" />
+      </div>
+    </div>
+    <div class="cat-bar">
+      <button class="cat-btn active" onclick="filterCat('all',this)">All</button>
+      <% categories.forEach(c => { %>
+      <button class="cat-btn" data-cat="<%= c.id %>" onclick="filterCat('<%= c.id %>',this)"><%= c.name %></button>
+      <% }) %>
+    </div>
+    <div class="items-grid">
+      <% menuItems.forEach(item => { %>
+      <form method="POST" action="/captain/order/<%= order.id %>/add-item" style="display:contents">
+        <input type="hidden" name="menu_item_id" value="<%= item.id %>" />
+        <button type="submit" class="item-card" data-cat="<%= item.category_id %>" data-name="<%= item.name.toLowerCase() %>">
+          <% if (item.image_url) { %>
+          <img class="item-img" src="<%= item.image_url %>" alt="<%= item.name %>" loading="lazy" />
+          <% } else { %>
+          <div class="item-placeholder">🍽️</div>
+          <% } %>
+          <div class="item-body">
+            <div class="item-name"><%= item.name %></div>
+            <div class="item-price"><%= tenant.currency || '$' %><%= item.price %></div>
+          </div>
+        </button>
+      </form>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- Order panel -->
+  <div class="order-panel">
+    <div class="order-list">
+      <% if (orderItems.length === 0) { %>
+      <div class="order-empty">Tap items on the left<br/>to add them to the order</div>
+      <% } else { %>
+      <% orderItems.forEach(oi => { %>
+      <div class="order-item">
+        <div class="oi-name"><%= oi.name %></div>
+        <div class="qty-ctrl">
+          <form method="POST" action="/captain/order/<%= order.id %>/item/<%= oi.id %>/qty" style="display:contents">
+            <input type="hidden" name="delta" value="-1" />
+            <button type="submit" class="qty-btn">−</button>
+          </form>
+          <span class="qty-num"><%= oi.quantity %></span>
+          <form method="POST" action="/captain/order/<%= order.id %>/item/<%= oi.id %>/qty" style="display:contents">
+            <input type="hidden" name="delta" value="1" />
+            <button type="submit" class="qty-btn">+</button>
+          </form>
+        </div>
+        <div class="oi-price"><%= tenant.currency || '$' %><%= (oi.price * oi.quantity).toFixed(2) %></div>
+      </div>
+      <% }) %>
+      <% } %>
+    </div>
+
+    <div class="total-bar">
+      <div class="total-row grand">
+        <span>Total</span>
+        <span><%= tenant.currency || '$' %><%= subtotal.toFixed(2) %></span>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <form method="POST" action="/captain/order/<%= order.id %>/send-kitchen" style="flex:1">
+        <button type="submit" class="btn-fire" style="width:100%" <%= orderItems.length === 0 ? 'disabled' : '' %>>
+          <span class="big">🔥</span>
+          Fire to Kitchen
+        </button>
+      </form>
+      <form method="POST" action="/captain/order/<%= order.id %>/request-bill" style="flex:1">
+        <button type="submit" class="btn-bill" style="width:100%" <%= orderItems.length === 0 ? 'disabled' : '' %>>
+          <span class="big">🧾</span>
+          Request Bill
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<% if (sent) { %>
+<div class="sent-toast" id="sentToast">✓ Order fired to kitchen!</div>
+<script>setTimeout(() => { const t = document.getElementById('sentToast'); if(t) t.remove(); }, 3000);</script>
+<% } %>
+
+<script>
+let _activeCat = 'all';
+function filterCat(cat, btn) {
+  _activeCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilter();
+}
+function filterItems() { applyFilter(); }
+function applyFilter() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  document.querySelectorAll('.item-card').forEach(card => {
+    const matchCat  = _activeCat === 'all' || card.dataset.cat == _activeCat;
+    const matchName = !q || card.dataset.name.includes(q);
+    card.classList.toggle('hidden', !(matchCat && matchName));
+  });
+}
+</script>
+</body>
+</html>

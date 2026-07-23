@@ -122,6 +122,9 @@ const pool = new Pool({
       details     JSONB DEFAULT '{}',
       created_at  TIMESTAMP DEFAULT NOW()
     )`,
+    `ALTER TABLE tenants    ADD COLUMN IF NOT EXISTS feat_captain    BOOLEAN DEFAULT false`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS bill_requested  BOOLEAN DEFAULT false`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS kitchen_sent_at TIMESTAMP`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,
