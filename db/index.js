@@ -65,6 +65,18 @@ const pool = new Pool({
     )`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS discount_type  VARCHAR(10) DEFAULT 'none'`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS discount_value NUMERIC(10,2) DEFAULT 0`,
+    `CREATE TABLE IF NOT EXISTS pos_sessions (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      opened_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      opening_cash  NUMERIC(10,2) DEFAULT 0,
+      closing_cash  NUMERIC(10,2),
+      status        VARCHAR(20) DEFAULT 'open',
+      notes         TEXT,
+      opened_at     TIMESTAMP DEFAULT NOW(),
+      closed_at     TIMESTAMP
+    )`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS session_id INTEGER REFERENCES pos_sessions(id) ON DELETE SET NULL`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,

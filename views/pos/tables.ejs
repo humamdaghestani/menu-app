@@ -46,7 +46,15 @@
     .empty-state { text-align: center; padding: 80px 24px; color: #444; }
     .empty-state p { margin-top: 12px; font-size: .9rem; }
 
-    @media (max-width: 600px) { .main { padding: 16px; } .tables-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } }
+    .session-bar { background: #1a1a2e; border-bottom: 1px solid rgba(255,255,255,.06); padding: 10px 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .session-stat { display: flex; flex-direction: column; gap: 2px; }
+    .session-stat-label { font-size: .65rem; color: #444; text-transform: uppercase; font-weight: 700; }
+    .session-stat-val { font-size: .88rem; color: #ccc; font-weight: 600; }
+    .session-stat-val.green { color: #00b894; }
+    .session-actions { margin-left: auto; display: flex; gap: 8px; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-danger:hover { background: rgba(231,76,60,.25); }
+    @media (max-width: 600px) { .main { padding: 16px; } .tables-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } .session-bar { padding: 10px 16px; } }
   </style>
 </head>
 <body>
@@ -58,7 +66,31 @@
   <div class="topbar-right">
     <a href="/pos/kitchen" class="btn btn-ghost">🍳 Kitchen</a>
     <a href="/pos/settings" class="btn btn-ghost">⚙️ Tables</a>
-    <a href="/admin/dashboard" class="btn btn-ghost">← Admin</a>
+    <a href="/admin" class="btn btn-ghost">← Admin</a>
+  </div>
+</div>
+
+<!-- Session Info Bar -->
+<div class="session-bar">
+  <div class="session-stat">
+    <span class="session-stat-label">Session</span>
+    <span class="session-stat-val">#<%= session.id %> · Opened <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %></span>
+  </div>
+  <div class="session-stat">
+    <span class="session-stat-label">Opening Cash</span>
+    <span class="session-stat-val"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></span>
+  </div>
+  <div class="session-stat">
+    <span class="session-stat-label">Orders</span>
+    <span class="session-stat-val"><%= sessionStats.cnt %></span>
+  </div>
+  <div class="session-stat">
+    <span class="session-stat-label">Sales</span>
+    <span class="session-stat-val green"><%= tenant.currency || '$' %><%= parseFloat(sessionStats.sales).toFixed(2) %></span>
+  </div>
+  <div class="session-actions">
+    <a href="/pos/orders" class="btn btn-ghost">📋 Orders</a>
+    <a href="/pos/session/close" class="btn btn-danger">🔒 Close Session</a>
   </div>
 </div>
 

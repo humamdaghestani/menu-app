@@ -18,6 +18,21 @@ async function getTenant(tenantId) {
   return r.rows[0];
 }
 
+async function getOpenSession(tenantId) {
+  const r = await db.query("SELECT * FROM pos_sessions WHERE tenant_id=$1 AND status='open' ORDER BY opened_at DESC LIMIT 1", [tenantId]);
+  return r.rows[0] || null;
+}
+
+// Require an open session for operational routes
+async function requireSession(req, res, next) {
+  try {
+    const session = await getOpenSession(req.user.tenantId);
+    if (!session) return res.redirect('/pos/session/open');
+    req.posSession = session;
+    next();
+  } catch { next(); }
+}
+
 function calcSubtotal(items) {
   return items.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
 }
@@ -29,8 +44,92 @@ function calcTotal(items, order) {
   return sub;
 }
 
+// ── Session routes ────────────────────────────────────────────────────────────
+router.get('/session/open', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const existing = await getOpenSession(req.user.tenantId);
+    if (existing) return res.redirect('/pos');
+    res.render('pos/session-open', { tenant, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/session/open', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const existing = await getOpenSession(req.user.tenantId);
+    if (existing) return res.redirect('/pos');
+    await db.query(
+      'INSERT INTO pos_sessions (tenant_id, opened_by, opening_cash) VALUES ($1,$2,$3)',
+      [req.user.tenantId, req.user.userId, parseFloat(req.body.opening_cash) || 0]
+    );
+    res.redirect('/pos');
+  } catch (err) { console.error(err); res.redirect('/pos/session/open'); }
+});
+
+router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant  = await getTenant(req.user.tenantId);
+    const session = await getOpenSession(req.user.tenantId);
+    if (!session) return res.redirect('/pos');
+    const orders = await db.query(
+      `SELECT po.*, COALESCE(pp.method,'—') AS pay_method,
+        COALESCE(SUM(poi.price * poi.quantity),0) AS subtotal,
+        COUNT(poi.id) AS item_count
+       FROM pos_orders po
+       LEFT JOIN pos_order_items poi ON poi.order_id = po.id
+       LEFT JOIN pos_payments pp ON pp.order_id = po.id
+       WHERE po.session_id=$1 AND po.status='paid'
+       GROUP BY po.id, pp.method ORDER BY po.paid_at`,
+      [session.id]
+    );
+    const summary = orders.rows.reduce((s, o) => {
+      const total = parseFloat(o.total) || 0;
+      s.total += total;
+      if (o.pay_method === 'cash') s.cash += total; else s.card += total;
+      s.count++;
+      return s;
+    }, { total: 0, cash: 0, card: 0, count: 0 });
+    res.render('pos/session-close', { tenant, session, orders: orders.rows, summary, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/session/close', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const session = await getOpenSession(req.user.tenantId);
+    if (!session) return res.redirect('/pos');
+    await db.query(
+      "UPDATE pos_sessions SET status='closed', closing_cash=$1, notes=$2, closed_at=NOW() WHERE id=$3",
+      [parseFloat(req.body.closing_cash) || 0, req.body.notes || null, session.id]
+    );
+    res.redirect('/pos/session/open');
+  } catch (err) { console.error(err); res.redirect('/pos/session/close'); }
+});
+
+// ── Order History ─────────────────────────────────────────────────────────────
+router.get('/orders', requireAuth, requirePOS, requireSession, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const orders = await db.query(
+      `SELECT po.*, COALESCE(pp.method,'—') AS pay_method,
+        COALESCE(SUM(poi.price * poi.quantity),0) AS subtotal,
+        COUNT(poi.id) AS item_count
+       FROM pos_orders po
+       LEFT JOIN pos_order_items poi ON poi.order_id = po.id
+       LEFT JOIN pos_payments pp ON pp.order_id = po.id
+       WHERE po.session_id=$1
+       GROUP BY po.id, pp.method ORDER BY po.created_at DESC`,
+      [req.posSession.id]
+    );
+    const summary = orders.rows.reduce((s, o) => {
+      if (o.status === 'paid') { s.total += parseFloat(o.total)||0; s.count++; }
+      return s;
+    }, { total: 0, count: 0 });
+    res.render('pos/orders', { tenant, orders: orders.rows, session: req.posSession, summary, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 // ── Table Map ────────────────────────────────────────────────────────────────
-router.get('/', requireAuth, requirePOS, async (req, res) => {
+router.get('/', requireAuth, requirePOS, requireSession, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
     const tables = await db.query(
@@ -46,20 +145,26 @@ router.get('/', requireAuth, requirePOS, async (req, res) => {
        ORDER BY t.sort_order, t.name`,
       [req.user.tenantId]
     );
-    res.render('pos/tables', { tenant, tables: tables.rows, currentUser: req.user });
+    const sessionOrders = await db.query(
+      "SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS sales FROM pos_orders WHERE session_id=$1 AND status='paid'",
+      [req.posSession.id]
+    );
+    const sessionStats = sessionOrders.rows[0];
+    res.render('pos/tables', { tenant, tables: tables.rows, session: req.posSession, sessionStats, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Open order for a table ───────────────────────────────────────────────────
-router.post('/tables/:tableId/open', requireAuth, requirePOS, async (req, res) => {
+router.post('/tables/:tableId/open', requireAuth, requirePOS, requireSession, async (req, res) => {
   try {
     const table = await db.query('SELECT * FROM restaurant_tables WHERE id=$1 AND tenant_id=$2', [req.params.tableId, req.user.tenantId]);
     if (!table.rows[0]) return res.redirect('/pos');
     const existing = await db.query('SELECT id FROM pos_orders WHERE table_id=$1 AND status=$2', [req.params.tableId, 'open']);
     if (existing.rows[0]) return res.redirect('/pos/order/' + existing.rows[0].id);
+    const sessionId = req.posSession ? req.posSession.id : null;
     const order = await db.query(
-      'INSERT INTO pos_orders (tenant_id, table_id, table_name, created_by) VALUES ($1,$2,$3,$4) RETURNING id',
-      [req.user.tenantId, req.params.tableId, table.rows[0].name, req.user.userId]
+      'INSERT INTO pos_orders (tenant_id, table_id, table_name, created_by, session_id) VALUES ($1,$2,$3,$4,$5) RETURNING id',
+      [req.user.tenantId, req.params.tableId, table.rows[0].name, req.user.userId, sessionId]
     );
     res.redirect('/pos/order/' + order.rows[0].id);
   } catch (err) { console.error(err); res.redirect('/pos'); }

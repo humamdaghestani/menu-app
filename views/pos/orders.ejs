@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Order History — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 20px; }
+    .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .topbar a { text-decoration: none; color: #555; font-size: .85rem; display: flex; align-items: center; gap: 6px; padding: 7px 14px; background: rgba(255,255,255,.06); border-radius: 8px; border: 1px solid rgba(255,255,255,.08); }
+    .topbar a:hover { color: #ccc; background: rgba(255,255,255,.1); }
+    h1 { font-size: 1.1rem; font-weight: 700; color: #fff; flex: 1; }
+    .session-pill { font-size: .72rem; padding: 4px 10px; background: rgba(0,184,148,.12); border: 1px solid rgba(0,184,148,.25); border-radius: 20px; color: #00b894; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .stat { background: #1a1a2e; border-radius: 12px; border: 1px solid rgba(255,255,255,.06); padding: 16px 18px; }
+    .stat-label { font-size: .7rem; color: #555; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-val { font-size: 1.3rem; font-weight: 700; color: #fff; }
+    .stat-val.green { color: #00b894; }
+    .stat-val.purple { color: #7c5cbf; }
+
+    .filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-btn { padding: 6px 14px; border: 1.5px solid rgba(255,255,255,.1); border-radius: 8px; background: transparent; color: #666; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .filter-btn.active { border-color: #7c5cbf; color: #c4b0f0; background: rgba(124,92,191,.12); }
+
+    .orders-table { width: 100%; border-collapse: collapse; }
+    .orders-table th { text-align: left; color: #444; padding: 8px 12px; font-weight: 700; font-size: .7rem; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .orders-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .82rem; color: #ccc; vertical-align: middle; }
+    .orders-table tr:last-child td { border-bottom: none; }
+    .orders-table tr:hover td { background: rgba(255,255,255,.02); }
+
+    .badge { padding: 3px 9px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
+    .badge-paid { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-open { background: rgba(124,92,191,.15); color: #c4b0f0; }
+    .badge-void { background: rgba(255,71,87,.12); color: #ff6b7a; }
+
+    .btn-sm { padding: 4px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: transparent; color: #888; font-size: .72rem; cursor: pointer; font-family: inherit; text-decoration: none; }
+    .btn-sm:hover { border-color: #7c5cbf; color: #c4b0f0; }
+
+    .empty { text-align: center; padding: 60px 20px; color: #333; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); overflow: hidden; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/pos">← Tables</a>
+  <h1>Session Orders</h1>
+  <span class="session-pill">Session #<%= session.id %> · Since <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-label">Total Orders</div>
+    <div class="stat-val"><%= orders.length %></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Paid</div>
+    <div class="stat-val green"><%= summary.count %></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Total Sales</div>
+    <div class="stat-val green"><%= tenant.currency || '$' %><%= summary.total.toFixed(2) %></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Opening Cash</div>
+    <div class="stat-val purple"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></div>
+  </div>
+</div>
+
+<!-- Filter -->
+<div class="filter-row">
+  <button class="filter-btn active" onclick="filterOrders('all', this)">All</button>
+  <button class="filter-btn" onclick="filterOrders('paid', this)">Paid</button>
+  <button class="filter-btn" onclick="filterOrders('open', this)">Open</button>
+  <button class="filter-btn" onclick="filterOrders('void', this)">Void</button>
+</div>
+
+<!-- Table -->
+<div class="card">
+  <% if (orders.length === 0) { %>
+  <div class="empty">
+    <div class="empty-icon">📋</div>
+    <div>No orders this session yet</div>
+  </div>
+  <% } else { %>
+  <table class="orders-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Table</th>
+        <th>Items</th>
+        <th>Total</th>
+        <th>Method</th>
+        <th>Status</th>
+        <th>Time</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="ordersTbody">
+      <% orders.forEach(o => { %>
+      <tr data-status="<%= o.status %>">
+        <td style="color:#555">#<%= o.id %></td>
+        <td><%= o.table_name %></td>
+        <td><%= o.item_count %></td>
+        <td><strong><%= tenant.currency || '$' %><%= parseFloat(o.total || o.subtotal || 0).toFixed(2) %></strong></td>
+        <td style="text-transform:capitalize;color:#666"><%= o.pay_method || '—' %></td>
+        <td><span class="badge badge-<%= o.status %>"><%= o.status %></span></td>
+        <td style="color:#444;font-size:.72rem"><%= new Date(o.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %></td>
+        <td>
+          <% if (o.status === 'paid') { %>
+          <a href="/pos/receipt/<%= o.id %>" class="btn-sm">Receipt</a>
+          <% } else if (o.status === 'open') { %>
+          <a href="/pos/order/<%= o.id %>" class="btn-sm">View</a>
+          <% } %>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+
+<script>
+function filterOrders(status, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#ordersTbody tr').forEach(row => {
+    row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

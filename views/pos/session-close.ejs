@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Close Session — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    .main { max-width: 560px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .sub { font-size: .82rem; color: #555; margin-bottom: 24px; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); padding: 22px; margin-bottom: 16px; }
+    .card h2 { font-size: .88rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 16px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .85rem; }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: #666; }
+    .stat-val { color: #fff; font-weight: 600; }
+    .stat-val.green { color: #00b894; }
+    .stat-val.purple { color: #7c5cbf; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: #666; margin-bottom: 6px; }
+    input, textarea { width: 100%; padding: 10px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .9rem; outline: none; font-family: inherit; }
+    input:focus, textarea:focus { border-color: #7c5cbf; }
+    .form-group { margin-bottom: 14px; }
+    .btn { padding: 11px 24px; border: none; border-radius: 10px; cursor: pointer; font-size: .88rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; }
+    .btn-close { background: #e74c3c; color: #fff; }
+    .btn-close:hover { opacity: .88; }
+    .btn-ghost { background: rgba(255,255,255,.07); color: #888; }
+    .btns { display: flex; gap: 10px; margin-top: 4px; }
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,.06); margin: 16px 0; }
+    .orders-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .orders-table th { text-align: left; color: #444; padding: 6px 8px; font-weight: 600; font-size: .7rem; text-transform: uppercase; }
+    .orders-table td { padding: 8px 8px; border-top: 1px solid rgba(255,255,255,.04); color: #ccc; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
+    .badge-paid { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-void { background: rgba(255,71,87,.12); color: #ff6b7a; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <h1>🔒 Close Session</h1>
+  <div class="sub">Session opened <%= new Date(session.opened_at).toLocaleString() %></div>
+
+  <!-- Summary -->
+  <div class="card">
+    <h2>Session Summary</h2>
+    <div class="stat-row"><span class="stat-label">Orders Completed</span><span class="stat-val"><%= summary.count %></span></div>
+    <div class="stat-row"><span class="stat-label">Total Sales</span><span class="stat-val green"><%= tenant.currency || '$' %><%= summary.total.toFixed(2) %></span></div>
+    <div class="stat-row"><span class="stat-label">Cash Sales</span><span class="stat-val"><%= tenant.currency || '$' %><%= summary.cash.toFixed(2) %></span></div>
+    <div class="stat-row"><span class="stat-label">Card Sales</span><span class="stat-val"><%= tenant.currency || '$' %><%= summary.card.toFixed(2) %></span></div>
+    <div class="stat-row"><span class="stat-label">Opening Cash</span><span class="stat-val purple"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></span></div>
+    <div class="stat-row"><span class="stat-label">Expected in Drawer</span><span class="stat-val green"><%= tenant.currency || '$' %><%= (parseFloat(session.opening_cash) + summary.cash).toFixed(2) %></span></div>
+  </div>
+
+  <!-- Orders list -->
+  <% if (orders.length > 0) { %>
+  <div class="card">
+    <h2>Completed Orders</h2>
+    <table class="orders-table">
+      <thead><tr><th>#</th><th>Table</th><th>Items</th><th>Total</th><th>Method</th></tr></thead>
+      <tbody>
+        <% orders.forEach(o => { %>
+        <tr>
+          <td>#<%= o.id %></td>
+          <td><%= o.table_name %></td>
+          <td><%= o.item_count %></td>
+          <td><%= tenant.currency || '$' %><%= parseFloat(o.total).toFixed(2) %></td>
+          <td style="text-transform:capitalize"><%= o.pay_method %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Close form -->
+  <div class="card">
+    <h2>Close Session</h2>
+    <form method="POST" action="/pos/session/close">
+      <div class="form-group">
+        <label>Closing Cash (actual amount in drawer)</label>
+        <input type="number" name="closing_cash" value="<%= (parseFloat(session.opening_cash) + summary.cash).toFixed(2) %>" min="0" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label>Notes (optional)</label>
+        <textarea name="notes" rows="2" placeholder="Any notes about this shift..."></textarea>
+      </div>
+      <div class="btns">
+        <a href="/pos" class="btn btn-ghost">← Back</a>
+        <button type="submit" class="btn btn-close" onclick="return confirm('Close this session? You will need to enter a new opening cash to continue.')">🔒 Close Session</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>
