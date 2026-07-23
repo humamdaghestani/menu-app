@@ -52,6 +52,12 @@
       <span><%= tenant.currency || '$' %><%= (oi.price * oi.quantity).toFixed(2) %></span>
     </div>
     <% }) %>
+    <% if (discount > 0) { %>
+    <div class="summary-row" style="color:#00b894">
+      <span>Discount</span>
+      <span>−<%= tenant.currency || '$' %><%= discount.toFixed(2) %></span>
+    </div>
+    <% } %>
     <div class="summary-row total">
       <span>Total</span>
       <span><%= tenant.currency || '$' %><%= total.toFixed(2) %></span>

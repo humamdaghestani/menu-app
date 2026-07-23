@@ -18,8 +18,15 @@ async function getTenant(tenantId) {
   return r.rows[0];
 }
 
-function calcTotal(items) {
+function calcSubtotal(items) {
   return items.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
+}
+function calcTotal(items, order) {
+  const sub = calcSubtotal(items);
+  if (!order || order.discount_type === 'none' || !order.discount_value) return sub;
+  if (order.discount_type === 'percent') return Math.max(0, sub - sub * parseFloat(order.discount_value) / 100);
+  if (order.discount_type === 'fixed')   return Math.max(0, sub - parseFloat(order.discount_value));
+  return sub;
 }
 
 // ── Table Map ────────────────────────────────────────────────────────────────
@@ -79,13 +86,16 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
       'SELECT * FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY sort_order',
       [req.user.tenantId]
     );
-    const total = calcTotal(items.rows);
+    const o = order.rows[0];
+    const subtotal = calcSubtotal(items.rows);
+    const total    = calcTotal(items.rows, o);
+    const discount = subtotal - total;
     res.render('pos/order', {
-      tenant, order: order.rows[0],
+      tenant, order: o,
       orderItems: items.rows,
       categories: categories.rows,
       menuItems: menuItems.rows,
-      total,
+      subtotal, total, discount,
       currentUser: req.user
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -133,6 +143,17 @@ router.post('/order/:orderId/item/:itemId/qty', requireAuth, requirePOS, async (
   } catch (err) { console.error(err); res.redirect('/pos/order/' + req.params.orderId); }
 });
 
+// ── Item note ─────────────────────────────────────────────────────────────────
+router.post('/order/:orderId/item/:itemId/note', requireAuth, requirePOS, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE pos_order_items SET notes=$1 WHERE id=$2 AND order_id IN (SELECT id FROM pos_orders WHERE tenant_id=$3)',
+      [req.body.note || null, req.params.itemId, req.user.tenantId]
+    );
+    res.redirect('/pos/order/' + req.params.orderId);
+  } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
+});
+
 // ── Remove item ───────────────────────────────────────────────────────────────
 router.post('/order/:orderId/item/:itemId/remove', requireAuth, requirePOS, async (req, res) => {
   try {
@@ -152,6 +173,18 @@ router.post('/order/:orderId/note', requireAuth, requirePOS, async (req, res) =>
   } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
 });
 
+// ── Discount ──────────────────────────────────────────────────────────────────
+router.post('/order/:orderId/discount', requireAuth, requirePOS, async (req, res) => {
+  const { discount_type, discount_value } = req.body;
+  try {
+    await db.query(
+      'UPDATE pos_orders SET discount_type=$1, discount_value=$2 WHERE id=$3 AND tenant_id=$4',
+      [discount_type || 'none', parseFloat(discount_value) || 0, req.params.orderId, req.user.tenantId]
+    );
+    res.redirect('/pos/order/' + req.params.orderId);
+  } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
+});
+
 // ── Payment screen ────────────────────────────────────────────────────────────
 router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
   try {
@@ -159,8 +192,11 @@ router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
     const order = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
     if (!order.rows[0] || order.rows[0].status !== 'open') return res.redirect('/pos');
     const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
-    const total = calcTotal(items.rows);
-    res.render('pos/payment', { tenant, order: order.rows[0], orderItems: items.rows, total, currentUser: req.user });
+    const o = order.rows[0];
+    const subtotal = calcSubtotal(items.rows);
+    const total    = calcTotal(items.rows, o);
+    const discount = subtotal - total;
+    res.render('pos/payment', { tenant, order: o, orderItems: items.rows, subtotal, total, discount, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
@@ -168,8 +204,9 @@ router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
 router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
   const { method, amount_paid } = req.body;
   try {
+    const orderRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
     const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
-    const total = calcTotal(items.rows);
+    const total = calcTotal(items.rows, orderRes.rows[0]);
     const paid = parseFloat(amount_paid) || 0;
     const change = Math.max(0, paid - total);
     await db.query(

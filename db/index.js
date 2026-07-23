@@ -63,6 +63,8 @@ const pool = new Pool({
       notes        TEXT,
       options      JSONB DEFAULT '[]'
     )`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS discount_type  VARCHAR(10) DEFAULT 'none'`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS discount_value NUMERIC(10,2) DEFAULT 0`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,
