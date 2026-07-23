@@ -83,6 +83,7 @@
     .perm-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; cursor: pointer; transition: background .12s; }
     .perm-item:hover { background: rgba(255,255,255,.04); }
     .perm-item input[type=checkbox] { width: 14px; height: 14px; accent-color: #7c5cbf; cursor: pointer; flex-shrink: 0; }
+    .perm-item input[type=checkbox]:disabled { cursor: not-allowed; }
     .perm-item-label { font-size: .78rem; color: #999; cursor: pointer; }
 
     /* Toggle for module access */
@@ -118,11 +119,6 @@
 
 <div class="main">
 
-  <% const qp = new URLSearchParams ? '' : '' %>
-  <% const qs = typeof success !== 'undefined' ? success : null %>
-  <% const qe = typeof errorMsg !== 'undefined' ? errorMsg : null %>
-  <% if (flash && flash.success) { %><div class="alert alert-success">✓ <%= flash.success %></div><% } %>
-  <% if (flash && flash.error) { %><div class="alert alert-error">✗ <%= flash.error %></div><% } %>
 
   <!-- USERS TAB -->
   <div class="tab-panel active" id="tab-users">
@@ -361,12 +357,15 @@ function switchTab(name, el) {
   document.getElementById('tab-' + name).classList.add('active');
 }
 
+// Uses disabled attribute so checkboxes are truly non-interactive and excluded from form submit
 function toggleModule(blockId, enabled) {
   const block = document.getElementById(blockId);
   if (!block) return;
-  block.style.opacity = enabled ? '1' : '.35';
-  block.style.pointerEvents = enabled ? '' : 'none';
-  if (!enabled) block.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+  block.style.opacity = enabled ? '1' : '.4';
+  block.querySelectorAll('input[type=checkbox]').forEach(c => {
+    c.disabled = !enabled;
+    if (!enabled) c.checked = false;
+  });
 }
 
 function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
@@ -376,50 +375,52 @@ const ALL_MENU_PERMS = ['items','edit_prices','orders','feedback','import'];
 const ALL_POS_PERMS  = ['pos_tables','pos_void','pos_discount','pos_kitchen','pos_sessions','pos_settings'];
 
 function openEdit(user) {
-  const perms = JSON.parse(user.permissions || '[]');
+  let perms = [];
+  try { perms = JSON.parse(user.permissions || '[]'); } catch(e) { perms = []; }
+
   document.getElementById('editName').value  = user.name || '';
   document.getElementById('editEmail').value = user.email;
   document.getElementById('editForm').action = '/admin/users/' + user.id + '/edit';
+  document.getElementById('editPassword').value = '';
 
-  // Menu module
+  // Menu module — first enable/disable the block, then set individual checkboxes
   const hasMenu = perms.includes('access_menu');
   document.getElementById('e_access_menu').checked = hasMenu;
   toggleModule('e_menu', hasMenu);
   ALL_MENU_PERMS.forEach(p => {
     const el = document.getElementById('ep_' + p);
-    if (el) el.checked = perms.includes(p);
+    if (el) { el.disabled = !hasMenu; el.checked = hasMenu && perms.includes(p); }
   });
 
   // POS module
-  const posEl = document.getElementById('e_access_pos');
-  if (posEl) {
+  const posToggle = document.getElementById('e_access_pos');
+  if (posToggle) {
     const hasPos = perms.includes('access_pos');
-    posEl.checked = hasPos;
+    posToggle.checked = hasPos;
     toggleModule('e_pos', hasPos);
     ALL_POS_PERMS.forEach(p => {
       const el = document.getElementById('ep_' + p);
-      if (el) el.checked = perms.includes(p);
+      if (el) { el.disabled = !hasPos; el.checked = hasPos && perms.includes(p); }
     });
   }
 
-  document.getElementById('editPassword').value = '';
   document.getElementById('editOverlay').classList.add('open');
 }
 function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
 
-// URL flash
-const params = new URLSearchParams(location.search);
-if (params.get('success') || params.get('error')) {
-  const div = document.createElement('div');
-  div.className = 'alert ' + (params.get('success') ? 'alert-success' : 'alert-error');
-  div.textContent = (params.get('success') ? '✓ ' : '✗ ') + decodeURIComponent(params.get('success') || params.get('error'));
-  document.querySelector('.main').prepend(div);
-  setTimeout(() => div.remove(), 4000);
+// Flash from URL
+const _p = new URLSearchParams(location.search);
+if (_p.get('success') || _p.get('error')) {
+  const d = document.createElement('div');
+  d.className = 'alert ' + (_p.get('success') ? 'alert-success' : 'alert-error');
+  d.textContent = (_p.get('success') ? '✓ ' : '✗ ') + decodeURIComponent(_p.get('success') || _p.get('error'));
+  document.querySelector('.main').prepend(d);
+  setTimeout(() => d.remove(), 4000);
 }
 
-// Initialize module blocks in create drawer (disabled by default)
-toggleModule('c_menu', false);
-<% if (tenant.feat_pos) { %>toggleModule('c_pos', false);<% } %>
+// Initialize ALL module sub-blocks as disabled on page load
+['c_menu', 'e_menu'].forEach(id => toggleModule(id, false));
+<% if (tenant.feat_pos) { %>['c_pos', 'e_pos'].forEach(id => toggleModule(id, false));<% } %>
 </script>
 </body>
 </html>
