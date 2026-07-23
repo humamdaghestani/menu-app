@@ -46,6 +46,16 @@ async function validatePasskey(tenantId, code, actionType) {
   return r.rows[0] || null;
 }
 
+async function logAction(tenantId, sessionId, orderId, userId, action, details = {}) {
+  if (!sessionId) return;
+  try {
+    await db.query(
+      'INSERT INTO pos_activity_log (tenant_id, session_id, order_id, user_id, action, details) VALUES ($1,$2,$3,$4,$5,$6)',
+      [tenantId, sessionId, orderId || null, userId, action, JSON.stringify(details)]
+    );
+  } catch (e) { console.error('Log error:', e.message); }
+}
+
 function calcSubtotal(items) {
   return items.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
 }
@@ -262,6 +272,7 @@ router.post('/tables/:tableId/open', requireAuth, requirePOS, requireSession, as
       'INSERT INTO pos_orders (tenant_id, table_id, table_name, created_by, session_id) VALUES ($1,$2,$3,$4,$5) RETURNING id',
       [req.user.tenantId, req.params.tableId, table.rows[0].name, req.user.userId, sessionId]
     );
+    await logAction(req.user.tenantId, sessionId, order.rows[0].id, req.user.userId, 'order_open', { table_name: table.rows[0].name, order_type: 'dine-in' });
     res.redirect('/pos/order/' + order.rows[0].id);
   } catch (err) { console.error(err); res.redirect('/pos'); }
 });
@@ -278,6 +289,7 @@ router.post('/takeaway/open', requireAuth, requirePOS, requireSession, async (re
       "INSERT INTO pos_orders (tenant_id, table_name, order_type, created_by, session_id) VALUES ($1,$2,'takeaway',$3,$4) RETURNING id",
       [req.user.tenantId, `Takeaway #${num}`, req.user.userId, req.posSession.id]
     );
+    await logAction(req.user.tenantId, req.posSession.id, order.rows[0].id, req.user.userId, 'order_open', { table_name: `Takeaway #${num}`, order_type: 'takeaway' });
     res.redirect('/pos/order/' + order.rows[0].id);
   } catch (err) { console.error(err); res.redirect('/pos'); }
 });
@@ -339,6 +351,8 @@ router.post('/order/:orderId/add-item', requireAuth, requirePOS, async (req, res
         [req.params.orderId, menu_item_id, item.rows[0].name, price, notes || null]
       );
     }
+    const sessionRow = await db.query('SELECT session_id FROM pos_orders WHERE id=$1', [req.params.orderId]);
+    await logAction(req.user.tenantId, sessionRow.rows[0]?.session_id, req.params.orderId, req.user.userId, 'item_add', { name: item.rows[0].name, price });
     res.redirect('/pos/order/' + req.params.orderId);
   } catch (err) { console.error(err); res.redirect('/pos/order/' + req.params.orderId); }
 });
@@ -348,15 +362,18 @@ router.post('/order/:orderId/item/:itemId/qty', requireAuth, requirePOS, async (
   const { delta } = req.body;
   try {
     const item = await db.query(
-      'SELECT poi.* FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.tenant_id=$2',
+      'SELECT poi.*, po.session_id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.tenant_id=$2',
       [req.params.itemId, req.user.tenantId]
     );
     if (!item.rows[0]) return res.redirect('/pos/order/' + req.params.orderId);
-    const newQty = item.rows[0].quantity + parseInt(delta);
+    const oldQty = item.rows[0].quantity;
+    const newQty = oldQty + parseInt(delta);
     if (newQty <= 0) {
       await db.query('DELETE FROM pos_order_items WHERE id=$1', [req.params.itemId]);
+      await logAction(req.user.tenantId, item.rows[0].session_id, req.params.orderId, req.user.userId, 'item_remove', { name: item.rows[0].name });
     } else {
       await db.query('UPDATE pos_order_items SET quantity=$1 WHERE id=$2', [newQty, req.params.itemId]);
+      await logAction(req.user.tenantId, item.rows[0].session_id, req.params.orderId, req.user.userId, 'item_qty', { name: item.rows[0].name, from: oldQty, to: newQty });
     }
     res.redirect('/pos/order/' + req.params.orderId);
   } catch (err) { console.error(err); res.redirect('/pos/order/' + req.params.orderId); }
@@ -376,10 +393,12 @@ router.post('/order/:orderId/item/:itemId/note', requireAuth, requirePOS, async 
 // ── Remove item ───────────────────────────────────────────────────────────────
 router.post('/order/:orderId/item/:itemId/remove', requireAuth, requirePOS, async (req, res) => {
   try {
-    await db.query(
-      'DELETE FROM pos_order_items WHERE id=$1 AND order_id IN (SELECT id FROM pos_orders WHERE tenant_id=$2)',
+    const r = await db.query(
+      'SELECT poi.name, po.session_id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.tenant_id=$2',
       [req.params.itemId, req.user.tenantId]
     );
+    await db.query('DELETE FROM pos_order_items WHERE id=$1', [req.params.itemId]);
+    if (r.rows[0]) await logAction(req.user.tenantId, r.rows[0].session_id, req.params.orderId, req.user.userId, 'item_remove', { name: r.rows[0].name });
     res.redirect('/pos/order/' + req.params.orderId);
   } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
 });
@@ -387,7 +406,8 @@ router.post('/order/:orderId/item/:itemId/remove', requireAuth, requirePOS, asyn
 // ── Update order note ─────────────────────────────────────────────────────────
 router.post('/order/:orderId/note', requireAuth, requirePOS, async (req, res) => {
   try {
-    await db.query('UPDATE pos_orders SET note=$1 WHERE id=$2 AND tenant_id=$3', [req.body.note || null, req.params.orderId, req.user.tenantId]);
+    const r = await db.query('UPDATE pos_orders SET note=$1 WHERE id=$2 AND tenant_id=$3 RETURNING session_id', [req.body.note || null, req.params.orderId, req.user.tenantId]);
+    await logAction(req.user.tenantId, r.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_note', { note: req.body.note || '' });
     res.redirect('/pos/order/' + req.params.orderId);
   } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
 });
@@ -403,10 +423,12 @@ router.post('/order/:orderId/discount', requireAuth, requirePOS, async (req, res
       await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
         [req.user.userId, req.params.orderId, pk.id]);
     }
-    await db.query(
-      'UPDATE pos_orders SET discount_type=$1, discount_value=$2 WHERE id=$3 AND tenant_id=$4',
+    const dr = await db.query(
+      'UPDATE pos_orders SET discount_type=$1, discount_value=$2 WHERE id=$3 AND tenant_id=$4 RETURNING session_id',
       [discount_type || 'none', parseFloat(discount_value) || 0, req.params.orderId, req.user.tenantId]
     );
+    const action = discount_type === 'none' ? 'discount_remove' : 'discount_apply';
+    await logAction(req.user.tenantId, dr.rows[0]?.session_id, req.params.orderId, req.user.userId, action, { type: discount_type, value: parseFloat(discount_value) || 0 });
     res.redirect(back);
   } catch (err) { console.error(err); res.redirect(back); }
 });
@@ -443,6 +465,7 @@ router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => 
       'UPDATE pos_orders SET status=$1, total=$2, paid_at=NOW() WHERE id=$3 AND tenant_id=$4',
       ['paid', total, req.params.orderId, req.user.tenantId]
     );
+    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, change });
     res.redirect('/pos/receipt/' + req.params.orderId);
   } catch (err) { console.error(err); res.redirect('/pos/order/' + req.params.orderId); }
 });
@@ -452,9 +475,10 @@ router.post('/order/:orderId/void', requireAuth, requirePOS, async (req, res) =>
   try {
     const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
     if (!pk) return res.redirect('/pos/order/' + req.params.orderId + '?error=passkey');
-    await db.query('UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3', ['void', req.params.orderId, req.user.tenantId]);
+    const vr = await db.query('UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3 RETURNING session_id, table_name', ['void', req.params.orderId, req.user.tenantId]);
     await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
       [req.user.userId, req.params.orderId, pk.id]);
+    await logAction(req.user.tenantId, vr.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_void', { table_name: vr.rows[0]?.table_name });
     res.redirect('/pos/tables');
   } catch (err) { console.error(err); res.redirect('/pos/tables'); }
 });
@@ -499,6 +523,44 @@ router.get('/api/kitchen', requireAuth, requirePOS, async (req, res) => {
     );
     res.json({ orders: orders.rows });
   } catch (err) { res.json({ orders: [] }); }
+});
+
+// ── Session Detail ────────────────────────────────────────────────────────────
+router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const sessionRes = await db.query(
+      `SELECT ps.*, u.name AS opened_by_name, u.email AS opened_by_email
+       FROM pos_sessions ps LEFT JOIN users u ON u.id = ps.opened_by
+       WHERE ps.id=$1 AND ps.tenant_id=$2`,
+      [req.params.id, req.user.tenantId]
+    );
+    if (!sessionRes.rows[0]) return res.redirect('/pos/sessions');
+    const session = sessionRes.rows[0];
+    const ordersRes = await db.query(
+      `SELECT po.*, COALESCE(pp.method,'—') AS pay_method,
+        COALESCE(SUM(poi.price * poi.quantity),0) AS subtotal,
+        COUNT(poi.id) AS item_count
+       FROM pos_orders po
+       LEFT JOIN pos_payments pp ON pp.order_id = po.id
+       LEFT JOIN pos_order_items poi ON poi.order_id = po.id
+       WHERE po.session_id=$1
+       GROUP BY po.id, pp.method ORDER BY po.created_at`,
+      [session.id]
+    );
+    const logsRes = await db.query(
+      `SELECT al.*, u.name AS user_name, u.email AS user_email
+       FROM pos_activity_log al
+       LEFT JOIN users u ON u.id = al.user_id
+       WHERE al.session_id=$1 ORDER BY al.created_at`,
+      [session.id]
+    );
+    const orders = ordersRes.rows;
+    const paid  = orders.filter(o => o.status === 'paid').length;
+    const voided = orders.filter(o => o.status === 'void').length;
+    const totalSales = orders.filter(o => o.status === 'paid').reduce((s, o) => s + parseFloat(o.total || 0), 0);
+    res.render('pos/session-detail', { tenant, session, orders, logs: logsRes.rows, stats: { paid, voided, open: orders.length - paid - voided, totalSales }, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── POS Settings ─────────────────────────────────────────────────────────────

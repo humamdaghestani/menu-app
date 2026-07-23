@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Session #<%= session.id %> — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 40; }
+    .topbar-title { font-weight: 700; color: #fff; font-size: 1rem; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { padding: 28px 24px; max-width: 960px; margin: 0 auto; }
+
+    /* Header card */
+    .session-header { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); padding: 20px 24px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 20px; flex-wrap: wrap; }
+    .sh-meta { flex: 1; min-width: 200px; }
+    .sh-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .sh-sub   { font-size: .78rem; color: #555; }
+    .badge { padding: 3px 10px; border-radius: 10px; font-size: .7rem; font-weight: 700; display: inline-block; }
+    .badge-open   { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-closed { background: rgba(255,255,255,.07); color: #666; }
+    .badge-paid   { background: rgba(0,184,148,.12); color: #00b894; }
+    .badge-void   { background: rgba(231,76,60,.12); color: #e74c3c; }
+    .badge-open-order { background: rgba(241,196,15,.1); color: #f1c40f; }
+
+    /* Stat row */
+    .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat { background: #1a1a2e; border-radius: 12px; border: 1px solid rgba(255,255,255,.06); padding: 14px 18px; flex: 1; min-width: 110px; }
+    .stat-label { font-size: .65rem; color: #444; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-val   { font-size: 1.2rem; font-weight: 700; color: #fff; }
+    .stat-val.green { color: #00b894; }
+    .stat-val.red   { color: #e74c3c; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid rgba(255,255,255,.07); margin-bottom: 20px; }
+    .tab { padding: 10px 20px; font-size: .85rem; font-weight: 600; color: #555; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab.active { color: #fff; border-bottom-color: #7c5cbf; }
+    .tab:hover { color: #ccc; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Table */
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; color: #444; padding: 10px 14px; font-size: .68rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,.06); white-space: nowrap; }
+    td { padding: 11px 14px; font-size: .82rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+
+    /* Activity log */
+    .log-list { display: flex; flex-direction: column; gap: 0; }
+    .log-group { }
+    .log-group-header { padding: 10px 16px; font-size: .72rem; font-weight: 700; color: #444; background: rgba(255,255,255,.02); border-bottom: 1px solid rgba(255,255,255,.04); letter-spacing: .3px; text-transform: uppercase; }
+    .log-entry { display: flex; align-items: flex-start; gap: 14px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .log-entry:last-child { border-bottom: none; }
+    .log-icon { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .85rem; flex-shrink: 0; margin-top: 1px; }
+    .log-icon.open    { background: rgba(124,92,191,.15); }
+    .log-icon.add     { background: rgba(0,184,148,.12); }
+    .log-icon.remove  { background: rgba(231,76,60,.1); }
+    .log-icon.qty     { background: rgba(255,255,255,.06); }
+    .log-icon.discount { background: rgba(52,152,219,.12); }
+    .log-icon.void    { background: rgba(231,76,60,.15); }
+    .log-icon.paid    { background: rgba(0,184,148,.15); }
+    .log-icon.note    { background: rgba(241,196,15,.1); }
+    .log-body { flex: 1; min-width: 0; }
+    .log-action { font-size: .83rem; font-weight: 600; color: #ddd; margin-bottom: 2px; }
+    .log-action.void  { color: #e74c3c; }
+    .log-action.paid  { color: #00b894; }
+    .log-action.discount { color: #3498db; }
+    .log-detail { font-size: .75rem; color: #555; }
+    .log-time { font-size: .7rem; color: #3a3a55; white-space: nowrap; margin-top: 2px; }
+    .log-user { font-size: .7rem; color: #444; }
+    .empty { text-align: center; padding: 50px; color: #333; font-size: .85rem; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">📋 Session #<%= session.id %></div>
+  <a href="/pos/sessions" class="btn btn-ghost">← Sessions</a>
+</div>
+
+<div class="main">
+
+  <!-- Session Header -->
+  <div class="session-header">
+    <div class="sh-meta">
+      <div class="sh-title">Session #<%= session.id %> &nbsp; <span class="badge badge-<%= session.status %>"><%= session.status %></span></div>
+      <div class="sh-sub" style="margin-top:6px">
+        Opened by <strong style="color:#ccc"><%= session.opened_by_name || session.opened_by_email || 'Unknown' %></strong>
+        &nbsp;·&nbsp;
+        <%= new Date(session.opened_at).toLocaleString() %>
+        <% if (session.closed_at) { %>
+          &nbsp;→&nbsp;<%= new Date(session.closed_at).toLocaleString() %>
+        <% } %>
+      </div>
+      <% if (session.notes) { %>
+      <div class="sh-sub" style="margin-top:4px;color:#666">📝 <%= session.notes %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stat-row">
+    <div class="stat"><div class="stat-label">Opening Cash</div><div class="stat-val"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></div></div>
+    <div class="stat"><div class="stat-label">Closing Cash</div><div class="stat-val"><%= session.closing_cash != null ? (tenant.currency||'$') + parseFloat(session.closing_cash).toFixed(2) : '—' %></div></div>
+    <div class="stat"><div class="stat-label">Paid Orders</div><div class="stat-val green"><%= stats.paid %></div></div>
+    <div class="stat"><div class="stat-label">Voided</div><div class="stat-val red"><%= stats.voided %></div></div>
+    <div class="stat"><div class="stat-label">Open</div><div class="stat-val"><%= stats.open %></div></div>
+    <div class="stat"><div class="stat-label">Total Sales</div><div class="stat-val green"><%= tenant.currency || '$' %><%= stats.totalSales.toFixed(2) %></div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('orders',this)">📋 Orders (<%= orders.length %>)</div>
+    <div class="tab" onclick="switchTab('log',this)">📜 Activity Log (<%= logs.length %>)</div>
+  </div>
+
+  <!-- Orders Tab -->
+  <div class="tab-panel active" id="tab-orders">
+    <div class="card">
+      <% if (orders.length === 0) { %>
+      <div class="empty">No orders in this session</div>
+      <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Table / Name</th>
+            <th>Items</th>
+            <th>Discount</th>
+            <th>Total</th>
+            <th>Payment</th>
+            <th>Time</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% orders.forEach(o => { %>
+          <tr>
+            <td style="color:#555">#<%= o.id %></td>
+            <td><%= o.table_name %></td>
+            <td style="color:#666"><%= o.item_count %> items</td>
+            <td style="color:#3498db;font-size:.75rem">
+              <% if (o.discount_type && o.discount_type !== 'none') { %>
+                <%= o.discount_type === 'percent' ? o.discount_value + '%' : (tenant.currency||'$') + parseFloat(o.discount_value).toFixed(2) %>
+              <% } else { %>—<% } %>
+            </td>
+            <td><strong style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(o.total || 0).toFixed(2) %></strong></td>
+            <td style="text-transform:capitalize"><%= o.pay_method || '—' %></td>
+            <td style="color:#444;font-size:.75rem"><%= new Date(o.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) %></td>
+            <td>
+              <% if (o.status === 'paid') { %><span class="badge badge-paid">paid</span>
+              <% } else if (o.status === 'void') { %><span class="badge badge-void">voided</span>
+              <% } else { %><span class="badge badge-open-order">open</span><% } %>
+            </td>
+            <td><% if (o.status === 'paid') { %><a href="/pos/receipt/<%= o.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none">Receipt</a><% } %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Activity Log Tab -->
+  <div class="tab-panel" id="tab-log">
+    <div class="card">
+      <% if (logs.length === 0) { %>
+      <div class="empty">No activity recorded yet.<br><span style="font-size:.75rem;color:#2a2a3e">Actions will appear here as orders are processed.</span></div>
+      <% } else { %>
+      <%
+        // Group logs by order_id
+        const groups = {};
+        logs.forEach(l => {
+          const key = l.order_id || 'session';
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(l);
+        });
+        const orderMap = {};
+        orders.forEach(o => { orderMap[o.id] = o; });
+
+        const iconMap = {
+          order_open: { cls: 'open', icon: '📝' },
+          item_add:   { cls: 'add',  icon: '➕' },
+          item_remove:{ cls: 'remove', icon: '🗑️' },
+          item_qty:   { cls: 'qty',  icon: '✏️' },
+          discount_apply:  { cls: 'discount', icon: '🏷️' },
+          discount_remove: { cls: 'discount', icon: '✕' },
+          order_void: { cls: 'void', icon: '🗑️' },
+          order_paid: { cls: 'paid', icon: '✅' },
+          order_note: { cls: 'note', icon: '📝' },
+        };
+
+        function actionLabel(log) {
+          const d = log.details || {};
+          switch (log.action) {
+            case 'order_open':    return `Order opened — ${d.table_name || ''}`;
+            case 'item_add':      return `Added: ${d.name || ''}`;
+            case 'item_remove':   return `Removed: ${d.name || ''}`;
+            case 'item_qty':      return `Qty changed: ${d.name || ''} (${d.from} → ${d.to})`;
+            case 'discount_apply':return `Discount applied: ${d.type === 'percent' ? d.value + '%' : '$' + d.value}`;
+            case 'discount_remove': return 'Discount removed';
+            case 'order_void':    return 'Order voided';
+            case 'order_paid':    return `Order paid — ${d.method || ''} / ${d.total ? '$'+parseFloat(d.total).toFixed(2) : ''}`;
+            case 'order_note':    return `Note: "${d.note || ''}"`;
+            default:              return log.action;
+          }
+        }
+      %>
+      <div class="log-list">
+        <% Object.entries(groups).forEach(([orderId, entries]) => {
+          const order = orderMap[orderId];
+          const headerLabel = order ? `Order #${orderId} — ${order.table_name}` : 'Session';
+        %>
+        <div class="log-group">
+          <div class="log-group-header"><%= headerLabel %></div>
+          <% entries.forEach(log => {
+            const ic = iconMap[log.action] || { cls: 'note', icon: '•' };
+            const isVoid = log.action === 'order_void';
+            const isPaid = log.action === 'order_paid';
+            const isDisc = log.action.startsWith('discount');
+          %>
+          <div class="log-entry">
+            <div class="log-icon <%= ic.cls %>"><%= ic.icon %></div>
+            <div class="log-body">
+              <div class="log-action <%= isVoid ? 'void' : isPaid ? 'paid' : isDisc ? 'discount' : '' %>"><%= actionLabel(log) %></div>
+              <div class="log-user"><%= log.user_name || log.user_email || 'Unknown' %></div>
+            </div>
+            <div class="log-time"><%= new Date(log.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}) %></div>
+          </div>
+          <% }) %>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+</body>
+</html>

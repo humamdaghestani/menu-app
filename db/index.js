@@ -99,6 +99,16 @@ const pool = new Pool({
       used_at     TIMESTAMP,
       expires_at  TIMESTAMP NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS pos_activity_log (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      session_id  INTEGER REFERENCES pos_sessions(id) ON DELETE CASCADE,
+      order_id    INTEGER REFERENCES pos_orders(id) ON DELETE SET NULL,
+      user_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      action      VARCHAR(40) NOT NULL,
+      details     JSONB DEFAULT '{}',
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,

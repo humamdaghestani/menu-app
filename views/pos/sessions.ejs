@@ -84,7 +84,7 @@
       </thead>
       <% sessions.forEach(s => { %>
       <tbody>
-        <tr class="session-detail" onclick="toggleSession(<%= s.id %>)">
+        <tr class="session-detail" onclick="if(!event.target.closest('a,button'))toggleSession(<%= s.id %>)">
           <td style="color:#555">#<%= s.id %></td>
           <td><%= new Date(s.opened_at).toLocaleDateString() %><br><span style="color:#444;font-size:.72rem"><%= new Date(s.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% if (s.closed_at) { %> → <%= new Date(s.closed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% } %></span></td>
           <td><%= s.opened_by_name || '—' %></td>
@@ -95,7 +95,7 @@
           <td style="color:#ccc"><%= tenant.currency || '$' %><%= parseFloat(s.card_sales).toFixed(2) %></td>
           <td style="color:#666"><%= s.closing_cash != null ? (tenant.currency || '$') + parseFloat(s.closing_cash).toFixed(2) : '—' %></td>
           <td><span class="badge badge-<%= s.status %>"><%= s.status %></span></td>
-          <td><button class="expand-btn" id="btn_<%= s.id %>">▼</button></td>
+          <td style="white-space:nowrap"><button class="expand-btn" id="btn_<%= s.id %>" onclick="event.stopPropagation();toggleSession(<%= s.id %>)">▼</button> <a href="/pos/sessions/<%= s.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none;margin-left:4px" onclick="event.stopPropagation()">Log →</a></td>
         </tr>
       </tbody>
       <tbody class="orders-sub" id="sub_<%= s.id %>">
