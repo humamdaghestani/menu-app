@@ -116,10 +116,8 @@
   </div>
   <div class="topbar-right">
     <button class="btn btn-ghost" onclick="window.print()" title="Print bill">🖨️</button>
-    <form method="POST" action="/pos/order/<%= order.id %>/void" style="display:contents" onsubmit="return confirm('Void this order?')">
-      <button class="btn btn-danger" type="submit">Void</button>
-    </form>
-    <a href="/pos" class="btn btn-ghost">← Tables</a>
+    <button class="btn btn-danger" onclick="openVoid()">🗑️ Void</button>
+    <a href="/pos/tables" class="btn btn-ghost">← Tables</a>
   </div>
 </div>
 
@@ -225,11 +223,29 @@
   <input type="hidden" name="menu_item_id" id="addItemId" />
 </form>
 
+<!-- ── Void Passkey Modal ── -->
+<div class="modal-overlay" id="voidModal">
+  <div class="modal-box">
+    <h3>🗑️ Cancel Order</h3>
+    <p style="font-size:.8rem;color:#666;margin-bottom:14px">Ask your manager to generate a <strong>Void</strong> passkey, then enter it below.</p>
+    <form method="POST" action="/pos/order/<%= order.id %>/void">
+      <label style="font-size:.7rem;color:#555;font-weight:700;display:block;margin-bottom:5px;text-transform:uppercase">Manager Passkey</label>
+      <input type="text" class="modal-input" name="passkey" maxlength="6" minlength="6"
+        placeholder="6-digit code" inputmode="numeric" autocomplete="off"
+        style="font-size:1.4rem;letter-spacing:6px;text-align:center;font-weight:700" />
+      <div class="modal-footer">
+        <button type="button" class="btn btn-modal-cancel" onclick="closeModal('voidModal')">Cancel</button>
+        <button type="submit" class="btn" style="background:#e74c3c;color:#fff;padding:6px 16px">Cancel Order</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- ── Discount Modal ── -->
 <div class="modal-overlay" id="discountModal">
   <div class="modal-box">
     <h3>🏷️ Apply Discount</h3>
-    <form method="POST" action="/pos/order/<%= order.id %>/discount">
+    <form method="POST" action="/pos/order/<%= order.id %>/discount" id="discountForm">
       <div class="type-toggle">
         <button type="button" class="type-btn active" id="btnPct" onclick="setDiscType('percent')">% Percent</button>
         <button type="button" class="type-btn" id="btnFixed" onclick="setDiscType('fixed')">$ Fixed</button>
@@ -238,6 +254,12 @@
       <input type="hidden" name="discount_type" id="discTypeInput" value="<%= order.discount_type || 'percent' %>" />
       <input type="number" class="modal-input" name="discount_value" id="discValueInput"
         value="<%= order.discount_value || '' %>" min="0" step="0.01" placeholder="Enter amount..." />
+      <div id="passkeyField">
+        <label style="font-size:.7rem;color:#555;font-weight:700;display:block;margin-bottom:5px;text-transform:uppercase">Manager Passkey</label>
+        <input type="text" class="modal-input" name="passkey" id="discPasskey" maxlength="6" minlength="6"
+          placeholder="6-digit code" inputmode="numeric" autocomplete="off"
+          style="font-size:1.3rem;letter-spacing:6px;text-align:center;font-weight:700" />
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-modal-cancel" onclick="closeModal('discountModal')">Cancel</button>
         <button type="submit" class="btn btn-modal-ok">Apply</button>
@@ -292,9 +314,20 @@
   </div>
 </div>
 
+<% if (errorParam === 'passkey') { %>
+<div id="passkeyError" style="position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#e74c3c;color:#fff;padding:10px 22px;border-radius:8px;font-size:.85rem;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+  ✗ Invalid or expired passkey — ask manager for a new code
+</div>
+<% } %>
+
 <script>
   const CUR   = '<%= tenant.currency || "$" %>';
   const TOTAL = <%= total.toFixed(2) %>;
+  <% if (errorParam === 'passkey') { %>
+  setTimeout(() => { const e = document.getElementById('passkeyError'); if(e) e.remove(); }, 4000);
+  <% if (modalParam === 'discount') { %>setTimeout(() => openDiscount(), 100);<% } %>
+  <% if (modalParam === 'void') { %>setTimeout(() => openVoid(), 100);<% } %>
+  <% } %>
 
   /* ── Category & search filter ── */
   let activeCat = 'all';
@@ -327,6 +360,9 @@
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
   });
 
+  /* ── Void ── */
+  function openVoid() { openModal('voidModal'); }
+
   /* ── Discount ── */
   function openDiscount() { openModal('discountModal'); }
   function setDiscType(t) {
@@ -334,7 +370,11 @@
     ['Pct','Fixed','None'].forEach(x => document.getElementById('btn'+x).classList.remove('active'));
     const map = { percent:'Pct', fixed:'Fixed', none:'None' };
     document.getElementById('btn' + map[t]).classList.add('active');
-    document.getElementById('discValueInput').style.display = t === 'none' ? 'none' : '';
+    const isRemove = t === 'none';
+    document.getElementById('discValueInput').style.display = isRemove ? 'none' : '';
+    document.getElementById('passkeyField').style.display = isRemove ? 'none' : '';
+    if (isRemove) document.getElementById('discPasskey').removeAttribute('required');
+    else document.getElementById('discPasskey').setAttribute('required', '');
   }
 
   /* ── Split ── */

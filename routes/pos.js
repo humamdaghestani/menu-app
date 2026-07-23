@@ -37,6 +37,15 @@ async function requireSession(req, res, next) {
   } catch { next(); }
 }
 
+async function validatePasskey(tenantId, code, actionType) {
+  if (!code || !code.trim()) return null;
+  const r = await db.query(
+    "SELECT * FROM pos_passkeys WHERE tenant_id=$1 AND code=$2 AND action_type=$3 AND used=false AND expires_at > NOW()",
+    [tenantId, code.trim(), actionType]
+  );
+  return r.rows[0] || null;
+}
+
 function calcSubtotal(items) {
   return items.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
 }
@@ -149,6 +158,22 @@ router.get('/', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
+// ── Generate passkey (admin only, AJAX) ──────────────────────────────────────
+router.post('/passkey/generate', requireAuth, requirePOS, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.json({ ok: false, error: 'Admin only' });
+    const { action_type } = req.body;
+    if (!['void', 'discount'].includes(action_type)) return res.json({ ok: false, error: 'Invalid type' });
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await db.query(
+      'INSERT INTO pos_passkeys (tenant_id, code, action_type, created_by, expires_at) VALUES ($1,$2,$3,$4,$5)',
+      [req.user.tenantId, code, action_type, req.user.userId, expiresAt]
+    );
+    res.json({ ok: true, code, action_type, expires_in: 15 * 60 });
+  } catch (err) { console.error(err); res.json({ ok: false, error: 'Server error' }); }
+});
+
 // ── Sessions History ──────────────────────────────────────────────────────────
 router.get('/sessions', requireAuth, requirePOS, async (req, res) => {
   try {
@@ -174,8 +199,8 @@ router.get('/sessions', requireAuth, requirePOS, async (req, res) => {
          FROM pos_orders po
          LEFT JOIN pos_payments pp ON pp.order_id = po.id
          LEFT JOIN pos_order_items poi ON poi.order_id = po.id
-         WHERE po.session_id=$1 AND po.status='paid'
-         GROUP BY po.id, pp.method ORDER BY po.paid_at`,
+         WHERE po.session_id=$1
+         GROUP BY po.id, pp.method ORDER BY po.created_at`,
         [s.id]
       );
       return { ...s, orders: ordersRes.rows };
@@ -288,6 +313,8 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
       categories: categories.rows,
       menuItems: menuItems.rows,
       subtotal, total, discount,
+      errorParam: req.query.error || null,
+      modalParam: req.query.modal || null,
       currentUser: req.user
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -365,16 +392,23 @@ router.post('/order/:orderId/note', requireAuth, requirePOS, async (req, res) =>
   } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
 });
 
-// ── Discount ──────────────────────────────────────────────────────────────────
+// ── Discount (requires passkey unless removing) ───────────────────────────────
 router.post('/order/:orderId/discount', requireAuth, requirePOS, async (req, res) => {
-  const { discount_type, discount_value } = req.body;
+  const { discount_type, discount_value, passkey } = req.body;
+  const back = '/pos/order/' + req.params.orderId;
   try {
+    if (discount_type !== 'none') {
+      const pk = await validatePasskey(req.user.tenantId, passkey, 'discount');
+      if (!pk) return res.redirect(back + '?error=passkey&modal=discount');
+      await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+        [req.user.userId, req.params.orderId, pk.id]);
+    }
     await db.query(
       'UPDATE pos_orders SET discount_type=$1, discount_value=$2 WHERE id=$3 AND tenant_id=$4',
       [discount_type || 'none', parseFloat(discount_value) || 0, req.params.orderId, req.user.tenantId]
     );
-    res.redirect('/pos/order/' + req.params.orderId);
-  } catch (err) { res.redirect('/pos/order/' + req.params.orderId); }
+    res.redirect(back);
+  } catch (err) { console.error(err); res.redirect(back); }
 });
 
 // ── Payment screen ────────────────────────────────────────────────────────────
@@ -413,12 +447,16 @@ router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => 
   } catch (err) { console.error(err); res.redirect('/pos/order/' + req.params.orderId); }
 });
 
-// ── Void order ────────────────────────────────────────────────────────────────
+// ── Void order (requires passkey) ─────────────────────────────────────────────
 router.post('/order/:orderId/void', requireAuth, requirePOS, async (req, res) => {
   try {
+    const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
+    if (!pk) return res.redirect('/pos/order/' + req.params.orderId + '?error=passkey');
     await db.query('UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3', ['void', req.params.orderId, req.user.tenantId]);
+    await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+      [req.user.userId, req.params.orderId, pk.id]);
     res.redirect('/pos/tables');
-  } catch (err) { res.redirect('/pos/tables'); }
+  } catch (err) { console.error(err); res.redirect('/pos/tables'); }
 });
 
 // ── Receipt ───────────────────────────────────────────────────────────────────

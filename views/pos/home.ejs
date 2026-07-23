@@ -41,6 +41,21 @@
     .session-stat-val   { font-size: .95rem; font-weight: 700; color: #fff; }
     .session-stat-val.green { color: #00b894; }
 
+    /* Passkey generator */
+    .passkey-section { background: #1a1a2e; border: 1.5px solid rgba(124,92,191,.25); border-radius: 16px; padding: 22px 24px; margin-bottom: 28px; }
+    .passkey-section h2 { font-size: .88rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .passkey-section p  { font-size: .78rem; color: #555; margin-bottom: 16px; }
+    .passkey-btns { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .btn-gen-void     { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-gen-void:hover { background: rgba(231,76,60,.25); }
+    .btn-gen-discount { background: rgba(0,184,148,.12); color: #00b894; border: 1px solid rgba(0,184,148,.28); }
+    .btn-gen-discount:hover { background: rgba(0,184,148,.22); }
+    .passkey-display { display: none; background: #0f0f1a; border-radius: 12px; padding: 20px 24px; text-align: center; border: 1px solid rgba(255,255,255,.06); }
+    .passkey-type-label { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .passkey-code { font-size: 3rem; font-weight: 900; letter-spacing: 10px; color: #fff; font-family: monospace; margin-bottom: 8px; }
+    .passkey-countdown { font-size: .78rem; color: #555; }
+    .passkey-countdown.urgent { color: #e74c3c; }
+
     /* Nav grid */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
     .nav-card { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,.07); border-radius: 16px; padding: 24px 20px; text-decoration: none; color: inherit; transition: all .2s; cursor: pointer; display: block; }
@@ -102,6 +117,23 @@
   </div>
   <% } %>
 
+  <!-- Passkey Generator (admin only) -->
+  <% if (_isAdmin) { %>
+  <div class="passkey-section">
+    <h2>🔑 Manager Passkeys</h2>
+    <p>Generate a one-time code for a cashier to void an order or apply a discount. Code expires in 15 minutes.</p>
+    <div class="passkey-btns">
+      <button class="btn btn-gen-void"     onclick="generatePasskey('void')">Generate Void Code</button>
+      <button class="btn btn-gen-discount" onclick="generatePasskey('discount')">Generate Discount Code</button>
+    </div>
+    <div class="passkey-display" id="passkeyDisplay">
+      <div class="passkey-type-label" id="passkeyTypeLabel"></div>
+      <div class="passkey-code" id="passkeyCode"></div>
+      <div class="passkey-countdown" id="passkeyCountdown"></div>
+    </div>
+  </div>
+  <% } %>
+
   <!-- Navigation Grid -->
   <div class="grid">
     <a href="<%= session ? '/pos/tables' : '/pos/session/open' %>" class="nav-card">
@@ -136,5 +168,54 @@
   </div>
 
 </div>
+
+<% if (_isAdmin) { %>
+<script>
+  let countdownInterval = null;
+
+  async function generatePasskey(actionType) {
+    try {
+      const res = await fetch('/pos/passkey/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_type: actionType })
+      });
+      const data = await res.json();
+      if (!data.ok) { alert('Failed to generate passkey'); return; }
+
+      const display = document.getElementById('passkeyDisplay');
+      const typeLabel = document.getElementById('passkeyTypeLabel');
+      const codeEl = document.getElementById('passkeyCode');
+      const countdown = document.getElementById('passkeyCountdown');
+
+      typeLabel.textContent = actionType === 'void' ? '🗑️ VOID PASSKEY' : '💸 DISCOUNT PASSKEY';
+      typeLabel.style.color = actionType === 'void' ? '#e74c3c' : '#00b894';
+      codeEl.textContent = data.code;
+      display.style.display = 'block';
+
+      if (countdownInterval) clearInterval(countdownInterval);
+      let secsLeft = data.expires_in;
+
+      function tick() {
+        if (secsLeft <= 0) {
+          clearInterval(countdownInterval);
+          display.style.display = 'none';
+          return;
+        }
+        const m = Math.floor(secsLeft / 60).toString().padStart(2, '0');
+        const s = (secsLeft % 60).toString().padStart(2, '0');
+        countdown.textContent = `Expires in ${m}:${s}`;
+        countdown.className = 'passkey-countdown' + (secsLeft <= 60 ? ' urgent' : '');
+        secsLeft--;
+      }
+      tick();
+      countdownInterval = setInterval(tick, 1000);
+    } catch (e) {
+      alert('Network error');
+    }
+  }
+</script>
+<% } %>
+
 </body>
 </html>

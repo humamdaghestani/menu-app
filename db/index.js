@@ -86,6 +86,19 @@ const pool = new Pool({
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_show_kitchen     BOOLEAN DEFAULT true`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_show_images      BOOLEAN DEFAULT true`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_show_capacity    BOOLEAN DEFAULT true`,
+    `CREATE TABLE IF NOT EXISTS pos_passkeys (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      code        VARCHAR(8) NOT NULL,
+      action_type VARCHAR(20) NOT NULL,
+      used        BOOLEAN DEFAULT false,
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      used_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      order_id    INTEGER REFERENCES pos_orders(id) ON DELETE SET NULL,
+      created_at  TIMESTAMP DEFAULT NOW(),
+      used_at     TIMESTAMP,
+      expires_at  TIMESTAMP NOT NULL
+    )`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,
