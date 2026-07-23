@@ -684,4 +684,140 @@ router.post('/settings/tables/:id/delete', requireAuth, requirePOS, async (req, 
   } catch (err) { res.redirect('/pos/settings'); }
 });
 
+// ── JSON API — offline-capable POS order actions ──────────────────────────────
+// Accepts JSON bodies; returns JSON state so pos-offline.js can update the DOM
+router.use('/api', express.json());
+
+async function orderStateJSON(orderId, tenantId) {
+  const [oRes, iRes] = await Promise.all([
+    db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [orderId, tenantId]),
+    db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [orderId]),
+  ]);
+  const o = oRes.rows[0];
+  if (!o) return null;
+  const sub = calcSubtotal(iRes.rows);
+  const tot = calcTotal(iRes.rows, o);
+  return { order: o, items: iRes.rows, subtotal: sub, total: tot, discount: sub - tot };
+}
+
+// GET /pos/api/order/:id
+router.get('/api/order/:id', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    if (!state) return res.json({ ok: false, error: 'Not found' });
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// POST /pos/api/order/:id/add-item
+router.post('/api/order/:id/add-item', requireAuth, requirePOS, async (req, res) => {
+  const { menu_item_id } = req.body;
+  try {
+    const item = await db.query('SELECT * FROM menu_items WHERE id=$1 AND tenant_id=$2', [menu_item_id, req.user.tenantId]);
+    if (!item.rows[0]) return res.json({ ok: false, error: 'Item not found' });
+    const price = parseFloat(String(item.rows[0].price).replace(/[^0-9.]/g, '')) || 0;
+    const existing = await db.query(
+      'SELECT * FROM pos_order_items WHERE order_id=$1 AND menu_item_id=$2 AND notes IS NULL',
+      [req.params.id, menu_item_id]
+    );
+    if (existing.rows[0]) {
+      await db.query('UPDATE pos_order_items SET quantity=quantity+1 WHERE id=$1', [existing.rows[0].id]);
+    } else {
+      await db.query(
+        'INSERT INTO pos_order_items (order_id, menu_item_id, name, price, quantity, notes) VALUES ($1,$2,$3,$4,1,NULL)',
+        [req.params.id, menu_item_id, item.rows[0].name, price]
+      );
+    }
+    const sRow = await db.query('SELECT session_id FROM pos_orders WHERE id=$1', [req.params.id]);
+    await logAction(req.user.tenantId, sRow.rows[0]?.session_id, req.params.id, req.user.userId, 'item_add', { name: item.rows[0].name, price });
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false, error: 'Server error' }); }
+});
+
+// POST /pos/api/order/:id/item/:itemId/qty
+router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (req, res) => {
+  const delta = parseInt(req.body.delta);
+  try {
+    const item = await db.query(
+      'SELECT poi.*, po.session_id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.tenant_id=$2 AND po.id=$3',
+      [req.params.itemId, req.user.tenantId, req.params.id]
+    );
+    if (!item.rows[0]) return res.json({ ok: false, error: 'Not found' });
+    const oldQty = item.rows[0].quantity;
+    const newQty = oldQty + delta;
+    if (newQty <= 0) {
+      await db.query('DELETE FROM pos_order_items WHERE id=$1', [req.params.itemId]);
+      await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_remove', { name: item.rows[0].name });
+    } else {
+      await db.query('UPDATE pos_order_items SET quantity=$1 WHERE id=$2', [newQty, req.params.itemId]);
+      await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_qty', { name: item.rows[0].name, from: oldQty, to: newQty });
+    }
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// POST /pos/api/order/:id/item/:itemId/note
+router.post('/api/order/:id/item/:itemId/note', requireAuth, requirePOS, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE pos_order_items SET notes=$1 WHERE id=$2 AND order_id=$3',
+      [req.body.note || null, req.params.itemId, req.params.id]
+    );
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// POST /pos/api/order/:id/note
+router.post('/api/order/:id/note', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const r = await db.query(
+      'UPDATE pos_orders SET note=$1 WHERE id=$2 AND tenant_id=$3 RETURNING session_id',
+      [req.body.note || null, req.params.id, req.user.tenantId]
+    );
+    await logAction(req.user.tenantId, r.rows[0]?.session_id, req.params.id, req.user.userId, 'order_note', { note: req.body.note || '' });
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// POST /pos/api/order/:id/discount
+router.post('/api/order/:id/discount', requireAuth, requirePOS, async (req, res) => {
+  const { discount_type, discount_value, passkey } = req.body;
+  try {
+    if (discount_type !== 'none') {
+      const pk = await validatePasskey(req.user.tenantId, passkey, 'discount');
+      if (!pk) return res.json({ ok: false, error: 'invalid_passkey' });
+      await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+        [req.user.userId, req.params.id, pk.id]);
+    }
+    const dr = await db.query(
+      'UPDATE pos_orders SET discount_type=$1, discount_value=$2 WHERE id=$3 AND tenant_id=$4 RETURNING session_id',
+      [discount_type || 'none', parseFloat(discount_value) || 0, req.params.id, req.user.tenantId]
+    );
+    const action = discount_type === 'none' ? 'discount_remove' : 'discount_apply';
+    await logAction(req.user.tenantId, dr.rows[0]?.session_id, req.params.id, req.user.userId, action, { type: discount_type, value: parseFloat(discount_value) || 0 });
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// POST /pos/api/order/:id/void
+router.post('/api/order/:id/void', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
+    if (!pk) return res.json({ ok: false, error: 'invalid_passkey' });
+    const vr = await db.query(
+      'UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3 RETURNING session_id, table_name',
+      ['void', req.params.id, req.user.tenantId]
+    );
+    await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+      [req.user.userId, req.params.id, pk.id]);
+    await logAction(req.user.tenantId, vr.rows[0]?.session_id, req.params.id, req.user.userId, 'order_void', { table_name: vr.rows[0]?.table_name });
+    res.json({ ok: true, redirect: '/pos/tables' });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
 module.exports = router;

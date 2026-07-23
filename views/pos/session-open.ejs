@@ -20,10 +20,14 @@
     .btn-open { background: #7c5cbf; color: #fff; }
     .btn-open:hover { opacity: .88; }
     .time { font-size: .78rem; color: #333; margin-top: 20px; }
+    .nav-row { display: flex; gap: 10px; margin-top: 18px; }
+    .btn-nav { flex: 1; padding: 10px; border: 1.5px solid rgba(255,255,255,.15); border-radius: 10px; background: rgba(255,255,255,.04); color: #aaa; font-size: .8rem; font-weight: 600; cursor: pointer; font-family: inherit; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all .15s; }
+    .btn-nav:hover { border-color: #7c5cbf; color: #fff; background: rgba(124,92,191,.1); }
   </style>
 </head>
 <body>
 <div class="card">
+  <a href="/pos" style="display:inline-flex;align-items:center;gap:5px;color:#555;font-size:.8rem;font-weight:600;text-decoration:none;margin-bottom:20px;" onmouseover="this.style.color='#ccc'" onmouseout="this.style.color='#555'">← Back</a>
   <div class="icon">🏪</div>
   <h1>Open POS Session</h1>
   <div class="restaurant"><%= tenant.name %></div>
@@ -35,6 +39,14 @@
     <div class="hint">Enter 0 if starting with an empty drawer</div>
     <button type="submit" class="btn btn-open">Open Session →</button>
   </form>
+
+  <div class="nav-row">
+    <a href="/pos" class="btn-nav">🏠 POS Home</a>
+    <a href="/pos/sessions" class="btn-nav">📋 Sessions</a>
+    <% if (currentUser.role === 'admin') { %>
+    <a href="/admin/workspace" class="btn-nav">⚙️ Admin</a>
+    <% } %>
+  </div>
 
   <div class="time" id="clock"></div>
 </div>
