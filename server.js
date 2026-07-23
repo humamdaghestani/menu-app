@@ -9,6 +9,8 @@ const adminRouter = require('./routes/admin');
 const superAdminRouter = require('./routes/superadmin');
 const posRouter     = require('./routes/pos');
 const captainRouter = require('./routes/captain');
+const inventoryRouter = require('./routes/inventory');
+const { deductStockForOrder } = require('./routes/inventory');
 const db = require('./db');
 
 const app = express();
@@ -72,6 +74,7 @@ app.use('/superadmin', superAdminRouter);
 app.use('/admin', adminRouter);
 app.use('/pos',     posRouter);
 app.use('/captain', captainRouter);
+app.use('/inventory', inventoryRouter);
 app.use('/', menuRouter);
 
 const PORT = process.env.PORT || 3000;

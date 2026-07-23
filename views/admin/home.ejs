@@ -99,6 +99,18 @@
     </a>
     <% } %>
 
+    <!-- Inventory -->
+    <% if (tenant.feat_inventory && (_isAdmin || _can('access_inventory'))) { %>
+    <a href="/inventory" class="module-card" style="--accent:#f39c12">
+      <div class="module-icon">📦</div>
+      <div>
+        <div class="module-name">Inventory & COGS</div>
+        <div class="module-desc">Manage stock, recipes, purchase receipts, and auto cost-of-goods tracking</div>
+      </div>
+      <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Active</span>
+    </a>
+    <% } %>
+
     <!-- Captain -->
     <% if (tenant.feat_captain && (_isAdmin || _can('access_captain'))) { %>
     <a href="/captain" class="module-card" style="--accent:#7c5cbf">

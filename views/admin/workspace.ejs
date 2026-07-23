@@ -143,6 +143,7 @@
             <% if (perms.includes('access_menu')) { %><span class="mbadge mbadge-menu">🍽️ Menu</span><% } %>
             <% if (perms.includes('access_pos')) { %><span class="mbadge mbadge-pos">🖥️ POS</span><% } %>
             <% if (perms.includes('access_captain')) { %><span class="mbadge" style="background:rgba(124,92,191,.15);color:#a78bdf">🍽️ Captain</span><% } %>
+            <% if (perms.includes('access_inventory')) { %><span class="mbadge" style="background:rgba(243,156,18,.15);color:#f39c12">📦 Inventory</span><% } %>
           <% } %>
         </div>
         <div class="user-actions">
@@ -280,6 +281,19 @@
       </div>
       <% } %>
 
+      <!-- Inventory Module (only if enabled) -->
+      <% if (tenant.feat_inventory) { %>
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">📦 Inventory & COGS</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_inventory" id="c_access_inventory" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <% } %>
+
       <div class="drawer-footer">
         <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
         <button type="submit" class="btn btn-primary">Create User</button>
@@ -361,6 +375,19 @@
       </div>
       <% } %>
 
+      <!-- Inventory Module -->
+      <% if (tenant.feat_inventory) { %>
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">📦 Inventory & COGS</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_inventory" id="e_access_inventory" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      <% } %>
+
       <hr class="divider" />
       <div class="perm-section-title">Reset Password</div>
       <div class="form-group">
@@ -433,9 +460,11 @@ function openEdit(user) {
 
   // Captain module
   const captainToggle = document.getElementById('e_access_captain');
-  if (captainToggle) {
-    captainToggle.checked = perms.includes('access_captain');
-  }
+  if (captainToggle) captainToggle.checked = perms.includes('access_captain');
+
+  // Inventory module
+  const invToggle = document.getElementById('e_access_inventory');
+  if (invToggle) invToggle.checked = perms.includes('access_inventory');
 
   document.getElementById('editOverlay').classList.add('open');
 }

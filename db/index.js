@@ -133,6 +133,59 @@ const pool = new Pool({
       change_given NUMERIC(10,2) DEFAULT 0,
       created_at   TIMESTAMP DEFAULT NOW()
     )`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_inventory BOOLEAN DEFAULT false`,
+    `CREATE TABLE IF NOT EXISTS inventory_items (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name          VARCHAR(120) NOT NULL,
+      sku           VARCHAR(60),
+      type          VARCHAR(20) DEFAULT 'raw_material',
+      unit          VARCHAR(20) DEFAULT 'pcs',
+      stock_qty     NUMERIC(14,4) DEFAULT 0,
+      reorder_level NUMERIC(14,4) DEFAULT 0,
+      avg_cost      NUMERIC(12,4) DEFAULT 0,
+      menu_item_id  INTEGER REFERENCES menu_items(id) ON DELETE SET NULL,
+      is_active     BOOLEAN DEFAULT true,
+      created_at    TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS inventory_recipes (
+      id            SERIAL PRIMARY KEY,
+      item_id       INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      ingredient_id INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      quantity      NUMERIC(14,4) NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS purchase_receipts (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      supplier_name VARCHAR(120),
+      invoice_no    VARCHAR(60),
+      receipt_date  DATE DEFAULT CURRENT_DATE,
+      total         NUMERIC(12,2) DEFAULT 0,
+      notes         TEXT,
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS purchase_receipt_lines (
+      id          SERIAL PRIMARY KEY,
+      receipt_id  INTEGER REFERENCES purchase_receipts(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      quantity    NUMERIC(14,4) NOT NULL,
+      unit_price  NUMERIC(12,4) NOT NULL,
+      total       NUMERIC(12,2)
+    )`,
+    `CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id             SERIAL PRIMARY KEY,
+      tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id        INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      type           VARCHAR(20) NOT NULL,
+      qty_change     NUMERIC(14,4) NOT NULL,
+      unit_cost      NUMERIC(12,4) DEFAULT 0,
+      reference_id   INTEGER,
+      reference_type VARCHAR(30),
+      notes          TEXT,
+      created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at     TIMESTAMP DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

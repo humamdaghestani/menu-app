@@ -466,6 +466,14 @@ router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => 
       ['paid', total, req.params.orderId, req.user.tenantId]
     );
     await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, change });
+    // Auto-deduct inventory stock if module is enabled
+    try {
+      const { deductStockForOrder } = require('./inventory');
+      const tenantRow = await db.query('SELECT feat_inventory FROM tenants WHERE id=$1', [req.user.tenantId]);
+      if (tenantRow.rows[0]?.feat_inventory) {
+        await deductStockForOrder(req.user.tenantId, req.params.orderId, req.user.userId);
+      }
+    } catch(e) { console.error('[inventory deduct]', e.message); }
     res.redirect('/pos/receipt/' + req.params.orderId);
   } catch (err) { console.error(err); res.redirect('/pos/order/' + req.params.orderId); }
 });

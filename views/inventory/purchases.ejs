@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Purchase Receipts — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .page-title { font-size: 1.3rem; font-weight: 800; color: #fff; margin-bottom: 24px; }
+
+    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 12px 16px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); cursor: pointer; }
+    .empty-state { text-align: center; padding: 80px 24px; color: #444; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="/inventory" class="btn btn-ghost">← Dashboard</a>
+    <span style="font-weight:700;color:#fff">🧾 Purchase Receipts</span>
+  </div>
+  <a href="/inventory/purchases/new" class="btn btn-primary">+ New Receipt</a>
+</div>
+
+<div class="main">
+  <% if (receipts.length === 0) { %>
+  <div class="empty-state">
+    <div style="font-size:3rem">🧾</div>
+    <div style="margin-top:12px;font-size:.9rem">No purchase receipts yet.</div>
+    <a href="/inventory/purchases/new" class="btn btn-primary" style="margin-top:16px">Add first receipt</a>
+  </div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Supplier</th><th>Invoice #</th><th>Items</th><th>Total</th><th>Created By</th></tr>
+      </thead>
+      <tbody>
+      <% receipts.forEach(r => { %>
+      <tr onclick="window.location.href='/inventory/purchases/<%= r.id %>'">
+        <td><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
+        <td style="color:#fff;font-weight:600"><%= r.supplier_name || '—' %></td>
+        <td style="color:#555"><%= r.invoice_no || '—' %></td>
+        <td style="color:#666"><%= r.line_count %> item<%= r.line_count != 1 ? 's' : '' %></td>
+        <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
+        <td style="color:#555"><%= r.created_by_name || '—' %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+</body>
+</html>

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recipe — <%= item.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-danger:hover { background: rgba(231,76,60,.25); }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+
+    .main { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .page-header { margin-bottom: 28px; }
+    .page-title { font-size: 1.3rem; font-weight: 800; color: #fff; }
+    .page-sub { font-size: .82rem; color: #555; margin-top: 6px; }
+
+    .cost-banner { background: linear-gradient(135deg, rgba(124,92,191,.2), rgba(124,92,191,.08)); border: 1px solid rgba(124,92,191,.4); border-radius: 14px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .cost-main { font-size: 2rem; font-weight: 800; color: #a78bdf; }
+    .cost-label { font-size: .75rem; color: #666; text-transform: uppercase; font-weight: 700; }
+    .cost-margin { font-size: 1rem; font-weight: 700; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 20px; }
+    .card-title { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 8px 12px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 12px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+
+    .empty-recipe { text-align: center; padding: 40px; color: #444; font-size: .85rem; }
+
+    .add-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
+    .form-label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .form-input { padding: 8px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; }
+    .form-input:focus { border-color: #7c5cbf; }
+    select.form-input option { background: #1a1a2e; }
+
+    .qty-edit { display: flex; gap: 6px; align-items: center; }
+    .qty-input { width: 80px; padding: 4px 8px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 6px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="/inventory/items" class="btn btn-ghost">← Items</a>
+    <span style="font-weight:700;color:#fff">📝 Recipe: <%= item.name %></span>
+    <span style="font-size:.72rem;color:#555"><%= item.type.replace('_',' ') %> · <%= item.unit %></span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Cost banner -->
+  <div class="cost-banner">
+    <div>
+      <div class="cost-label">Recipe Cost (per <%= item.unit %>)</div>
+      <div class="cost-main"><%= tenant.currency || '$' %><%= totalCost.toFixed(4) %></div>
+    </div>
+    <% if (item.menu_item_id) { %>
+    <div style="border-left:1px solid rgba(124,92,191,.3);padding-left:24px">
+      <div class="cost-label">Linked Menu Item</div>
+      <div style="font-size:1rem;font-weight:700;color:#a78bdf;margin-top:4px"><%= item.menu_item_name || 'Linked' %></div>
+    </div>
+    <% } %>
+    <div style="border-left:1px solid rgba(124,92,191,.3);padding-left:24px">
+      <div class="cost-label">Ingredients</div>
+      <div style="font-size:1rem;font-weight:700;color:#fff;margin-top:4px"><%= recipe.length %> lines</div>
+    </div>
+  </div>
+
+  <!-- Current recipe -->
+  <div class="card">
+    <div class="card-title">🧪 Ingredients</div>
+    <% if (recipe.length === 0) { %>
+    <div class="empty-recipe">No ingredients yet. Add the first one below.</div>
+    <% } else { %>
+    <table>
+      <thead>
+        <tr><th>Ingredient</th><th>Unit</th><th>Quantity</th><th>Avg Cost</th><th>Line Cost</th><th></th></tr>
+      </thead>
+      <tbody>
+      <% recipe.forEach(r => { %>
+      <tr>
+        <td style="color:#fff;font-weight:600"><%= r.ingredient_name %></td>
+        <td style="color:#555"><%= r.unit %></td>
+        <td>
+          <form method="POST" action="/inventory/items/<%= item.id %>/recipe/<%= r.id %>/edit" class="qty-edit">
+            <input type="number" name="quantity" class="qty-input" value="<%= parseFloat(r.quantity) %>" step="0.0001" min="0.0001" required />
+            <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+          </form>
+        </td>
+        <td style="color:#666"><%= tenant.currency || '$' %><%= parseFloat(r.avg_cost).toFixed(4) %></td>
+        <td style="color:#a78bdf;font-weight:600"><%= tenant.currency || '$' %><%= parseFloat(r.line_cost).toFixed(4) %></td>
+        <td>
+          <form method="POST" action="/inventory/items/<%= item.id %>/recipe/<%= r.id %>/delete" onsubmit="return confirm('Remove ingredient?')">
+            <button type="submit" class="btn btn-danger btn-sm">✕</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <!-- Add ingredient -->
+  <div class="card">
+    <div class="card-title">➕ Add Ingredient</div>
+    <form method="POST" action="/inventory/items/<%= item.id %>/recipe" class="add-form">
+      <div class="form-group">
+        <label class="form-label">Ingredient</label>
+        <select name="ingredient_id" class="form-input" required>
+          <option value="">— Select —</option>
+          <% ingredients.forEach(ing => { %>
+          <option value="<%= ing.id %>"><%= ing.name %> (<%= ing.unit %>) — cost: <%= tenant.currency || '$' %><%= parseFloat(ing.avg_cost).toFixed(4) %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-group" style="max-width:140px">
+        <label class="form-label">Quantity used</label>
+        <input type="number" name="quantity" class="form-input" step="0.0001" min="0.0001" placeholder="e.g. 0.25" required />
+      </div>
+      <button type="submit" class="btn btn-primary" style="align-self:flex-end">Add</button>
+    </form>
+  </div>
+
+</div>
+</body>
+</html>

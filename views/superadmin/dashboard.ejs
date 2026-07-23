@@ -169,7 +169,7 @@
               <button class="btn btn-ghost btn-sm" onclick="openFeatures(<%= JSON.stringify(t) %>)" style="color:#7c5cbf">
                 Features
                 <span style="margin-left:5px;font-size:.7rem;opacity:.7" title="Feedback / Orders / Import / CSS / Lang / Valet">
-                  <% ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart','feat_pos','feat_captain'].forEach(f => { %><span style="color:<%= t[f] === false ? '#ff6b7a' : '#00b894' %>">●</span><% }) %>
+                  <% ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart','feat_pos','feat_captain','feat_inventory'].forEach(f => { %><span style="color:<%= t[f] === false ? '#ff6b7a' : '#00b894' %>">●</span><% }) %>
                 </span>
               </button>
               <form method="POST" action="/superadmin/tenants/<%= t.id %>/toggle" style="display:inline">
@@ -207,6 +207,7 @@
         { key:'feat_cart',         icon:'🛒', label:'Shopping Cart',        desc:'Cart & WhatsApp ordering on the menu' },
         { key:'feat_pos',          icon:'🖥️', label:'Point of Sale (POS)',   desc:'Full POS system — tables, orders, payments, kitchen display' },
         { key:'feat_captain',      icon:'🍽️', label:'Captain / Waiter Tablet', desc:'Tablet ordering system for waiters — send to kitchen, request bill' },
+        { key:'feat_inventory',    icon:'📦', label:'Inventory & COGS',        desc:'Inventory catalog, recipes, purchase receipts, auto cost tracking' },
       ]; %>
       <div style="display:flex;flex-direction:column;gap:10px">
         <% FEATS.forEach(f => { %>
@@ -430,7 +431,7 @@
     document.getElementById('editPreview').textContent = this.value;
   });
 
-  const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart','feat_pos','feat_captain'];
+  const FEAT_KEYS = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart','feat_pos','feat_captain','feat_inventory'];
 
   function toggleFeat(key) {
     const inp = document.getElementById('fv_' + key);

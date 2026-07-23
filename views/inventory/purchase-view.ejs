@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipt #<%= receipt.id %> — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .main { padding: 24px; max-width: 800px; margin: 0 auto; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 24px; margin-bottom: 20px; }
+    .receipt-header { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .rh-item { }
+    .rh-label { font-size: .7rem; text-transform: uppercase; color: #444; font-weight: 700; margin-bottom: 4px; }
+    .rh-val { font-size: .95rem; color: #fff; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 8px 12px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 12px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
+    tr:last-child td { border-bottom: none; }
+    .grand { display: flex; justify-content: flex-end; gap: 16px; align-items: center; padding-top: 14px; border-top: 1px solid #2a2a3e; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <a href="/inventory/purchases" class="btn btn-ghost">← Receipts</a>
+    <span style="font-weight:700;color:#fff">🧾 Receipt #<%= receipt.id %></span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="receipt-header">
+      <div class="rh-item">
+        <div class="rh-label">Date</div>
+        <div class="rh-val"><%= new Date(receipt.receipt_date || receipt.created_at).toLocaleDateString() %></div>
+      </div>
+      <div class="rh-item">
+        <div class="rh-label">Supplier</div>
+        <div class="rh-val"><%= receipt.supplier_name || '—' %></div>
+      </div>
+      <div class="rh-item">
+        <div class="rh-label">Invoice #</div>
+        <div class="rh-val"><%= receipt.invoice_no || '—' %></div>
+      </div>
+      <div class="rh-item">
+        <div class="rh-label">Created By</div>
+        <div class="rh-val"><%= receipt.created_by_name || '—' %></div>
+      </div>
+      <% if (receipt.notes) { %>
+      <div class="rh-item" style="grid-column:1/-1">
+        <div class="rh-label">Notes</div>
+        <div class="rh-val" style="color:#888"><%= receipt.notes %></div>
+      </div>
+      <% } %>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Item</th><th>Unit</th><th>Quantity</th><th>Unit Price</th><th>Total</th></tr>
+      </thead>
+      <tbody>
+      <% lines.forEach(l => { %>
+      <tr>
+        <td style="color:#fff;font-weight:600"><%= l.item_name %></td>
+        <td style="color:#555"><%= l.unit %></td>
+        <td><%= parseFloat(l.quantity).toFixed(3) %></td>
+        <td style="color:#7c5cbf"><%= tenant.currency || '$' %><%= parseFloat(l.unit_price).toFixed(4) %></td>
+        <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(l.total).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+
+    <div class="grand">
+      <span style="font-size:.85rem;color:#555">Grand Total</span>
+      <span style="font-size:1.4rem;font-weight:800;color:#fff"><%= tenant.currency || '$' %><%= parseFloat(receipt.total).toFixed(2) %></span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

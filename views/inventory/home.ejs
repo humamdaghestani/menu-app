@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .page-title { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 24px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .stat-card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; }
+    .stat-label { font-size: .72rem; text-transform: uppercase; font-weight: 700; color: #444; letter-spacing: .5px; margin-bottom: 8px; }
+    .stat-val { font-size: 1.6rem; font-weight: 800; color: #fff; }
+    .stat-sub { font-size: .75rem; color: #555; margin-top: 4px; }
+
+    .section-title { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .section { margin-bottom: 32px; }
+
+    .alert-list { display: flex; flex-direction: column; gap: 8px; }
+    .alert-row { background: rgba(231,76,60,.08); border: 1px solid rgba(231,76,60,.25); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .alert-name { font-size: .88rem; font-weight: 600; color: #e74c3c; }
+    .alert-detail { font-size: .78rem; color: #777; margin-top: 2px; }
+    .alert-stock { font-size: .88rem; font-weight: 700; color: #e74c3c; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 8px 12px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 12px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+
+    .tx-type { font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .tx-purchase { background: rgba(0,184,148,.15); color: #00b894; }
+    .tx-sale     { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .tx-adjustment { background: rgba(241,196,15,.15); color: #f1c40f; }
+    .tx-waste    { background: rgba(149,165,166,.15); color: #95a5a6; }
+
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">📦 Inventory — <%= tenant.name %></div>
+  <div class="nav-links">
+    <a href="/inventory/items" class="btn btn-ghost">📋 Items</a>
+    <a href="/inventory/purchases" class="btn btn-ghost">🧾 Purchases</a>
+    <a href="/inventory/purchases/new" class="btn btn-primary">+ New Purchase</a>
+    <a href="/admin" class="btn btn-ghost">← Admin</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">📦 Inventory Dashboard</div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Items</div>
+      <div class="stat-val"><%= totalItems %></div>
+      <div class="stat-sub">active inventory items</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Inventory Value</div>
+      <div class="stat-val"><%= tenant.currency || '$' %><%= totalValue.toFixed(2) %></div>
+      <div class="stat-sub">at average cost</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Low Stock Alerts</div>
+      <div class="stat-val" style="color:<%= lowStock.length > 0 ? '#e74c3c' : '#00b894' %>"><%= lowStock.length %></div>
+      <div class="stat-sub">items below reorder level</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Recent Purchases</div>
+      <div class="stat-val"><%= recentPurchases.length %></div>
+      <div class="stat-sub">last 5 receipts</div>
+    </div>
+  </div>
+
+  <% if (lowStock.length > 0) { %>
+  <div class="section">
+    <div class="section-title">🔴 Low Stock Alerts</div>
+    <div class="alert-list">
+      <% lowStock.forEach(item => { %>
+      <div class="alert-row">
+        <div>
+          <div class="alert-name"><%= item.name %></div>
+          <div class="alert-detail">Reorder at <%= item.reorder_level %> <%= item.unit %></div>
+        </div>
+        <div class="alert-stock"><%= parseFloat(item.stock_qty).toFixed(2) %> <%= item.unit %></div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="section">
+    <div class="section-title">🧾 Recent Purchases</div>
+    <% if (recentPurchases.length === 0) { %>
+    <div style="color:#444;font-size:.85rem;padding:20px 0">No purchase receipts yet. <a href="/inventory/purchases/new" style="color:#7c5cbf">Add first purchase →</a></div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th>Total</th><th>By</th></tr></thead>
+        <tbody>
+        <% recentPurchases.forEach(r => { %>
+        <tr onclick="window.location.href='/inventory/purchases/<%= r.id %>'" style="cursor:pointer">
+          <td><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
+          <td><%= r.supplier_name || '—' %></td>
+          <td style="color:#666"><%= r.invoice_no || '—' %></td>
+          <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
+          <td style="color:#666"><%= r.created_by_name || '—' %></td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🔄 Recent Stock Movements</div>
+    <% if (recentTx.length === 0) { %>
+    <div style="color:#444;font-size:.85rem;padding:20px 0">No transactions yet.</div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Time</th><th>Item</th><th>Type</th><th>Change</th><th>Notes</th></tr></thead>
+        <tbody>
+        <% recentTx.forEach(tx => { %>
+        <tr>
+          <td style="color:#555"><%= new Date(tx.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
+          <td><%= tx.item_name %></td>
+          <td><span class="tx-type tx-<%= tx.type %>"><%= tx.type %></span></td>
+          <td style="color:<%= parseFloat(tx.qty_change) >= 0 ? '#00b894' : '#e74c3c' %>;font-weight:700">
+            <%= parseFloat(tx.qty_change) >= 0 ? '+' : '' %><%= parseFloat(tx.qty_change).toFixed(4) %> <%= tx.unit %>
+          </td>
+          <td style="color:#555"><%= tx.notes || '—' %></td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Items — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; flex-wrap: wrap; gap: 10px; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-danger:hover { background: rgba(231,76,60,.25); }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+    .main { padding: 24px; max-width: 1300px; margin: 0 auto; }
+
+    .filter-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+    .type-btn { padding: 6px 16px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #666; font-size: .8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .type-btn.active { background: #7c5cbf; border-color: #7c5cbf; color: #fff; }
+    .search-input { padding: 7px 14px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .85rem; outline: none; font-family: inherit; min-width: 200px; }
+    .search-input:focus { border-color: #7c5cbf; }
+
+    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 14px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 14px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .type-badge { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .type-raw_material  { background: rgba(52,152,219,.15); color: #3498db; }
+    .type-semi_finished { background: rgba(155,89,182,.15); color: #9b59b6; }
+    .type-product       { background: rgba(0,184,148,.15); color: #00b894; }
+
+    .stock-val { font-weight: 700; color: #fff; }
+    .stock-low { color: #e74c3c; }
+    .cost-val { color: #7c5cbf; font-weight: 600; }
+
+    /* Modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; border: 1px solid #2a2a3e; width: 100%; max-width: 460px; padding: 24px; }
+    .modal-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: .75rem; font-weight: 700; color: #666; text-transform: uppercase; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .9rem; font-family: inherit; outline: none; }
+    .form-input:focus { border-color: #7c5cbf; }
+    select.form-input option { background: #1a1a2e; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .empty-state { text-align: center; padding: 60px 20px; color: #444; }
+
+    .action-btns { display: flex; gap: 6px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">📦 Inventory Items</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/inventory" class="btn btn-ghost">← Dashboard</a>
+    <a href="/inventory/purchases/new" class="btn btn-ghost">🧾 New Purchase</a>
+    <button class="btn btn-primary" onclick="openCreate()">+ Add Item</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="filter-row">
+    <a href="/inventory/items?type=all" class="type-btn <%= activeType==='all'?'active':'' %>">All</a>
+    <a href="/inventory/items?type=raw_material" class="type-btn <%= activeType==='raw_material'?'active':'' %>">🔵 Raw Material</a>
+    <a href="/inventory/items?type=semi_finished" class="type-btn <%= activeType==='semi_finished'?'active':'' %>">🟣 Semi-Finished</a>
+    <a href="/inventory/items?type=product" class="type-btn <%= activeType==='product'?'active':'' %>">🟢 Product</a>
+    <input type="text" class="search-input" placeholder="Search..." id="searchInput" oninput="filterRows()" />
+  </div>
+
+  <% if (items.length === 0) { %>
+  <div class="empty-state">
+    <div style="font-size:3rem">📦</div>
+    <div style="margin-top:12px">No items yet. <button class="btn btn-primary btn-sm" onclick="openCreate()" style="margin-left:8px">Add first item</button></div>
+  </div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table id="itemsTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Unit</th>
+          <th>Stock</th>
+          <th>Avg Cost</th>
+          <th>Recipe Cost</th>
+          <th>Linked Menu Item</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% items.forEach(item => { %>
+      <tr data-name="<%= item.name.toLowerCase() %>">
+        <td style="color:#fff;font-weight:600"><%= item.name %><% if (item.sku) { %> <span style="font-size:.7rem;color:#444">(<%= item.sku %>)</span><% } %></td>
+        <td><span class="type-badge type-<%= item.type %>"><%= item.type.replace('_',' ') %></span></td>
+        <td style="color:#666"><%= item.unit %></td>
+        <td>
+          <span class="stock-val <%= parseFloat(item.stock_qty) <= parseFloat(item.reorder_level) && parseFloat(item.reorder_level) > 0 ? 'stock-low' : '' %>">
+            <%= parseFloat(item.stock_qty).toFixed(3) %>
+          </span>
+          <% if (parseFloat(item.reorder_level) > 0) { %>
+          <span style="font-size:.7rem;color:#555"> / <%= parseFloat(item.reorder_level).toFixed(2) %> reorder</span>
+          <% } %>
+        </td>
+        <td class="cost-val"><%= tenant.currency || '$' %><%= parseFloat(item.avg_cost).toFixed(4) %></td>
+        <td>
+          <% if (parseInt(item.recipe_lines) > 0) { %>
+          <span style="color:#00b894;font-weight:600"><%= tenant.currency || '$' %><%= parseFloat(item.recipe_cost).toFixed(4) %></span>
+          <% } else { %>
+          <span style="color:#333">—</span>
+          <% } %>
+        </td>
+        <td style="color:#666"><%= item.menu_item_name || '—' %></td>
+        <td>
+          <div class="action-btns">
+            <a href="/inventory/items/<%= item.id %>/recipe" class="btn btn-ghost btn-sm">📝 Recipe</a>
+            <button class="btn btn-ghost btn-sm" onclick='openEdit(<%= JSON.stringify(item) %>)'>Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick='openAdjust(<%= item.id %>, "<%= item.name %>", "<%= item.unit %>")'>±Stock</button>
+            <form method="POST" action="/inventory/items/<%= item.id %>/delete" style="display:inline" onsubmit="return confirm('Archive this item?')">
+              <button type="submit" class="btn btn-danger btn-sm">✕</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+
+<!-- Create Item Modal -->
+<div class="overlay" id="createOverlay" onclick="if(event.target===this)closeCreate()">
+  <div class="modal">
+    <div class="modal-title">➕ Add Inventory Item</div>
+    <form method="POST" action="/inventory/items">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input type="text" name="name" class="form-input" required placeholder="e.g. Flour" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">SKU / Code</label>
+          <input type="text" name="sku" class="form-input" placeholder="optional" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Type *</label>
+          <select name="type" class="form-input" id="createType" onchange="toggleMenuLink()">
+            <option value="raw_material">Raw Material</option>
+            <option value="semi_finished">Semi-Finished</option>
+            <option value="product">Product (sellable)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit *</label>
+          <select name="unit" class="form-input">
+            <option>kg</option><option>g</option><option>L</option><option>ml</option>
+            <option>pcs</option><option>box</option><option>bag</option><option>bottle</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reorder Level</label>
+        <input type="number" name="reorder_level" class="form-input" placeholder="0" step="0.001" min="0" />
+      </div>
+      <div class="form-group" id="menuLinkGroup" style="display:none">
+        <label class="form-label">Link to Menu Item (POS)</label>
+        <select name="menu_item_id" class="form-input">
+          <option value="">— Not linked —</option>
+          <% menuItems.forEach(m => { %>
+          <option value="<%= m.id %>"><%= m.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Item Modal -->
+<div class="overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Item</div>
+    <form method="POST" id="editForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input type="text" name="name" id="editName" class="form-input" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">SKU / Code</label>
+          <input type="text" name="sku" id="editSku" class="form-input" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <select name="unit" id="editUnit" class="form-input">
+            <option>kg</option><option>g</option><option>L</option><option>ml</option>
+            <option>pcs</option><option>box</option><option>bag</option><option>bottle</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reorder Level</label>
+          <input type="number" name="reorder_level" id="editReorder" class="form-input" step="0.001" min="0" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Link to Menu Item (POS)</label>
+        <select name="menu_item_id" id="editMenuLink" class="form-input">
+          <option value="">— Not linked —</option>
+          <% menuItems.forEach(m => { %>
+          <option value="<%= m.id %>"><%= m.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Adjust Stock Modal -->
+<div class="overlay" id="adjustOverlay" onclick="if(event.target===this)closeAdjust()">
+  <div class="modal">
+    <div class="modal-title">± Adjust Stock</div>
+    <div style="font-size:.85rem;color:#666;margin-bottom:16px" id="adjustItemName"></div>
+    <form method="POST" id="adjustForm">
+      <div class="form-group">
+        <label class="form-label">Quantity Change (use − for reduction)</label>
+        <input type="number" name="qty_change" id="adjustQty" class="form-input" step="0.001" placeholder="e.g. 5 or -2" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason / Notes</label>
+        <input type="text" name="notes" class="form-input" placeholder="e.g. Waste, Count correction..." />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeAdjust()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Adjustment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
+function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
+function toggleMenuLink() {
+  const t = document.getElementById('createType').value;
+  document.getElementById('menuLinkGroup').style.display = t === 'product' ? '' : 'none';
+}
+
+function openEdit(item) {
+  document.getElementById('editName').value = item.name;
+  document.getElementById('editSku').value = item.sku || '';
+  document.getElementById('editUnit').value = item.unit;
+  document.getElementById('editReorder').value = item.reorder_level;
+  document.getElementById('editMenuLink').value = item.menu_item_id || '';
+  document.getElementById('editForm').action = '/inventory/items/' + item.id + '/edit';
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+
+function openAdjust(id, name, unit) {
+  document.getElementById('adjustItemName').textContent = name + ' (' + unit + ')';
+  document.getElementById('adjustForm').action = '/inventory/items/' + id + '/adjust';
+  document.getElementById('adjustQty').value = '';
+  document.getElementById('adjustOverlay').classList.add('open');
+}
+function closeAdjust() { document.getElementById('adjustOverlay').classList.remove('open'); }
+
+function filterRows() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
+    row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>
