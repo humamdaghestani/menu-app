@@ -150,7 +150,15 @@ router.get('/', requireAuth, requirePOS, requireSession, async (req, res) => {
       [req.posSession.id]
     );
     const sessionStats = sessionOrders.rows[0];
-    res.render('pos/tables', { tenant, tables: tables.rows, session: req.posSession, sessionStats, currentUser: req.user });
+    const takeawayOrders = await db.query(
+      `SELECT po.*, COALESCE(SUM(oi.price * oi.quantity),0) AS order_total, COUNT(oi.id) AS item_count
+       FROM pos_orders po
+       LEFT JOIN pos_order_items oi ON oi.order_id = po.id
+       WHERE po.tenant_id=$1 AND po.order_type='takeaway' AND po.status='open'
+       GROUP BY po.id ORDER BY po.created_at`,
+      [req.user.tenantId]
+    );
+    res.render('pos/tables', { tenant, tables: tables.rows, session: req.posSession, sessionStats, takeawayOrders: takeawayOrders.rows, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
@@ -165,6 +173,22 @@ router.post('/tables/:tableId/open', requireAuth, requirePOS, requireSession, as
     const order = await db.query(
       'INSERT INTO pos_orders (tenant_id, table_id, table_name, created_by, session_id) VALUES ($1,$2,$3,$4,$5) RETURNING id',
       [req.user.tenantId, req.params.tableId, table.rows[0].name, req.user.userId, sessionId]
+    );
+    res.redirect('/pos/order/' + order.rows[0].id);
+  } catch (err) { console.error(err); res.redirect('/pos'); }
+});
+
+// ── Open takeaway order ──────────────────────────────────────────────────────
+router.post('/takeaway/open', requireAuth, requirePOS, requireSession, async (req, res) => {
+  try {
+    const count = await db.query(
+      "SELECT COUNT(*) AS cnt FROM pos_orders WHERE session_id=$1 AND order_type='takeaway'",
+      [req.posSession.id]
+    );
+    const num = parseInt(count.rows[0].cnt) + 1;
+    const order = await db.query(
+      "INSERT INTO pos_orders (tenant_id, table_name, order_type, created_by, session_id) VALUES ($1,$2,'takeaway',$3,$4) RETURNING id",
+      [req.user.tenantId, `Takeaway #${num}`, req.user.userId, req.posSession.id]
     );
     res.redirect('/pos/order/' + order.rows[0].id);
   } catch (err) { console.error(err); res.redirect('/pos'); }

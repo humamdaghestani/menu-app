@@ -77,6 +77,7 @@ const pool = new Pool({
       closed_at     TIMESTAMP
     )`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS session_id INTEGER REFERENCES pos_sessions(id) ON DELETE SET NULL`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS order_type VARCHAR(20) DEFAULT 'dine-in'`,
     `CREATE TABLE IF NOT EXISTS pos_payments (
       id           SERIAL PRIMARY KEY,
       order_id     INTEGER REFERENCES pos_orders(id) ON DELETE CASCADE,

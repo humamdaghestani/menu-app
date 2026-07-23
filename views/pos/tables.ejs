@@ -19,10 +19,7 @@
     .btn-primary:hover { opacity: .88; }
 
     .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
-    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .page-header h1 { font-size: 1.3rem; font-weight: 700; color: #fff; }
-
-    .legend { display: flex; gap: 20px; margin-bottom: 24px; flex-wrap: wrap; }
+    .legend { display: flex; gap: 20px; flex-wrap: wrap; }
     .legend-item { display: flex; align-items: center; gap: 7px; font-size: .8rem; color: #888; }
     .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
 
@@ -43,6 +40,18 @@
     .table-order-info { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.06); font-size: .78rem; color: #888; }
     .table-order-total { color: #fff; font-weight: 700; font-size: .95rem; margin-top: 4px; }
 
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; margin-top: 28px; }
+    .section-header:first-child { margin-top: 0; }
+    .section-title { font-size: .95rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .section-title .count { font-size: .7rem; background: rgba(255,255,255,.1); padding: 2px 8px; border-radius: 10px; color: #888; font-weight: 600; }
+    .btn-new-takeaway { background: rgba(241,196,15,.12); color: #f1c40f; border: 1px solid rgba(241,196,15,.3); padding: 7px 16px; border-radius: 8px; font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-new-takeaway:hover { background: rgba(241,196,15,.2); }
+    .takeaway-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 8px; }
+    .takeaway-card { background: rgba(241,196,15,.06); border: 2px solid rgba(241,196,15,.25); border-radius: 12px; padding: 16px; cursor: pointer; transition: all .2s; }
+    .takeaway-card:hover { border-color: #f1c40f; transform: translateY(-2px); }
+    .takeaway-card-name { font-size: .9rem; font-weight: 700; color: #f1c40f; margin-bottom: 4px; }
+    .takeaway-card-items { font-size: .75rem; color: #666; margin-bottom: 8px; }
+    .takeaway-card-total { font-size: 1rem; font-weight: 700; color: #fff; }
     .empty-state { text-align: center; padding: 80px 24px; color: #444; }
     .empty-state p { margin-top: 12px; font-size: .9rem; }
 
@@ -95,14 +104,34 @@
 </div>
 
 <div class="main">
-  <div class="page-header">
-    <h1>Table Map</h1>
-    <span style="color:#555;font-size:.82rem">Click a table to open or view its order</span>
+
+  <!-- Takeaway Section -->
+  <div class="section-header">
+    <div class="section-title">🥡 Takeaway <span class="count"><%= takeawayOrders.length %> active</span></div>
+    <form method="POST" action="/pos/takeaway/open" style="display:inline">
+      <button type="submit" class="btn-new-takeaway">+ New Takeaway</button>
+    </form>
   </div>
 
-  <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> Free</div>
-    <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Occupied</div>
+  <% if (takeawayOrders.length > 0) { %>
+  <div class="takeaway-grid" style="margin-bottom:28px">
+    <% takeawayOrders.forEach(o => { %>
+    <div class="takeaway-card" onclick="window.location.href='/pos/order/<%= o.id %>'">
+      <div class="takeaway-card-name"><%= o.table_name %></div>
+      <div class="takeaway-card-items"><%= o.item_count %> item<%= o.item_count != 1 ? 's' : '' %></div>
+      <div class="takeaway-card-total"><%= tenant.currency || '$' %><%= parseFloat(o.order_total).toFixed(2) %></div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+
+  <!-- Tables Section -->
+  <div class="section-header">
+    <div class="section-title">🪑 Tables</div>
+    <div class="legend" style="margin:0">
+      <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> Free</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Occupied</div>
+    </div>
   </div>
 
   <% if (tables.length === 0) { %>
