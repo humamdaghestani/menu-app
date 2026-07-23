@@ -66,10 +66,17 @@
     <p>Select a module to get started</p>
   </div>
 
+  <%
+    const _isAdmin = currentUser && currentUser.role === 'admin';
+    const _perms   = (currentUser && currentUser.permissions) || [];
+    const _can     = p => _isAdmin || _perms.includes(p);
+  %>
+
   <div class="section-label">Your Modules</div>
   <div class="modules-grid">
 
-    <!-- Menu — always available -->
+    <!-- Menu -->
+    <% if (_isAdmin || _can('access_menu')) { %>
     <a href="/admin/dashboard" class="module-card" style="--accent:#7c5cbf">
       <div class="module-icon">🍽️</div>
       <div>
@@ -78,9 +85,10 @@
       </div>
       <span class="module-badge">Active</span>
     </a>
+    <% } %>
 
     <!-- POS -->
-    <% if (tenant.feat_pos) { %>
+    <% if (tenant.feat_pos && (_isAdmin || _can('access_pos'))) { %>
     <a href="/pos" class="module-card" style="--accent:#00b894">
       <div class="module-icon">🖥️</div>
       <div>
@@ -91,7 +99,19 @@
     </a>
     <% } %>
 
-    <!-- Future modules placeholder -->
+    <!-- Settings (admin only) -->
+    <% if (_isAdmin) { %>
+    <a href="/admin/workspace" class="module-card" style="--accent:#f39c12">
+      <div class="module-icon">⚙️</div>
+      <div>
+        <div class="module-name">Settings</div>
+        <div class="module-desc">Manage users, set module access, configure permissions per team member</div>
+      </div>
+      <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Admin</span>
+    </a>
+    <% } %>
+
+    <!-- Coming Soon -->
     <div class="module-card" style="--accent:#2a2a3e;opacity:.35;cursor:not-allowed">
       <div class="module-icon">📦</div>
       <div>

@@ -48,6 +48,24 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/admin/dashboard'); }
 });
 
+// ── Workspace (Settings hub) ───────────────────────
+router.get('/workspace', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [tenantRes, usersRes] = await Promise.all([
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+      db.query('SELECT id, name, email, role, permissions, created_at FROM users WHERE tenant_id=$1 ORDER BY role DESC, created_at', [req.user.tenantId]),
+    ]);
+    const qs = req.query;
+    res.render('admin/workspace', {
+      tenant: tenantRes.rows[0],
+      users: usersRes.rows,
+      currentUserId: req.user.userId,
+      flash: { success: qs.success ? decodeURIComponent(qs.success) : null, error: qs.error ? decodeURIComponent(qs.error) : null },
+      currentUser: req.user,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 router.get('/login', (req, res) => {
   res.render('admin/login', { error: null });
 });
@@ -497,33 +515,40 @@ router.get('/users', requireAuth, requireAdmin, async (req, res) => {
 });
 
 router.post('/users', requireAuth, requireAdmin, async (req, res) => {
-  const { email, password, permissions } = req.body;
+  const { name, email, password, permissions, _redirect } = req.body;
+  const back = _redirect || '/admin/users';
   try {
     const perms = Array.isArray(permissions) ? permissions : (permissions ? [permissions] : []);
     const hash = await bcrypt.hash(password, 10);
     await db.query(
-      'INSERT INTO users (tenant_id, email, password_hash, role, permissions) VALUES ($1,$2,$3,$4,$5)',
-      [req.user.tenantId, email, hash, 'staff', JSON.stringify(perms)]
+      'INSERT INTO users (tenant_id, name, email, password_hash, role, permissions) VALUES ($1,$2,$3,$4,$5,$6)',
+      [req.user.tenantId, name || null, email, hash, 'staff', JSON.stringify(perms)]
     );
-    res.redirect('/admin/users?success=User+created');
+    res.redirect(back + '?success=User+created');
   } catch (err) {
     console.error(err);
-    res.redirect('/admin/users?error=Failed+to+create+user+(email+may+already+exist)');
+    res.redirect(back + '?error=Failed+to+create+user+(email+may+already+exist)');
   }
 });
 
 router.post('/users/:id/edit', requireAuth, requireAdmin, async (req, res) => {
-  const { email, permissions } = req.body;
+  const { name, email, permissions, new_password, _redirect } = req.body;
+  const back = _redirect || '/admin/users';
   try {
     const perms = Array.isArray(permissions) ? permissions : (permissions ? [permissions] : []);
     await db.query(
-      'UPDATE users SET email=$1, permissions=$2 WHERE id=$3 AND tenant_id=$4 AND role=$5',
-      [email, JSON.stringify(perms), req.params.id, req.user.tenantId, 'staff']
+      'UPDATE users SET name=$1, email=$2, permissions=$3 WHERE id=$4 AND tenant_id=$5 AND role=$6',
+      [name || null, email, JSON.stringify(perms), req.params.id, req.user.tenantId, 'staff']
     );
-    res.redirect('/admin/users?success=User+updated');
+    if (new_password && new_password.length >= 6) {
+      const hash = await bcrypt.hash(new_password, 10);
+      await db.query('UPDATE users SET password_hash=$1 WHERE id=$2 AND tenant_id=$3',
+        [hash, req.params.id, req.user.tenantId]);
+    }
+    res.redirect(back + '?success=User+updated');
   } catch (err) {
     console.error(err);
-    res.redirect('/admin/users?error=Failed+to+update+user');
+    res.redirect(back + '?error=Failed+to+update+user');
   }
 });
 
@@ -543,13 +568,14 @@ router.post('/users/:id/reset-password', requireAuth, requireAdmin, async (req, 
 });
 
 router.post('/users/:id/delete', requireAuth, requireAdmin, async (req, res) => {
+  const back = req.body._redirect || '/admin/users';
   try {
     await db.query('DELETE FROM users WHERE id=$1 AND tenant_id=$2 AND role=$3',
       [req.params.id, req.user.tenantId, 'staff']);
-    res.redirect('/admin/users?success=User+deleted');
+    res.redirect(back + '?success=User+deleted');
   } catch (err) {
     console.error(err);
-    res.redirect('/admin/users?error=Failed+to+delete+user');
+    res.redirect(back + '?error=Failed+to+delete+user');
   }
 });
 

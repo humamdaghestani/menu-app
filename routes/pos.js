@@ -3,12 +3,16 @@ const router = express.Router();
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
 
-// Gate all POS routes behind feat_pos
+// Gate all POS routes behind feat_pos + user-level access_pos permission
 async function requirePOS(req, res, next) {
   try {
     const r = await db.query('SELECT feat_pos FROM tenants WHERE id=$1', [req.user.tenantId]);
-    if (r.rows[0]?.feat_pos) return next();
-    res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">POS module is not enabled for your account.</h2>');
+    if (!r.rows[0]?.feat_pos) {
+      return res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">POS module is not enabled for your account.</h2>');
+    }
+    if (req.user.role === 'admin') return next();
+    if ((req.user.permissions || []).includes('access_pos')) return next();
+    res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">You do not have access to the POS module. Ask your admin to grant access.</h2>');
   } catch { next(); }
 }
 

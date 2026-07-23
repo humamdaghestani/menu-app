@@ -9,6 +9,7 @@ const pool = new Pool({
 (async () => {
   const migrations = [
     `ALTER TABLE users   ADD COLUMN IF NOT EXISTS permissions   TEXT    DEFAULT '[]'`,
+    `ALTER TABLE users   ADD COLUMN IF NOT EXISTS name          VARCHAR(120)`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_feedback   BOOLEAN DEFAULT true`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_orders     BOOLEAN DEFAULT true`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_import     BOOLEAN DEFAULT true`,

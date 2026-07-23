@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 40; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .btn-ghost  { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger  { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.28); }
+    .btn-danger:hover { background: rgba(231,76,60,.25); }
+    .btn-sm { padding: 5px 12px; font-size: .76rem; }
+
+    .tabs { background: #1a1a2e; display: flex; border-bottom: 1px solid rgba(255,255,255,.07); padding: 0 28px; }
+    .tab { padding: 13px 20px; font-size: .85rem; font-weight: 600; color: #555; cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .tab.active { color: #fff; border-bottom-color: #7c5cbf; }
+    .tab:hover { color: #ccc; }
+
+    .main { padding: 28px; max-width: 1000px; margin: 0 auto; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Users list */
+    .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .list-title { font-size: 1rem; font-weight: 700; color: #fff; }
+    .users-list { display: flex; flex-direction: column; gap: 10px; }
+    .user-row { background: #1a1a2e; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .user-avatar { width: 38px; height: 38px; border-radius: 50%; background: #7c5cbf; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name  { font-size: .9rem; font-weight: 700; color: #fff; }
+    .user-email { font-size: .75rem; color: #555; margin-top: 2px; }
+    .module-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .mbadge { padding: 3px 10px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
+    .mbadge-admin { background: rgba(124,92,191,.2); color: #c4b0f0; }
+    .mbadge-menu  { background: rgba(124,92,191,.12); color: #9b7fe8; }
+    .mbadge-pos   { background: rgba(0,184,148,.12); color: #00b894; }
+    .user-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    /* Modules tab */
+    .mod-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+    .mod-card { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,.07); border-radius: 14px; padding: 22px; }
+    .mod-card.inactive { opacity: .4; }
+    .mod-icon { font-size: 2rem; margin-bottom: 10px; }
+    .mod-name { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .mod-desc { font-size: .75rem; color: #555; margin-bottom: 14px; line-height: 1.5; }
+    .mod-status { padding: 3px 10px; border-radius: 10px; font-size: .68rem; font-weight: 700; display: inline-block; margin-bottom: 14px; }
+    .mod-status.active { background: rgba(0,184,148,.15); color: #00b894; }
+    .mod-status.coming { background: rgba(255,255,255,.05); color: #444; }
+    .mod-link { font-size: .78rem; color: #7c5cbf; text-decoration: none; }
+    .mod-link:hover { color: #c4b0f0; }
+
+    /* Modal */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 100; align-items: flex-start; justify-content: flex-end; }
+    .overlay.open { display: flex; }
+    .drawer { background: #13132a; border-left: 1px solid rgba(255,255,255,.08); width: 480px; max-width: 100vw; height: 100vh; overflow-y: auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 0; animation: slideIn .2s ease; }
+    @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .drawer-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .drawer-title { font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .drawer-close { background: none; border: none; color: #555; cursor: pointer; font-size: 1.2rem; padding: 4px; }
+    .drawer-close:hover { color: #fff; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: .75rem; font-weight: 700; color: #666; margin-bottom: 6px; text-transform: uppercase; }
+    .form-input { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    .form-input:focus { border-color: #7c5cbf; }
+
+    .perm-section { margin-bottom: 20px; }
+    .perm-section-title { font-size: .7rem; font-weight: 800; color: #444; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .perm-section-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.05); }
+
+    .module-block { background: #0f0f1a; border-radius: 10px; padding: 14px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,.04); }
+    .module-block-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .module-block-name { font-size: .85rem; font-weight: 700; color: #ccc; display: flex; align-items: center; gap: 7px; }
+    .perm-sub { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.04); }
+    .perm-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 7px; cursor: pointer; transition: background .12s; }
+    .perm-item:hover { background: rgba(255,255,255,.04); }
+    .perm-item input[type=checkbox] { width: 14px; height: 14px; accent-color: #7c5cbf; cursor: pointer; flex-shrink: 0; }
+    .perm-item-label { font-size: .78rem; color: #999; cursor: pointer; }
+
+    /* Toggle for module access */
+    .toggle-wrap { position: relative; display: inline-block; width: 38px; height: 20px; flex-shrink: 0; }
+    .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #2a2a3e; border-radius: 20px; cursor: pointer; transition: .2s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #555; border-radius: 50%; transition: .2s; }
+    .toggle-wrap input:checked + .toggle-slider { background: #7c5cbf; }
+    .toggle-wrap input:checked + .toggle-slider:before { transform: translateX(18px); background: #fff; }
+
+    .drawer-footer { margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.06); }
+
+    .alert { padding: 10px 14px; border-radius: 8px; font-size: .82rem; margin-bottom: 16px; }
+    .alert-success { background: rgba(0,184,148,.1); border: 1px solid rgba(0,184,148,.25); color: #00b894; }
+    .alert-error   { background: rgba(231,76,60,.1); border: 1px solid rgba(231,76,60,.25); color: #e74c3c; }
+
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,.06); margin: 20px 0; }
+
+    @media (max-width: 600px) { .main { padding: 16px; } .drawer { width: 100vw; } .perm-sub { grid-template-columns: 1fr; } .user-row { gap: 10px; } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">⚙️ Settings — <%= tenant.name %></div>
+  <a href="/admin" class="btn btn-ghost">← Home</a>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('users', this)">👥 Users</div>
+  <div class="tab" onclick="switchTab('modules', this)">📦 Modules</div>
+</div>
+
+<div class="main">
+
+  <% const qp = new URLSearchParams ? '' : '' %>
+  <% const qs = typeof success !== 'undefined' ? success : null %>
+  <% const qe = typeof errorMsg !== 'undefined' ? errorMsg : null %>
+  <% if (flash && flash.success) { %><div class="alert alert-success">✓ <%= flash.success %></div><% } %>
+  <% if (flash && flash.error) { %><div class="alert alert-error">✗ <%= flash.error %></div><% } %>
+
+  <!-- USERS TAB -->
+  <div class="tab-panel active" id="tab-users">
+    <div class="list-header">
+      <div class="list-title">Team Members (<%= users.length %>)</div>
+      <button class="btn btn-primary" onclick="openCreate()">+ Add User</button>
+    </div>
+
+    <div class="users-list">
+      <% users.forEach(u => { %>
+      <% const perms = JSON.parse(u.permissions || '[]'); %>
+      <div class="user-row">
+        <div class="user-avatar"><%= (u.name || u.email)[0].toUpperCase() %></div>
+        <div class="user-info">
+          <div class="user-name"><%= u.name || '—' %> <% if (u.id === currentUserId) { %><span style="font-size:.65rem;color:#555">(you)</span><% } %></div>
+          <div class="user-email"><%= u.email %></div>
+        </div>
+        <div class="module-badges">
+          <% if (u.role === 'admin') { %>
+            <span class="mbadge mbadge-admin">👑 Admin</span>
+          <% } else { %>
+            <% if (perms.includes('access_menu')) { %><span class="mbadge mbadge-menu">🍽️ Menu</span><% } %>
+            <% if (perms.includes('access_pos')) { %><span class="mbadge mbadge-pos">🖥️ POS</span><% } %>
+          <% } %>
+        </div>
+        <div class="user-actions">
+          <% if (u.role !== 'admin') { %>
+            <button class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(u) %>)'>Edit</button>
+            <form method="POST" action="/admin/users/<%= u.id %>/delete" style="display:inline" onsubmit="return confirm('Delete <%= u.email %>?')">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+          <% } else if (u.id === currentUserId) { %>
+            <a href="/admin/settings" class="btn btn-ghost btn-sm">My Settings</a>
+          <% } %>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <!-- MODULES TAB -->
+  <div class="tab-panel" id="tab-modules">
+    <div class="mod-grid">
+
+      <div class="mod-card">
+        <div class="mod-icon">🍽️</div>
+        <div class="mod-name">Menu</div>
+        <div class="mod-desc">Items, categories, online orders, feedback, QR codes, staff management</div>
+        <div class="mod-status active">Active</div><br>
+        <a href="/admin/dashboard" class="mod-link">→ Go to Menu</a>
+      </div>
+
+      <% if (tenant.feat_pos) { %>
+      <div class="mod-card">
+        <div class="mod-icon">🖥️</div>
+        <div class="mod-name">Point of Sale</div>
+        <div class="mod-desc">Table management, order taking, cash & card payments, kitchen display, sessions</div>
+        <div class="mod-status active">Active</div><br>
+        <a href="/pos" class="mod-link">→ Go to POS</a>
+        <span style="margin:0 8px;color:#333">·</span>
+        <a href="/pos/settings" class="mod-link">Settings</a>
+      </div>
+      <% } %>
+
+      <div class="mod-card inactive">
+        <div class="mod-icon">📦</div>
+        <div class="mod-name">Inventory</div>
+        <div class="mod-desc">Stock management, ingredients, low-stock alerts, purchase orders</div>
+        <div class="mod-status coming">Coming Soon</div>
+      </div>
+
+      <div class="mod-card inactive">
+        <div class="mod-icon">💰</div>
+        <div class="mod-name">Accounting</div>
+        <div class="mod-desc">Revenue, expenses, profit & loss reports, daily and monthly summaries</div>
+        <div class="mod-status coming">Coming Soon</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Create User Drawer -->
+<div class="overlay" id="createOverlay" onclick="if(event.target===this)closeCreate()">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Add New User</div>
+      <button class="drawer-close" onclick="closeCreate()">✕</button>
+    </div>
+    <form method="POST" action="/admin/users">
+      <input type="hidden" name="_redirect" value="/admin/workspace" />
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" name="name" class="form-input" placeholder="e.g. Ahmed Hassan" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" class="form-input" required placeholder="staff@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password * (min 6 chars)</label>
+        <input type="password" name="password" class="form-input" required minlength="6" />
+      </div>
+
+      <hr class="divider" />
+      <div class="perm-section-title">Module Access & Permissions</div>
+
+      <!-- Menu Module -->
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">🍽️ Menu Module</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_menu" id="c_access_menu" onchange="toggleModule('c_menu', this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="perm-sub" id="c_menu" style="opacity:.35;pointer-events:none">
+          <label class="perm-item"><input type="checkbox" name="permissions" value="items" /><span class="perm-item-label">📊 View & manage items</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="edit_prices" /><span class="perm-item-label">💰 Edit prices</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="orders" /><span class="perm-item-label">📋 View orders</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="feedback" /><span class="perm-item-label">💬 View feedback</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="import" /><span class="perm-item-label">📥 Bulk import</span></label>
+        </div>
+      </div>
+
+      <!-- POS Module (only if enabled) -->
+      <% if (tenant.feat_pos) { %>
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">🖥️ POS Module</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_pos" id="c_access_pos" onchange="toggleModule('c_pos', this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="perm-sub" id="c_pos" style="opacity:.35;pointer-events:none">
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_tables" /><span class="perm-item-label">🗺️ Table map</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_void" /><span class="perm-item-label">🗑️ Void orders</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_discount" /><span class="perm-item-label">🏷️ Apply discounts</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_kitchen" /><span class="perm-item-label">🍳 Kitchen display</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_sessions" /><span class="perm-item-label">📅 View sessions</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_settings" /><span class="perm-item-label">⚙️ POS settings</span></label>
+        </div>
+      </div>
+      <% } %>
+
+      <div class="drawer-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit User Drawer -->
+<div class="overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
+  <div class="drawer">
+    <div class="drawer-header">
+      <div class="drawer-title">Edit User</div>
+      <button class="drawer-close" onclick="closeEdit()">✕</button>
+    </div>
+    <form method="POST" id="editForm">
+      <input type="hidden" name="_redirect" value="/admin/workspace" />
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" name="name" id="editName" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" id="editEmail" class="form-input" required />
+      </div>
+
+      <hr class="divider" />
+      <div class="perm-section-title">Module Access & Permissions</div>
+
+      <!-- Menu Module -->
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">🍽️ Menu Module</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_menu" id="e_access_menu" onchange="toggleModule('e_menu', this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="perm-sub" id="e_menu">
+          <label class="perm-item"><input type="checkbox" name="permissions" value="items" id="ep_items" /><span class="perm-item-label">📊 View & manage items</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="edit_prices" id="ep_edit_prices" /><span class="perm-item-label">💰 Edit prices</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="orders" id="ep_orders" /><span class="perm-item-label">📋 View orders</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="feedback" id="ep_feedback" /><span class="perm-item-label">💬 View feedback</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="import" id="ep_import" /><span class="perm-item-label">📥 Bulk import</span></label>
+        </div>
+      </div>
+
+      <!-- POS Module -->
+      <% if (tenant.feat_pos) { %>
+      <div class="module-block">
+        <div class="module-block-header">
+          <div class="module-block-name">🖥️ POS Module</div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="permissions" value="access_pos" id="e_access_pos" onchange="toggleModule('e_pos', this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="perm-sub" id="e_pos">
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_tables" id="ep_pos_tables" /><span class="perm-item-label">🗺️ Table map</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_void" id="ep_pos_void" /><span class="perm-item-label">🗑️ Void orders</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_discount" id="ep_pos_discount" /><span class="perm-item-label">🏷️ Apply discounts</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_kitchen" id="ep_pos_kitchen" /><span class="perm-item-label">🍳 Kitchen display</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_sessions" id="ep_pos_sessions" /><span class="perm-item-label">📅 View sessions</span></label>
+          <label class="perm-item"><input type="checkbox" name="permissions" value="pos_settings" id="ep_pos_settings" /><span class="perm-item-label">⚙️ POS settings</span></label>
+        </div>
+      </div>
+      <% } %>
+
+      <hr class="divider" />
+      <div class="perm-section-title">Reset Password</div>
+      <div class="form-group">
+        <label class="form-label">New Password (leave blank to keep current)</label>
+        <input type="password" name="new_password" id="editPassword" class="form-input" minlength="6" placeholder="Enter new password to change" />
+      </div>
+
+      <div class="drawer-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+function toggleModule(blockId, enabled) {
+  const block = document.getElementById(blockId);
+  if (!block) return;
+  block.style.opacity = enabled ? '1' : '.35';
+  block.style.pointerEvents = enabled ? '' : 'none';
+  if (!enabled) block.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+}
+
+function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
+function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
+
+const ALL_MENU_PERMS = ['items','edit_prices','orders','feedback','import'];
+const ALL_POS_PERMS  = ['pos_tables','pos_void','pos_discount','pos_kitchen','pos_sessions','pos_settings'];
+
+function openEdit(user) {
+  const perms = JSON.parse(user.permissions || '[]');
+  document.getElementById('editName').value  = user.name || '';
+  document.getElementById('editEmail').value = user.email;
+  document.getElementById('editForm').action = '/admin/users/' + user.id + '/edit';
+
+  // Menu module
+  const hasMenu = perms.includes('access_menu');
+  document.getElementById('e_access_menu').checked = hasMenu;
+  toggleModule('e_menu', hasMenu);
+  ALL_MENU_PERMS.forEach(p => {
+    const el = document.getElementById('ep_' + p);
+    if (el) el.checked = perms.includes(p);
+  });
+
+  // POS module
+  const posEl = document.getElementById('e_access_pos');
+  if (posEl) {
+    const hasPos = perms.includes('access_pos');
+    posEl.checked = hasPos;
+    toggleModule('e_pos', hasPos);
+    ALL_POS_PERMS.forEach(p => {
+      const el = document.getElementById('ep_' + p);
+      if (el) el.checked = perms.includes(p);
+    });
+  }
+
+  document.getElementById('editPassword').value = '';
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+
+// URL flash
+const params = new URLSearchParams(location.search);
+if (params.get('success') || params.get('error')) {
+  const div = document.createElement('div');
+  div.className = 'alert ' + (params.get('success') ? 'alert-success' : 'alert-error');
+  div.textContent = (params.get('success') ? '✓ ' : '✗ ') + decodeURIComponent(params.get('success') || params.get('error'));
+  document.querySelector('.main').prepend(div);
+  setTimeout(() => div.remove(), 4000);
+}
+
+// Initialize module blocks in create drawer (disabled by default)
+toggleModule('c_menu', false);
+<% if (tenant.feat_pos) { %>toggleModule('c_pos', false);<% } %>
+</script>
+</body>
+</html>
