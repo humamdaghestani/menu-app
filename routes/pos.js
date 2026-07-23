@@ -567,11 +567,12 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
 router.get('/settings', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
-    const [tables, printers] = await Promise.all([
+    const [tables, printers, categories] = await Promise.all([
       db.query('SELECT * FROM restaurant_tables WHERE tenant_id=$1 ORDER BY sort_order, name', [req.user.tenantId]),
       db.query('SELECT * FROM pos_printers WHERE tenant_id=$1 ORDER BY created_at', [req.user.tenantId]),
+      db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
     ]);
-    res.render('pos/settings', { tenant, tables: tables.rows, printers: printers.rows, currentUser: req.user });
+    res.render('pos/settings', { tenant, tables: tables.rows, printers: printers.rows, categories: categories.rows, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
@@ -618,6 +619,19 @@ router.post('/settings/printers/:id/edit', requireAuth, requirePOS, async (req, 
       'UPDATE pos_printers SET name=$1, role=$2, connection_type=$3, ip_address=$4, port=$5, paper_width=$6, is_active=$7 WHERE id=$8 AND tenant_id=$9',
       [name, role || 'receipt', connection_type || 'network', ip_address || null, parseInt(port) || 9100, paper_width || '80mm', is_active === '1', req.params.id, req.user.tenantId]
     );
+    res.redirect('/pos/settings?tab=printers');
+  } catch (err) { console.error(err); res.redirect('/pos/settings?tab=printers'); }
+});
+
+router.post('/settings/printers/categories', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const assignments = req.body.category || {};
+    for (const [catId, printerId] of Object.entries(assignments)) {
+      await db.query(
+        'UPDATE categories SET printer_id=$1 WHERE id=$2 AND tenant_id=$3',
+        [printerId ? parseInt(printerId) : null, parseInt(catId), req.user.tenantId]
+      );
+    }
     res.redirect('/pos/settings?tab=printers');
   } catch (err) { console.error(err); res.redirect('/pos/settings?tab=printers'); }
 });

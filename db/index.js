@@ -111,6 +111,7 @@ const pool = new Pool({
       is_active       BOOLEAN DEFAULT true,
       created_at      TIMESTAMP DEFAULT NOW()
     )`,
+    `ALTER TABLE categories ADD COLUMN IF NOT EXISTS printer_id INTEGER REFERENCES pos_printers(id) ON DELETE SET NULL`,
     `CREATE TABLE IF NOT EXISTS pos_activity_log (
       id          SERIAL PRIMARY KEY,
       tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

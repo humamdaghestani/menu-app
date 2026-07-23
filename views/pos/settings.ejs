@@ -388,6 +388,40 @@
       <% } %>
     </div>
 
+    <!-- Category → Printer Assignments -->
+    <div class="card">
+      <h2>Category → Printer</h2>
+      <p class="card-desc">Choose which printer each menu category prints to. Only kitchen and "both" printers are shown — receipt printers are triggered automatically on payment.</p>
+      <% const kitchenPrinters = printers.filter(p => p.is_active && (p.role === 'kitchen' || p.role === 'both')); %>
+      <% if (kitchenPrinters.length === 0) { %>
+      <p style="color:#444;font-size:.82rem;padding:12px 0">No active kitchen printers configured above. Add a printer with role Kitchen or Both first.</p>
+      <% } else if (categories.length === 0) { %>
+      <p style="color:#444;font-size:.82rem;padding:12px 0">No menu categories found.</p>
+      <% } else { %>
+      <form method="POST" action="/pos/settings/printers/categories">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <% categories.forEach((cat, i) => { %>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)<%= i===categories.length-1?';border-bottom:none':'' %>">
+            <div style="font-size:.88rem;font-weight:600;color:#ccc;display:flex;align-items:center;gap:8px">
+              <% if (cat.image_url) { %><img src="<%= cat.image_url %>" style="width:26px;height:26px;border-radius:6px;object-fit:cover" /><% } else { %><span style="width:26px;height:26px;background:#2a2a3e;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem">🍽️</span><% } %>
+              <%= cat.name %>
+            </div>
+            <select name="category[<%= cat.id %>]" style="width:220px;padding:7px 10px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-size:.82rem;outline:none;font-family:inherit">
+              <option value="">— No printer —</option>
+              <% kitchenPrinters.forEach(p => { %>
+              <option value="<%= p.id %>" <%= cat.printer_id === p.id ? 'selected' : '' %>><%= p.name %> (<%= p.ip_address || 'no IP' %>)</option>
+              <% }) %>
+            </select>
+          </div>
+          <% }) %>
+        </div>
+        <div class="save-row" style="margin-top:14px">
+          <button type="submit" class="btn btn-primary">Save Assignments</button>
+        </div>
+      </form>
+      <% } %>
+    </div>
+
     <!-- Info box -->
     <div style="background:rgba(52,152,219,.06);border:1px solid rgba(52,152,219,.2);border-radius:12px;padding:16px 20px;font-size:.78rem;color:#666;line-height:1.7">
       <strong style="color:#3498db">ℹ️ How network printing works</strong><br>
