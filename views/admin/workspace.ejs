@@ -236,7 +236,7 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-        <div class="perm-sub" id="c_menu" style="opacity:.35;pointer-events:none">
+        <div class="perm-sub" id="c_menu">
           <label class="perm-item"><input type="checkbox" name="permissions" value="items" /><span class="perm-item-label">📊 View & manage items</span></label>
           <label class="perm-item"><input type="checkbox" name="permissions" value="edit_prices" /><span class="perm-item-label">💰 Edit prices</span></label>
           <label class="perm-item"><input type="checkbox" name="permissions" value="orders" /><span class="perm-item-label">📋 View orders</span></label>
@@ -255,7 +255,7 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-        <div class="perm-sub" id="c_pos" style="opacity:.35;pointer-events:none">
+        <div class="perm-sub" id="c_pos">
           <label class="perm-item"><input type="checkbox" name="permissions" value="pos_tables" /><span class="perm-item-label">🗺️ Table map</span></label>
           <label class="perm-item"><input type="checkbox" name="permissions" value="pos_void" /><span class="perm-item-label">🗑️ Void orders</span></label>
           <label class="perm-item"><input type="checkbox" name="permissions" value="pos_discount" /><span class="perm-item-label">🏷️ Apply discounts</span></label>
@@ -357,11 +357,11 @@ function switchTab(name, el) {
   document.getElementById('tab-' + name).classList.add('active');
 }
 
-// Uses disabled attribute so checkboxes are truly non-interactive and excluded from form submit
 function toggleModule(blockId, enabled) {
   const block = document.getElementById(blockId);
   if (!block) return;
   block.style.opacity = enabled ? '1' : '.4';
+  block.style.pointerEvents = enabled ? '' : 'none';
   block.querySelectorAll('input[type=checkbox]').forEach(c => {
     c.disabled = !enabled;
     if (!enabled) c.checked = false;

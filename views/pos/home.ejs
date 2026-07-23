@@ -118,7 +118,7 @@
   <% } %>
 
   <!-- Passkey Generator (admin only) -->
-  <% if (_isAdmin) { %>
+  <% if (currentUser.role === 'admin') { %>
   <div class="passkey-section">
     <h2>🔑 Manager Passkeys</h2>
     <p>Generate a one-time code for a cashier to void an order or apply a discount. Code expires in 15 minutes.</p>
@@ -169,7 +169,7 @@
 
 </div>
 
-<% if (_isAdmin) { %>
+<% if (currentUser.role === 'admin') { %>
 <script>
   let countdownInterval = null;
 
