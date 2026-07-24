@@ -1,17 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-
-// ── Auth middleware ────────────────────────────────────────────────────────────
-function requireAuth(req, res, next) {
-  const jwt = require('jsonwebtoken');
-  const token = req.cookies?.pos_token;
-  if (!token) return res.redirect('/pos/login');
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch { res.redirect('/pos/login'); }
-}
+const requireAuth = require('../middleware/auth');
 
 async function requireInventory(req, res, next) {
   try {
