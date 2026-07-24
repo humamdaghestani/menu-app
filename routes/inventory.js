@@ -8,13 +8,15 @@ async function requireInventory(req, res, next) {
     const r = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     const tenant = r.rows[0];
     if (!tenant) return res.status(404).send('Tenant not found');
-    if (!tenant.feat_inventory) return res.status(403).send('Inventory module not enabled');
+    if (!tenant.feat_inventory) return res.status(403).send('Inventory module not enabled for this account.');
     const isAdmin = req.user.role === 'admin';
-    const perms = JSON.parse(req.user.permissions || '[]');
+    const perms = Array.isArray(req.user.permissions)
+      ? req.user.permissions
+      : JSON.parse(req.user.permissions || '[]');
     if (!isAdmin && !perms.includes('access_inventory')) return res.status(403).send('Access denied');
     req.tenant = tenant;
     next();
-  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+  } catch (err) { console.error('[inventory]', err.message); res.status(500).send('Server error: ' + err.message); }
 }
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
