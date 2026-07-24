@@ -192,10 +192,14 @@
 
 <!-- Features Modal -->
 <div class="overlay" id="featuresOverlay">
-  <div class="modal">
-    <h3>⚙️ Features — <span id="featRestName"></span></h3>
-    <p style="color:#666;font-size:.82rem;margin-bottom:20px">Control which features this restaurant can access. Disabled features are hidden from their admin panel.</p>
-    <form method="POST" id="featuresForm">
+  <div class="modal" style="max-width:780px;width:95vw;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <h3 style="font-size:1rem;font-weight:700;color:#fff">⚙️ Features — <span id="featRestName"></span></h3>
+      <button type="button" onclick="closeFeatures()" style="background:none;border:none;color:#555;cursor:pointer;font-size:1.2rem">✕</button>
+    </div>
+    <p style="color:#555;font-size:.78rem;margin-bottom:16px">Toggle features on/off for this restaurant.</p>
+    <form method="POST" id="featuresForm" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div style="overflow-y:auto;flex:1;padding-right:4px">
       <% const FEATS = [
         { key:'feat_feedback',   icon:'💬', label:'Customer Feedback',    desc:'Feedback button on menu + admin feedback page' },
         { key:'feat_orders',     icon:'📋', label:'Orders Tracking',      desc:'Log customer orders, view order history' },
@@ -209,11 +213,11 @@
         { key:'feat_captain',      icon:'🍽️', label:'Captain / Waiter Tablet', desc:'Tablet ordering system for waiters — send to kitchen, request bill' },
         { key:'feat_inventory',    icon:'📦', label:'Inventory & COGS',        desc:'Inventory catalog, recipes, purchase receipts, auto cost tracking' },
       ]; %>
-      <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:8px">
         <% FEATS.forEach(f => { %>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px;border:1.5px solid #333;border-radius:10px;cursor:pointer;transition:border-color .2s" class="feat-row" data-key="<%= f.key %>" onclick="toggleFeat('<%= f.key %>')">
-          <div style="display:flex;align-items:center;gap:12px">
-            <span style="font-size:1.3rem"><%= f.icon %></span>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1.5px solid #333;border-radius:10px;cursor:pointer;transition:border-color .2s" class="feat-row" data-key="<%= f.key %>" onclick="toggleFeat('<%= f.key %>')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.1rem"><%= f.icon %></span>
             <div>
               <div style="color:#fff;font-weight:600;font-size:.88rem"><%= f.label %></div>
               <div style="color:#666;font-size:.75rem;margin-top:2px"><%= f.desc %></div>
@@ -227,7 +231,8 @@
         </div>
         <% }) %>
       </div>
-      <div class="modal-footer">
+      </div>
+      <div class="modal-footer" style="flex-shrink:0;border-top:1px solid #2a2a3e;padding-top:14px;margin-top:14px">
         <button type="button" class="btn btn-ghost" onclick="closeFeatures()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Features</button>
       </div>
