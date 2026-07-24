@@ -67,8 +67,8 @@
       <tbody>
       <% lines.forEach(l => { %>
       <tr>
-        <td style="color:#fff;font-weight:600"><%= l.item_name %></td>
-        <td style="color:#555"><%= l.unit %></td>
+        <td style="color:#fff;font-weight:600"><%= l.item_name || '—' %></td>
+        <td style="color:#555"><%= l.unit || '—' %></td>
         <td><%= parseFloat(l.quantity).toFixed(3) %></td>
         <td style="color:#7c5cbf"><%= tenant.currency || '$' %><%= parseFloat(l.unit_price).toFixed(4) %></td>
         <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(l.total).toFixed(2) %></td>

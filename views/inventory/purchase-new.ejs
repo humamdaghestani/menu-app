@@ -15,33 +15,24 @@
     .btn-primary:hover { opacity: .88; }
     .btn-success { background: #00b894; color: #fff; }
     .btn-success:hover { opacity: .88; }
-    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
 
     .main { padding: 24px; max-width: 900px; margin: 0 auto; }
-    .page-title { font-size: 1.3rem; font-weight: 800; color: #fff; margin-bottom: 24px; }
-
     .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 20px; }
-    .card-title { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
+    .card-title { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
 
     .form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
     .form-input { padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .9rem; font-family: inherit; outline: none; }
     .form-input:focus { border-color: #7c5cbf; }
-    select.form-input option { background: #1a1a2e; }
 
-    /* Lines table */
     .lines-table { width: 100%; border-collapse: collapse; }
     .lines-table th { text-align: left; font-size: .7rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid #2a2a3e; }
-    .lines-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+    .lines-table td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
     .line-input { width: 100%; padding: 7px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 7px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
     .line-input:focus { border-color: #7c5cbf; }
-    select.line-input option { background: #1a1a2e; }
 
     .total-row { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #2a2a3e; }
-    .total-label { font-size: .8rem; color: #666; }
-    .total-val { font-size: 1.3rem; font-weight: 800; color: #fff; }
-
     .line-total { font-size: .85rem; font-weight: 600; color: #a78bdf; white-space: nowrap; }
     .btn-remove { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.1rem; padding: 4px 8px; }
     .btn-remove:hover { color: #ff6b7a; }
@@ -57,9 +48,8 @@
 </div>
 
 <div class="main">
-  <form method="POST" action="/inventory/purchases" id="mainForm">
+  <form method="POST" action="/inventory/purchases">
 
-    <!-- Header info -->
     <div class="card">
       <div class="card-title">Receipt Info</div>
       <div class="form-row">
@@ -78,13 +68,12 @@
       </div>
       <div class="form-group" style="margin-top:12px">
         <label class="form-label">Notes</label>
-        <input type="text" name="notes" class="form-input" placeholder="optional notes..." />
+        <input type="text" name="notes" class="form-input" placeholder="optional..." />
       </div>
     </div>
 
-    <!-- Line items -->
     <div class="card">
-      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <div class="card-title">
         <span>📦 Items Purchased</span>
         <button type="button" class="btn btn-ghost" onclick="addLine()">+ Add Row</button>
       </div>
@@ -92,87 +81,72 @@
       <table class="lines-table">
         <thead>
           <tr>
-            <th style="width:40%">Item</th>
+            <th style="width:35%">Item Name</th>
+            <th style="width:12%">Unit</th>
             <th style="width:18%">Quantity</th>
-            <th style="width:22%">Unit Price (<%= tenant.currency || '$' %>)</th>
-            <th style="width:15%">Total</th>
-            <th style="width:5%"></th>
+            <th style="width:20%">Unit Price (<%= tenant.currency || '$' %>)</th>
+            <th style="width:12%">Total</th>
+            <th style="width:3%"></th>
           </tr>
         </thead>
-        <tbody id="linesBody">
-          <!-- rows added by JS -->
-        </tbody>
+        <tbody id="linesBody"></tbody>
       </table>
 
       <div class="total-row">
-        <span class="total-label">Grand Total</span>
-        <span class="total-val" id="grandTotal"><%= tenant.currency || '$' %>0.00</span>
+        <span style="font-size:.82rem;color:#555">Grand Total</span>
+        <span style="font-size:1.4rem;font-weight:800;color:#fff" id="grandTotal"><%= tenant.currency || '$' %>0.00</span>
       </div>
     </div>
 
     <div style="display:flex;justify-content:flex-end;gap:12px">
       <a href="/inventory/purchases" class="btn btn-ghost">Cancel</a>
-      <button type="submit" class="btn btn-success">✓ Save Receipt & Update Stock</button>
+      <button type="submit" class="btn btn-success">✓ Save Receipt</button>
     </div>
   </form>
 </div>
 
 <script>
-const RAW_ITEMS = <%- JSON.stringify(rawItems) %>;
 const CUR = '<%= tenant.currency || "$" %>';
-let lineIdx = 0;
+let idx = 0;
 
 function addLine() {
   const tbody = document.getElementById('linesBody');
   const tr = document.createElement('tr');
-  tr.id = 'line_' + lineIdx;
-  const idx = lineIdx++;
+  const i = idx++;
+  tr.id = 'line_' + i;
   tr.innerHTML = `
-    <td>
-      <select name="item_id" class="line-input" onchange="autoFillCost(${idx}, this.value)" required>
-        <option value="">— Select item —</option>
-        ${RAW_ITEMS.map(i => `<option value="${i.id}" data-cost="${i.avg_cost}">${i.name} (${i.unit})</option>`).join('')}
-      </select>
-    </td>
-    <td><input type="number" name="quantity" id="qty_${idx}" class="line-input" step="0.001" min="0.001" placeholder="0" oninput="recalcLine(${idx})" required /></td>
-    <td><input type="number" name="unit_price" id="price_${idx}" class="line-input" step="0.0001" min="0" placeholder="0.00" oninput="recalcLine(${idx})" required /></td>
-    <td><span class="line-total" id="linetotal_${idx}">${CUR}0.00</span></td>
-    <td><button type="button" class="btn-remove" onclick="removeLine(${idx})">✕</button></td>
+    <td><input type="text" name="item_name" class="line-input" placeholder="e.g. Flour" required /></td>
+    <td><input type="text" name="unit" class="line-input" placeholder="kg" /></td>
+    <td><input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" oninput="recalc(${i})" required /></td>
+    <td><input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" oninput="recalc(${i})" required /></td>
+    <td><span class="line-total" id="lt_${i}">${CUR}0.00</span></td>
+    <td><button type="button" class="btn-remove" onclick="removeLine(${i})">✕</button></td>
   `;
   tbody.appendChild(tr);
 }
 
-function autoFillCost(idx, itemId) {
-  const item = RAW_ITEMS.find(i => i.id == itemId);
-  if (item && item.avg_cost > 0) {
-    document.getElementById('price_' + idx).value = parseFloat(item.avg_cost).toFixed(4);
-    recalcLine(idx);
-  }
-}
-
-function recalcLine(idx) {
-  const qty   = parseFloat(document.getElementById('qty_' + idx)?.value) || 0;
-  const price = parseFloat(document.getElementById('price_' + idx)?.value) || 0;
-  const el    = document.getElementById('linetotal_' + idx);
+function recalc(i) {
+  const qty   = parseFloat(document.getElementById('qty_' + i)?.value) || 0;
+  const price = parseFloat(document.getElementById('price_' + i)?.value) || 0;
+  const el    = document.getElementById('lt_' + i);
   if (el) el.textContent = CUR + (qty * price).toFixed(2);
   recalcTotal();
 }
 
 function recalcTotal() {
   let sum = 0;
-  document.querySelectorAll('[id^="linetotal_"]').forEach(el => {
-    sum += parseFloat(el.textContent.replace(CUR,'')) || 0;
+  document.querySelectorAll('[id^="lt_"]').forEach(el => {
+    sum += parseFloat(el.textContent.replace(CUR, '')) || 0;
   });
   document.getElementById('grandTotal').textContent = CUR + sum.toFixed(2);
 }
 
-function removeLine(idx) {
-  const row = document.getElementById('line_' + idx);
+function removeLine(i) {
+  const row = document.getElementById('line_' + i);
   if (row) row.remove();
   recalcTotal();
 }
 
-// Start with one empty row
 addLine();
 </script>
 </body>

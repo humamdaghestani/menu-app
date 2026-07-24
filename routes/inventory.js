@@ -210,14 +210,9 @@ router.get('/purchases', requireAuth, requireInventory, async (req, res) => {
 
 router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => {
   try {
-    const rawItems = await db.query(
-      `SELECT id, name, unit, avg_cost FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`,
-      [req.user.tenantId]
-    );
     res.render('inventory/purchase-new', {
       tenant: req.tenant,
       currentUser: req.user,
-      rawItems: rawItems.rows,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
@@ -226,7 +221,7 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
   try {
     const [receiptRes, linesRes] = await Promise.all([
       db.query(`SELECT pr.*, u.name AS created_by_name FROM purchase_receipts pr LEFT JOIN users u ON u.id=pr.created_by WHERE pr.id=$1 AND pr.tenant_id=$2`, [req.params.id, req.user.tenantId]),
-      db.query(`SELECT prl.*, ii.name AS item_name, ii.unit FROM purchase_receipt_lines prl JOIN inventory_items ii ON ii.id=prl.item_id WHERE prl.receipt_id=$1 ORDER BY ii.name`, [req.params.id]),
+      db.query(`SELECT * FROM purchase_receipt_lines WHERE receipt_id=$1 ORDER BY id`, [req.params.id]),
     ]);
     if (!receiptRes.rows[0]) return res.status(404).send('Receipt not found');
     res.render('inventory/purchase-view', {
@@ -240,20 +235,22 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 
 // Save new purchase receipt
 router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ extended: true }), async (req, res) => {
-  const { supplier_name, invoice_no, receipt_date, notes, item_id, quantity, unit_price } = req.body;
+  const { supplier_name, invoice_no, receipt_date, notes, item_name, unit, quantity, unit_price } = req.body;
   const tid = req.user.tenantId;
 
-  // item_id / quantity / unit_price come as arrays
-  const ids     = Array.isArray(item_id)     ? item_id     : [item_id];
+  // Arrays of line fields
+  const names   = Array.isArray(item_name)   ? item_name   : [item_name];
+  const units   = Array.isArray(unit)        ? unit        : [unit];
   const qtys    = Array.isArray(quantity)    ? quantity    : [quantity];
   const prices  = Array.isArray(unit_price)  ? unit_price  : [unit_price];
 
   // Filter out empty rows
-  const lines = ids.map((id, i) => ({
-    item_id: parseInt(id),
+  const lines = names.map((name, i) => ({
+    item_name: name?.trim(),
+    unit: units[i]?.trim() || '',
     quantity: parseFloat(qtys[i]),
     unit_price: parseFloat(prices[i]),
-  })).filter(l => l.item_id && !isNaN(l.quantity) && l.quantity > 0 && !isNaN(l.unit_price) && l.unit_price >= 0);
+  })).filter(l => l.item_name && !isNaN(l.quantity) && l.quantity > 0 && !isNaN(l.unit_price) && l.unit_price >= 0);
 
   if (!lines.length) return res.redirect('/inventory/purchases/new?error=no_lines');
 
@@ -275,26 +272,8 @@ router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ ex
     for (const l of lines) {
       const lineTotal = l.quantity * l.unit_price;
       await client.query(
-        `INSERT INTO purchase_receipt_lines (receipt_id, item_id, quantity, unit_price, total) VALUES ($1,$2,$3,$4,$5)`,
-        [receiptId, l.item_id, l.quantity, l.unit_price, lineTotal]
-      );
-
-      // Weighted average cost update
-      const cur = await client.query(`SELECT stock_qty, avg_cost FROM inventory_items WHERE id=$1`, [l.item_id]);
-      const { stock_qty, avg_cost } = cur.rows[0];
-      const oldQty = parseFloat(stock_qty) || 0;
-      const oldCost = parseFloat(avg_cost) || 0;
-      const newQty = oldQty + l.quantity;
-      const newCost = newQty > 0 ? (oldQty * oldCost + l.quantity * l.unit_price) / newQty : l.unit_price;
-
-      await client.query(
-        `UPDATE inventory_items SET stock_qty=$1, avg_cost=$2 WHERE id=$3`,
-        [newQty, newCost, l.item_id]
-      );
-      await client.query(
-        `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, unit_cost, reference_id, reference_type, created_by)
-         VALUES ($1,$2,'purchase',$3,$4,$5,'purchase_receipt',$6)`,
-        [tid, l.item_id, l.quantity, l.unit_price, receiptId, req.user.userId]
+        `INSERT INTO purchase_receipt_lines (receipt_id, item_name, unit, quantity, unit_price, total) VALUES ($1,$2,$3,$4,$5,$6)`,
+        [receiptId, l.item_name, l.unit, l.quantity, l.unit_price, lineTotal]
       );
     }
 

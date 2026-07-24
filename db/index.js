@@ -168,11 +168,16 @@ const pool = new Pool({
     `CREATE TABLE IF NOT EXISTS purchase_receipt_lines (
       id          SERIAL PRIMARY KEY,
       receipt_id  INTEGER REFERENCES purchase_receipts(id) ON DELETE CASCADE,
-      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE SET NULL,
+      item_name   VARCHAR(120),
       quantity    NUMERIC(14,4) NOT NULL,
+      unit         VARCHAR(20),
       unit_price  NUMERIC(12,4) NOT NULL,
       total       NUMERIC(12,2)
     )`,
+    `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS item_name VARCHAR(120)`,
+    `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS unit VARCHAR(20)`,
+    `ALTER TABLE purchase_receipt_lines ALTER COLUMN item_id DROP NOT NULL`,
     `CREATE TABLE IF NOT EXISTS inventory_transactions (
       id             SERIAL PRIMARY KEY,
       tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
