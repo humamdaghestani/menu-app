@@ -565,6 +565,7 @@ async function numpadPress(key) {
     _npInput = _npInput.slice(0, -1);
   } else if (key === 'ok') {
     if (_npMode === 'qty') {
+      if (!_npInput) { _selectedItemId = null; _npInput = ''; _render(); _npUpdate(); return; }
       const newQty = parseInt(_npInput) || 0;
       _npInput = '';
       if (newQty === 0) {
@@ -574,9 +575,10 @@ async function numpadPress(key) {
         await changeQty(_selectedItemId, newQty - item.quantity);
       }
     } else if (_npMode === 'price') {
-      const newPrice = _npInput ? parseInt(_npInput) / 100 : null;
+      if (!_npInput) { _selectedItemId = null; _npInput = ''; _render(); _npUpdate(); return; }
+      const newPrice = parseInt(_npInput) / 100;
       _npInput = '';
-      if (newPrice !== null && newPrice >= 0) await setItemPrice(_selectedItemId, newPrice);
+      if (newPrice >= 0) await setItemPrice(_selectedItemId, newPrice);
     }
     _npUpdate(); return;
   } else {
