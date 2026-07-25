@@ -7,52 +7,70 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
-    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
-    .topbar-title { font-weight: 700; color: #fff; }
-    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; gap: 12px; }
+    .topbar-title { font-weight: 700; color: #fff; white-space: nowrap; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
 
-    .main { padding: 28px 24px; max-width: 900px; margin: 0 auto; }
-    h1 { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 22px; }
+    .main { padding: 24px; max-width: 1400px; margin: 0 auto; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 28px; }
-    .stat { background: #1a1a2e; border-radius: 12px; border: 1px solid rgba(255,255,255,.06); padding: 16px 18px; }
-    .stat-label { font-size: .7rem; color: #555; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
-    .stat-val { font-size: 1.3rem; font-weight: 700; color: #fff; }
+    /* Summary */
+    .summary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
+    @media (max-width: 800px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 500px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat { background: #1a1a2e; border-radius: 12px; border: 1px solid rgba(255,255,255,.06); padding: 14px 16px; }
+    .stat-label { font-size: .68rem; color: #444; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-val { font-size: 1.25rem; font-weight: 800; color: #fff; }
     .stat-val.green { color: #00b894; }
 
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    .search-wrap { position: relative; flex: 1; min-width: 180px; }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; font-size: .9rem; }
+    .search-input { width: 100%; padding: 8px 12px 8px 32px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
+    .search-input:focus { border-color: #7c5cbf; }
+    .filter-select { padding: 8px 12px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #ccc; font-size: .85rem; font-family: inherit; outline: none; cursor: pointer; }
+    .filter-select:focus { border-color: #7c5cbf; }
+    .filter-date { padding: 8px 12px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #ccc; font-size: .85rem; font-family: inherit; outline: none; }
+    .filter-date:focus { border-color: #7c5cbf; }
+    .result-count { font-size: .78rem; color: #444; white-space: nowrap; margin-left: auto; }
+
+    /* Table */
     .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.06); overflow: hidden; }
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; color: #444; padding: 10px 14px; font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid rgba(255,255,255,.06); }
-    td { padding: 12px 14px; font-size: .82rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 860px; }
+    th { text-align: left; color: #444; padding: 10px 12px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid rgba(255,255,255,.06); white-space: nowrap; background: #1a1a2e; }
+    td { padding: 11px 12px; font-size: .82rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; white-space: nowrap; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,.02); }
+    .session-row:hover td { background: rgba(255,255,255,.025); cursor: pointer; }
 
     .badge { padding: 3px 9px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
     .badge-open   { background: rgba(0,184,148,.15); color: #00b894; }
     .badge-closed { background: rgba(255,255,255,.08); color: #666; }
 
-    .session-detail { cursor: pointer; }
-    .expand-btn { color: #444; font-size: .75rem; padding: 3px 8px; background: rgba(255,255,255,.06); border-radius: 6px; border: none; cursor: pointer; font-family: inherit; }
+    .expand-btn { color: #444; font-size: .72rem; padding: 3px 8px; background: rgba(255,255,255,.06); border-radius: 6px; border: none; cursor: pointer; font-family: inherit; transition: color .15s; }
     .expand-btn:hover { color: #ccc; }
 
-    .orders-sub { display: none; background: #0f0f1a; }
+    /* Sub-rows */
+    .orders-sub { display: none; }
     .orders-sub.open { display: table-row-group; }
-    .orders-sub td { padding: 6px 14px 6px 30px; font-size: .77rem; color: #555; border-bottom: 1px solid rgba(255,255,255,.03); }
-    .orders-sub td:first-child { color: #666; }
+    .orders-sub td { padding: 7px 12px 7px 28px; font-size: .78rem; color: #555; border-bottom: 1px solid rgba(255,255,255,.025); background: #0f0f1a; }
 
+    .hidden-row { display: none; }
     .empty { text-align: center; padding: 60px; color: #333; }
+    #noResults { display: none; text-align: center; padding: 40px; color: #333; font-size: .85rem; }
   </style>
 </head>
 <body>
+
 <div class="topbar">
   <div class="topbar-title">📅 Sessions History</div>
   <a href="/pos" class="btn btn-ghost">← POS Home</a>
 </div>
 
 <div class="main">
-  <h1>All Sessions</h1>
 
   <div class="summary-grid">
     <div class="stat"><div class="stat-label">Total Sessions</div><div class="stat-val"><%= sessions.length %></div></div>
@@ -62,14 +80,30 @@
     <div class="stat"><div class="stat-label">Card</div><div class="stat-val"><%= tenant.currency || '$' %><%= totals.card.toFixed(2) %></div></div>
   </div>
 
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="Search by opener, amount..." oninput="applyFilters()" />
+    </div>
+    <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+      <option value="">All Statuses</option>
+      <option value="open">Open</option>
+      <option value="closed">Closed</option>
+    </select>
+    <input type="date" class="filter-date" id="dateFrom" onchange="applyFilters()" title="From date" />
+    <input type="date" class="filter-date" id="dateTo" onchange="applyFilters()" title="To date" />
+    <span class="result-count" id="resultCount"></span>
+  </div>
+
   <div class="card">
     <% if (sessions.length === 0) { %>
     <div class="empty">No sessions yet</div>
     <% } else { %>
-    <table>
+    <div class="table-scroll">
+    <table id="sessionsTable">
       <thead>
         <tr>
-          <th>#</th>
+          <th style="width:40px">#</th>
           <th>Date</th>
           <th>Opened By</th>
           <th>Opening Cash</th>
@@ -79,44 +113,76 @@
           <th>Card</th>
           <th>Closing Cash</th>
           <th>Status</th>
-          <th></th>
+          <th style="width:90px"></th>
         </tr>
       </thead>
-      <% sessions.forEach(s => { %>
-      <tbody>
-        <tr class="session-detail" onclick="if(!event.target.closest('a,button'))toggleSession(<%= s.id %>)">
-          <td style="color:#555">#<%= s.id %></td>
-          <td><%= new Date(s.opened_at).toLocaleDateString() %><br><span style="color:#444;font-size:.72rem"><%= new Date(s.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% if (s.closed_at) { %> → <%= new Date(s.closed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% } %></span></td>
+
+      <% sessions.forEach(s => {
+        const dateStr = new Date(s.opened_at).toISOString().slice(0,10);
+        const opener  = (s.opened_by_name || '').toLowerCase();
+        const sales   = parseFloat(s.total_sales).toFixed(2);
+      %>
+      <tbody
+        class="session-group"
+        data-date="<%= dateStr %>"
+        data-opener="<%= opener %>"
+        data-status="<%= s.status %>"
+        data-sales="<%= sales %>"
+      >
+        <tr class="session-row" onclick="if(!event.target.closest('a,button'))toggleSession(<%= s.id %>)">
+          <td style="color:#555;font-weight:600">#<%= s.id %></td>
+          <td>
+            <div><%= new Date(s.opened_at).toLocaleDateString() %></div>
+            <div style="color:#444;font-size:.72rem">
+              <%= new Date(s.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %>
+              <% if (s.closed_at) { %> → <%= new Date(s.closed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %><% } %>
+            </div>
+          </td>
           <td><%= s.opened_by_name || '—' %></td>
           <td><%= tenant.currency || '$' %><%= parseFloat(s.opening_cash).toFixed(2) %></td>
-          <td><%= s.order_count %></td>
+          <td style="text-align:center"><%= s.order_count %></td>
           <td><strong style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(s.total_sales).toFixed(2) %></strong></td>
-          <td style="color:#ccc"><%= tenant.currency || '$' %><%= parseFloat(s.cash_sales).toFixed(2) %></td>
-          <td style="color:#ccc"><%= tenant.currency || '$' %><%= parseFloat(s.card_sales).toFixed(2) %></td>
+          <td><%= tenant.currency || '$' %><%= parseFloat(s.cash_sales).toFixed(2) %></td>
+          <td><%= tenant.currency || '$' %><%= parseFloat(s.card_sales).toFixed(2) %></td>
           <td style="color:#666"><%= s.closing_cash != null ? (tenant.currency || '$') + parseFloat(s.closing_cash).toFixed(2) : '—' %></td>
           <td><span class="badge badge-<%= s.status %>"><%= s.status %></span></td>
-          <td style="white-space:nowrap"><button class="expand-btn" id="btn_<%= s.id %>" onclick="event.stopPropagation();toggleSession(<%= s.id %>)">▼</button> <a href="/pos/sessions/<%= s.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none;margin-left:4px" onclick="event.stopPropagation()">Log →</a></td>
+          <td>
+            <button class="expand-btn" id="btn_<%= s.id %>" onclick="event.stopPropagation();toggleSession(<%= s.id %>)">▼</button>
+            <a href="/pos/sessions/<%= s.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none;margin-left:6px" onclick="event.stopPropagation()">Log →</a>
+          </td>
         </tr>
       </tbody>
       <tbody class="orders-sub" id="sub_<%= s.id %>">
         <% if (s.orders && s.orders.length > 0) { %>
+          <tr style="background:#0f0f1a">
+            <td style="color:#333;font-size:.68rem;text-transform:uppercase;font-weight:700"></td>
+            <td style="color:#333;font-size:.68rem;text-transform:uppercase;font-weight:700">Table</td>
+            <td colspan="2" style="color:#333;font-size:.68rem;text-transform:uppercase;font-weight:700">Items</td>
+            <td colspan="2" style="color:#333;font-size:.68rem;text-transform:uppercase;font-weight:700">Payment</td>
+            <td colspan="3" style="color:#333;font-size:.68rem;text-transform:uppercase;font-weight:700">Total</td>
+            <td style="color:#333;font-size:.68rem;text-transform:uppercase;font-weight:700">Status</td>
+            <td></td>
+          </tr>
           <% s.orders.forEach(o => { %>
           <tr>
-            <td>#<%= o.id %></td>
+            <td style="color:#555">#<%= o.id %></td>
             <td><%= o.table_name %></td>
-            <td colspan="2"><%= o.item_count %> items</td>
+            <td colspan="2"><%= o.item_count %> item<%= o.item_count != 1 ? 's' : '' %></td>
             <td colspan="2" style="text-transform:capitalize"><%= o.pay_method || '—' %></td>
-            <td colspan="3" style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(o.total || 0).toFixed(2) %></td>
+            <td colspan="3" style="color:#00b894;font-weight:600"><%= tenant.currency || '$' %><%= parseFloat(o.total || 0).toFixed(2) %></td>
             <td><span class="badge badge-<%= o.status %>"><%= o.status %></span></td>
             <td><% if (o.status === 'paid') { %><a href="/pos/receipt/<%= o.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none">Receipt</a><% } %></td>
           </tr>
           <% }) %>
         <% } else { %>
-        <tr><td colspan="11" style="color:#333;text-align:center;padding:12px">No completed orders in this session</td></tr>
+        <tr><td colspan="11" style="text-align:center;color:#333;padding:14px">No completed orders in this session</td></tr>
         <% } %>
       </tbody>
       <% }) %>
+
     </table>
+    </div>
+    <div id="noResults">No sessions match your search.</div>
     <% } %>
   </div>
 </div>
@@ -128,6 +194,45 @@ function toggleSession(id) {
   const open = sub.classList.toggle('open');
   btn.textContent = open ? '▲' : '▼';
 }
+
+function applyFilters() {
+  const q      = document.getElementById('searchInput').value.toLowerCase().trim();
+  const status = document.getElementById('statusFilter').value;
+  const from   = document.getElementById('dateFrom').value;
+  const to     = document.getElementById('dateTo').value;
+
+  let visible = 0;
+  document.querySelectorAll('.session-group').forEach(group => {
+    const date   = group.dataset.date;
+    const opener = group.dataset.opener;
+    const st     = group.dataset.status;
+    const sales  = group.dataset.sales;
+
+    const matchQ      = !q || opener.includes(q) || sales.includes(q) || date.includes(q);
+    const matchStatus = !status || st === status;
+    const matchFrom   = !from || date >= from;
+    const matchTo     = !to   || date <= to;
+
+    const show = matchQ && matchStatus && matchFrom && matchTo;
+    group.style.display = show ? '' : 'none';
+
+    // Also hide corresponding sub-row
+    const sid = group.querySelector('.session-row')?.onclick?.toString().match(/\d+/)?.[0];
+    if (sid) {
+      const sub = document.getElementById('sub_' + sid);
+      if (sub) sub.style.display = show ? '' : 'none';
+    }
+    if (show) visible++;
+  });
+
+  const rc = document.getElementById('resultCount');
+  const nr = document.getElementById('noResults');
+  rc.textContent = visible + ' session' + (visible !== 1 ? 's' : '');
+  if (nr) nr.style.display = visible === 0 ? 'block' : 'none';
+}
+
+// Init count
+applyFilters();
 </script>
 </body>
 </html>
