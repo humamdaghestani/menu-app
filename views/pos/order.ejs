@@ -83,6 +83,10 @@
     .np-btn.np-ok  { color: #00b894; font-size: 1.1rem; }
     .np-btn.np-ok:hover { background: rgba(0,184,148,.12); }
     .np-btn.np-back { font-size: .85rem; }
+    .np-modes { display: flex; gap: 1px; background: rgba(255,255,255,.04); flex-shrink: 0; }
+    .np-mode-btn { flex: 1; padding: 7px 0; border: none; background: #13132a; color: #333; font-size: .6rem; font-weight: 700; cursor: pointer; font-family: inherit; text-transform: uppercase; letter-spacing: .4px; transition: all .12s; }
+    .np-mode-btn.active { background: rgba(124,92,191,.18); color: #c4b5fd; }
+    .np-mode-btn:hover:not(.active) { color: #777; background: rgba(255,255,255,.04); }
 
     /* ── Action buttons (below numpad) ── */
     .order-actions { display: flex; gap: 1px; background: rgba(255,255,255,.04); flex-shrink: 0; }
@@ -200,6 +204,12 @@
 
     <!-- ── Numpad ── -->
     <div class="numpad-area">
+      <div class="np-modes">
+        <button class="np-mode-btn active" id="modeQty"     onclick="setNpMode('qty')">QTY</button>
+        <button class="np-mode-btn"        id="modePrc"     onclick="setNpMode('price')">PRICE</button>
+        <button class="np-mode-btn"        id="modeDiscPct" onclick="setNpMode('disc-pct')">DISC%</button>
+        <button class="np-mode-btn"        id="modeDiscFix" onclick="setNpMode('disc-fix')">DISC$</button>
+      </div>
       <div class="np-display">
         <div class="np-display-label" id="npLabel">Tap an item</div>
         <div class="np-display-val" id="npVal">—</div>
@@ -268,6 +278,21 @@
         <button type="submit" class="btn" style="background:#e74c3c;color:#fff;padding:6px 16px">Cancel Order</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ── Discount Numpad Passkey Modal ── -->
+<div class="modal-overlay" id="discNpModal">
+  <div class="modal-box" style="max-width:300px">
+    <h3>🏷️ Manager Passkey</h3>
+    <p style="font-size:.78rem;color:#555;margin-bottom:12px" id="discNpDesc"></p>
+    <input type="text" class="modal-input" id="discNpPasskey" maxlength="6" minlength="6"
+      placeholder="6-digit code" inputmode="numeric" autocomplete="off"
+      style="font-size:1.4rem;letter-spacing:6px;text-align:center;font-weight:700" />
+    <div class="modal-footer">
+      <button type="button" class="btn btn-modal-cancel" onclick="closeModal('discNpModal')">Cancel</button>
+      <button type="button" class="btn btn-modal-ok" onclick="applyDiscountFromNp()">Apply</button>
+    </div>
   </div>
 </div>
 
@@ -359,6 +384,9 @@ let _order = {
 let _currentItemNoteId = null;
 let _selectedItemId    = null;
 let _npInput           = '';
+let _npMode            = 'qty'; // 'qty' | 'price' | 'disc-pct' | 'disc-fix'
+let _pendingDiscValue  = 0;
+let _pendingDiscType   = 'percent';
 
 /* ── Helpers ── */
 function _esc(s) {
@@ -456,8 +484,30 @@ async function changeQty(itemId, delta) {
 /* ── Numpad ── */
 function _npUpdate() {
   const item = _selectedItemId !== null ? _items.find(x => x.id === _selectedItemId) : null;
-  document.getElementById('npLabel').textContent = item ? _esc(item.name) : 'Tap an item';
-  document.getElementById('npVal').textContent   = _npInput || (item ? String(item.quantity) : '—');
+  let label, val;
+  if (_npMode === 'disc-pct')      label = 'Discount (%)';
+  else if (_npMode === 'disc-fix') label = 'Discount (Amount)';
+  else if (!item)                  label = 'Tap an item';
+  else                             label = item.name;
+
+  if (_npInput) {
+    val = _npMode === 'price' ? '$' + (parseInt(_npInput) / 100).toFixed(2) : _npInput;
+  } else if (_npMode === 'qty' && item)   val = String(item.quantity);
+  else if (_npMode === 'price' && item)   val = '$' + item.price.toFixed(2);
+  else                                    val = '—';
+
+  document.getElementById('npLabel').textContent = label;
+  document.getElementById('npVal').textContent   = val;
+}
+
+function setNpMode(mode) {
+  _npMode = mode;
+  _npInput = '';
+  if (mode.startsWith('disc')) { _selectedItemId = null; }
+  ['modeQty','modePrc','modeDiscPct','modeDiscFix'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const map = { 'qty':'modeQty', 'price':'modePrc', 'disc-pct':'modeDiscPct', 'disc-fix':'modeDiscFix' };
+  document.getElementById(map[mode]).classList.add('active');
+  _render(); _npUpdate();
 }
 
 function selectItem(id, e) {
@@ -466,11 +516,42 @@ function selectItem(id, e) {
     _selectedItemId = null; _npInput = '';
   } else {
     _selectedItemId = id; _npInput = '';
+    if (_npMode.startsWith('disc')) setNpMode('qty');
   }
   _render(); _npUpdate();
 }
 
 async function numpadPress(key) {
+  // ── Discount modes (no item needed) ──────────────────────────────────
+  if (_npMode.startsWith('disc')) {
+    if (key === 'back') {
+      _npInput = _npInput.slice(0, -1);
+    } else if (key === 'ok') {
+      const val = parseFloat(_npInput) || 0;
+      _npInput = '';
+      _npUpdate();
+      if (val === 0) {
+        // Remove existing discount (no passkey required)
+        const r = await posAction(`/pos/api/order/${ORDER_ID}/discount`, { discount_type: 'none', discount_value: 0, passkey: '' });
+        if (r.ok && !r.offline) _render(r.data);
+        return;
+      }
+      _pendingDiscValue = val;
+      _pendingDiscType  = _npMode === 'disc-pct' ? 'percent' : 'fixed';
+      document.getElementById('discNpPasskey').value = '';
+      document.getElementById('discNpDesc').textContent =
+        `Apply ${_pendingDiscType === 'percent' ? val + '%' : CUR + val.toFixed(2)} discount`;
+      openModal('discNpModal');
+      setTimeout(() => document.getElementById('discNpPasskey').focus(), 100);
+    } else {
+      if (_npInput.length >= 6) return;
+      _npInput += key;
+    }
+    _npUpdate();
+    return;
+  }
+
+  // ── QTY / PRICE modes (item must be selected) ─────────────────────────
   if (_selectedItemId === null) return;
   const item = _items.find(x => x.id === _selectedItemId);
   if (!item) return;
@@ -478,23 +559,52 @@ async function numpadPress(key) {
   if (key === 'back') {
     _npInput = _npInput.slice(0, -1);
   } else if (key === 'ok') {
-    const newQty = parseInt(_npInput) || 0;
-    _npInput = '';
-    if (newQty === 0) {
-      // remove item
-      const delta = -item.quantity;
-      await changeQty(_selectedItemId, delta);
-      _selectedItemId = null;
-    } else if (newQty !== item.quantity) {
-      const delta = newQty - item.quantity;
-      await changeQty(_selectedItemId, delta);
+    if (_npMode === 'qty') {
+      const newQty = parseInt(_npInput) || 0;
+      _npInput = '';
+      if (newQty === 0) {
+        await changeQty(_selectedItemId, -item.quantity);
+        _selectedItemId = null;
+      } else if (newQty !== item.quantity) {
+        await changeQty(_selectedItemId, newQty - item.quantity);
+      }
+    } else if (_npMode === 'price') {
+      const newPrice = _npInput ? parseInt(_npInput) / 100 : null;
+      _npInput = '';
+      if (newPrice !== null && newPrice >= 0) await setItemPrice(_selectedItemId, newPrice);
     }
     _npUpdate(); return;
   } else {
-    if (_npInput.length >= 3) return; // max qty 999
+    if (_npMode === 'qty'   && _npInput.length >= 3) return;
+    if (_npMode === 'price' && _npInput.length >= 7) return;
     _npInput += key;
   }
   _npUpdate();
+}
+
+async function setItemPrice(itemId, price) {
+  const i = _items.findIndex(x => x.id === itemId);
+  if (i >= 0) { _items[i].price = price; _render(); }  // optimistic
+  const r = await posAction(`/pos/api/order/${ORDER_ID}/item/${itemId}/price`, { price });
+  if (r.ok && !r.offline) _render(r.data);
+}
+
+async function applyDiscountFromNp() {
+  const passkey = document.getElementById('discNpPasskey').value.trim();
+  closeModal('discNpModal');
+  const r = await posAction(`/pos/api/order/${ORDER_ID}/discount`, {
+    discount_type:  _pendingDiscType,
+    discount_value: _pendingDiscValue,
+    passkey,
+  });
+  if (r.ok && !r.offline) _render(r.data);
+  else if (!r.ok && r.error === 'invalid_passkey') {
+    _showErrorToast('Invalid or expired passkey — ask manager for a new code');
+    setTimeout(() => {
+      document.getElementById('discNpPasskey').value = '';
+      openModal('discNpModal');
+    }, 150);
+  }
 }
 
 /* ── Category & search filter ── */
@@ -615,6 +725,9 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 <% if (modalParam === 'discount') { %>setTimeout(() => openDiscount(), 150);<% } %>
 <% if (modalParam === 'void') { %>setTimeout(() => openVoid(), 150);<% } %>
 <% } %>
+
+// Fix initial render: re-render from JS state so all items have onclick handlers
+_render();
 </script>
 
 <script>

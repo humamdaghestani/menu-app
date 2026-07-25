@@ -842,6 +842,22 @@ router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (r
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
 
+// POST /pos/api/order/:id/item/:itemId/price
+router.post('/api/order/:id/item/:itemId/price', requireAuth, requirePOS, async (req, res) => {
+  const price = parseFloat(req.body.price);
+  try {
+    if (isNaN(price) || price < 0) return res.json({ ok: false, error: 'invalid_price' });
+    const check = await db.query(
+      'SELECT poi.id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.id=$2 AND po.tenant_id=$3',
+      [req.params.itemId, req.params.id, req.user.tenantId]
+    );
+    if (!check.rows[0]) return res.json({ ok: false, error: 'Not found' });
+    await db.query('UPDATE pos_order_items SET price=$1 WHERE id=$2', [price, req.params.itemId]);
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
 // POST /pos/api/order/:id/item/:itemId/note
 router.post('/api/order/:id/item/:itemId/note', requireAuth, requirePOS, async (req, res) => {
   try {
