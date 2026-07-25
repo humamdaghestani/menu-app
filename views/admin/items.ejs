@@ -327,25 +327,17 @@
               <% } %>
             </td>
             <td>
-              <form method="POST" action="/admin/items/<%= item.id %>/toggle" style="margin:0">
-                <label class="toggle">
-                  <input type="checkbox" <%= item.is_available !== false ? 'checked' : '' %> onchange="this.form.submit()" />
-                  <span class="slider"></span>
-                </label>
-              </form>
+              <label class="toggle">
+                <input type="checkbox" <%= item.is_available !== false ? 'checked' : '' %> onchange="toggleItem(<%= item.id %>, this)" />
+                <span class="slider"></span>
+              </label>
             </td>
             <td>
               <div class="actions-cell">
-                <form method="POST" action="/admin/items/<%= item.id %>/feature" style="margin:0">
-                  <button class="btn btn-star btn-sm <%= item.is_featured ? 'active' : '' %>" type="submit" title="<%= item.is_featured ? 'Unfeature' : 'Feature' %>">⭐</button>
-                </form>
+                <button class="btn btn-star btn-sm <%= item.is_featured ? 'active' : '' %>" onclick="featureItem(<%= item.id %>, this)" title="Feature">⭐</button>
                 <button class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
-                <form method="POST" action="/admin/items/<%= item.id %>/duplicate" style="margin:0">
-                  <button class="btn btn-dupe btn-sm" type="submit" title="Duplicate">⧉ Copy</button>
-                </form>
-                <form method="POST" action="/admin/items/<%= item.id %>/delete" onsubmit="return confirm('Delete this item?')" style="margin:0">
-                  <button class="btn btn-danger btn-sm" type="submit">Delete</button>
-                </form>
+                <button class="btn btn-dupe btn-sm" onclick="duplicateItem(<%= item.id %>, this)" title="Duplicate">⧉ Copy</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteItem(<%= item.id %>, this)">Delete</button>
               </div>
             </td>
           </tr>
@@ -361,7 +353,7 @@
 <div class="overlay" id="editOverlay">
   <div class="modal">
     <h3>Edit Item</h3>
-    <form method="POST" id="editForm">
+    <form id="editForm" onsubmit="submitEdit(event)">
       <div class="form-grid">
         <div class="form-group">
           <label>Item Name *</label>
@@ -494,7 +486,10 @@
   function addChoice(gi) { _optGroups[gi].choices.push({ label: '', price: 0 }); renderOptionGroups(); }
   function removeChoice(gi, ci) { _optGroups[gi].choices.splice(ci, 1); renderOptionGroups(); syncOptions(); }
 
+  let _editItemId = null;
+
   function openEdit(item) {
+    _editItemId = item.id;
     document.getElementById('editName').value          = item.name;
     document.getElementById('editNameAr').value        = item.name_ar || '';
     document.getElementById('editNameKu').value        = item.name_ku || '';
@@ -505,7 +500,6 @@
     document.getElementById('editImageUrl').value      = item.image_url || '';
     document.getElementById('editCategory').value      = item.category_id || '';
     document.getElementById('editBadge').value         = item.badge || '';
-    document.getElementById('editForm').action         = '/admin/items/' + item.id + '/edit';
     _optGroups = item.options ? JSON.parse(JSON.stringify(item.options)) : [];
     renderOptionGroups(); syncOptions();
     previewImg(document.getElementById('editImageUrl'), 'editPreview');
@@ -513,6 +507,111 @@
   }
   function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
   document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === document.getElementById('editOverlay')) closeEdit(); });
+
+  async function submitEdit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const data = new FormData(form);
+    try {
+      const r = await fetch('/admin/items/' + _editItemId + '/edit', {
+        method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const j = await r.json();
+      if (j.ok) {
+        closeEdit();
+        // Update row in table
+        const row = document.querySelector(`#itemsTbody tr[data-id="${_editItemId}"]`);
+        if (row) {
+          const name = data.get('name'), price = data.get('price'), badge = data.get('badge'), img = data.get('image_url');
+          const catSel = document.getElementById('editCategory');
+          const catName = catSel.options[catSel.selectedIndex]?.text.replace(/^↳ /,'') || '—';
+          row.querySelector('.item-name').textContent = name;
+          row.querySelector('.item-desc').textContent = (data.get('description') || '').substring(0, 60);
+          row.cells[3].innerHTML = `<strong>${price}</strong>`;
+          row.cells[4].textContent = catName === 'No category' ? '—' : catName;
+          row.cells[5].innerHTML = badge
+            ? `<span class="badge badge-${badge}">${badge}</span>`
+            : `<span class="badge badge-none">—</span>`;
+          row.querySelector('.item-img').src = img || 'https://placehold.co/52x42?text=?';
+        }
+        showToast('Item updated');
+      } else { showToast('Failed to save', 'error'); }
+    } catch { showToast('Failed to save', 'error'); }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+
+  async function deleteItem(id, btn) {
+    if (!confirm('Delete this item?')) return;
+    btn.disabled = true;
+    try {
+      const r = await fetch('/admin/items/' + id + '/delete', {
+        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const j = await r.json();
+      if (j.ok) {
+        const row = document.querySelector(`#itemsTbody tr[data-id="${id}"]`);
+        if (row) { row.style.transition = 'opacity .2s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 200); }
+        showToast('Item deleted');
+      } else { showToast('Delete failed', 'error'); btn.disabled = false; }
+    } catch { showToast('Delete failed', 'error'); btn.disabled = false; }
+  }
+
+  async function toggleItem(id, checkbox) {
+    try {
+      await fetch('/admin/items/' + id + '/toggle', {
+        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+    } catch { checkbox.checked = !checkbox.checked; }
+  }
+
+  async function featureItem(id, btn) {
+    try {
+      const r = await fetch('/admin/items/' + id + '/feature', {
+        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const j = await r.json();
+      if (j.ok) {
+        btn.classList.toggle('active', j.is_featured);
+        showToast(j.is_featured ? 'Featured' : 'Unfeatured');
+      }
+    } catch { showToast('Failed', 'error'); }
+  }
+
+  async function duplicateItem(id, btn) {
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const r = await fetch('/admin/items/' + id + '/duplicate', {
+        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      const j = await r.json();
+      if (j.ok && j.item) {
+        const orig = document.querySelector(`#itemsTbody tr[data-id="${id}"]`);
+        const ni = j.item;
+        const tr = document.createElement('tr');
+        tr.dataset.id = ni.id;
+        tr.innerHTML = `
+          <td><span class="drag-handle">⋮⋮</span></td>
+          <td><img class="item-img" src="${ni.image_url || 'https://placehold.co/52x42?text=?'}" alt="${ni.name}" /></td>
+          <td><div class="item-name">${ni.name}</div><div class="item-desc">${(ni.description||'').substring(0,60)}</div></td>
+          <td><strong>${ni.price}</strong></td>
+          <td>${orig?.cells[4]?.textContent || '—'}</td>
+          <td><span class="badge badge-none">—</span></td>
+          <td><label class="toggle"><input type="checkbox" checked onchange="toggleItem(${ni.id},this)"/><span class="slider"></span></label></td>
+          <td><div class="actions-cell">
+            <button class="btn btn-star btn-sm" onclick="featureItem(${ni.id},this)" title="Feature">⭐</button>
+            <button class="btn btn-ghost btn-sm" onclick='openEdit(${JSON.stringify(ni)})'>Edit</button>
+            <button class="btn btn-dupe btn-sm" onclick="duplicateItem(${ni.id},this)" title="Duplicate">⧉ Copy</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteItem(${ni.id},this)">Delete</button>
+          </div></td>`;
+        if (orig) orig.insertAdjacentElement('afterend', tr);
+        else document.getElementById('itemsTbody').appendChild(tr);
+        showToast('Item duplicated');
+      } else { showToast('Duplicate failed', 'error'); }
+    } catch { showToast('Duplicate failed', 'error'); }
+    btn.disabled = false; btn.textContent = '⧉ Copy';
+  }
 
   function previewImg(input, previewId) {
     const preview = document.getElementById(previewId);
