@@ -48,6 +48,13 @@
     .picker-opt .unit-tag { font-size: .7rem; color: #555; background: #0f0f1a; padding: 1px 6px; border-radius: 4px; margin-left: auto; }
     .picker-empty { padding: 12px; font-size: .82rem; color: #444; text-align: center; }
 
+    /* Supplier autocomplete */
+    .supp-wrap { position: relative; }
+    .supp-drop { display: none; position: absolute; top: calc(100% + 3px); left: 0; right: 0; background: #1a1a2e; border: 1.5px solid #7c5cbf; border-radius: 8px; z-index: 200; max-height: 180px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .supp-drop.open { display: block; }
+    .supp-opt { padding: 8px 12px; font-size: .88rem; color: #ccc; cursor: pointer; }
+    .supp-opt:hover, .supp-opt.focused { background: rgba(124,92,191,.2); color: #fff; }
+
     /* New item inline */
     .new-item-row { display: none; margin-top: 4px; }
     .new-item-row.show { display: block; }
@@ -83,7 +90,11 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Supplier Name</label>
-          <input type="text" name="supplier_name" class="form-input" placeholder="e.g. Al-Amin Supplies" />
+          <div class="supp-wrap">
+            <input type="text" name="supplier_name" id="supplierInput" class="form-input" placeholder="Search or type new supplier…" autocomplete="off"
+              oninput="suppFilter(this.value)" onfocus="suppFilter(this.value)" />
+            <div class="supp-drop" id="suppDrop"></div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Invoice / Receipt #</label>
@@ -136,7 +147,36 @@
 <script>
 const CUR = '<%= tenant.currency || "IQD" %>';
 const INV_ITEMS = <%- JSON.stringify(invItems) %>;
+const SUPPLIERS = <%- JSON.stringify(suppliers) %>;
 let idx = 0;
+
+// ── Supplier autocomplete ──────────────────────────────────────────
+function suppFilter(q) {
+  const drop = document.getElementById('suppDrop');
+  const matches = SUPPLIERS.filter(s => s.toLowerCase().includes((q||'').toLowerCase()));
+  if (matches.length === 0) { drop.classList.remove('open'); return; }
+  drop.innerHTML = matches.map(s => `<div class="supp-opt" onclick="suppSelect('${escJ(s)}')">${escH(s)}</div>`).join('');
+  drop.classList.add('open');
+}
+function suppSelect(name) {
+  document.getElementById('supplierInput').value = name;
+  document.getElementById('suppDrop').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.supp-wrap')) document.getElementById('suppDrop').classList.remove('open');
+});
+// Keyboard nav on supplier
+document.addEventListener('keydown', e => {
+  const drop = document.getElementById('suppDrop');
+  if (!drop.classList.contains('open')) return;
+  const opts = drop.querySelectorAll('.supp-opt');
+  const cur  = drop.querySelector('.supp-opt.focused');
+  let ci = Array.from(opts).indexOf(cur);
+  if (e.key === 'ArrowDown') { e.preventDefault(); if(cur)cur.classList.remove('focused'); const n=opts[Math.min(ci+1,opts.length-1)]; if(n){n.classList.add('focused');n.scrollIntoView({block:'nearest'});} }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); if(cur)cur.classList.remove('focused'); const p=opts[Math.max(ci-1,0)]; if(p){p.classList.add('focused');p.scrollIntoView({block:'nearest'});} }
+  else if (e.key === 'Enter' && cur) { e.preventDefault(); cur.click(); }
+  else if (e.key === 'Escape') drop.classList.remove('open');
+});
 
 // ── Searchable picker ──────────────────────────────────────────────
 function createPicker(i) {

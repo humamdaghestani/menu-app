@@ -247,14 +247,15 @@ router.get('/purchases', requireAuth, requireInventory, async (req, res) => {
 
 router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => {
   try {
-    const invItems = await db.query(
-      `SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`,
-      [req.user.tenantId]
-    );
+    const [invItemsRes, suppliersRes] = await Promise.all([
+      db.query(`SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [req.user.tenantId]),
+      db.query(`SELECT DISTINCT supplier_name FROM purchase_receipts WHERE tenant_id=$1 AND supplier_name IS NOT NULL ORDER BY supplier_name`, [req.user.tenantId]),
+    ]);
     res.render('inventory/purchase-new', {
       tenant: req.tenant,
       currentUser: req.user,
-      invItems: invItems.rows,
+      invItems: invItemsRes.rows,
+      suppliers: suppliersRes.rows.map(r => r.supplier_name),
       error: req.query.error || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
