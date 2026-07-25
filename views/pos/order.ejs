@@ -455,11 +455,16 @@ async function addItem(menuItemId) {
     const mi = menuCache.find(m => m.id == menuItemId);
     if (!mi) return;
     const ex = _items.find(i => i.menu_item_id == menuItemId && !i.notes);
-    if (ex) { ex.quantity++; }
-    else _items.push({ id: -(Date.now()), menu_item_id: menuItemId, name: mi.name, price: mi.price, quantity: 1, notes: null });
+    if (ex) { ex.quantity++; _selectedItemId = ex.id; }
+    else { const ni = { id: -(Date.now()), menu_item_id: menuItemId, name: mi.name, price: mi.price, quantity: 1, notes: null }; _items.push(ni); _selectedItemId = ni.id; }
     _render();
   });
-  if (r.ok && !r.offline) _render(r.data);
+  if (r.ok && !r.offline) {
+    _render(r.data);
+    // Keep the item selected after server confirms
+    const added = r.data.items.find(i => i.menu_item_id == menuItemId);
+    if (added) { _selectedItemId = added.id; _render(); _npUpdate(); }
+  }
 }
 
 async function changeQty(itemId, delta) {
@@ -731,15 +736,21 @@ _render();
 
 // Physical keyboard → numpad
 document.addEventListener('keydown', e => {
-  // Don't intercept when typing in an input/textarea
   if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
-  // Don't intercept when a modal is open
   if (document.querySelector('.modal-overlay.open')) return;
 
-  if (e.key >= '0' && e.key <= '9') { e.preventDefault(); numpadPress(e.key); }
-  else if (e.key === 'Backspace')    { e.preventDefault(); numpadPress('back'); }
-  else if (e.key === 'Enter' || e.key === 'NumpadEnter') { e.preventDefault(); numpadPress('ok'); }
-  else if (e.key === 'Escape')       { _selectedItemId = null; _npInput = ''; _render(); _npUpdate(); }
+  if (e.key >= '0' && e.key <= '9') {
+    e.preventDefault();
+    // Auto-select last item if nothing is selected and we're in qty/price mode
+    if (_selectedItemId === null && !_npMode.startsWith('disc') && _items.length > 0) {
+      _selectedItemId = _items[_items.length - 1].id;
+      _render();
+    }
+    numpadPress(e.key);
+  }
+  else if (e.key === 'Backspace') { e.preventDefault(); numpadPress('back'); }
+  else if (e.key === 'Enter')     { e.preventDefault(); numpadPress('ok'); }
+  else if (e.key === 'Escape')    { _selectedItemId = null; _npInput = ''; _render(); _npUpdate(); }
 });
 </script>
 
