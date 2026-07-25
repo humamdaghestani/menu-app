@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Accounting — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); gap: 12px; flex-wrap: wrap; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost   { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+
+    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+    /* Date filter */
+    .date-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .date-bar input[type=date] { padding: 7px 10px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-family: inherit; font-size: .85rem; outline: none; }
+    .date-bar input[type=date]:focus { border-color: #7c5cbf; }
+    .period-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #666; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .period-btn:hover, .period-btn.active { background: #7c5cbf; border-color: #7c5cbf; color: #fff; }
+
+    /* KPI cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .kpi { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a3e; padding: 18px; }
+    .kpi-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: #444; letter-spacing: .4px; margin-bottom: 8px; }
+    .kpi-value { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .kpi-sub   { font-size: .72rem; color: #444; margin-top: 5px; }
+    .green  { color: #00b894; }
+    .red    { color: #e74c3c; }
+    .purple { color: #7c5cbf; }
+    .yellow { color: #f39c12; }
+    .white  { color: #fff; }
+
+    /* Two-col layout */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; }
+    .card-title { font-size: .88rem; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+    /* P&L summary */
+    .pl-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .9rem; }
+    .pl-row:last-child { border-bottom: none; }
+    .pl-row.total { font-weight: 800; font-size: 1rem; padding-top: 14px; border-top: 1px solid #2a2a3e; margin-top: 4px; }
+    .pl-label { color: #aaa; }
+    .pl-label.indent { padding-left: 14px; color: #666; font-size: .82rem; }
+
+    /* Bar chart */
+    .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-top: 8px; }
+    .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+    .bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 2px; transition: height .3s; background: #7c5cbf; }
+    .bar-lbl { font-size: .6rem; color: #333; white-space: nowrap; }
+
+    /* Expense by category */
+    .cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .cat-row:last-child { border-bottom: none; }
+    .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name { flex: 1; font-size: .85rem; color: #ccc; }
+    .cat-amount { font-size: .88rem; font-weight: 700; color: #fff; }
+    .cat-bar-bg { height: 4px; background: #2a2a3e; border-radius: 4px; flex: 1; }
+    .cat-bar-fill { height: 4px; border-radius: 4px; }
+
+    /* Recent expenses table */
+    .exp-table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .exp-table th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid #2a2a3e; }
+    .exp-table td { padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,.03); color: #ccc; vertical-align: middle; }
+    .exp-table tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">📒 Accounting</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/accounting/expenses" class="btn btn-ghost">💸 Expenses</a>
+    <a href="/" class="btn btn-ghost">← Home</a>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Date filter -->
+  <form method="GET" action="/accounting" id="dateForm">
+    <div class="date-bar">
+      <button type="button" class="period-btn" onclick="setPeriod('today')">Today</button>
+      <button type="button" class="period-btn" onclick="setPeriod('week')">This Week</button>
+      <button type="button" class="period-btn active" onclick="setPeriod('month')">This Month</button>
+      <button type="button" class="period-btn" onclick="setPeriod('year')">This Year</button>
+      <input type="date" name="from" id="fromDate" value="<%= dateFrom %>" onchange="this.form.submit()" />
+      <span style="color:#444">→</span>
+      <input type="date" name="to" id="toDate" value="<%= dateTo %>" onchange="this.form.submit()" />
+    </div>
+  </form>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Revenue</div>
+      <div class="kpi-value green"><%= (revenue).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= orderCount %> POS orders</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Cost of Goods (Purchases)</div>
+      <div class="kpi-value yellow"><%= (cogs).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= receiptCount %> purchase receipts</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Gross Profit</div>
+      <div class="kpi-value <%= gross >= 0 ? 'green' : 'red' %>"><%= (gross).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= revenue > 0 ? Math.round(gross/revenue*100) : 0 %>% margin</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Other Expenses</div>
+      <div class="kpi-value red"><%= (expenses).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= expenseCount %> entries</div>
+    </div>
+    <div class="kpi" style="border-color:<%= net >= 0 ? '#00b894' : '#e74c3c' %>44">
+      <div class="kpi-label">Net Profit</div>
+      <div class="kpi-value <%= net >= 0 ? 'green' : 'red' %>" style="font-size:1.8rem">
+        <%= net >= 0 ? '' : '−' %><%= Math.abs(net).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %>
+      </div>
+      <div class="kpi-sub"><%= tenant.currency || 'IQD' %></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- P&L Summary -->
+    <div class="card">
+      <div class="card-title">📊 P&L Summary</div>
+      <div class="pl-row">
+        <span class="pl-label">Revenue (Sales)</span>
+        <span class="green">+ <%= revenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <div class="pl-row">
+        <span class="pl-label indent">Cost of Goods Sold</span>
+        <span class="yellow">− <%= cogs.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <div class="pl-row">
+        <span class="pl-label" style="font-weight:600;color:#ccc">Gross Profit</span>
+        <span class="<%= gross >= 0 ? 'green' : 'red' %>" style="font-weight:700"><%= gross.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% expByCat.forEach(cat => { %>
+      <div class="pl-row">
+        <span class="pl-label indent"><%= cat.name || 'Uncategorised' %></span>
+        <span class="red">− <%= parseFloat(cat.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% }) %>
+      <% if (expenses > 0 && expByCat.length === 0) { %>
+      <div class="pl-row">
+        <span class="pl-label indent">Other Expenses</span>
+        <span class="red">− <%= expenses.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% } %>
+      <div class="pl-row total">
+        <span class="pl-label" style="color:#fff">Net Profit</span>
+        <span class="<%= net >= 0 ? 'green' : 'red' %>"><%= net.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+    </div>
+
+    <!-- Expenses by category -->
+    <div class="card">
+      <div class="card-title">
+        💸 Expenses by Category
+        <a href="/accounting/expenses" class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">Manage</a>
+      </div>
+      <% if (expByCat.length === 0) { %>
+        <p style="color:#444;text-align:center;padding:30px 0;font-size:.85rem">No expenses in this period.</p>
+      <% } else { %>
+        <% expByCat.forEach(cat => { const pct = expenses > 0 ? Math.round(parseFloat(cat.total)/expenses*100) : 0; %>
+        <div class="cat-row">
+          <div class="cat-dot" style="background:<%= cat.color || '#e74c3c' %>"></div>
+          <span class="cat-name"><%= cat.name || 'Uncategorised' %></span>
+          <div class="cat-bar-bg" style="max-width:80px">
+            <div class="cat-bar-fill" style="width:<%= pct %>%;background:<%= cat.color || '#e74c3c' %>"></div>
+          </div>
+          <span style="font-size:.7rem;color:#555;width:28px;text-align:right"><%= pct %>%</span>
+          <span class="cat-amount"><%= parseFloat(cat.total).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></span>
+        </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Revenue by day chart -->
+  <% if (revByDay.length > 0) { %>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">📈 Revenue by Day</div>
+    <% const maxRev = Math.max(...revByDay.map(r => parseFloat(r.total))); %>
+    <div class="bar-chart">
+      <% revByDay.forEach(r => { const pct = maxRev > 0 ? Math.round(parseFloat(r.total)/maxRev*100) : 0; %>
+      <div class="bar-wrap">
+        <div class="bar" style="height:<%= pct %>%" title="<%= r.day %>: <%= parseFloat(r.total).toLocaleString() %>"></div>
+        <div class="bar-lbl"><%= r.day.slice(5) %></div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Recent expenses -->
+  <% if (recentExp.length > 0) { %>
+  <div class="card">
+    <div class="card-title">
+      Recent Expenses
+      <a href="/accounting/expenses" class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">View All</a>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="exp-table">
+      <thead><tr><th>Date</th><th>Description</th><th>Category</th><th style="text-align:right">Amount</th></tr></thead>
+      <tbody>
+      <% recentExp.forEach(e => { %>
+      <tr>
+        <td style="color:#555;white-space:nowrap"><%= e.expense_date.toISOString ? e.expense_date.toISOString().slice(0,10) : String(e.expense_date).slice(0,10) %></td>
+        <td style="color:#ddd"><%= e.description %></td>
+        <td>
+          <% if (e.cat_name) { %>
+            <span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:8px;background:<%= e.cat_color %>22;color:<%= e.cat_color %>"><%= e.cat_name %></span>
+          <% } else { %><span style="color:#333">—</span><% } %>
+        </td>
+        <td style="text-align:right;color:#e74c3c;font-weight:700"><%= parseFloat(e.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <% } %>
+
+</div>
+
+<script>
+function setPeriod(p) {
+  const now = new Date();
+  let from, to;
+  if (p === 'today') {
+    from = to = now.toISOString().slice(0,10);
+  } else if (p === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - d.getDay());
+    from = d.toISOString().slice(0,10);
+    to   = now.toISOString().slice(0,10);
+  } else if (p === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+  } else if (p === 'year') {
+    from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), 11, 31).toISOString().slice(0,10);
+  }
+  document.getElementById('fromDate').value = from;
+  document.getElementById('toDate').value   = to;
+  document.getElementById('dateForm').submit();
+}
+</script>
+</body>
+</html>

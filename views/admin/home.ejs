@@ -119,6 +119,18 @@
     </a>
     <% } %>
 
+    <!-- Accounting -->
+    <% if (tenant.feat_accounting && (_isAdmin || _can('access_accounting'))) { %>
+    <a href="/accounting" class="module-card" style="--accent:#00b894">
+      <div class="module-icon">📒</div>
+      <div>
+        <div class="module-name">Accounting</div>
+        <div class="module-desc">P&amp;L reports, expense tracking, revenue vs cost of goods</div>
+      </div>
+      <span class="module-badge" style="background:rgba(0,184,148,.15);color:#00b894">Active</span>
+    </a>
+    <% } %>
+
     <!-- Captain -->
     <% if (tenant.feat_captain && (_isAdmin || _can('access_captain'))) { %>
     <a href="/captain" class="module-card" style="--accent:#7c5cbf">

@@ -230,6 +230,25 @@ const pool = new Pool({
       sort_order INTEGER DEFAULT 0
     )`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS inv_category_id INTEGER REFERENCES inventory_categories(id) ON DELETE SET NULL`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_accounting BOOLEAN DEFAULT false`,
+    `CREATE TABLE IF NOT EXISTS expense_categories (
+      id        SERIAL PRIMARY KEY,
+      tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name      VARCHAR(80) NOT NULL,
+      color     VARCHAR(20) DEFAULT '#e74c3c',
+      sort_order INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS expenses (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      category_id INTEGER REFERENCES expense_categories(id) ON DELETE SET NULL,
+      description VARCHAR(200) NOT NULL,
+      amount      NUMERIC(12,2) NOT NULL,
+      expense_date DATE DEFAULT CURRENT_DATE,
+      notes       TEXT,
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);
