@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assets — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .kpi { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 18px; }
+    .kpi-label { font-size: .72rem; color: #555; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .kpi-val { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #555; font-size: .72rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid #1e1e32; color: #ccc; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .badge-active { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-retired { background: rgba(255,255,255,.05); color: #555; }
+    .badge-maintenance { background: rgba(243,156,18,.15); color: #f39c12; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 520px; border: 1px solid #2a2a3e; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+    .form-group textarea { height: 60px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">🏗️ Asset Management</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="document.getElementById('addAssetOverlay').classList.add('open')" class="btn btn-primary">+ Add Asset</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total Assets</div><div class="kpi-val"><%= stats.total %></div></div>
+    <div class="kpi"><div class="kpi-label">Active</div><div class="kpi-val"><%= stats.active_count %></div></div>
+    <div class="kpi"><div class="kpi-label">Total Purchase Cost</div><div class="kpi-val">$<%= parseFloat(stats.total_cost).toFixed(0) %></div></div>
+    <div class="kpi"><div class="kpi-label">Current Value</div><div class="kpi-val">$<%= parseFloat(stats.total_value).toFixed(0) %></div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><h3>🏗️ Asset Register</h3></div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Name</th><th>Category</th><th>Purchase Date</th><th>Purchase Price</th><th>Current Value</th><th>Dep. %</th><th>Location</th><th>Next Service</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+      <% assets.forEach(a => { %>
+      <tr>
+        <td>
+          <div style="color:#fff;font-weight:600"><%= a.name %></div>
+          <% if (a.serial_no) { %><div style="font-size:.72rem;color:#555">S/N: <%= a.serial_no %></div><% } %>
+        </td>
+        <td><%= a.category || '—' %></td>
+        <td><%= a.purchase_date ? a.purchase_date.toISOString().slice(0,10) : '—' %></td>
+        <td>$<%= parseFloat(a.purchase_price).toFixed(2) %></td>
+        <td>$<%= parseFloat(a.current_value).toFixed(2) %></td>
+        <td><%= parseFloat(a.depreciation_pct).toFixed(1) %>%</td>
+        <td><%= a.location || '—' %></td>
+        <td style="<%= a.next_service && new Date(a.next_service) <= new Date() ? 'color:#e74c3c' : '' %>">
+          <%= a.next_service ? a.next_service.toISOString().slice(0,10) : '—' %>
+        </td>
+        <td><span class="badge badge-<%= a.status %>"><%= a.status %></span></td>
+        <td style="display:flex;gap:5px">
+          <a href="/assets/<%= a.id %>/maintenance" class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px">🔧</a>
+          <button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px" onclick="openEdit(<%= JSON.stringify(a) %>)">Edit</button>
+          <form method="POST" action="/assets/<%= a.id %>/delete" onsubmit="return confirm('Delete?')">
+            <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">✕</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (!assets.length) { %><tr><td colspan="10" style="color:#555;text-align:center;padding:24px">No assets yet</td></tr><% } %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Asset Modal -->
+<div class="overlay" id="addAssetOverlay">
+  <div class="modal">
+    <h3>➕ Add Asset</h3>
+    <form method="POST" action="/assets">
+      <div class="form-group"><label>Asset Name *</label><input type="text" name="name" required /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Category</label><input type="text" name="category" placeholder="Equipment, Furniture..." /></div>
+        <div class="form-group"><label>Location</label><input type="text" name="location" placeholder="Kitchen, Store..." /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Purchase Date</label><input type="date" name="purchase_date" /></div>
+        <div class="form-group"><label>Serial No.</label><input type="text" name="serial_no" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Purchase Price ($)</label><input type="number" name="purchase_price" step="0.01" value="0" /></div>
+        <div class="form-group"><label>Current Value ($)</label><input type="number" name="current_value" step="0.01" value="0" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Depreciation %/yr</label><input type="number" name="depreciation_pct" step="0.1" value="0" /></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status"><option value="active">Active</option><option value="maintenance">In Maintenance</option><option value="retired">Retired</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea name="notes"></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addAssetOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Asset</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Asset Modal -->
+<div class="overlay" id="editAssetOverlay">
+  <div class="modal">
+    <h3>✏️ Edit Asset</h3>
+    <form method="POST" id="editAssetForm">
+      <div class="form-group"><label>Name *</label><input type="text" name="name" id="ea_name" required /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Category</label><input type="text" name="category" id="ea_cat" /></div>
+        <div class="form-group"><label>Location</label><input type="text" name="location" id="ea_loc" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Purchase Date</label><input type="date" name="purchase_date" id="ea_pdate" /></div>
+        <div class="form-group"><label>Serial No.</label><input type="text" name="serial_no" id="ea_serial" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Purchase Price ($)</label><input type="number" name="purchase_price" id="ea_pprice" step="0.01" /></div>
+        <div class="form-group"><label>Current Value ($)</label><input type="number" name="current_value" id="ea_cval" step="0.01" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Depreciation %</label><input type="number" name="depreciation_pct" id="ea_dep" step="0.1" /></div>
+        <div class="form-group"><label>Status</label>
+          <select name="status" id="ea_status"><option value="active">Active</option><option value="maintenance">Maintenance</option><option value="retired">Retired</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea name="notes" id="ea_notes"></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editAssetOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEdit(a) {
+  document.getElementById('editAssetForm').action = '/assets/' + a.id + '/edit';
+  document.getElementById('ea_name').value = a.name || '';
+  document.getElementById('ea_cat').value = a.category || '';
+  document.getElementById('ea_loc').value = a.location || '';
+  document.getElementById('ea_pdate').value = a.purchase_date ? a.purchase_date.slice(0,10) : '';
+  document.getElementById('ea_serial').value = a.serial_no || '';
+  document.getElementById('ea_pprice').value = a.purchase_price || 0;
+  document.getElementById('ea_cval').value = a.current_value || 0;
+  document.getElementById('ea_dep').value = a.depreciation_pct || 0;
+  document.getElementById('ea_status').value = a.status || 'active';
+  document.getElementById('ea_notes').value = a.notes || '';
+  document.getElementById('editAssetOverlay').classList.add('open');
+}
+</script>
+</body>
+</html>

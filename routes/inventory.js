@@ -373,6 +373,47 @@ router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ ex
   }
 });
 
+// ── Adjustments ───────────────────────────────────────────────────────────────
+router.get('/adjustments', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [adjRes, itemsRes] = await Promise.all([
+      db.query(`SELECT a.*, i.name AS item_name FROM inventory_adjustments a
+                LEFT JOIN inventory_items i ON i.id=a.item_id
+                WHERE a.tenant_id=$1 ORDER BY a.created_at DESC LIMIT 50`, [tid]),
+      db.query(`SELECT id, name, stock_qty, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/adjustments', {
+      tenant: req.tenant, currentUser: req.user,
+      adjustments: adjRes.rows, items: itemsRes.rows,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/adjustments', requireAuth, requireInventory, async (req, res) => {
+  const { item_id, type, qty_change, reason } = req.body;
+  const tid = req.user.tenantId;
+  const qty = parseFloat(qty_change) || 0;
+  try {
+    const itemRes = await db.query('SELECT name, avg_cost FROM inventory_items WHERE id=$1 AND tenant_id=$2', [item_id, tid]);
+    if (!itemRes.rows[0]) return res.redirect('/inventory/adjustments?error=Item+not+found');
+    const item = itemRes.rows[0];
+    const costImpact = Math.abs(qty) * parseFloat(item.avg_cost);
+    const actualQty = (type === 'write-off' || type === 'spoilage' || type === 'correction-out') ? -Math.abs(qty) : Math.abs(qty);
+
+    await db.query(`INSERT INTO inventory_adjustments (tenant_id,item_id,item_name,type,qty_change,reason,cost_impact,created_by)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [tid, item_id, item.name, type, actualQty, reason||null, costImpact, req.user.userId]);
+    await db.query(`UPDATE inventory_items SET stock_qty = stock_qty + $1 WHERE id=$2 AND tenant_id=$3`,
+      [actualQty, item_id, tid]);
+    await db.query(`INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,notes,created_by)
+                    VALUES ($1,$2,'adjustment',$3,$4,$5)`,
+      [tid, item_id, actualQty, reason||null, req.user.userId]);
+
+    res.redirect('/inventory/adjustments');
+  } catch (err) { console.error(err); res.redirect('/inventory/adjustments?error=' + encodeURIComponent(err.message)); }
+});
+
 // ── Stock deduction helper (called from POS pay route) ─────────────────────────
 async function deductStockForOrder(tenantId, orderId, userId) {
   try {

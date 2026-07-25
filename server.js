@@ -12,6 +12,12 @@ const captainRouter = require('./routes/captain');
 const inventoryRouter   = require('./routes/inventory');
 const { deductStockForOrder } = require('./routes/inventory');
 const accountingRouter  = require('./routes/accounting');
+const reportsRouter     = require('./routes/reports');
+const hrRouter          = require('./routes/hr');
+const reservationsRouter = require('./routes/reservations');
+const assetsRouter      = require('./routes/assets');
+const loyaltyRouter     = require('./routes/loyalty');
+const deliveryRouter    = require('./routes/delivery');
 const db = require('./db');
 
 const app = express();
@@ -77,6 +83,12 @@ app.use('/pos',     posRouter);
 app.use('/captain', captainRouter);
 app.use('/inventory',   inventoryRouter);
 app.use('/accounting',  accountingRouter);
+app.use('/reports',     reportsRouter);
+app.use('/hr',          hrRouter);
+app.use('/reservations', reservationsRouter);
+app.use('/assets',      assetsRouter);
+app.use('/loyalty',     loyaltyRouter);
+app.use('/delivery',    deliveryRouter);
 app.use('/', menuRouter);
 
 const PORT = process.env.PORT || 3000;

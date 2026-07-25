@@ -284,6 +284,184 @@ const pool = new Pool({
       created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at  TIMESTAMP DEFAULT NOW()
     )`,
+    // ERP feature flags
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_hr           BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_reservations BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_loyalty      BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_delivery     BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_assets       BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_reports      BOOLEAN DEFAULT false`,
+    // HR & Payroll
+    `CREATE TABLE IF NOT EXISTS hr_employees (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name        VARCHAR(120) NOT NULL,
+      phone       VARCHAR(30),
+      email       VARCHAR(120),
+      role        VARCHAR(60),
+      department  VARCHAR(60),
+      salary      NUMERIC(12,2) DEFAULT 0,
+      salary_type VARCHAR(20) DEFAULT 'monthly',
+      hire_date   DATE DEFAULT CURRENT_DATE,
+      status      VARCHAR(20) DEFAULT 'active',
+      notes       TEXT,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS hr_shifts (
+      id           SERIAL PRIMARY KEY,
+      tenant_id    INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      employee_id  INTEGER REFERENCES hr_employees(id) ON DELETE CASCADE,
+      shift_date   DATE NOT NULL,
+      start_time   TIME,
+      end_time     TIME,
+      hours_worked NUMERIC(5,2),
+      status       VARCHAR(20) DEFAULT 'scheduled',
+      notes        TEXT,
+      created_at   TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS hr_payroll (
+      id           SERIAL PRIMARY KEY,
+      tenant_id    INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      employee_id  INTEGER REFERENCES hr_employees(id) ON DELETE CASCADE,
+      period_start DATE NOT NULL,
+      period_end   DATE NOT NULL,
+      base_salary  NUMERIC(12,2) DEFAULT 0,
+      allowances   NUMERIC(12,2) DEFAULT 0,
+      deductions   NUMERIC(12,2) DEFAULT 0,
+      net_pay      NUMERIC(12,2) DEFAULT 0,
+      status       VARCHAR(20) DEFAULT 'draft',
+      paid_at      TIMESTAMP,
+      notes        TEXT,
+      created_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at   TIMESTAMP DEFAULT NOW()
+    )`,
+    // Reservations
+    `CREATE TABLE IF NOT EXISTS reservations (
+      id               SERIAL PRIMARY KEY,
+      tenant_id        INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      customer_name    VARCHAR(120) NOT NULL,
+      phone            VARCHAR(30),
+      party_size       INTEGER DEFAULT 1,
+      table_id         INTEGER REFERENCES restaurant_tables(id) ON DELETE SET NULL,
+      reservation_date DATE NOT NULL,
+      reservation_time TIME NOT NULL,
+      duration_mins    INTEGER DEFAULT 90,
+      status           VARCHAR(20) DEFAULT 'confirmed',
+      notes            TEXT,
+      created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at       TIMESTAMP DEFAULT NOW()
+    )`,
+    // Tax Rates
+    `CREATE TABLE IF NOT EXISTS tax_rates (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name        VARCHAR(60) NOT NULL,
+      rate        NUMERIC(6,3) NOT NULL,
+      description TEXT,
+      is_active   BOOLEAN DEFAULT true,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS tax_rate_id INTEGER REFERENCES tax_rates(id) ON DELETE SET NULL`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS tax_amount  NUMERIC(12,2) DEFAULT 0`,
+    // Inventory Adjustments
+    `CREATE TABLE IF NOT EXISTS inventory_adjustments (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      item_name   VARCHAR(120),
+      type        VARCHAR(30) DEFAULT 'write-off',
+      qty_change  NUMERIC(14,4) NOT NULL,
+      reason      VARCHAR(200),
+      cost_impact NUMERIC(12,2) DEFAULT 0,
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    // Budgets
+    `CREATE TABLE IF NOT EXISTS budgets (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name        VARCHAR(120) NOT NULL,
+      period_type VARCHAR(20) DEFAULT 'monthly',
+      start_date  DATE NOT NULL,
+      end_date    DATE NOT NULL,
+      notes       TEXT,
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS budget_lines (
+      id        SERIAL PRIMARY KEY,
+      budget_id INTEGER REFERENCES budgets(id) ON DELETE CASCADE,
+      category  VARCHAR(80) NOT NULL,
+      planned   NUMERIC(12,2) DEFAULT 0,
+      notes     TEXT
+    )`,
+    // Assets
+    `CREATE TABLE IF NOT EXISTS assets (
+      id               SERIAL PRIMARY KEY,
+      tenant_id        INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name             VARCHAR(120) NOT NULL,
+      category         VARCHAR(60),
+      purchase_date    DATE,
+      purchase_price   NUMERIC(12,2) DEFAULT 0,
+      current_value    NUMERIC(12,2) DEFAULT 0,
+      depreciation_pct NUMERIC(5,2) DEFAULT 0,
+      serial_no        VARCHAR(80),
+      location         VARCHAR(80),
+      status           VARCHAR(20) DEFAULT 'active',
+      notes            TEXT,
+      created_at       TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS asset_maintenance (
+      id                SERIAL PRIMARY KEY,
+      asset_id          INTEGER REFERENCES assets(id) ON DELETE CASCADE,
+      service_date      DATE DEFAULT CURRENT_DATE,
+      description       VARCHAR(200),
+      cost              NUMERIC(12,2) DEFAULT 0,
+      next_service_date DATE,
+      created_by        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at        TIMESTAMP DEFAULT NOW()
+    )`,
+    // Loyalty
+    `CREATE TABLE IF NOT EXISTS loyalty_programs (
+      id              SERIAL PRIMARY KEY,
+      tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name            VARCHAR(120) NOT NULL,
+      points_per_unit NUMERIC(8,2) DEFAULT 1,
+      unit_amount     NUMERIC(10,2) DEFAULT 1,
+      redeem_rate     NUMERIC(8,2) DEFAULT 0.01,
+      min_redeem_pts  INTEGER DEFAULT 100,
+      is_active       BOOLEAN DEFAULT true,
+      created_at      TIMESTAMP DEFAULT NOW()
+    )`,
+    `ALTER TABLE customers ADD COLUMN IF NOT EXISTS loyalty_points INTEGER DEFAULT 0`,
+    `CREATE TABLE IF NOT EXISTS loyalty_transactions (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      customer_id INTEGER REFERENCES customers(id) ON DELETE CASCADE,
+      order_id    INTEGER REFERENCES pos_orders(id) ON DELETE SET NULL,
+      type        VARCHAR(20) DEFAULT 'earn',
+      points      INTEGER NOT NULL,
+      notes       TEXT,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    // Delivery
+    `CREATE TABLE IF NOT EXISTS delivery_orders (
+      id             SERIAL PRIMARY KEY,
+      tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      order_id       INTEGER REFERENCES pos_orders(id) ON DELETE SET NULL,
+      customer_name  VARCHAR(120),
+      phone          VARCHAR(30),
+      address        TEXT,
+      zone           VARCHAR(60),
+      rider_name     VARCHAR(80),
+      delivery_fee   NUMERIC(10,2) DEFAULT 0,
+      status         VARCHAR(20) DEFAULT 'pending',
+      estimated_mins INTEGER DEFAULT 45,
+      dispatched_at  TIMESTAMP,
+      delivered_at   TIMESTAMP,
+      notes          TEXT,
+      created_at     TIMESTAMP DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

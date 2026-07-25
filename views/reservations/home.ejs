@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reservations — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; }
+    .date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+    .date-nav input[type=date] { background: #1a1a2e; border: 1.5px solid #2a2a3e; color: #fff; padding: 7px 10px; border-radius: 8px; font-size: .82rem; }
+    .res-card { background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .res-card.status-confirmed { border-left: 3px solid #7c5cbf; }
+    .res-card.status-seated { border-left: 3px solid #00b894; }
+    .res-card.status-completed { border-left: 3px solid #555; opacity: .6; }
+    .res-card.status-cancelled { border-left: 3px solid #e74c3c; opacity: .5; }
+    .res-time { font-size: 1.1rem; font-weight: 700; color: #fff; min-width: 60px; }
+    .res-info { flex: 1; }
+    .res-name { font-weight: 600; color: #fff; font-size: .92rem; }
+    .res-details { font-size: .78rem; color: #555; margin-top: 2px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .badge-confirmed { background: rgba(124,92,191,.15); color: #7c5cbf; }
+    .badge-seated { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-completed { background: rgba(255,255,255,.06); color: #555; }
+    .badge-cancelled { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 500px; border: 1px solid #2a2a3e; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .upcoming-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #1e1e32; }
+    .upcoming-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">📅 Reservations</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="document.getElementById('addResOverlay').classList.add('open')" class="btn btn-primary">+ New Booking</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <form method="GET" action="/reservations">
+    <div class="date-nav">
+      <span style="color:#aaa;font-size:.85rem">Viewing:</span>
+      <input type="date" name="date" value="<%= viewDate %>" onchange="this.form.submit()" />
+      <button type="button" class="btn btn-ghost" onclick="goDate(-1)">← Prev</button>
+      <button type="button" class="btn btn-ghost" onclick="goDate(1)">Next →</button>
+      <button type="button" class="btn btn-ghost" onclick="setToday()">Today</button>
+    </div>
+  </form>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px">
+    <div class="section">
+      <div class="section-header">
+        <h3>📋 <%= viewDate %> — <%= reservations.length %> booking<%= reservations.length !== 1 ? 's' : '' %></h3>
+      </div>
+      <% if (reservations.length) { %>
+        <% reservations.forEach(r => { %>
+        <div class="res-card status-<%= r.status %>">
+          <div class="res-time"><%= r.reservation_time.slice(0,5) %></div>
+          <div class="res-info">
+            <div class="res-name"><%= r.customer_name %></div>
+            <div class="res-details">
+              👥 <%= r.party_size %> guests
+              <% if (r.table_name) { %> &bull; 🪑 <%= r.table_name %><% } %>
+              <% if (r.phone) { %> &bull; 📞 <%= r.phone %><% } %>
+              <% if (r.notes) { %><br><%= r.notes %><% } %>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+            <span class="badge badge-<%= r.status %>"><%= r.status %></span>
+            <div style="display:flex;gap:5px">
+              <% if (r.status === 'confirmed') { %>
+              <form method="POST" action="/reservations/<%= r.id %>/status"><input type="hidden" name="status" value="seated" /><input type="hidden" name="date" value="<%= viewDate %>" /><button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px">Seat</button></form>
+              <% } %>
+              <% if (r.status === 'seated') { %>
+              <form method="POST" action="/reservations/<%= r.id %>/status"><input type="hidden" name="status" value="completed" /><input type="hidden" name="date" value="<%= viewDate %>" /><button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px">Done</button></form>
+              <% } %>
+              <% if (r.status !== 'cancelled') { %>
+              <form method="POST" action="/reservations/<%= r.id %>/status"><input type="hidden" name="status" value="cancelled" /><input type="hidden" name="date" value="<%= viewDate %>" /><button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px;color:#e74c3c">Cancel</button></form>
+              <% } %>
+              <form method="POST" action="/reservations/<%= r.id %>/delete" onsubmit="return confirm('Delete?')"><input type="hidden" name="date" value="<%= viewDate %>" /><button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px">✕</button></form>
+            </div>
+          </div>
+        </div>
+        <% }) %>
+      <% } else { %>
+        <div style="color:#555;text-align:center;padding:40px;font-size:.9rem">No reservations on this day</div>
+      <% } %>
+    </div>
+
+    <div class="section">
+      <h3>📆 Upcoming</h3>
+      <% upcoming.forEach(r => { %>
+      <div class="upcoming-item">
+        <div style="min-width:80px;font-size:.78rem;color:#7c5cbf;font-weight:700"><%= r.reservation_date.toISOString().slice(0,10) %><br><%= r.reservation_time.slice(0,5) %></div>
+        <div>
+          <div style="color:#fff;font-size:.85rem;font-weight:600"><%= r.customer_name %></div>
+          <div style="font-size:.72rem;color:#555">👥 <%= r.party_size %> <% if (r.table_name) { %>· 🪑 <%= r.table_name %><% } %></div>
+        </div>
+      </div>
+      <% }) %>
+      <% if (!upcoming.length) { %><div style="color:#555;font-size:.82rem">No upcoming bookings</div><% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Add Reservation Modal -->
+<div class="overlay" id="addResOverlay">
+  <div class="modal">
+    <h3>📅 New Reservation</h3>
+    <form method="POST" action="/reservations">
+      <div class="form-row">
+        <div class="form-group"><label>Customer Name *</label><input type="text" name="customer_name" required /></div>
+        <div class="form-group"><label>Phone</label><input type="text" name="phone" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Date *</label><input type="date" name="reservation_date" value="<%= viewDate %>" required /></div>
+        <div class="form-group"><label>Time *</label><input type="time" name="reservation_time" required /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Party Size</label><input type="number" name="party_size" value="2" min="1" /></div>
+        <div class="form-group"><label>Duration (min)</label><input type="number" name="duration_mins" value="90" /></div>
+      </div>
+      <div class="form-group">
+        <label>Table</label>
+        <select name="table_id">
+          <option value="">No specific table</option>
+          <% tables.forEach(t => { %><option value="<%= t.id %>"><%= t.name %></option><% }) %>
+        </select>
+      </div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addResOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Book</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const viewDate = '<%= viewDate %>';
+  function goDate(d) {
+    const dt = new Date(viewDate); dt.setDate(dt.getDate() + d);
+    window.location = '/reservations?date=' + dt.toISOString().slice(0,10);
+  }
+  function setToday() { window.location = '/reservations?date=' + new Date().toISOString().slice(0,10); }
+</script>
+</body>
+</html>

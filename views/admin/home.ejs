@@ -144,6 +144,78 @@
     </a>
     <% } %>
 
+    <!-- Reports -->
+    <% if (tenant.feat_reports && _isAdmin) { %>
+    <a href="/reports" class="module-card" style="--accent:#3498db">
+      <div class="module-icon">📊</div>
+      <div>
+        <div class="module-name">Reports</div>
+        <div class="module-desc">Sales by item & category, hourly trends, food cost %, revenue analysis</div>
+      </div>
+      <span class="module-badge" style="background:rgba(52,152,219,.15);color:#3498db">Active</span>
+    </a>
+    <% } %>
+
+    <!-- HR -->
+    <% if (tenant.feat_hr && _isAdmin) { %>
+    <a href="/hr" class="module-card" style="--accent:#9b59b6">
+      <div class="module-icon">👥</div>
+      <div>
+        <div class="module-name">HR & Payroll</div>
+        <div class="module-desc">Employee records, shift scheduling, payroll processing</div>
+      </div>
+      <span class="module-badge" style="background:rgba(155,89,182,.15);color:#9b59b6">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Reservations -->
+    <% if (tenant.feat_reservations && (_isAdmin || _can('access_pos'))) { %>
+    <a href="/reservations" class="module-card" style="--accent:#1abc9c">
+      <div class="module-icon">📅</div>
+      <div>
+        <div class="module-name">Reservations</div>
+        <div class="module-desc">Table booking calendar, party size, status tracking</div>
+      </div>
+      <span class="module-badge" style="background:rgba(26,188,156,.15);color:#1abc9c">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Loyalty -->
+    <% if (tenant.feat_loyalty && _isAdmin) { %>
+    <a href="/loyalty" class="module-card" style="--accent:#f39c12">
+      <div class="module-icon">⭐</div>
+      <div>
+        <div class="module-name">Loyalty Program</div>
+        <div class="module-desc">Customer points, rewards, redemption tracking</div>
+      </div>
+      <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Delivery -->
+    <% if (tenant.feat_delivery && (_isAdmin || _can('access_pos'))) { %>
+    <a href="/delivery" class="module-card" style="--accent:#e74c3c">
+      <div class="module-icon">🛵</div>
+      <div>
+        <div class="module-name">Delivery Orders</div>
+        <div class="module-desc">Delivery queue, rider assignment, real-time status tracking</div>
+      </div>
+      <span class="module-badge" style="background:rgba(231,76,60,.15);color:#e74c3c">Active</span>
+    </a>
+    <% } %>
+
+    <!-- Assets -->
+    <% if (tenant.feat_assets && _isAdmin) { %>
+    <a href="/assets" class="module-card" style="--accent:#7f8c8d">
+      <div class="module-icon">🏗️</div>
+      <div>
+        <div class="module-name">Asset Management</div>
+        <div class="module-desc">Equipment register, maintenance logs, depreciation tracking</div>
+      </div>
+      <span class="module-badge" style="background:rgba(127,140,141,.15);color:#7f8c8d">Active</span>
+    </a>
+    <% } %>
+
     <!-- Settings (admin only) -->
     <% if (_isAdmin) { %>
     <a href="/admin/workspace" class="module-card" style="--accent:#f39c12">
@@ -155,25 +227,6 @@
       <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Admin</span>
     </a>
     <% } %>
-
-    <!-- Coming Soon -->
-    <div class="module-card" style="--accent:#2a2a3e;opacity:.35;cursor:not-allowed">
-      <div class="module-icon">📦</div>
-      <div>
-        <div class="module-name">Inventory</div>
-        <div class="module-desc">Stock management, ingredients, low stock alerts and purchase orders</div>
-      </div>
-      <span class="module-badge" style="background:rgba(255,255,255,.05);color:#444">Coming Soon</span>
-    </div>
-
-    <div class="module-card" style="--accent:#2a2a3e;opacity:.35;cursor:not-allowed">
-      <div class="module-icon">💰</div>
-      <div>
-        <div class="module-name">Accounting</div>
-        <div class="module-desc">Revenue, expenses, profit & loss reports and daily summaries</div>
-      </div>
-      <span class="module-badge" style="background:rgba(255,255,255,.05);color:#444">Coming Soon</span>
-    </div>
 
   </div>
 </div>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loyalty Program — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #f39c12; color: #fff; }
+    .btn-success { background: rgba(0,184,148,.15); color: #00b894; }
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #555; font-size: .72rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid #1e1e32; color: #ccc; }
+    tr:last-child td { border-bottom: none; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 4px; }
+    .form-group input, .form-group select { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .points-badge { background: rgba(243,156,18,.15); color: #f39c12; padding: 3px 10px; border-radius: 20px; font-size: .78rem; font-weight: 700; }
+    .tx-type-earn { color: #00b894; }
+    .tx-type-redeem { color: #e74c3c; }
+    .tx-type-manual { color: #7c5cbf; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 400px; border: 1px solid #2a2a3e; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    @media(max-width:700px){ .two-col{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">⭐ Loyalty Program</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="document.getElementById('addPtsOverlay').classList.add('open')" class="btn btn-primary">+ Add Points</button>
+    <button onclick="document.getElementById('redeemOverlay').classList.add('open')" class="btn btn-success">Redeem</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Program Settings -->
+  <div class="section">
+    <div class="section-header"><h3>⚙️ Program Settings</h3></div>
+    <form method="POST" action="/loyalty/program">
+      <div class="form-row">
+        <div class="form-group"><label>Program Name</label><input type="text" name="name" value="<%= program ? program.name : 'Loyalty Rewards' %>" required /></div>
+        <div class="form-group"><label>Points per $<input-note> (spend amount)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="number" name="points_per_unit" value="<%= program ? program.points_per_unit : 1 %>" step="0.1" style="width:80px" />
+            <span style="color:#555;font-size:.82rem">pts per</span>
+            <input type="number" name="unit_amount" value="<%= program ? program.unit_amount : 1 %>" step="0.01" style="width:80px" />
+            <span style="color:#555;font-size:.82rem">$</span>
+          </div>
+        </div>
+        <div class="form-group"><label>Redeem Rate ($ per point)</label><input type="number" name="redeem_rate" value="<%= program ? program.redeem_rate : 0.01 %>" step="0.001" /></div>
+        <div class="form-group"><label>Min Points to Redeem</label><input type="number" name="min_redeem_pts" value="<%= program ? program.min_redeem_pts : 100 %>" /></div>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+  </div>
+
+  <div class="two-col">
+    <!-- Top Customers -->
+    <div class="section">
+      <h3>🏆 Top Customers by Points</h3>
+      <table>
+        <thead><tr><th>#</th><th>Customer</th><th>Points</th></tr></thead>
+        <tbody>
+        <% topCustomers.forEach((c, i) => { %>
+        <tr>
+          <td style="color:#555"><%= i+1 %></td>
+          <td><div style="color:#fff;font-weight:600"><%= c.name %></div><% if (c.phone) { %><div style="font-size:.72rem;color:#555"><%= c.phone %></div><% } %></td>
+          <td><span class="points-badge">⭐ <%= c.loyalty_points %></span></td>
+        </tr>
+        <% }) %>
+        <% if (!topCustomers.length) { %><tr><td colspan="3" style="color:#555;text-align:center;padding:24px">No loyalty customers yet</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="section">
+      <h3>📋 Recent Transactions</h3>
+      <table>
+        <thead><tr><th>Customer</th><th>Type</th><th>Points</th><th>Date</th></tr></thead>
+        <tbody>
+        <% transactions.forEach(tx => { %>
+        <tr>
+          <td style="color:#fff"><%= tx.customer_name %></td>
+          <td class="tx-type-<%= tx.type %>"><%= tx.type %></td>
+          <td class="tx-type-<%= tx.type %>"><%= tx.points > 0 ? '+' : '' %><%= tx.points %></td>
+          <td style="font-size:.78rem;color:#555"><%= tx.created_at.toISOString().slice(0,10) %></td>
+        </tr>
+        <% }) %>
+        <% if (!transactions.length) { %><tr><td colspan="4" style="color:#555;text-align:center;padding:24px">No transactions</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Points Modal -->
+<div class="overlay" id="addPtsOverlay">
+  <div class="modal">
+    <h3>⭐ Add Points</h3>
+    <form method="POST" action="/loyalty/points/add">
+      <div class="form-group"><label>Customer ID</label><input type="number" name="customer_id" required placeholder="Customer ID" /></div>
+      <div class="form-group"><label>Points to Add</label><input type="number" name="points" required placeholder="100" /></div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Reason..." /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addPtsOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Points</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Redeem Modal -->
+<div class="overlay" id="redeemOverlay">
+  <div class="modal">
+    <h3>🎁 Redeem Points</h3>
+    <form method="POST" action="/loyalty/points/redeem">
+      <div class="form-group"><label>Customer ID</label><input type="number" name="customer_id" required placeholder="Customer ID" /></div>
+      <div class="form-group"><label>Points to Redeem</label><input type="number" name="points" required placeholder="100" /></div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" placeholder="Order #..." /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('redeemOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-success">Redeem</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

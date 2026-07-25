@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+    .kpi { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 18px; }
+    .kpi-label { font-size: .72rem; color: #555; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .kpi-val { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .kpi-sub { font-size: .72rem; color: #555; margin-top: 3px; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; margin-bottom: 14px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .bar-label { width: 130px; font-size: .8rem; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+    .bar-track { flex: 1; background: #2a2a3e; border-radius: 4px; height: 8px; }
+    .bar-fill { height: 8px; border-radius: 4px; background: #7c5cbf; }
+    .bar-val { width: 70px; text-align: right; font-size: .78rem; color: #aaa; flex-shrink: 0; }
+    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 24px; }
+    .filter-row input[type=date] { background: #1a1a2e; border: 1.5px solid #2a2a3e; color: #fff; padding: 7px 10px; border-radius: 8px; font-size: .82rem; }
+    .pill { padding: 5px 12px; border-radius: 20px; font-size: .78rem; font-weight: 600; cursor: pointer; border: 1.5px solid #2a2a3e; background: transparent; color: #aaa; }
+    .pill.active, .pill:hover { background: #7c5cbf; color: #fff; border-color: #7c5cbf; }
+    .hour-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+    .hour-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .hour-bar-wrap { height: 60px; display: flex; align-items: flex-end; width: 100%; }
+    .hour-bar { width: 100%; border-radius: 3px 3px 0 0; background: #7c5cbf; min-height: 2px; transition: height .3s; }
+    .hour-label { font-size: .62rem; color: #555; }
+    @media(max-width:700px){ .two-col{grid-template-columns:1fr;} .hour-grid{grid-template-columns:repeat(6,1fr);} }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">📊 Advanced Reports</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Date filter -->
+  <form method="GET" action="/reports">
+    <div class="filter-row">
+      <input type="date" name="from" value="<%= start %>" />
+      <span style="color:#555">→</span>
+      <input type="date" name="to" value="<%= end %>" />
+      <button type="submit" class="btn btn-primary">Apply</button>
+      <button type="button" class="pill" onclick="setRange('today')">Today</button>
+      <button type="button" class="pill" onclick="setRange('week')">This Week</button>
+      <button type="button" class="pill" onclick="setRange('month')">This Month</button>
+      <button type="button" class="pill" onclick="setRange('year')">This Year</button>
+    </div>
+  </form>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Revenue</div><div class="kpi-val">$<%= parseFloat(revenue).toFixed(2) %></div><div class="kpi-sub"><%= orders %> orders</div></div>
+    <div class="kpi"><div class="kpi-label">Avg Order</div><div class="kpi-val">$<%= avgOrder %></div></div>
+    <div class="kpi"><div class="kpi-label">Cost of Goods</div><div class="kpi-val" style="color:#e74c3c">$<%= parseFloat(cogs).toFixed(2) %></div><div class="kpi-sub">Food cost <%= foodCostPct %>%</div></div>
+    <div class="kpi"><div class="kpi-label">Expenses</div><div class="kpi-val" style="color:#e74c3c">$<%= parseFloat(expenses).toFixed(2) %></div></div>
+    <div class="kpi"><div class="kpi-label">Net Profit</div><div class="kpi-val" style="color:<%= profit >= 0 ? '#00b894' : '#e74c3c' %>">$<%= parseFloat(profit).toFixed(2) %></div><div class="kpi-sub"><%= profit >= 0 ? 'Profitable' : 'Loss' %></div></div>
+    <div class="kpi"><div class="kpi-label">Food Cost %</div><div class="kpi-val" style="color:<%= foodCostPct > 35 ? '#e74c3c' : '#00b894' %>"><%= foodCostPct %>%</div><div class="kpi-sub">Target &lt; 35%</div></div>
+  </div>
+
+  <!-- Sales by Hour -->
+  <div class="section">
+    <h3>⏰ Sales by Hour</h3>
+    <% const maxRev = Math.max(...hourly.map(h => parseFloat(h.revenue)||0), 1); %>
+    <div class="hour-grid">
+      <% for (let h = 0; h < 24; h++) {
+        const hd = hourly.find(x => x.hour === h);
+        const rev = hd ? parseFloat(hd.revenue) : 0;
+        const pct = (rev / maxRev * 100).toFixed(1);
+        const label = h === 0 ? '12a' : h < 12 ? h+'a' : h === 12 ? '12p' : (h-12)+'p';
+      %>
+      <div class="hour-cell">
+        <div class="hour-bar-wrap">
+          <div class="hour-bar" style="height:<%= pct %>%" title="$<%= rev.toFixed(2) %>"></div>
+        </div>
+        <div class="hour-label"><%= label %></div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Top Items & Categories -->
+  <div class="two-col">
+    <div class="section">
+      <h3>🍽️ Top Items by Revenue</h3>
+      <% const maxItem = Math.max(...topItems.map(i => parseFloat(i.revenue)||0), 1); %>
+      <% topItems.forEach(item => { %>
+      <div class="bar-row">
+        <div class="bar-label" title="<%= item.name %>"><%= item.name %></div>
+        <div class="bar-track"><div class="bar-fill" style="width:<%= (parseFloat(item.revenue)/maxItem*100).toFixed(1) %>%"></div></div>
+        <div class="bar-val">$<%= parseFloat(item.revenue).toFixed(0) %></div>
+      </div>
+      <% }) %>
+      <% if (!topItems.length) { %><div style="color:#555;font-size:.82rem">No data</div><% } %>
+    </div>
+
+    <div class="section">
+      <h3>📁 Top Categories by Revenue</h3>
+      <% const maxCat = Math.max(...topCats.map(c => parseFloat(c.revenue)||0), 1); %>
+      <% topCats.forEach(cat => { %>
+      <div class="bar-row">
+        <div class="bar-label" title="<%= cat.category %>"><%= cat.category || 'Uncategorized' %></div>
+        <div class="bar-track"><div class="bar-fill" style="width:<%= (parseFloat(cat.revenue)/maxCat*100).toFixed(1) %>%;background:#00b894"></div></div>
+        <div class="bar-val">$<%= parseFloat(cat.revenue).toFixed(0) %></div>
+      </div>
+      <% }) %>
+      <% if (!topCats.length) { %><div style="color:#555;font-size:.82rem">No data</div><% } %>
+    </div>
+  </div>
+
+  <!-- Daily Trend -->
+  <div class="section">
+    <h3>📈 Daily Revenue Trend</h3>
+    <% if (daily.length) {
+      const maxDay = Math.max(...daily.map(d => parseFloat(d.revenue)||0), 1);
+    %>
+    <div style="display:flex;align-items:flex-end;gap:4px;height:80px;overflow-x:auto;padding-bottom:20px;position:relative">
+      <% daily.forEach(d => { const pct = (parseFloat(d.revenue)/maxDay*100).toFixed(1); %>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:28px" title="<%= d.day %> — $<%= parseFloat(d.revenue).toFixed(2) %>">
+        <div style="width:100%;border-radius:3px 3px 0 0;background:#f39c12;height:<%= pct %>%;min-height:2px"></div>
+        <div style="font-size:.6rem;color:#555;white-space:nowrap;transform:rotate(-45deg);transform-origin:top left;margin-top:8px"><%= d.day.slice(5) %></div>
+      </div>
+      <% }) %>
+    </div>
+    <% } else { %><div style="color:#555;font-size:.82rem">No sales in this period</div><% } %>
+  </div>
+</div>
+
+<script>
+  function setRange(r) {
+    const now = new Date();
+    let from, to = now.toISOString().slice(0,10);
+    if (r === 'today') from = to;
+    else if (r === 'week') { const d = new Date(now); d.setDate(d.getDate() - d.getDay()); from = d.toISOString().slice(0,10); }
+    else if (r === 'month') from = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-01';
+    else if (r === 'year') from = now.getFullYear() + '-01-01';
+    document.querySelector('[name=from]').value = from;
+    document.querySelector('[name=to]').value = to;
+    document.querySelector('form').submit();
+  }
+</script>
+</body>
+</html>

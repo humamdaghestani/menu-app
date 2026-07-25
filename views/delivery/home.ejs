@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delivery — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #e74c3c; color: #fff; }
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .kpi { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 16px; }
+    .kpi-label { font-size: .72rem; color: #555; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .kpi-val { font-size: 1.4rem; font-weight: 700; color: #fff; }
+    .filter-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .pill { padding: 5px 14px; border-radius: 20px; font-size: .78rem; font-weight: 600; cursor: pointer; border: 1.5px solid #2a2a3e; background: transparent; color: #aaa; text-decoration: none; }
+    .pill.active { background: #e74c3c; color: #fff; border-color: #e74c3c; }
+    .pill:hover:not(.active) { border-color: #e74c3c; color: #e74c3c; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; margin-bottom: 16px; }
+    .delivery-card { background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+    .delivery-card.status-pending { border-left: 3px solid #f39c12; }
+    .delivery-card.status-dispatched { border-left: 3px solid #3498db; }
+    .delivery-card.status-delivered { border-left: 3px solid #00b894; }
+    .delivery-card.status-cancelled { border-left: 3px solid #e74c3c; opacity: .5; }
+    .d-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .d-name { font-weight: 700; color: #fff; font-size: .95rem; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .badge-pending { background: rgba(243,156,18,.15); color: #f39c12; }
+    .badge-dispatched { background: rgba(52,152,219,.15); color: #3498db; }
+    .badge-delivered { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-cancelled { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .d-details { font-size: .8rem; color: #555; line-height: 1.6; }
+    .d-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; border: 1px solid #2a2a3e; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 4px; }
+    .form-group input, .form-group textarea { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+    .form-group textarea { height: 60px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">🛵 Delivery Orders</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="document.getElementById('newDelivOverlay').classList.add('open')" class="btn btn-primary">+ New Delivery</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Today Total</div><div class="kpi-val"><%= stats.total %></div></div>
+    <div class="kpi"><div class="kpi-label">Pending</div><div class="kpi-val" style="color:#f39c12"><%= stats.pending %></div></div>
+    <div class="kpi"><div class="kpi-label">Dispatched</div><div class="kpi-val" style="color:#3498db"><%= stats.dispatched %></div></div>
+    <div class="kpi"><div class="kpi-label">Delivered</div><div class="kpi-val" style="color:#00b894"><%= stats.delivered %></div></div>
+    <div class="kpi"><div class="kpi-label">Delivery Fees</div><div class="kpi-val">$<%= parseFloat(stats.total_fees).toFixed(2) %></div></div>
+  </div>
+
+  <div class="filter-row">
+    <a href="/delivery" class="pill <%= activeStatus === 'all' ? 'active' : '' %>">All</a>
+    <a href="/delivery?status=pending" class="pill <%= activeStatus === 'pending' ? 'active' : '' %>">Pending</a>
+    <a href="/delivery?status=dispatched" class="pill <%= activeStatus === 'dispatched' ? 'active' : '' %>">Dispatched</a>
+    <a href="/delivery?status=delivered" class="pill <%= activeStatus === 'delivered' ? 'active' : '' %>">Delivered</a>
+    <a href="/delivery?status=cancelled" class="pill <%= activeStatus === 'cancelled' ? 'active' : '' %>">Cancelled</a>
+  </div>
+
+  <div class="section">
+    <h3>📦 Deliveries</h3>
+    <% deliveries.forEach(d => { %>
+    <div class="delivery-card status-<%= d.status %>">
+      <div class="d-header">
+        <div>
+          <div class="d-name"><%= d.customer_name || 'Unknown' %><% if (d.phone) { %> <span style="font-weight:400;color:#555;font-size:.82rem">• <%= d.phone %></span><% } %></div>
+          <div class="d-details">
+            <% if (d.address) { %>📍 <%= d.address %><% if (d.zone) { %> (<%= d.zone %>)<% } %><br><% } %>
+            <% if (d.rider_name) { %>🛵 <%= d.rider_name %><br><% } %>
+            ⏱ Est. <%= d.estimated_mins %> min &bull; Fee: $<%= parseFloat(d.delivery_fee).toFixed(2) %>
+            <% if (d.notes) { %><br>📝 <%= d.notes %><% } %>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <span class="badge badge-<%= d.status %>"><%= d.status %></span>
+          <div style="font-size:.72rem;color:#555;margin-top:4px"><%= d.created_at.toISOString().slice(11,16) %></div>
+        </div>
+      </div>
+      <div class="d-actions">
+        <% if (d.status === 'pending') { %>
+        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="dispatched" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">🛵 Dispatch</button></form>
+        <% } %>
+        <% if (d.status === 'dispatched') { %>
+        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="delivered" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px;color:#00b894">✓ Delivered</button></form>
+        <% } %>
+        <% if (d.status !== 'cancelled' && d.status !== 'delivered') { %>
+        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="cancelled" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px;color:#e74c3c">✕ Cancel</button></form>
+        <% } %>
+        <form method="POST" action="/delivery/<%= d.id %>/delete" onsubmit="return confirm('Delete?')"><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">🗑</button></form>
+      </div>
+    </div>
+    <% }) %>
+    <% if (!deliveries.length) { %><div style="color:#555;text-align:center;padding:40px">No deliveries</div><% } %>
+  </div>
+</div>
+
+<!-- New Delivery Modal -->
+<div class="overlay" id="newDelivOverlay">
+  <div class="modal">
+    <h3>🛵 New Delivery Order</h3>
+    <form method="POST" action="/delivery">
+      <div class="form-row">
+        <div class="form-group"><label>Customer Name</label><input type="text" name="customer_name" required /></div>
+        <div class="form-group"><label>Phone</label><input type="text" name="phone" /></div>
+      </div>
+      <div class="form-group"><label>Address</label><textarea name="address"></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label>Zone / Area</label><input type="text" name="zone" placeholder="Downtown, North..." /></div>
+        <div class="form-group"><label>Rider Name</label><input type="text" name="rider_name" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Delivery Fee ($)</label><input type="number" name="delivery_fee" step="0.01" value="0" /></div>
+        <div class="form-group"><label>Est. Time (min)</label><input type="number" name="estimated_mins" value="45" /></div>
+      </div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('newDelivOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Order</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

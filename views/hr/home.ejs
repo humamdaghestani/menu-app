@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HR — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .kpi { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 18px; }
+    .kpi-label { font-size: .72rem; color: #555; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .kpi-val { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #555; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid #1e1e32; color: #ccc; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .badge-active { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-inactive { background: rgba(255,255,255,.05); color: #555; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 480px; border: 1px solid #2a2a3e; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 5px; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+    .form-group textarea { height: 70px; resize: vertical; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .nav-tab { padding: 7px 16px; border-radius: 8px; font-size: .82rem; font-weight: 600; color: #aaa; text-decoration: none; border: 1.5px solid #2a2a3e; }
+    .nav-tab.active, .nav-tab:hover { background: #7c5cbf; color: #fff; border-color: #7c5cbf; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">👥 HR & Payroll</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/hr/shifts" class="btn btn-ghost">📅 Shifts</a>
+    <a href="/hr/payroll" class="btn btn-ghost">💰 Payroll</a>
+    <button onclick="document.getElementById('addEmpOverlay').classList.add('open')" class="btn btn-primary">+ Add Employee</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <% if (typeof error !== 'undefined' || (typeof locals !== 'undefined' && locals.error)) { %><div style="background:rgba(231,76,60,.15);color:#e74c3c;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.85rem"><%= locals.error || error %></div><% } %>
+
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total Employees</div><div class="kpi-val"><%= employees.length %></div></div>
+    <div class="kpi"><div class="kpi-label">Active</div><div class="kpi-val"><%= employees.filter(e => e.status==='active').length %></div></div>
+    <div class="kpi"><div class="kpi-label">Shifts Today</div><div class="kpi-val"><%= shiftsToday %></div></div>
+    <div class="kpi"><div class="kpi-label">Payroll This Month</div><div class="kpi-val">$<%= parseFloat(payrollThisMonth).toFixed(2) %></div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h3>👤 Employees</h3>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Name</th><th>Role</th><th>Department</th><th>Salary</th><th>Hire Date</th><th>Status</th><th>Actions</th>
+      </tr></thead>
+      <tbody>
+      <% employees.forEach(e => { %>
+      <tr>
+        <td><strong style="color:#fff"><%= e.name %></strong><% if (e.email) { %><br><span style="font-size:.72rem;color:#555"><%= e.email %></span><% } %></td>
+        <td><%= e.role || '—' %></td>
+        <td><%= e.department || '—' %></td>
+        <td>$<%= parseFloat(e.salary).toFixed(2) %> <span style="color:#555;font-size:.75rem"><%= e.salary_type %></span></td>
+        <td><%= e.hire_date ? e.hire_date.toISOString().slice(0,10) : '—' %></td>
+        <td><span class="badge badge-<%= e.status === 'active' ? 'active' : 'inactive' %>"><%= e.status %></span></td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px" onclick="openEdit(<%= JSON.stringify(e) %>)">Edit</button>
+          <form method="POST" action="/hr/employees/<%= e.id %>/delete" onsubmit="return confirm('Delete employee?')">
+            <button class="btn btn-danger" style="font-size:.75rem;padding:4px 10px">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (!employees.length) { %><tr><td colspan="7" style="color:#555;text-align:center;padding:24px">No employees yet</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="overlay" id="addEmpOverlay">
+  <div class="modal">
+    <h3>➕ Add Employee</h3>
+    <form method="POST" action="/hr/employees">
+      <div class="form-row">
+        <div class="form-group"><label>Name *</label><input type="text" name="name" required /></div>
+        <div class="form-group"><label>Phone</label><input type="text" name="phone" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input type="email" name="email" /></div>
+        <div class="form-group"><label>Role / Position</label><input type="text" name="role" placeholder="Cashier, Chef..." /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><input type="text" name="department" placeholder="Kitchen, Service..." /></div>
+        <div class="form-group"><label>Hire Date</label><input type="date" name="hire_date" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Salary</label><input type="number" name="salary" step="0.01" value="0" /></div>
+        <div class="form-group"><label>Salary Type</label>
+          <select name="salary_type"><option value="monthly">Monthly</option><option value="daily">Daily</option><option value="hourly">Hourly</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea name="notes"></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addEmpOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Employee</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Employee Modal -->
+<div class="overlay" id="editEmpOverlay">
+  <div class="modal">
+    <h3>✏️ Edit Employee</h3>
+    <form method="POST" id="editEmpForm">
+      <div class="form-row">
+        <div class="form-group"><label>Name *</label><input type="text" name="name" id="ed_name" required /></div>
+        <div class="form-group"><label>Phone</label><input type="text" name="phone" id="ed_phone" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input type="email" name="email" id="ed_email" /></div>
+        <div class="form-group"><label>Role</label><input type="text" name="role" id="ed_role" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Department</label><input type="text" name="department" id="ed_dept" /></div>
+        <div class="form-group"><label>Hire Date</label><input type="date" name="hire_date" id="ed_hire" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Salary</label><input type="number" name="salary" id="ed_salary" step="0.01" /></div>
+        <div class="form-group"><label>Salary Type</label>
+          <select name="salary_type" id="ed_stype"><option value="monthly">Monthly</option><option value="daily">Daily</option><option value="hourly">Hourly</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select name="status" id="ed_status"><option value="active">Active</option><option value="inactive">Inactive</option><option value="on_leave">On Leave</option></select>
+      </div>
+      <div class="form-group"><label>Notes</label><textarea name="notes" id="ed_notes"></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editEmpOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openEdit(e) {
+  document.getElementById('editEmpForm').action = '/hr/employees/' + e.id + '/edit';
+  document.getElementById('ed_name').value = e.name || '';
+  document.getElementById('ed_phone').value = e.phone || '';
+  document.getElementById('ed_email').value = e.email || '';
+  document.getElementById('ed_role').value = e.role || '';
+  document.getElementById('ed_dept').value = e.department || '';
+  document.getElementById('ed_hire').value = e.hire_date ? e.hire_date.slice(0,10) : '';
+  document.getElementById('ed_salary').value = e.salary || 0;
+  document.getElementById('ed_stype').value = e.salary_type || 'monthly';
+  document.getElementById('ed_status').value = e.status || 'active';
+  document.getElementById('ed_notes').value = e.notes || '';
+  document.getElementById('editEmpOverlay').classList.add('open');
+}
+</script>
+</body>
+</html>

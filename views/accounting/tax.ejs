@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tax Rates — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #00b894; color: #fff; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .main { padding: 28px; max-width: 900px; margin: 0 auto; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #555; font-size: .72rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid #1e1e32; color: #ccc; }
+    tr:last-child td { border-bottom: none; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .badge-active { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-inactive { background: rgba(255,255,255,.05); color: #555; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 4px; }
+    .form-group input, .form-group textarea { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">🧾 Tax & VAT Rates</div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounting" class="btn btn-ghost">📒 Accounting</a>
+    <a href="/accounting/budgets" class="btn btn-ghost">📊 Budgets</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <% if (locals.error) { %><div style="background:rgba(231,76,60,.12);color:#e74c3c;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.85rem"><%= locals.error %></div><% } %>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px">
+    <div class="section">
+      <h3>🧾 Tax Rates</h3>
+      <table>
+        <thead><tr><th>Name</th><th>Rate</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        <% taxRates.forEach(t => { %>
+        <tr>
+          <td style="color:#fff;font-weight:600"><%= t.name %></td>
+          <td style="font-size:1rem;font-weight:700;color:#f39c12"><%= parseFloat(t.rate).toFixed(2) %>%</td>
+          <td style="font-size:.8rem;color:#aaa"><%= t.description || '—' %></td>
+          <td><span class="badge badge-<%= t.is_active ? 'active' : 'inactive' %>"><%= t.is_active ? 'Active' : 'Inactive' %></span></td>
+          <td style="display:flex;gap:6px">
+            <form method="POST" action="/accounting/tax/<%= t.id %>/edit">
+              <input type="hidden" name="name" value="<%= t.name %>" />
+              <input type="hidden" name="rate" value="<%= t.rate %>" />
+              <input type="hidden" name="description" value="<%= t.description || '' %>" />
+              <input type="hidden" name="is_active" value="<%= t.is_active ? '0' : '1' %>" />
+              <button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px"><%= t.is_active ? 'Disable' : 'Enable' %></button>
+            </form>
+            <form method="POST" action="/accounting/tax/<%= t.id %>/delete" onsubmit="return confirm('Delete tax rate?')">
+              <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">✕</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+        <% if (!taxRates.length) { %><tr><td colspan="5" style="color:#555;text-align:center;padding:24px">No tax rates defined</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h3>➕ Add Tax Rate</h3>
+      <form method="POST" action="/accounting/tax">
+        <div class="form-group"><label>Name * (e.g. VAT 15%)</label><input type="text" name="name" required placeholder="VAT, Service Charge..." /></div>
+        <div class="form-group"><label>Rate % *</label><input type="number" name="rate" step="0.001" required placeholder="15.000" /></div>
+        <div class="form-group"><label>Description</label><input type="text" name="description" placeholder="Applied to all food items..." /></div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Add Tax Rate</button>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

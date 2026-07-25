@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= budget.name %> — Budget</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .topbar-sub { font-size: .72rem; color: #555; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .main { padding: 28px; max-width: 1000px; margin: 0 auto; }
+    .section { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .section h3 { color: #fff; font-size: .92rem; font-weight: 700; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #555; font-size: .72rem; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid #1e1e32; color: #ccc; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .bar-track { background: #2a2a3e; border-radius: 4px; height: 8px; flex: 1; }
+    .bar-fill { height: 8px; border-radius: 4px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: .78rem; color: #aaa; margin-bottom: 4px; }
+    .form-group input { width: 100%; background: #0f0f1a; border: 1.5px solid #2a2a3e; color: #fff; padding: 8px 10px; border-radius: 8px; font-size: .85rem; font-family: inherit; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .meta { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .meta-item { background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 10px; padding: 12px 16px; }
+    .meta-label { font-size: .7rem; color: #555; text-transform: uppercase; margin-bottom: 3px; }
+    .meta-val { color: #fff; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div>
+      <div class="topbar-brand">📊 <%= budget.name %></div>
+      <div class="topbar-sub"><%= tenant.name %></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounting/budgets" class="btn btn-ghost">← All Budgets</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="meta">
+    <div class="meta-item"><div class="meta-label">Period</div><div class="meta-val"><%= budget.start_date.toISOString().slice(0,10) %> → <%= budget.end_date.toISOString().slice(0,10) %></div></div>
+    <div class="meta-item"><div class="meta-label">Type</div><div class="meta-val"><%= budget.period_type %></div></div>
+    <%
+      const totalPlanned = lines.reduce((s, l) => s + parseFloat(l.planned), 0);
+      const totalActual  = lines.reduce((s, l) => s + (actualsMap[l.category] || 0), 0);
+    %>
+    <div class="meta-item"><div class="meta-label">Total Planned</div><div class="meta-val" style="color:#7c5cbf">$<%= totalPlanned.toFixed(2) %></div></div>
+    <div class="meta-item"><div class="meta-label">Total Actual</div><div class="meta-val" style="color:<%= totalActual > totalPlanned ? '#e74c3c' : '#00b894' %>">$<%= totalActual.toFixed(2) %></div></div>
+    <div class="meta-item"><div class="meta-label">Variance</div><div class="meta-val" style="color:<%= totalActual > totalPlanned ? '#e74c3c' : '#00b894' %>">$<%= (totalPlanned - totalActual).toFixed(2) %></div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 280px;gap:20px">
+    <div class="section">
+      <h3>📊 Budget vs Actual</h3>
+      <table>
+        <thead><tr><th>Category</th><th>Planned</th><th>Actual</th><th>Variance</th><th>Progress</th><th></th></tr></thead>
+        <tbody>
+        <% lines.forEach(l => {
+          const actual = actualsMap[l.category] || 0;
+          const planned = parseFloat(l.planned);
+          const variance = planned - actual;
+          const pct = planned > 0 ? Math.min((actual / planned * 100), 100).toFixed(0) : 0;
+          const over = actual > planned;
+        %>
+        <tr>
+          <td style="color:#fff;font-weight:600"><%= l.category %></td>
+          <td>$<%= planned.toFixed(2) %></td>
+          <td style="color:<%= over ? '#e74c3c' : '#ccc' %>">$<%= actual.toFixed(2) %></td>
+          <td style="color:<%= variance >= 0 ? '#00b894' : '#e74c3c' %>"><%= variance >= 0 ? '+' : '' %>$<%= variance.toFixed(2) %></td>
+          <td style="min-width:100px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="bar-track"><div class="bar-fill" style="width:<%= pct %>%;background:<%= over ? '#e74c3c' : '#7c5cbf' %>"></div></div>
+              <span style="font-size:.72rem;color:#555"><%= pct %>%</span>
+            </div>
+          </td>
+          <td>
+            <form method="POST" action="/accounting/budgets/<%= budget.id %>/lines/<%= l.id %>/delete" onsubmit="return confirm('Delete line?')">
+              <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">✕</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+        <% if (!lines.length) { %><tr><td colspan="6" style="color:#555;text-align:center;padding:24px">No budget lines — add categories below</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h3>➕ Add Budget Line</h3>
+      <form method="POST" action="/accounting/budgets/<%= budget.id %>/lines">
+        <div class="form-group"><label>Category *</label><input type="text" name="category" required placeholder="Rent, Salaries, Food Cost..." /></div>
+        <div class="form-group"><label>Planned Amount ($) *</label><input type="number" name="planned" step="0.01" required placeholder="0.00" /></div>
+        <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Add Line</button>
+      </form>
+    </div>
+  </div>
+</div>
+</body>
+</html>

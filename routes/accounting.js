@@ -367,4 +367,103 @@ router.post('/categories/:id/delete', requireAuth, requireAccounting, async (req
   res.redirect('/accounting/expenses');
 });
 
+// ── Tax Rates ─────────────────────────────────────────────────────────────────
+router.get('/tax', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const taxRes = await db.query('SELECT * FROM tax_rates WHERE tenant_id=$1 ORDER BY name', [tid]);
+    res.render('accounting/tax', { tenant: req.tenant, currentUser: req.user, taxRates: taxRes.rows });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/tax', requireAuth, requireAccounting, async (req, res) => {
+  const { name, rate, description } = req.body;
+  try {
+    await db.query(`INSERT INTO tax_rates (tenant_id,name,rate,description) VALUES ($1,$2,$3,$4)`,
+      [req.user.tenantId, name, parseFloat(rate)||0, description||null]);
+    res.redirect('/accounting/tax');
+  } catch (err) { console.error(err); res.redirect('/accounting/tax?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/tax/:id/edit', requireAuth, requireAccounting, async (req, res) => {
+  const { name, rate, description, is_active } = req.body;
+  try {
+    await db.query(`UPDATE tax_rates SET name=$1,rate=$2,description=$3,is_active=$4 WHERE id=$5 AND tenant_id=$6`,
+      [name, parseFloat(rate)||0, description||null, is_active === '1', req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/tax');
+  } catch (err) { console.error(err); res.redirect('/accounting/tax?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/tax/:id/delete', requireAuth, requireAccounting, async (req, res) => {
+  await db.query('DELETE FROM tax_rates WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+  res.redirect('/accounting/tax');
+});
+
+// ── Budgets ───────────────────────────────────────────────────────────────────
+router.get('/budgets', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const budgetsRes = await db.query(`SELECT b.*,
+        COALESCE((SELECT SUM(planned) FROM budget_lines WHERE budget_id=b.id),0) AS total_planned
+      FROM budgets b WHERE b.tenant_id=$1 ORDER BY b.start_date DESC`, [tid]);
+    res.render('accounting/budgets', { tenant: req.tenant, currentUser: req.user, budgets: budgetsRes.rows });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/budgets', requireAuth, requireAccounting, async (req, res) => {
+  const { name, period_type, start_date, end_date, notes } = req.body;
+  try {
+    await db.query(`INSERT INTO budgets (tenant_id,name,period_type,start_date,end_date,notes,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [req.user.tenantId, name, period_type||'monthly', start_date, end_date, notes||null, req.user.userId]);
+    res.redirect('/accounting/budgets');
+  } catch (err) { console.error(err); res.redirect('/accounting/budgets?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/budgets/:id/delete', requireAuth, requireAccounting, async (req, res) => {
+  await db.query('DELETE FROM budgets WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+  res.redirect('/accounting/budgets');
+});
+
+router.get('/budgets/:id', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [budgetRes, linesRes] = await Promise.all([
+      db.query('SELECT * FROM budgets WHERE id=$1 AND tenant_id=$2', [req.params.id, tid]),
+      db.query('SELECT * FROM budget_lines WHERE budget_id=$1 ORDER BY category', [req.params.id]),
+    ]);
+    if (!budgetRes.rows[0]) return res.redirect('/accounting/budgets');
+    const budget = budgetRes.rows[0];
+
+    // Get actuals for budget period
+    const actualsRes = await db.query(`SELECT
+        ec.name AS category,
+        COALESCE(SUM(e.amount),0) AS actual
+      FROM expenses e LEFT JOIN expense_categories ec ON ec.id=e.category_id
+      WHERE e.tenant_id=$1 AND e.expense_date BETWEEN $2 AND $3
+      GROUP BY ec.name`, [tid, budget.start_date, budget.end_date]);
+
+    const actualsMap = {};
+    actualsRes.rows.forEach(a => { actualsMap[a.category || 'Uncategorized'] = parseFloat(a.actual); });
+
+    res.render('accounting/budget-detail', {
+      tenant: req.tenant, currentUser: req.user,
+      budget, lines: linesRes.rows, actualsMap,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/budgets/:id/lines', requireAuth, requireAccounting, async (req, res) => {
+  const { category, planned, notes } = req.body;
+  try {
+    await db.query(`INSERT INTO budget_lines (budget_id,category,planned,notes) VALUES ($1,$2,$3,$4)`,
+      [req.params.id, category, parseFloat(planned)||0, notes||null]);
+    res.redirect('/accounting/budgets/' + req.params.id);
+  } catch (err) { console.error(err); res.redirect('/accounting/budgets/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/budgets/:id/lines/:lid/delete', requireAuth, requireAccounting, async (req, res) => {
+  await db.query('DELETE FROM budget_lines WHERE id=$1', [req.params.lid]);
+  res.redirect('/accounting/budgets/' + req.params.id);
+});
+
 module.exports = router;
