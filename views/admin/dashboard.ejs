@@ -398,20 +398,38 @@
     <div class="card-header">
       <h2>Categories</h2>
     </div>
-    <p style="font-size:.8rem;color:#aaa;margin-bottom:10px">⋮⋮ Drag to reorder</p>
+    <p style="font-size:.8rem;color:#aaa;margin-bottom:10px">⋮⋮ Drag to reorder (top-level only)</p>
+    <%
+      const rootCatsAdmin = categories.filter(c => !c.parent_id);
+      const getSubcatsAdmin = pid => categories.filter(c => String(c.parent_id) === String(pid));
+    %>
     <div class="cat-list" id="catList">
-      <% categories.forEach(cat => { %>
+      <% rootCatsAdmin.forEach(cat => { %>
         <div class="cat-tag" data-id="<%= cat.id %>">
           <span class="drag-handle">⋮⋮</span>
           <% if (cat.image_url) { %>
             <img src="<%= cat.image_url %>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #ddd" />
           <% } %>
-          <%= cat.name %>
+          <strong><%= cat.name %></strong>
           <button type="button" class="btn btn-ghost btn-sm" onclick='openCatEdit(<%- JSON.stringify(cat) %>)' style="padding:2px 8px;font-size:.75rem">Edit</button>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="openAddSubcat('<%= cat.id %>','<%= cat.name.replace(/'/g, "\\'") %>')" style="padding:2px 8px;font-size:.75rem;color:#7c5cbf">+ Sub</button>
           <form method="POST" action="/admin/categories/<%= cat.id %>/delete" onsubmit="return confirm('Delete category?')" style="margin:0">
             <button type="submit" title="Delete" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:.9rem">✕</button>
           </form>
         </div>
+        <% getSubcatsAdmin(cat.id).forEach(sub => { %>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 8px 4px 28px;background:#fafafa;border-radius:8px;margin-bottom:4px;font-size:.85rem">
+          <span style="color:#bbb">↳</span>
+          <% if (sub.image_url) { %>
+            <img src="<%= sub.image_url %>" style="width:20px;height:20px;border-radius:50%;object-fit:cover" />
+          <% } %>
+          <span style="color:#666"><%= sub.name %></span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick='openCatEdit(<%- JSON.stringify(sub) %>)' style="padding:1px 6px;font-size:.72rem;margin-left:auto">Edit</button>
+          <form method="POST" action="/admin/categories/<%= sub.id %>/delete" onsubmit="return confirm('Delete subcategory?')" style="margin:0">
+            <button type="submit" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:.85rem">✕</button>
+          </form>
+        </div>
+        <% }) %>
       <% }) %>
     </div>
     <form method="POST" action="/admin/categories">
@@ -419,6 +437,15 @@
         <div class="form-group">
           <label>Name (English) *</label>
           <input type="text" name="name" placeholder="e.g. Burgers" required />
+        </div>
+        <div class="form-group">
+          <label>Parent Category <span style="color:#bbb;font-weight:400">(optional — makes this a sub-category)</span></label>
+          <select name="parent_id">
+            <option value="">— Top-level category —</option>
+            <% rootCatsAdmin.forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+            <% }) %>
+          </select>
         </div>
         <div class="form-group">
           <label>Image URL</label>
@@ -463,8 +490,16 @@
           <label>Category</label>
           <select name="category_id">
             <option value="">No category</option>
-            <% categories.forEach(cat => { %>
-              <option value="<%= cat.id %>"><%= cat.name %></option>
+            <% rootCatsAdmin.forEach(cat => { %>
+              <% const subs = getSubcatsAdmin(cat.id); %>
+              <% if (subs.length > 0) { %>
+                <optgroup label="<%= cat.name %>">
+                  <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
+                  <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                </optgroup>
+              <% } else { %>
+                <option value="<%= cat.id %>"><%= cat.name %></option>
+              <% } %>
             <% }) %>
           </select>
         </div>
@@ -602,10 +637,20 @@
   <div class="modal" style="max-width:420px">
     <h3>Edit Category</h3>
     <form method="POST" id="catEditForm">
+      <input type="hidden" name="parent_id" id="catEditParentId" value="" />
       <div class="form-grid" style="grid-template-columns:1fr">
         <div class="form-group">
           <label>Name (English) *</label>
           <input type="text" name="name" id="catEditName" required />
+        </div>
+        <div class="form-group">
+          <label>Parent Category</label>
+          <select id="catEditParentSel" onchange="document.getElementById('catEditParentId').value=this.value">
+            <option value="">— Top-level category —</option>
+            <% rootCatsAdmin.forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+            <% }) %>
+          </select>
         </div>
         <div class="form-group">
           <label>الاسم (Arabic)</label>
@@ -653,8 +698,16 @@
           <label>Category</label>
           <select name="category_id" id="editCategory">
             <option value="">No category</option>
-            <% categories.forEach(cat => { %>
-              <option value="<%= cat.id %>"><%= cat.name %></option>
+            <% rootCatsAdmin.forEach(cat => { %>
+              <% const subs = getSubcatsAdmin(cat.id); %>
+              <% if (subs.length > 0) { %>
+                <optgroup label="<%= cat.name %>">
+                  <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
+                  <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                </optgroup>
+              <% } else { %>
+                <option value="<%= cat.id %>"><%= cat.name %></option>
+              <% } %>
             <% }) %>
           </select>
         </div>
@@ -724,15 +777,32 @@
 
 <script>
   function openCatEdit(cat) {
-    document.getElementById('catEditName').value   = cat.name;
-    document.getElementById('catEditNameAr').value = cat.name_ar || '';
-    document.getElementById('catEditNameKu').value = cat.name_ku || '';
-    document.getElementById('catEditImgUrl').value = cat.image_url || '';
-    document.getElementById('catEditForm').action  = '/admin/categories/' + cat.id + '/edit';
+    document.getElementById('catEditName').value    = cat.name;
+    document.getElementById('catEditNameAr').value  = cat.name_ar || '';
+    document.getElementById('catEditNameKu').value  = cat.name_ku || '';
+    document.getElementById('catEditImgUrl').value  = cat.image_url || '';
+    document.getElementById('catEditParentId').value = cat.parent_id || '';
+    document.getElementById('catEditParentSel').value = cat.parent_id || '';
+    document.getElementById('catEditForm').action   = '/admin/categories/' + cat.id + '/edit';
     previewImg(document.getElementById('catEditImgUrl'), 'catEditImgPreview');
     document.getElementById('catEditOverlay').classList.add('open');
   }
   function closeCatEdit() { document.getElementById('catEditOverlay').classList.remove('open'); }
+
+  function openAddSubcat(parentId, parentName) {
+    // Pre-fill add-category form with parent selected
+    const form = document.querySelector('form[action="/admin/categories"]');
+    if (!form) return;
+    form.querySelector('[name="parent_id"]').value = parentId;
+    form.querySelector('[name="name"]').value = '';
+    form.querySelector('[name="name"]').focus();
+    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Visual hint
+    const lbl = form.querySelector('[name="parent_id"]').closest('.form-group').querySelector('label');
+    const orig = lbl.textContent;
+    lbl.textContent = `↳ Adding sub-category under "${parentName}"`;
+    setTimeout(() => { lbl.textContent = orig; }, 3000);
+  }
   document.getElementById('catEditOverlay').addEventListener('click', e => {
     if (e.target === document.getElementById('catEditOverlay')) closeCatEdit();
   });

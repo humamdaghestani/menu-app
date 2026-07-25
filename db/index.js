@@ -197,6 +197,7 @@ const pool = new Pool({
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS is_raw_material  BOOLEAN DEFAULT false`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS is_semi_finished BOOLEAN DEFAULT false`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS can_be_sold      BOOLEAN DEFAULT false`,
+    `ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL`,
     `CREATE TABLE IF NOT EXISTS inventory_transactions (
       id             SERIAL PRIMARY KEY,
       tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

@@ -649,7 +649,7 @@
         <div class="cat-img-wrap">🍴</div>
         <span class="cat-label"></span>
       </button>
-      <% categories.forEach(cat => { %>
+      <% categories.filter(c => !c.parent_id).forEach(cat => { %>
         <button data-id="<%= cat.id %>">
           <div class="cat-img-wrap">
             <% if (cat.image_url) { %><img src="<%= cat.image_url %>" alt="<%= cat.name %>" /><% } else { %>🍽️<% } %>
@@ -1139,7 +1139,7 @@
   function updateCategoryNav() {
     const L = LANG[currentLang];
     document.querySelector('[data-id="all"] .cat-label').textContent = L.all;
-    categories.forEach(cat => {
+    categories.filter(c => !c.parent_id).forEach(cat => {
       const btn = document.querySelector(`[data-id="${cat.id}"]`);
       if (btn) { const lbl = btn.querySelector('.cat-label'); if (lbl) lbl.textContent = getLocalized(cat, 'name', currentLang); }
     });
@@ -1177,9 +1177,15 @@
     const grid = document.getElementById('itemsGrid');
     grid.innerHTML = '';
 
+    // Build subcategory map: catId -> parentId
+    const subMap = {};
+    categories.forEach(c => { if (c.parent_id) subMap[c.id] = c.parent_id; });
+
     // Determine which items to show
     const filtered = items.filter(item => {
-      const matchCat = activeCategory === 'all' || Number(item.category_id) === Number(activeCategory);
+      const matchCat = activeCategory === 'all'
+        || Number(item.category_id) === Number(activeCategory)
+        || subMap[Number(item.category_id)] === Number(activeCategory);
       if (!matchCat) return false;
       if (!searchQuery) return true;
       return (item.name || '').toLowerCase().includes(searchQuery) ||
@@ -1212,10 +1218,13 @@
         grid.appendChild(sec);
       }
 
-      // Group by category with section headers
-      categories.forEach(cat => {
-        const catItems = filtered.filter(item => Number(item.category_id) === Number(cat.id));
-        if (catItems.length === 0) return;
+      // Group by root category (with subcategory sub-headers)
+      const rootCats = categories.filter(c => !c.parent_id);
+      rootCats.forEach(cat => {
+        const subcats   = categories.filter(c => Number(c.parent_id) === Number(cat.id));
+        const directItems = filtered.filter(item => Number(item.category_id) === Number(cat.id));
+        const subItems  = subcats.flatMap(sub => filtered.filter(item => Number(item.category_id) === Number(sub.id)));
+        if (directItems.length === 0 && subItems.length === 0) return;
 
         const section = document.createElement('section');
         section.className = 'category-section';
@@ -1230,14 +1239,37 @@
         title.appendChild(document.createTextNode(getLocalized(cat, 'name', currentLang)));
         section.appendChild(title);
 
-        const innerGrid = document.createElement('div');
-        innerGrid.className = 'items-inner-grid';
-        catItems.forEach((item, i) => {
-          const card = buildCard(item, L);
-          card.style.animationDelay = Math.min(i * 35, 180) + 'ms';
-          innerGrid.appendChild(card);
+        // Direct items (assigned to root category itself)
+        if (directItems.length > 0) {
+          const innerGrid = document.createElement('div');
+          innerGrid.className = 'items-inner-grid';
+          directItems.forEach((item, i) => {
+            const card = buildCard(item, L);
+            card.style.animationDelay = Math.min(i * 35, 180) + 'ms';
+            innerGrid.appendChild(card);
+          });
+          section.appendChild(innerGrid);
+        }
+
+        // Subcategory groups
+        subcats.forEach(sub => {
+          const subCatItems = filtered.filter(item => Number(item.category_id) === Number(sub.id));
+          if (subCatItems.length === 0) return;
+          const subTitle = document.createElement('h3');
+          subTitle.className = 'section-title';
+          subTitle.style.cssText = 'font-size:.95rem;margin-top:16px;margin-bottom:8px;opacity:.75;padding-left:8px;border-left:3px solid currentColor';
+          subTitle.textContent = getLocalized(sub, 'name', currentLang);
+          section.appendChild(subTitle);
+          const subGrid = document.createElement('div');
+          subGrid.className = 'items-inner-grid';
+          subCatItems.forEach((item, i) => {
+            const card = buildCard(item, L);
+            card.style.animationDelay = Math.min(i * 35, 180) + 'ms';
+            subGrid.appendChild(card);
+          });
+          section.appendChild(subGrid);
         });
-        section.appendChild(innerGrid);
+
         grid.appendChild(section);
       });
 

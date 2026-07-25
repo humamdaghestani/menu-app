@@ -182,11 +182,11 @@ router.post('/items/:id/delete', requireAuth, bust, async (req, res) => {
 
 // ── Categories CRUD ────────────────────────────────
 router.post('/categories', requireAuth, bust, async (req, res) => {
-  const { name, name_ar, name_ku, image_url } = req.body;
+  const { name, name_ar, name_ku, image_url, parent_id } = req.body;
   try {
     await db.query(
-      'INSERT INTO categories (tenant_id, name, name_ar, name_ku, image_url) VALUES ($1, $2, $3, $4, $5)',
-      [req.user.tenantId, name, name_ar || null, name_ku || null, image_url || null]
+      'INSERT INTO categories (tenant_id, name, name_ar, name_ku, image_url, parent_id) VALUES ($1,$2,$3,$4,$5,$6)',
+      [req.user.tenantId, name, name_ar || null, name_ku || null, image_url || null, parseInt(parent_id) || null]
     );
     res.redirect('/admin/dashboard');
   } catch (err) {
@@ -196,11 +196,11 @@ router.post('/categories', requireAuth, bust, async (req, res) => {
 });
 
 router.post('/categories/:id/edit', requireAuth, bust, async (req, res) => {
-  const { name, name_ar, name_ku, image_url } = req.body;
+  const { name, name_ar, name_ku, image_url, parent_id } = req.body;
   try {
     await db.query(
-      'UPDATE categories SET name=$1, name_ar=$2, name_ku=$3, image_url=$4 WHERE id=$5 AND tenant_id=$6',
-      [name, name_ar || null, name_ku || null, image_url || null, req.params.id, req.user.tenantId]
+      'UPDATE categories SET name=$1, name_ar=$2, name_ku=$3, image_url=$4, parent_id=$5 WHERE id=$6 AND tenant_id=$7',
+      [name, name_ar || null, name_ku || null, image_url || null, parseInt(parent_id) || null, req.params.id, req.user.tenantId]
     );
     res.redirect('/admin/dashboard?success=Category+updated');
   } catch (err) {
@@ -385,24 +385,32 @@ router.get('/import', requireAuth, requirePerm('import'), requireFeature('feat_i
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
-// Download blank template — category column uses a dropdown from tenant's categories
+// Download blank template — category + subcategory dropdowns from tenant's categories
 router.get('/import/template', requireAuth, requirePerm('import'), async (req, res) => {
   try {
     const catsRes = await db.query(
-      'SELECT name FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name',
+      'SELECT id, name, parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name',
       [req.user.tenantId]
     );
-    const cats = catsRes.rows.map(c => c.name);
+    const allCats  = catsRes.rows;
+    const rootCats = allCats.filter(c => !c.parent_id);
+    const subCats  = allCats.filter(c =>  c.parent_id);
 
     const ExcelJS = require('exceljs');
     const wb = new ExcelJS.Workbook();
 
-    // Hidden helper sheet that the dropdown formula references
-    const catSheet = wb.addWorksheet('_Categories', { state: 'veryHidden' });
-    if (cats.length > 0) {
-      catSheet.addRows(cats.map(c => [c]));
+    // Hidden helper sheets for dropdown formulae
+    const rootSheet = wb.addWorksheet('_RootCats', { state: 'veryHidden' });
+    rootSheet.addRows(rootCats.length ? rootCats.map(c => [c.name]) : [['(no categories yet)']]);
+
+    const subSheet = wb.addWorksheet('_SubCats', { state: 'veryHidden' });
+    if (subCats.length) {
+      subCats.forEach(s => {
+        const parentName = allCats.find(c => c.id === s.parent_id)?.name || '';
+        subSheet.addRow([s.name, parentName]);
+      });
     } else {
-      catSheet.addRow(['(no categories yet)']);
+      subSheet.addRow(['(no subcategories yet)', '']);
     }
 
     // Main import sheet
@@ -413,14 +421,15 @@ router.get('/import/template', requireAuth, requirePerm('import'), async (req, r
       { header: 'name_ku',        width: 24 },
       { header: 'price',          width: 10 },
       { header: 'category',       width: 20 },
-      { header: 'description',    width: 36 },
-      { header: 'description_ar', width: 36 },
-      { header: 'description_ku', width: 36 },
-      { header: 'image_url',      width: 30 },
+      { header: 'subcategory',    width: 20 },
+      { header: 'description',    width: 34 },
+      { header: 'description_ar', width: 34 },
+      { header: 'description_ku', width: 34 },
+      { header: 'image_url',      width: 28 },
       { header: 'badge',          width: 12 },
     ];
 
-    // Style the header row
+    // Style header row
     ws.getRow(1).eachCell(cell => {
       cell.font      = { bold: true, color: { argb: 'FFFFFFFF' } };
       cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B1F6E' } };
@@ -428,22 +437,31 @@ router.get('/import/template', requireAuth, requirePerm('import'), async (req, r
     });
 
     // Example row
+    const firstRoot = rootCats[0]?.name || 'Burgers';
+    const firstSub  = subCats[0]?.name  || '';
     ws.addRow([
       'Chicken Burger', 'برجر دجاج', 'برگەری مریشک',
-      12.99, cats[0] || 'Burgers',
+      12.99, firstRoot, firstSub,
       'Crispy fried chicken with lettuce', 'دجاج مقلي مع خس', 'مریشکی سووتاو',
       '', 'popular'
     ]);
 
-    // Category dropdown for rows 2..1001
-    if (cats.length > 0) {
+    // Category dropdown (col E)
+    if (rootCats.length > 0) {
       ws.dataValidations.add('E2:E1001', {
-        type: 'list',
-        allowBlank: true,
-        formulae: [`_Categories!$A$1:$A$${cats.length}`],
+        type: 'list', allowBlank: true,
+        formulae: [`_RootCats!$A$1:$A$${rootCats.length}`],
         showErrorMessage: true,
         errorTitle: 'Invalid Category',
         error: 'Please choose a category from the dropdown list.'
+      });
+    }
+    // Subcategory dropdown (col F)
+    if (subCats.length > 0) {
+      ws.dataValidations.add('F2:F1001', {
+        type: 'list', allowBlank: true,
+        formulae: [`_SubCats!$A$1:$A$${subCats.length}`],
+        showErrorMessage: false
       });
     }
 
@@ -492,7 +510,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       }
 
       try {
-        // Resolve category
+        // Resolve parent category
         let categoryId = null;
         const catName = String(r.category || '').trim();
         if (catName) {
@@ -500,7 +518,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
             categoryId = categoryCache[catName];
           } else {
             const existing = await db.query(
-              'SELECT id FROM categories WHERE tenant_id=$1 AND LOWER(name)=LOWER($2)',
+              'SELECT id FROM categories WHERE tenant_id=$1 AND LOWER(name)=LOWER($2) AND parent_id IS NULL',
               [req.user.tenantId, catName]
             );
             if (existing.rows.length > 0) {
@@ -513,6 +531,30 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
               categoryId = created.rows[0].id;
             }
             categoryCache[catName] = categoryId;
+          }
+        }
+
+        // Resolve subcategory (overrides categoryId if provided)
+        const subName = String(r.subcategory || '').trim();
+        if (subName && categoryId) {
+          const subKey = `${categoryId}__${subName.toLowerCase()}`;
+          if (categoryCache[subKey] !== undefined) {
+            categoryId = categoryCache[subKey];
+          } else {
+            const existing = await db.query(
+              'SELECT id FROM categories WHERE tenant_id=$1 AND LOWER(name)=LOWER($2) AND parent_id=$3',
+              [req.user.tenantId, subName, categoryId]
+            );
+            if (existing.rows.length > 0) {
+              categoryId = existing.rows[0].id;
+            } else {
+              const created = await db.query(
+                'INSERT INTO categories (tenant_id, name, parent_id) VALUES ($1,$2,$3) RETURNING id',
+                [req.user.tenantId, subName, categoryId]
+              );
+              categoryId = created.rows[0].id;
+            }
+            categoryCache[subKey] = categoryId;
           }
         }
 
@@ -533,7 +575,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
           ]
         );
         imported++;
-        rows.push({ row: rowNum, name, category: catName, price, ok: true });
+        rows.push({ row: rowNum, name, category: subName ? `${catName} › ${subName}` : catName, price, ok: true });
       } catch (rowErr) {
         console.error(rowErr);
         errors.push(`Row ${rowNum}: ${rowErr.message}`);
