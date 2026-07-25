@@ -348,8 +348,8 @@ router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ ex
           );
           await client.query(
             `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, unit_cost, reference_id, reference_type, notes, created_by)
-             VALUES ($1,$2,'purchase',$3,$4,$5,'purchase_receipt','Purchase receipt #'||$5,$6)`,
-            [tid, resolvedItemId, l.quantity, l.unit_price, receiptId, req.user.userId]
+             VALUES ($1,$2,'purchase',$3,$4,$5,'purchase_receipt',$6,$7)`,
+            [tid, resolvedItemId, l.quantity, l.unit_price, receiptId, 'Purchase receipt #' + receiptId, req.user.userId]
           );
         }
       }
