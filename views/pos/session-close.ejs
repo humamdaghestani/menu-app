@@ -79,27 +79,6 @@
     <div class="stat-row"><span class="stat-label">Expected in Drawer</span><span class="stat-val green"><%= Math.round(parseFloat(session.opening_cash) + summary.cashIQD).toLocaleString() %> IQD</span></div>
   </div>
 
-  <!-- Orders list -->
-  <% if (orders.length > 0) { %>
-  <div class="card">
-    <h2>Completed Orders</h2>
-    <table class="orders-table">
-      <thead><tr><th>#</th><th>Table</th><th>Items</th><th>Total</th><th>Method</th></tr></thead>
-      <tbody>
-        <% orders.forEach(o => { %>
-        <tr>
-          <td>#<%= o.id %></td>
-          <td><%= o.table_name %></td>
-          <td><%= o.item_count %></td>
-          <td><%= tenant.currency || '$' %><%= parseFloat(o.total).toFixed(2) %></td>
-          <td style="text-transform:capitalize"><%= o.pay_method %></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-  <% } %>
-
   <!-- Close form -->
   <div class="card">
     <h2>Close Session</h2>
