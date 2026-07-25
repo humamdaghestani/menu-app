@@ -491,9 +491,9 @@ function _npUpdate() {
   else                             label = item.name;
 
   if (_npInput) {
-    val = _npMode === 'price' ? '$' + (parseInt(_npInput) / 100).toFixed(2) : _npInput;
+    val = _npMode === 'price' ? CUR + (parseInt(_npInput) / 100).toFixed(2) : _npInput;
   } else if (_npMode === 'qty' && item)   val = String(item.quantity);
-  else if (_npMode === 'price' && item)   val = '$' + item.price.toFixed(2);
+  else if (_npMode === 'price' && item)   val = CUR + item.price.toFixed(2);
   else                                    val = '—';
 
   document.getElementById('npLabel').textContent = label;
@@ -540,7 +540,7 @@ async function numpadPress(key) {
       _pendingDiscType  = _npMode === 'disc-pct' ? 'percent' : 'fixed';
       document.getElementById('discNpPasskey').value = '';
       document.getElementById('discNpDesc').textContent =
-        `Apply ${_pendingDiscType === 'percent' ? val + '%' : CUR + val.toFixed(2)} discount`;
+        `Apply ${_pendingDiscType === 'percent' ? val + '%' : CUR + parseFloat(val).toFixed(2)} discount`;
       openModal('discNpModal');
       setTimeout(() => document.getElementById('discNpPasskey').focus(), 100);
     } else {
