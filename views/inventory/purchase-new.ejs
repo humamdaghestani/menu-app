@@ -9,33 +9,44 @@
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
     .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
     .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
-    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-ghost  { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover  { background: rgba(255,255,255,.14); color: #fff; }
     .btn-primary { background: #7c5cbf; color: #fff; }
     .btn-primary:hover { opacity: .88; }
     .btn-success { background: #00b894; color: #fff; }
     .btn-success:hover { opacity: .88; }
 
-    .main { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .main { padding: 24px; max-width: 960px; margin: 0 auto; }
     .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 20px; }
     .card-title { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
 
     .form-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
-    .form-input { padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .9rem; font-family: inherit; outline: none; }
+    .form-input { padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .9rem; font-family: inherit; outline: none; width: 100%; }
     .form-input:focus { border-color: #7c5cbf; }
+    select.form-input option { background: #1a1a2e; }
 
+    /* Lines table */
     .lines-table { width: 100%; border-collapse: collapse; }
-    .lines-table th { text-align: left; font-size: .7rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid #2a2a3e; }
-    .lines-table td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+    .lines-table th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 6px 8px; border-bottom: 1px solid #2a2a3e; white-space: nowrap; }
+    .lines-table td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: top; }
     .line-input { width: 100%; padding: 7px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 7px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
     .line-input:focus { border-color: #7c5cbf; }
+    select.line-input option { background: #1a1a2e; }
 
-    .total-row { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #2a2a3e; }
-    .line-total { font-size: .85rem; font-weight: 600; color: #a78bdf; white-space: nowrap; }
+    /* New item inline */
+    .new-item-row { display: none; margin-top: 4px; }
+    .new-item-row.show { display: block; }
+    .new-item-hint { font-size: .7rem; color: #f39c12; margin-bottom: 4px; }
+
+    .line-total { font-size: .85rem; font-weight: 600; color: #a78bdf; white-space: nowrap; display:block; padding: 7px 4px; }
     .btn-remove { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 1.1rem; padding: 4px 8px; }
     .btn-remove:hover { color: #ff6b7a; }
+
+    .total-row { display: flex; justify-content: flex-end; gap: 16px; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid #2a2a3e; }
+
+    .error-banner { background: rgba(231,76,60,.15); border: 1px solid rgba(231,76,60,.3); color: #e74c3c; padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .88rem; }
   </style>
 </head>
 <body>
@@ -48,6 +59,10 @@
 </div>
 
 <div class="main">
+  <% if (locals.error) { %>
+  <div class="error-banner">⚠ Error: <%= error %></div>
+  <% } %>
+
   <form method="POST" action="/inventory/purchases">
 
     <div class="card">
@@ -75,18 +90,18 @@
     <div class="card">
       <div class="card-title">
         <span>📦 Items Purchased</span>
-        <button type="button" class="btn btn-ghost" onclick="addLine()">+ Add Row</button>
+        <button type="button" class="btn btn-primary" onclick="addLine()">+ Add Row</button>
       </div>
 
       <table class="lines-table">
         <thead>
           <tr>
-            <th style="width:35%">Item Name</th>
+            <th style="width:38%">Item</th>
             <th style="width:12%">Unit</th>
-            <th style="width:18%">Quantity</th>
-            <th style="width:20%">Unit Price (<%= tenant.currency || '$' %>)</th>
+            <th style="width:16%">Quantity</th>
+            <th style="width:18%">Unit Price (<%= tenant.currency || 'IQD' %>)</th>
             <th style="width:12%">Total</th>
-            <th style="width:3%"></th>
+            <th style="width:4%"></th>
           </tr>
         </thead>
         <tbody id="linesBody"></tbody>
@@ -94,7 +109,7 @@
 
       <div class="total-row">
         <span style="font-size:.82rem;color:#555">Grand Total</span>
-        <span style="font-size:1.4rem;font-weight:800;color:#fff" id="grandTotal"><%= tenant.currency || '$' %>0.00</span>
+        <span style="font-size:1.4rem;font-weight:800;color:#fff" id="grandTotal"><%= tenant.currency || 'IQD' %> 0.00</span>
       </div>
     </div>
 
@@ -106,8 +121,20 @@
 </div>
 
 <script>
-const CUR = '<%= tenant.currency || "$" %>';
+const CUR = '<%= tenant.currency || "IQD" %>';
+// Inventory items list passed from server
+const INV_ITEMS = <%- JSON.stringify(invItems) %>;
 let idx = 0;
+
+function buildItemOptions() {
+  let html = '<option value="">— Select item —</option>';
+  html += '<option value="new">➕ Create new item...</option>';
+  html += '<option disabled>──────────────────</option>';
+  INV_ITEMS.forEach(item => {
+    html += `<option value="${item.id}" data-unit="${item.unit}">${item.name} (${item.unit})</option>`;
+  });
+  return html;
+}
 
 function addLine() {
   const tbody = document.getElementById('linesBody');
@@ -115,30 +142,60 @@ function addLine() {
   const i = idx++;
   tr.id = 'line_' + i;
   tr.innerHTML = `
-    <td><input type="text" name="item_name" class="line-input" placeholder="e.g. Flour" required /></td>
-    <td><input type="text" name="unit" class="line-input" placeholder="kg" /></td>
+    <td>
+      <select name="item_id" class="line-input" onchange="onItemChange(${i}, this)">
+        ${buildItemOptions()}
+      </select>
+      <div class="new-item-row" id="newRow_${i}">
+        <div class="new-item-hint">New item — enter name:</div>
+        <input type="text" name="new_item_name" class="line-input" placeholder="Item name" id="newName_${i}" />
+      </div>
+    </td>
+    <td><input type="text" name="unit" id="unit_${i}" class="line-input" placeholder="kg" /></td>
     <td><input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" oninput="recalc(${i})" required /></td>
     <td><input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" oninput="recalc(${i})" required /></td>
-    <td><span class="line-total" id="lt_${i}">${CUR}0.00</span></td>
+    <td><span class="line-total" id="lt_${i}">${CUR} 0.00</span></td>
     <td><button type="button" class="btn-remove" onclick="removeLine(${i})">✕</button></td>
   `;
   tbody.appendChild(tr);
 }
 
+function onItemChange(i, sel) {
+  const newRow  = document.getElementById('newRow_' + i);
+  const unitFld = document.getElementById('unit_' + i);
+
+  if (sel.value === 'new') {
+    newRow.classList.add('show');
+    unitFld.value = '';
+    unitFld.removeAttribute('readonly');
+  } else if (sel.value === '') {
+    newRow.classList.remove('show');
+    unitFld.value = '';
+    unitFld.removeAttribute('readonly');
+  } else {
+    newRow.classList.remove('show');
+    // Auto-fill unit from inventory item
+    const opt = sel.options[sel.selectedIndex];
+    const unit = opt.getAttribute('data-unit') || '';
+    unitFld.value = unit;
+    unitFld.setAttribute('readonly', 'readonly');
+  }
+}
+
 function recalc(i) {
-  const qty   = parseFloat(document.getElementById('qty_' + i)?.value) || 0;
+  const qty   = parseFloat(document.getElementById('qty_'   + i)?.value) || 0;
   const price = parseFloat(document.getElementById('price_' + i)?.value) || 0;
   const el    = document.getElementById('lt_' + i);
-  if (el) el.textContent = CUR + (qty * price).toFixed(2);
+  if (el) el.textContent = CUR + ' ' + (qty * price).toFixed(2);
   recalcTotal();
 }
 
 function recalcTotal() {
   let sum = 0;
   document.querySelectorAll('[id^="lt_"]').forEach(el => {
-    sum += parseFloat(el.textContent.replace(CUR, '')) || 0;
+    sum += parseFloat(el.textContent.replace(CUR, '').trim()) || 0;
   });
-  document.getElementById('grandTotal').textContent = CUR + sum.toFixed(2);
+  document.getElementById('grandTotal').textContent = CUR + ' ' + sum.toFixed(2);
 }
 
 function removeLine(i) {
@@ -147,6 +204,7 @@ function removeLine(i) {
   recalcTotal();
 }
 
+// Start with one row
 addLine();
 </script>
 </body>

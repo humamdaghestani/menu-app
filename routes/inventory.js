@@ -247,9 +247,15 @@ router.get('/purchases', requireAuth, requireInventory, async (req, res) => {
 
 router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => {
   try {
+    const invItems = await db.query(
+      `SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`,
+      [req.user.tenantId]
+    );
     res.render('inventory/purchase-new', {
       tenant: req.tenant,
       currentUser: req.user,
+      invItems: invItems.rows,
+      error: req.query.error || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
@@ -272,27 +278,28 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 
 // Save new purchase receipt
 router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ extended: true }), async (req, res) => {
-  const { supplier_name, invoice_no, receipt_date, notes, item_name, unit, quantity, unit_price } = req.body;
+  const { supplier_name, invoice_no, receipt_date, notes, item_id, new_item_name, unit, quantity, unit_price } = req.body;
   const tid = req.user.tenantId;
 
-  // Arrays of line fields
-  const names   = Array.isArray(item_name)   ? item_name   : [item_name];
-  const units   = Array.isArray(unit)        ? unit        : [unit];
-  const qtys    = Array.isArray(quantity)    ? quantity    : [quantity];
-  const prices  = Array.isArray(unit_price)  ? unit_price  : [unit_price];
+  const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
+  const itemIds     = toArr(item_id);
+  const newNames    = toArr(new_item_name);
+  const units       = toArr(unit);
+  const qtys        = toArr(quantity);
+  const prices      = toArr(unit_price);
 
-  // Filter out empty rows
-  const lines = names.map((name, i) => ({
-    item_name: name?.trim(),
-    unit: units[i]?.trim() || '',
-    quantity: parseFloat(qtys[i]),
-    unit_price: parseFloat(prices[i]),
-  })).filter(l => l.item_name && !isNaN(l.quantity) && l.quantity > 0 && !isNaN(l.unit_price) && l.unit_price >= 0);
+  const lines = itemIds.map((iid, i) => ({
+    item_id:       iid,
+    new_item_name: newNames[i]?.trim() || '',
+    unit:          units[i]?.trim() || 'pcs',
+    quantity:      parseFloat(qtys[i]),
+    unit_price:    parseFloat(prices[i]),
+  })).filter(l => !isNaN(l.quantity) && l.quantity > 0 && !isNaN(l.unit_price) && l.unit_price >= 0
+              && (l.item_id !== 'new' || l.new_item_name));
 
   if (!lines.length) return res.redirect('/inventory/purchases/new?error=no_lines');
 
   const total = lines.reduce((s, l) => s + l.quantity * l.unit_price, 0);
-
   const client = await db.connect();
   try {
     await client.query('BEGIN');
@@ -307,10 +314,50 @@ router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ ex
     const receiptId = rr.rows[0].id;
 
     for (const l of lines) {
+      let resolvedItemId = null;
+      let resolvedName   = l.new_item_name;
+
+      if (l.item_id === 'new') {
+        // Create inventory item on the fly
+        const nr = await client.query(
+          `INSERT INTO inventory_items (tenant_id, name, unit, is_raw_material, stock_qty, avg_cost)
+           VALUES ($1,$2,$3,true,0,0) RETURNING id, name`,
+          [tid, l.new_item_name, l.unit]
+        );
+        resolvedItemId = nr.rows[0].id;
+        resolvedName   = nr.rows[0].name;
+      } else if (l.item_id) {
+        resolvedItemId = parseInt(l.item_id);
+        // Fetch existing item name for the line record
+        const er = await client.query(`SELECT name FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [resolvedItemId, tid]);
+        if (er.rows[0]) resolvedName = er.rows[0].name;
+      }
+
+      // Update inventory stock & weighted average cost
+      if (resolvedItemId) {
+        const cur = await client.query(`SELECT stock_qty, avg_cost FROM inventory_items WHERE id=$1`, [resolvedItemId]);
+        if (cur.rows[0]) {
+          const oldQty  = parseFloat(cur.rows[0].stock_qty)  || 0;
+          const oldCost = parseFloat(cur.rows[0].avg_cost)   || 0;
+          const newQty  = oldQty + l.quantity;
+          const newCost = newQty > 0 ? (oldQty * oldCost + l.quantity * l.unit_price) / newQty : l.unit_price;
+          await client.query(
+            `UPDATE inventory_items SET stock_qty=$1, avg_cost=$2 WHERE id=$3`,
+            [newQty, newCost, resolvedItemId]
+          );
+          await client.query(
+            `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, unit_cost, reference_id, reference_type, notes, created_by)
+             VALUES ($1,$2,'purchase',$3,$4,$5,'purchase_receipt','Purchase receipt #'||$5,$6)`,
+            [tid, resolvedItemId, l.quantity, l.unit_price, receiptId, req.user.userId]
+          );
+        }
+      }
+
       const lineTotal = l.quantity * l.unit_price;
       await client.query(
-        `INSERT INTO purchase_receipt_lines (receipt_id, item_name, unit, quantity, unit_price, total) VALUES ($1,$2,$3,$4,$5,$6)`,
-        [receiptId, l.item_name, l.unit, l.quantity, l.unit_price, lineTotal]
+        `INSERT INTO purchase_receipt_lines (receipt_id, item_id, item_name, unit, quantity, unit_price, total)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [receiptId, resolvedItemId || null, resolvedName || '', l.unit, l.quantity, l.unit_price, lineTotal]
       );
     }
 
