@@ -359,12 +359,19 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
     const subtotal = calcSubtotal(items.rows);
     const total    = calcTotal(items.rows, o);
     const discount = subtotal - total;
+    // Get exchange rate from the order's session for bill printing
+    let exchangeRate = 1;
+    if (o.session_id) {
+      const sesRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
+      exchangeRate = parseFloat(sesRes.rows[0]?.exchange_rate) || 1;
+    }
     res.render('pos/order', {
       tenant, order: o,
       orderItems: items.rows,
       categories: categories.rows,
       menuItems: menuItems.rows,
       subtotal, total, discount,
+      exchangeRate,
       errorParam: req.query.error || null,
       modalParam: req.query.modal || null,
       currentUser: req.user

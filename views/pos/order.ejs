@@ -130,7 +130,7 @@
     <span class="order-num">#<%= order.id %></span>
   </div>
   <div class="topbar-right">
-    <button class="btn btn-ghost" onclick="window.print()" title="Print bill">🖨️</button>
+    <button class="btn btn-ghost" onclick="printBill()" title="Print bill">🖨️</button>
     <button class="btn btn-danger" onclick="openVoid()">🗑️ Void</button>
     <a href="/pos/tables" class="btn btn-ghost">← Tables</a>
   </div>
@@ -225,7 +225,7 @@
       <button class="action-btn" onclick="openDiscount()">🏷️<span>Discount</span></button>
       <button class="action-btn" onclick="openSplit()">✂️<span>Split</span></button>
       <button class="action-btn" onclick="openOrderNote()">📝<span>Note</span></button>
-      <button class="action-btn" onclick="window.print()">🖨️<span>Print</span></button>
+      <button class="action-btn" onclick="printBill()">🖨️<span>Print</span></button>
     </div>
 
     <div class="order-footer">
@@ -617,20 +617,93 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 <% } %>
 </script>
 
-<!-- ── Print styles ── -->
-<style>
-  @media print {
-    .topbar, .menu-panel, .order-actions, .qty-ctrl, .btn-pay, .oi-note-edit { display: none !important; }
-    body { background: #fff; color: #000; height: auto; overflow: visible; }
-    .layout { display: block; }
-    .order-panel { width: 100%; border: none; background: #fff; }
-    .order-list { overflow: visible; }
-    .order-item { border-bottom: 1px solid #eee; }
-    .oi-name, .oi-price, .qty-num { color: #000; }
-    .total-row { color: #000; }
-    .total-row.grand { color: #000; border-top: 2px solid #000; }
-    .order-footer { border-top: 1px solid #000; }
+<script>
+  function printBill() {
+    const orderItems = <%- JSON.stringify(orderItems) %>;
+    const order      = <%- JSON.stringify(order) %>;
+    const subtotal   = <%= subtotal.toFixed(2) %>;
+    const discount   = <%= discount.toFixed(2) %>;
+    const total      = <%= total.toFixed(2) %>;
+    const CUR        = '<%= (tenant.currency || '$').replace(/'/g,"\\'"  ) %>';
+    const EXRATE     = <%= exchangeRate %>;
+    const tenantName = '<%- tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+
+    const now = new Date().toLocaleString();
+
+    const itemRows = orderItems.map(oi => {
+      const lineTotal = (parseFloat(oi.price) * oi.quantity).toFixed(2);
+      const noteHtml  = oi.notes ? `<tr><td colspan="2" style="padding-left:16px;font-size:11px;color:#555">📝 ${oi.notes}</td></tr>` : '';
+      return `<tr>
+        <td style="padding:3px 0">${oi.quantity}&times; ${oi.name}</td>
+        <td style="text-align:right;white-space:nowrap;padding:3px 0">${CUR}${lineTotal}</td>
+      </tr>${noteHtml}`;
+    }).join('');
+
+    const discountRow = discount > 0
+      ? `<div class="row"><span>Discount</span><span>&minus;${CUR}${discount.toFixed(2)}</span></div>` : '';
+
+    const iqdRow = EXRATE > 1
+      ? `<div class="row iqd"><span>Total (IQD)</span><span>${Math.round(total * EXRATE).toLocaleString()} IQD</span></div>` : '';
+
+    const noteRow = order.note
+      ? `<div class="note">📝 ${order.note}</div>` : '';
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Bill #${order.id}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Courier New',Courier,monospace; font-size:13px; width:300px; margin:0 auto; padding:10px 8px; }
+    .center { text-align:center; }
+    .name   { font-size:20px; font-weight:bold; letter-spacing:1px; }
+    .bill   { font-size:12px; letter-spacing:3px; margin:4px 0 2px; color:#333; }
+    .dash   { border:none; border-top:1px dashed #000; margin:8px 0; }
+    .meta   { font-size:11px; }
+    .meta div { display:flex; justify-content:space-between; padding:2px 0; }
+    table   { width:100%; border-collapse:collapse; font-size:13px; }
+    .totals { margin-top:4px; }
+    .totals .row { display:flex; justify-content:space-between; padding:3px 0; font-size:13px; }
+    .totals .total { font-weight:bold; font-size:17px; border-top:2px solid #000; padding-top:6px; margin-top:4px; }
+    .totals .iqd   { font-size:12px; color:#444; }
+    .note   { font-size:11px; margin:4px 0; color:#555; }
+    .footer { text-align:center; font-size:11px; margin-top:10px; color:#555; }
+    @media print { @page { margin:4mm; size:80mm auto; } }
+  </style>
+</head>
+<body>
+  <div class="center">
+    <div class="name">${tenantName}</div>
+    <div class="bill">- - BILL - -</div>
+  </div>
+  <hr class="dash">
+  <div class="meta">
+    <div><span>Table</span><span>${order.table_name || '—'}</span></div>
+    <div><span>Order #</span><span>${order.id}</span></div>
+    <div><span>Date</span><span>${now}</span></div>
+  </div>
+  <hr class="dash">
+  <table><tbody>${itemRows}</tbody></table>
+  <hr class="dash">
+  <div class="totals">
+    <div class="row"><span>Subtotal</span><span>${CUR}${subtotal.toFixed(2)}</span></div>
+    ${discountRow}
+    <div class="row total"><span>TOTAL</span><span>${CUR}${total.toFixed(2)}</span></div>
+    ${iqdRow}
+  </div>
+  ${noteRow}
+  <hr class="dash">
+  <div class="footer">Thank you! &hearts;</div>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=400,height=620,toolbar=no,menubar=no');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 300);
   }
-</style>
+</script>
 </body>
 </html>
