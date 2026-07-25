@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cash Flow — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); gap: 12px; flex-wrap: wrap; }
+    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { padding: 24px; max-width: 1000px; margin: 0 auto; }
+
+    .date-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+    .date-bar input[type=date] { padding: 7px 10px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-family: inherit; font-size: .85rem; outline: none; }
+    .date-bar input[type=date]:focus { border-color: #7c5cbf; }
+    .period-btn { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #666; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .period-btn:hover, .period-btn.active { background: #7c5cbf; border-color: #7c5cbf; color: #fff; }
+
+    /* KPI strip */
+    .kpi-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    @media (max-width: 540px) { .kpi-strip { grid-template-columns: 1fr 1fr; } }
+    .kpi { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a3e; padding: 16px; }
+    .kpi-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; color: #444; letter-spacing: .4px; margin-bottom: 8px; }
+    .kpi-value { font-size: 1.45rem; font-weight: 800; line-height: 1; }
+    .green { color: #00b894; }
+    .red   { color: #e74c3c; }
+
+    /* filter pills */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .filter-pill { padding: 5px 14px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #555; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .filter-pill.active, .filter-pill:hover { color: #fff; }
+    .filter-pill[data-dir="all"].active    { background: #7c5cbf; border-color: #7c5cbf; }
+    .filter-pill[data-dir="cash_in"].active  { background: #00b894; border-color: #00b894; }
+    .filter-pill[data-dir="cash_out"].active { background: #e74c3c; border-color: #e74c3c; }
+
+    /* cash flow table */
+    .cf-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    .cf-table th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 8px 12px; border-bottom: 1px solid #2a2a3e; white-space: nowrap; }
+    .cf-table td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+    .cf-table tr:last-child td { border-bottom: none; }
+    .cf-table tr:hover td { background: rgba(255,255,255,.02); }
+
+    .dir-badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .68rem; font-weight: 700; white-space: nowrap; }
+    .in  { background: #00b89422; color: #00b894; }
+    .out { background: #e74c3c22; color: #e74c3c; }
+
+    .cat-chip { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: .7rem; font-weight: 600; background: rgba(124,92,191,.15); color: #a78bdf; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div class="topbar-brand">💵 Cash Flow</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounting" class="btn btn-ghost">← Accounting</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Date filter -->
+  <form method="GET" action="/accounting/cashflow" id="cfForm">
+    <div class="date-bar">
+      <button type="button" class="period-btn" onclick="setPeriod('today')">Today</button>
+      <button type="button" class="period-btn" onclick="setPeriod('week')">This Week</button>
+      <button type="button" class="period-btn active" onclick="setPeriod('month')">This Month</button>
+      <button type="button" class="period-btn" onclick="setPeriod('year')">This Year</button>
+      <input type="date" name="from" id="fromDate" value="<%= dateFrom %>" onchange="this.form.submit()" />
+      <span style="color:#444">→</span>
+      <input type="date" name="to" id="toDate" value="<%= dateTo %>" onchange="this.form.submit()" />
+    </div>
+  </form>
+
+  <!-- KPIs -->
+  <div class="kpi-strip">
+    <div class="kpi" style="border-color:#00b89433">
+      <div class="kpi-label">Total In</div>
+      <div class="kpi-value green">+<%= totalIn.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+    </div>
+    <div class="kpi" style="border-color:#e74c3c33">
+      <div class="kpi-label">Total Out</div>
+      <div class="kpi-value red">−<%= totalOut.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+    </div>
+    <div class="kpi" style="border-color:<%= net >= 0 ? '#00b89433' : '#e74c3c33' %>">
+      <div class="kpi-label">Net Cash</div>
+      <div class="kpi-value <%= net >= 0 ? 'green' : 'red' %>"><%= net >= 0 ? '+' : '−' %><%= Math.abs(net).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+    </div>
+  </div>
+
+  <!-- Filter pills -->
+  <div class="filter-bar">
+    <button class="filter-pill active" data-dir="all" onclick="filterDir('all',this)">All Transactions (<%= entries.length %>)</button>
+    <button class="filter-pill" data-dir="cash_in" onclick="filterDir('cash_in',this)">Cash In</button>
+    <button class="filter-pill" data-dir="cash_out" onclick="filterDir('cash_out',this)">Cash Out</button>
+  </div>
+
+  <% if (entries.length === 0) { %>
+  <div style="text-align:center;padding:60px 0;color:#444;font-size:.9rem">No cash transactions in this period.</div>
+  <% } else { %>
+  <div class="card">
+    <div style="overflow-x:auto">
+    <table class="cf-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Category</th>
+          <th>Description</th>
+          <th>Method</th>
+          <th>Direction</th>
+          <th style="text-align:right">Amount</th>
+        </tr>
+      </thead>
+      <tbody id="cfBody">
+      <% entries.forEach(e => { %>
+      <tr data-dir="<%= e.direction %>">
+        <td style="color:#555;white-space:nowrap"><%= String(e.txn_date).slice(0,10) %></td>
+        <td><span class="cat-chip"><%= e.category %></span></td>
+        <td style="color:#ccc"><%= e.description %></td>
+        <td style="color:#444;font-size:.78rem"><%= e.method || '—' %></td>
+        <td><span class="dir-badge <%= e.direction === 'cash_in' ? 'in' : 'out' %>"><%= e.direction === 'cash_in' ? '↑ In' : '↓ Out' %></span></td>
+        <td style="text-align:right;font-weight:700;color:<%= e.direction === 'cash_in' ? '#00b894' : '#e74c3c' %>;white-space:nowrap">
+          <%= e.direction === 'cash_in' ? '+' : '−' %><%= parseFloat(e.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <% } %>
+</div>
+
+<script>
+function filterDir(dir, btn) {
+  document.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#cfBody tr').forEach(row => {
+    row.style.display = (dir === 'all' || row.dataset.dir === dir) ? '' : 'none';
+  });
+}
+
+function setPeriod(p) {
+  const now = new Date();
+  let from, to;
+  if (p === 'today') {
+    from = to = now.toISOString().slice(0,10);
+  } else if (p === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - d.getDay());
+    from = d.toISOString().slice(0,10);
+    to   = now.toISOString().slice(0,10);
+  } else if (p === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+  } else if (p === 'year') {
+    from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), 11, 31).toISOString().slice(0,10);
+  }
+  document.getElementById('fromDate').value = from;
+  document.getElementById('toDate').value   = to;
+  document.getElementById('cfForm').submit();
+}
+</script>
+</body>
+</html>

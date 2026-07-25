@@ -75,10 +75,16 @@
 <body>
 
 <div class="topbar">
-  <div class="topbar-brand">📒 Accounting</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div class="topbar-brand">📒 Accounting</div>
+  </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <a href="/accounting/expenses" class="btn btn-ghost">💸 Expenses</a>
-    <a href="/" class="btn btn-ghost">← Home</a>
+    <a href="/accounting/suppliers" class="btn btn-ghost">🏭 Suppliers</a>
+    <a href="/accounting/customers" class="btn btn-ghost">🤝 Credits</a>
+    <a href="/accounting/cashflow" class="btn btn-ghost">💵 Cash Flow</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
@@ -125,6 +131,30 @@
         <%= net >= 0 ? '' : '−' %><%= Math.abs(net).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %>
       </div>
       <div class="kpi-sub"><%= tenant.currency || 'IQD' %></div>
+    </div>
+  </div>
+
+  <!-- Payable / Receivable / Cash -->
+  <div class="kpi-grid" style="margin-bottom:24px">
+    <div class="kpi" style="border-color:#e74c3c44">
+      <div class="kpi-label">Supplier Payable</div>
+      <div class="kpi-value red"><%= totalPayable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><a href="/accounting/suppliers" style="color:#e74c3c;text-decoration:none;font-size:.72rem">View ledger →</a></div>
+    </div>
+    <div class="kpi" style="border-color:#00b89444">
+      <div class="kpi-label">Customer Receivable</div>
+      <div class="kpi-value green"><%= totalReceivable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><a href="/accounting/customers" style="color:#00b894;text-decoration:none;font-size:.72rem">View credits →</a></div>
+    </div>
+    <div class="kpi" style="border-color:#00b89444">
+      <div class="kpi-label">Cash In (Period)</div>
+      <div class="kpi-value green"><%= cashIn.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">POS cash received</div>
+    </div>
+    <div class="kpi" style="border-color:#e74c3c44">
+      <div class="kpi-label">Cash Out (Period)</div>
+      <div class="kpi-value red"><%= cashOut.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><a href="/accounting/cashflow" style="color:#e74c3c;text-decoration:none;font-size:.72rem">Cash flow →</a></div>
     </div>
   </div>
 

@@ -46,7 +46,10 @@
 </head>
 <body>
 <div class="topbar">
-  <a href="/pos/tables">← Tables</a>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" style="padding:6px 10px;font-size:1.1rem;text-decoration:none;color:#ccc;background:rgba(255,255,255,.1);border-radius:8px;flex-shrink:0" title="All Modules">🏠</a>
+    <button onclick="history.back()" style="padding:6px 14px;border:none;background:rgba(255,255,255,.1);color:#ccc;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600">← Back</button>
+  </div>
   <h1>Session Orders</h1>
   <span class="session-pill">Session #<%= session.id %> · Since <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
 </div>

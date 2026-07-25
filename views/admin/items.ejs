@@ -162,6 +162,8 @@
     </div>
   </div>
   <nav class="sidebar-nav">
+    <a href="/admin" title="All Modules"><span class="icon">🏠</span><span>All Modules</span></a>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
     <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
     <% if (_can('items')) { %><a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
     <% if (_can('items')) { %><a href="/admin/items" class="active"><span class="icon">🍽️</span><span>Items</span></a><% } %>
@@ -180,6 +182,9 @@
     </form>
   </nav>
   <div class="sidebar-footer">
+    <button onclick="history.back()" class="view-menu-btn" style="border:none;cursor:pointer;font-family:inherit;font-size:.85rem;width:100%;margin-bottom:8px">
+      <span>←</span><span>Back</span>
+    </button>
     <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn">
       <span>🔗</span><span>View Menu</span>
     </a>

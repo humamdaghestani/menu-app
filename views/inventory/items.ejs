@@ -73,9 +73,12 @@
 <body>
 
 <div class="topbar">
-  <div class="topbar-brand">📦 Inventory Items</div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div class="topbar-brand">📦 Inventory Items</div>
+  </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/inventory" class="btn btn-ghost">← Dashboard</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
     <button class="btn btn-ghost" onclick="openCatMgr()">🏷️ Categories</button>
     <button class="btn btn-primary" onclick="openCreate()">+ Add Item</button>
   </div>

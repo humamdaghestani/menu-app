@@ -231,6 +231,41 @@ const pool = new Pool({
     )`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS inv_category_id INTEGER REFERENCES inventory_categories(id) ON DELETE SET NULL`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_accounting BOOLEAN DEFAULT false`,
+    `CREATE TABLE IF NOT EXISTS supplier_payments (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      supplier_name VARCHAR(120) NOT NULL,
+      amount        NUMERIC(12,2) NOT NULL,
+      payment_date  DATE DEFAULT CURRENT_DATE,
+      method        VARCHAR(30) DEFAULT 'cash',
+      notes         TEXT,
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_credits (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      customer_id   INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      customer_name VARCHAR(120) NOT NULL,
+      amount        NUMERIC(12,2) NOT NULL,
+      amount_paid   NUMERIC(12,2) DEFAULT 0,
+      credit_date   DATE DEFAULT CURRENT_DATE,
+      due_date      DATE,
+      notes         TEXT,
+      status        VARCHAR(20) DEFAULT 'open',
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS customer_credit_payments (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      credit_id     INTEGER REFERENCES customer_credits(id) ON DELETE CASCADE,
+      amount        NUMERIC(12,2) NOT NULL,
+      payment_date  DATE DEFAULT CURRENT_DATE,
+      notes         TEXT,
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMP DEFAULT NOW()
+    )`,
     `CREATE TABLE IF NOT EXISTS expense_categories (
       id        SERIAL PRIMARY KEY,
       tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

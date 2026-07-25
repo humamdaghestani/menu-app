@@ -130,13 +130,14 @@
 
 <div class="topbar">
   <div class="topbar-left">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
     <span class="table-chip">🪑 <%= order.table_name %></span>
     <span class="order-num">#<%= order.id %></span>
   </div>
   <div class="topbar-right">
     <button class="btn btn-ghost" onclick="printBill()" title="Print bill">🖨️</button>
     <button class="btn btn-danger" onclick="openVoid()">🗑️ Void</button>
-    <a href="/pos/tables" class="btn btn-ghost">← Tables</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
