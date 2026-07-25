@@ -508,14 +508,19 @@
   function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
   document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === document.getElementById('editOverlay')) closeEdit(); });
 
+  function formToParams(form) {
+    const p = new URLSearchParams();
+    new FormData(form).forEach((v, k) => { if (typeof v === 'string') p.append(k, v); });
+    return p;
+  }
+
   async function submitAdd(e) {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById('addBtn');
     btn.disabled = true; btn.textContent = 'Adding…';
-    const data = new FormData(form);
     try {
-      const r = await fetch('/admin/items?json=1', { method: 'POST', body: data });
+      const r = await fetch('/admin/items?json=1', { method: 'POST', body: formToParams(form) });
       const j = await r.json();
       if (j.ok && j.item) {
         const ni = j.item;
@@ -563,22 +568,24 @@
     const form = e.target;
     const btn = form.querySelector('button[type=submit]');
     btn.disabled = true; btn.textContent = 'Saving…';
-    const data = new FormData(form);
+    const name  = document.getElementById('editName').value;
+    const price = document.getElementById('editPrice').value;
+    const badge = document.getElementById('editBadge').value;
+    const img   = document.getElementById('editImageUrl').value;
+    const desc  = document.getElementById('editDescription').value;
+    const catSel = document.getElementById('editCategory');
+    const catName = catSel.options[catSel.selectedIndex]?.text.replace(/^↳ /,'') || '—';
     try {
       const r = await fetch('/admin/items/' + _editItemId + '/edit?json=1', {
-        method: 'POST', body: data
+        method: 'POST', body: formToParams(form)
       });
       const j = await r.json();
       if (j.ok) {
         closeEdit();
-        // Update row in table
         const row = document.querySelector(`#itemsTbody tr[data-id="${_editItemId}"]`);
         if (row) {
-          const name = data.get('name'), price = data.get('price'), badge = data.get('badge'), img = data.get('image_url');
-          const catSel = document.getElementById('editCategory');
-          const catName = catSel.options[catSel.selectedIndex]?.text.replace(/^↳ /,'') || '—';
           row.querySelector('.item-name').textContent = name;
-          row.querySelector('.item-desc').textContent = (data.get('description') || '').substring(0, 60);
+          row.querySelector('.item-desc').textContent = desc.substring(0, 60);
           row.cells[3].innerHTML = `<strong>${price}</strong>`;
           row.cells[4].textContent = catName === 'No category' ? '—' : catName;
           row.cells[5].innerHTML = badge
@@ -588,7 +595,7 @@
         }
         showToast('Item updated');
       } else { showToast('Failed to save', 'error'); }
-    } catch { showToast('Failed to save', 'error'); }
+    } catch(err) { console.error(err); showToast('Failed to save', 'error'); }
     btn.disabled = false; btn.textContent = 'Save Changes';
   }
 
