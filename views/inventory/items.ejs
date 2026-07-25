@@ -225,14 +225,52 @@
         </div>
       </div>
 
-      <div class="form-group" id="c_menuLinkGroup" style="display:none">
-        <label class="form-label">Link to Menu Item (POS)</label>
-        <select name="menu_item_id" class="form-input">
-          <option value="">— Not linked —</option>
-          <% menuItems.forEach(m => { %>
-          <option value="<%= m.id %>"><%= m.name %></option>
-          <% }) %>
-        </select>
+      <div id="c_menuLinkGroup" style="display:none;margin-top:4px">
+        <div style="background:#1e2a1e;border:1.5px solid #2d4a2d;border-radius:10px;padding:16px;margin-bottom:0">
+          <p style="font-size:.8rem;color:#6fcf97;margin-bottom:14px;font-weight:600">🛒 Add this item to the menu so it appears in the POS?</p>
+          <div style="display:flex;gap:10px;margin-bottom:14px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;background:#162616;border:1.5px solid #2d4a2d;border-radius:8px;padding:10px 14px" id="c_addMenuYes">
+              <input type="radio" name="add_to_menu" value="yes" onchange="toggleAddToMenu(true)" style="accent-color:#6fcf97;width:16px;height:16px" />
+              <span style="font-size:.88rem;color:#e0e0e0;font-weight:600">Yes, add to menu</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;background:#162616;border:1.5px solid #2d4a2d;border-radius:8px;padding:10px 14px" id="c_addMenuNo">
+              <input type="radio" name="add_to_menu" value="no" onchange="toggleAddToMenu(false)" style="accent-color:#6fcf97;width:16px;height:16px" checked />
+              <span style="font-size:.88rem;color:#e0e0e0;font-weight:600">No, just track stock</span>
+            </label>
+          </div>
+          <div id="c_menuFields" style="display:none">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Menu Name</label>
+                <input type="text" name="menu_name" class="form-input" placeholder="Leave blank to use item name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Selling Price</label>
+                <input type="number" name="selling_price" class="form-input" placeholder="0" min="0" step="0.01" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Menu Category</label>
+              <select name="menu_category_id" class="form-input">
+                <option value="">No category</option>
+                <%
+                  const rootCats = categories.filter(c => !c.parent_id);
+                  rootCats.forEach(cat => {
+                    const subs = categories.filter(c => String(c.parent_id) === String(cat.id));
+                %>
+                <% if (subs.length > 0) { %>
+                  <optgroup label="<%= cat.name %>">
+                    <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
+                    <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                  </optgroup>
+                <% } else { %>
+                  <option value="<%= cat.id %>"><%= cat.name %></option>
+                <% } %>
+                <% }) %>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -350,7 +388,14 @@ function openCreate() { document.getElementById('createOverlay').classList.add('
 function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
 function toggleCreateMenuLink(cb) {
   document.getElementById('c_menuLinkGroup').style.display = cb.checked ? '' : 'none';
+  if (!cb.checked) {
+    document.querySelectorAll('[name=add_to_menu]').forEach(r => { if (r.value === 'no') r.checked = true; });
+    document.getElementById('c_menuFields').style.display = 'none';
+  }
   syncCheck('c_sold_wrap', cb);
+}
+function toggleAddToMenu(yes) {
+  document.getElementById('c_menuFields').style.display = yes ? '' : 'none';
 }
 
 // Edit modal

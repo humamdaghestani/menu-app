@@ -47,7 +47,7 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
 router.get('/items', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
-    const [itemsRes, menuItemsRes] = await Promise.all([
+    const [itemsRes, menuItemsRes, catsRes] = await Promise.all([
       db.query(`
         SELECT ii.*, mi.name AS menu_item_name,
           ROUND((SELECT COALESCE(SUM(ir.quantity * ing.avg_cost),0) FROM inventory_recipes ir
@@ -60,6 +60,7 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
         ORDER BY ii.name
       `, [tid]),
       db.query(`SELECT id, name FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name, parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
     ]);
 
     res.render('inventory/items', {
@@ -67,19 +68,33 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
       currentUser: req.user,
       items: itemsRes.rows,
       menuItems: menuItemsRes.rows,
+      categories: catsRes.rows,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // Create item
 router.post('/items', requireAuth, requireInventory, async (req, res) => {
-  const { name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold } = req.body;
+  const { name, sku, unit, reorder_level, is_raw_material, is_semi_finished, can_be_sold,
+          add_to_menu, menu_category_id, selling_price, menu_name } = req.body;
   try {
+    let menuItemId = null;
+
+    if (can_be_sold && add_to_menu) {
+      const miRes = await db.query(
+        `INSERT INTO menu_items (tenant_id, category_id, name, price, is_available)
+         VALUES ($1, $2, $3, $4, true) RETURNING id`,
+        [req.user.tenantId, menu_category_id || null,
+         (menu_name || name).trim(), parseFloat(selling_price) || 0]
+      );
+      menuItemId = miRes.rows[0].id;
+    }
+
     await db.query(
       `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [req.user.tenantId, name.trim(), sku?.trim() || null, unit || 'pcs',
-       parseFloat(reorder_level) || 0, menu_item_id || null,
+       parseFloat(reorder_level) || 0, menuItemId,
        !!is_raw_material, !!is_semi_finished, !!can_be_sold]
     );
     res.redirect('/inventory/items');
