@@ -503,6 +503,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
 
     // Detect what columns the file actually has (for error reporting)
     const detectedCols = raw.length > 0 ? Object.keys(raw[0]).join(', ') : '(empty file)';
+    const hasNameCol = raw.length > 0 && raw.some(r => field(r, 'name', 'item_name', 'item', 'product', 'product_name', 'title', 'dish', 'food', 'اسم').trim());
 
     const categoryCache = {};
     let imported = 0;
@@ -517,7 +518,6 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       const price = field(r, 'price', 'unit_price', 'cost', 'amount', 'rate', 'سعر') || '0';
 
       if (!name) {
-        if (i === 0) errors.push(`Detected columns: ${detectedCols}`);
         errors.push(`Row ${rowNum}: missing name`);
         rows.push({ row: rowNum, name, category: field(r, 'category', 'cat', 'group', 'section', 'تصنيف'), price, ok: false, error: 'Missing name' });
         continue;
@@ -608,7 +608,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       }
     }
 
-    res.render('admin/import', { tenant, result: { imported, skipped, errors, rows } });
+    res.render('admin/import', { tenant, result: { imported, skipped, errors, rows, detectedCols, hasNameCol } });
   } catch (err) {
     console.error(err);
     res.render('admin/import', { tenant, result: { imported: 0, errors: ['Failed to parse file — make sure it is a valid .xlsx file'], rows: [] } });
