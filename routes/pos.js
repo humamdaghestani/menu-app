@@ -672,6 +672,18 @@ router.post('/settings/display', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/pos/settings'); }
 });
 
+router.post('/settings/bill', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const { bill_language, bill_show_iqd, bill_font_size, bill_paper_width, bill_custom_header, bill_custom_footer } = req.body;
+    await db.query(
+      `UPDATE tenants SET bill_language=$1, bill_show_iqd=$2, bill_font_size=$3, bill_paper_width=$4, bill_custom_header=$5, bill_custom_footer=$6 WHERE id=$7`,
+      [bill_language || 'en', bill_show_iqd === '1', bill_font_size || 'normal', bill_paper_width || '80mm',
+       bill_custom_header || null, bill_custom_footer || null, req.user.tenantId]
+    );
+    res.redirect('/pos/settings?tab=bill');
+  } catch (err) { console.error(err); res.redirect('/pos/settings?tab=bill'); }
+});
+
 // ── Printer CRUD ──────────────────────────────────────────────────────────────
 router.post('/settings/printers', requireAuth, requirePOS, async (req, res) => {
   const { name, role, connection_type, ip_address, port, paper_width } = req.body;

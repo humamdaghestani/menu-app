@@ -104,6 +104,7 @@
   <div class="tab active" onclick="switchTab('tables', this)">🪑 Tables</div>
   <div class="tab" onclick="switchTab('permissions', this)">🔐 Permissions</div>
   <div class="tab" onclick="switchTab('printers', this)">🖨️ Printers</div>
+  <div class="tab" onclick="switchTab('bill', this)">🧾 Bill</div>
 </div>
 
 <div class="main">
@@ -429,6 +430,95 @@
     </div>
   </div>
 
+  <!-- BILL TAB -->
+  <div class="tab-panel" id="tab-bill">
+    <div style="display:grid;grid-template-columns:1fr 260px;gap:20px;align-items:start">
+
+      <!-- Settings form -->
+      <div>
+        <form method="POST" action="/pos/settings/bill" id="billForm" oninput="updatePreview()">
+          <div class="card">
+            <h2>Language</h2>
+            <p class="card-desc">Choose which language(s) to print on the bill.</p>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <% const billLang = tenant.bill_language || 'en'; %>
+              <% [
+                ['en',       '🇬🇧 English only'],
+                ['ar',       '🇸🇦 Arabic only'],
+                ['ku',       '🏴 Kurdish only'],
+                ['en_ar',    '🇬🇧 + 🇸🇦 English & Arabic'],
+                ['en_ku',    '🇬🇧 + 🏴 English & Kurdish'],
+                ['en_ar_ku', '🇬🇧 + 🇸🇦 + 🏴 All three'],
+              ].forEach(([val, label]) => { %>
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 12px;border:1.5px solid <%= billLang===val ? '#7c5cbf' : '#2a2a3e' %>;border-radius:10px;transition:.15s" id="lang_lbl_<%= val %>">
+                <input type="radio" name="bill_language" value="<%= val %>" <%= billLang===val?'checked':'' %> style="accent-color:#7c5cbf;width:16px;height:16px" onchange="highlightLang()" />
+                <span style="font-size:.88rem"><%= label %></span>
+              </label>
+              <% }) %>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Style</h2>
+            <p class="card-desc">Paper size and font size for the printed bill.</p>
+            <div class="grid2" style="margin-bottom:14px">
+              <div>
+                <label>Paper Width</label>
+                <select name="bill_paper_width">
+                  <option value="80mm" <%= (tenant.bill_paper_width||'80mm')==='80mm'?'selected':'' %>>80 mm (standard)</option>
+                  <option value="58mm" <%= tenant.bill_paper_width==='58mm'?'selected':'' %>>58 mm (narrow)</option>
+                </select>
+              </div>
+              <div>
+                <label>Font Size</label>
+                <select name="bill_font_size">
+                  <option value="small"  <%= tenant.bill_font_size==='small' ?'selected':'' %>>Small</option>
+                  <option value="normal" <%= (tenant.bill_font_size||'normal')==='normal'?'selected':'' %>>Normal</option>
+                  <option value="large"  <%= tenant.bill_font_size==='large' ?'selected':'' %>>Large</option>
+                </select>
+              </div>
+            </div>
+            <div class="perm-row" style="padding:10px 0">
+              <div class="perm-info">
+                <div class="perm-label">Show IQD Total</div>
+                <div class="perm-desc">Print an extra line showing the total in Iraqi Dinar when exchange rate is set</div>
+              </div>
+              <label class="toggle-wrap">
+                <input type="checkbox" name="bill_show_iqd" value="1" <%= tenant.bill_show_iqd !== false ? 'checked' : '' %> />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Content</h2>
+            <p class="card-desc">Custom text printed above and below the order items.</p>
+            <div style="margin-bottom:14px">
+              <label>Header Message (printed above items)</label>
+              <input type="text" name="bill_custom_header" value="<%= tenant.bill_custom_header || '' %>" placeholder="e.g. Welcome to <%= tenant.name %>!" maxlength="120" />
+            </div>
+            <div>
+              <label>Footer Message (printed at the bottom)</label>
+              <input type="text" name="bill_custom_footer" value="<%= tenant.bill_custom_footer || '' %>" placeholder="e.g. Thank you! Come again soon." maxlength="120" />
+            </div>
+          </div>
+
+          <div class="save-row">
+            <button type="submit" class="btn btn-primary">💾 Save Bill Settings</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Live preview -->
+      <div style="position:sticky;top:16px">
+        <div style="font-size:.72rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Preview</div>
+        <div id="billPreview" style="background:#fff;color:#000;border-radius:10px;padding:14px 10px;font-family:'Courier New',monospace;font-size:12px;box-shadow:0 4px 24px rgba(0,0,0,.4);width:240px;min-height:320px">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -465,6 +555,95 @@ if (urlTab) {
   const tabEl = document.querySelector(`.tab[onclick*="${urlTab}"]`);
   if (tabEl) switchTab(urlTab, tabEl);
 }
+
+// ── Bill preview ──────────────────────────────────────────────────────────────
+const BILL_LABELS = {
+  en:       { bill:'BILL', table:'Table', order:'Order #', date:'Date', subtotal:'Subtotal', discount:'Discount', total:'TOTAL', thanks:'Thank you!' },
+  ar:       { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب', date:'التاريخ', subtotal:'المجموع الجزئي', discount:'خصم', total:'المجموع', thanks:'شكراً لكم!' },
+  ku:       { bill:'پسووڵە', table:'مێز', order:'ژمارەی داواکاری', date:'بەروار', subtotal:'کۆی لایەنی', discount:'داشکاندن', total:'کۆی گشتی', thanks:'سوپاس!' },
+  en_ar:    null,
+  en_ku:    null,
+  en_ar_ku: null,
+};
+
+function getBillLang() {
+  return (document.querySelector('[name=bill_language]:checked') || {}).value || 'en';
+}
+function getFontSize() {
+  return (document.querySelector('[name=bill_font_size]') || {}).value || 'normal';
+}
+function getHeader() { return (document.querySelector('[name=bill_custom_header]') || {}).value || ''; }
+function getFooter() { return (document.querySelector('[name=bill_custom_footer]') || {}).value || ''; }
+function getShowIQD() { return document.querySelector('[name=bill_show_iqd]')?.checked; }
+
+function getLabelSet(lang) {
+  if (BILL_LABELS[lang]) return BILL_LABELS[lang];
+  // composite
+  const parts = lang.split('_');
+  return BILL_LABELS[parts[0]]; // use first as primary for preview
+}
+
+function buildPreviewHTML() {
+  const lang   = getBillLang();
+  const L      = getLabelSet(lang);
+  const fs     = getFontSize();
+  const hdr    = getHeader();
+  const ftr    = getFooter();
+  const showIQD = getShowIQD();
+  const fsMap  = { small: '10px', normal: '12px', large: '14px' };
+  const fontSize = fsMap[fs] || '12px';
+  const tenantName = '<%= tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+
+  const isMulti = lang.includes('_');
+  const langs   = lang.split('_');
+  const labelsAll = langs.map(l => BILL_LABELS[l] || BILL_LABELS.en);
+
+  function row(key) {
+    if (!isMulti) return L[key];
+    return labelsAll.map(ll => ll[key]).filter((v,i,a) => a.indexOf(v)===i).join(' / ');
+  }
+
+  return `<div style="font-family:'Courier New',monospace;font-size:${fontSize};text-align:center">
+    <div style="font-size:${parseInt(fontSize)+4}px;font-weight:bold">${tenantName}</div>
+    <div style="letter-spacing:2px;margin:3px 0;font-size:${parseInt(fontSize)-1}px">— ${row('bill')} —</div>
+  </div>
+  <div style="border-top:1px dashed #000;margin:6px 0"></div>
+  ${hdr ? `<div style="text-align:center;font-size:${parseInt(fontSize)-1}px;margin-bottom:6px">${hdr}</div>` : ''}
+  <table style="width:100%;font-family:'Courier New',monospace;font-size:${fontSize};border-collapse:collapse">
+    <tr><td>${row('table')}</td><td style="text-align:right">Table 1</td></tr>
+    <tr><td>${row('order')}</td><td style="text-align:right">1042</td></tr>
+    <tr><td>${row('date')}</td><td style="text-align:right">${new Date().toLocaleDateString()}</td></tr>
+  </table>
+  <div style="border-top:1px dashed #000;margin:6px 0"></div>
+  <table style="width:100%;font-family:'Courier New',monospace;font-size:${fontSize};border-collapse:collapse">
+    <tr><td>2× Chicken Burger</td><td style="text-align:right">$25.98</td></tr>
+    <tr><td>1× Pepsi</td><td style="text-align:right">$2.50</td></tr>
+  </table>
+  <div style="border-top:1px dashed #000;margin:6px 0"></div>
+  <table style="width:100%;font-family:'Courier New',monospace;font-size:${fontSize};border-collapse:collapse">
+    <tr><td>${row('subtotal')}</td><td style="text-align:right">$28.48</td></tr>
+    <tr style="font-weight:bold;font-size:${parseInt(fontSize)+2}px"><td>${row('total')}</td><td style="text-align:right">$28.48</td></tr>
+    ${showIQD ? `<tr style="font-size:${parseInt(fontSize)-1}px;color:#555"><td>${row('total')} (IQD)</td><td style="text-align:right">42,150 IQD</td></tr>` : ''}
+  </table>
+  <div style="border-top:1px dashed #000;margin:6px 0"></div>
+  <div style="text-align:center;font-family:'Courier New',monospace;font-size:${parseInt(fontSize)-1}px">${ftr || row('thanks')}</div>`;
+}
+
+function updatePreview() {
+  const el = document.getElementById('billPreview');
+  if (el) el.innerHTML = buildPreviewHTML();
+}
+
+function highlightLang() {
+  document.querySelectorAll('[id^=lang_lbl_]').forEach(el => {
+    const radio = el.querySelector('input[type=radio]');
+    el.style.borderColor = radio.checked ? '#7c5cbf' : '#2a2a3e';
+  });
+  updatePreview();
+}
+
+// Init preview
+updatePreview();
 </script>
 </body>
 </html>

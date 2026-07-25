@@ -198,6 +198,12 @@ const pool = new Pool({
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS is_semi_finished BOOLEAN DEFAULT false`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS can_be_sold      BOOLEAN DEFAULT false`,
     `ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_language     VARCHAR(20) DEFAULT 'en'`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_show_iqd     BOOLEAN DEFAULT true`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_custom_header TEXT`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_custom_footer TEXT`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_font_size     VARCHAR(10) DEFAULT 'normal'`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_paper_width   VARCHAR(10) DEFAULT '80mm'`,
     `CREATE TABLE IF NOT EXISTS inventory_transactions (
       id             SERIAL PRIMARY KEY,
       tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

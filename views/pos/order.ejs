@@ -618,21 +618,50 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 </script>
 
 <script>
+  // ── Bill labels per language ──────────────────────────────────────────────
+  const BILL_LABELS = {
+    en: { bill:'BILL',    table:'Table',    order:'Order #',        date:'Date',    subtotal:'Subtotal',      discount:'Discount',    total:'TOTAL',        thanks:'Thank you!' },
+    ar: { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب',       date:'التاريخ', subtotal:'المجموع الجزئي', discount:'خصم',        total:'المجموع',      thanks:'شكراً لكم!' },
+    ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'کۆی لایەنی',     discount:'داشکاندن',   total:'کۆی گشتی',    thanks:'سوپاس!' },
+  };
+
   function printBill() {
-    const orderItems = <%- JSON.stringify(orderItems) %>;
-    const order      = <%- JSON.stringify(order) %>;
-    const subtotal   = <%= subtotal.toFixed(2) %>;
-    const discount   = <%= discount.toFixed(2) %>;
-    const total      = <%= total.toFixed(2) %>;
-    const CUR        = '<%= (tenant.currency || '$').replace(/'/g,"\\'"  ) %>';
-    const EXRATE     = <%= exchangeRate %>;
-    const tenantName = '<%- tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const orderItems  = <%- JSON.stringify(orderItems) %>;
+    const order       = <%- JSON.stringify(order) %>;
+    const subtotal    = <%= subtotal.toFixed(2) %>;
+    const discount    = <%= discount.toFixed(2) %>;
+    const total       = <%= total.toFixed(2) %>;
+    const CUR         = '<%= (tenant.currency || "$").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const EXRATE      = <%= exchangeRate %>;
+    const tenantName  = '<%- tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+
+    // Bill settings from tenant
+    const billLang    = '<%= tenant.bill_language || "en" %>';
+    const billFontSz  = '<%= tenant.bill_font_size || "normal" %>';
+    const billWidth   = '<%= tenant.bill_paper_width || "80mm" %>';
+    const showIQD     = <%= tenant.bill_show_iqd !== false ? 'true' : 'false' %>;
+    const customHdr   = '<%- (tenant.bill_custom_header || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const customFtr   = '<%- (tenant.bill_custom_footer || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+
+    const fsMap  = { small:'11px', normal:'13px', large:'15px' };
+    const fontSize = fsMap[billFontSz] || '13px';
+    const fsBig    = (parseInt(fontSize) + 4) + 'px';
+
+    // Resolve labels (supports composite: 'en_ar', 'en_ar_ku')
+    const langs    = billLang.split('_');
+    const labelsAll = langs.map(l => BILL_LABELS[l] || BILL_LABELS.en);
+    function L(key) {
+      return labelsAll.map(ll => ll[key]).filter((v,i,a) => a.indexOf(v)===i).join(' / ');
+    }
+    // RTL direction for purely Arabic/Kurdish bills
+    const isRTL = langs.every(l => l === 'ar' || l === 'ku');
+    const dir   = isRTL ? ' dir="rtl"' : '';
 
     const now = new Date().toLocaleString();
 
     const itemRows = orderItems.map(oi => {
       const lineTotal = (parseFloat(oi.price) * oi.quantity).toFixed(2);
-      const noteHtml  = oi.notes ? `<tr><td colspan="2" style="padding-left:16px;font-size:11px;color:#555">📝 ${oi.notes}</td></tr>` : '';
+      const noteHtml  = oi.notes ? `<tr><td colspan="2" style="padding-left:14px;font-size:${parseInt(fontSize)-2}px;color:#555">📝 ${oi.notes}</td></tr>` : '';
       return `<tr>
         <td style="padding:3px 0">${oi.quantity}&times; ${oi.name}</td>
         <td style="text-align:right;white-space:nowrap;padding:3px 0">${CUR}${lineTotal}</td>
@@ -640,65 +669,57 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
     }).join('');
 
     const discountRow = discount > 0
-      ? `<div class="row"><span>Discount</span><span>&minus;${CUR}${discount.toFixed(2)}</span></div>` : '';
-
-    const iqdRow = EXRATE > 1
-      ? `<div class="row iqd"><span>Total (IQD)</span><span>${Math.round(total * EXRATE).toLocaleString()} IQD</span></div>` : '';
-
-    const noteRow = order.note
-      ? `<div class="note">📝 ${order.note}</div>` : '';
+      ? `<tr><td>${L('discount')}</td><td style="text-align:right">&minus;${CUR}${discount.toFixed(2)}</td></tr>` : '';
+    const iqdRow = (showIQD && EXRATE > 1)
+      ? `<tr style="font-size:${parseInt(fontSize)-2}px;color:#444"><td>${L('total')} (IQD)</td><td style="text-align:right">${Math.round(total * EXRATE).toLocaleString()} IQD</td></tr>` : '';
+    const noteRow = order.note ? `<div style="font-size:${parseInt(fontSize)-2}px;color:#555;margin:4px 0">📝 ${order.note}</div>` : '';
+    const headerRow = customHdr ? `<div style="text-align:center;margin:4px 0;font-size:${parseInt(fontSize)-1}px">${customHdr}</div>` : '';
+    const footerText = customFtr || L('thanks');
 
     const html = `<!DOCTYPE html>
-<html>
+<html${dir}>
 <head>
   <meta charset="UTF-8">
-  <title>Bill #${order.id}</title>
+  <title>${L('bill')} #${order.id}</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Courier New',Courier,monospace; font-size:13px; width:300px; margin:0 auto; padding:10px 8px; }
+    body { font-family:'Courier New',Courier,monospace; font-size:${fontSize}; width:${billWidth === '58mm' ? '200px' : '280px'}; margin:0 auto; padding:10px 8px; }
+    hr  { border:none; border-top:1px dashed #000; margin:7px 0; }
+    table { width:100%; border-collapse:collapse; }
     .center { text-align:center; }
-    .name   { font-size:20px; font-weight:bold; letter-spacing:1px; }
-    .bill   { font-size:12px; letter-spacing:3px; margin:4px 0 2px; color:#333; }
-    .dash   { border:none; border-top:1px dashed #000; margin:8px 0; }
-    .meta   { font-size:11px; }
-    .meta div { display:flex; justify-content:space-between; padding:2px 0; }
-    table   { width:100%; border-collapse:collapse; font-size:13px; }
-    .totals { margin-top:4px; }
-    .totals .row { display:flex; justify-content:space-between; padding:3px 0; font-size:13px; }
-    .totals .total { font-weight:bold; font-size:17px; border-top:2px solid #000; padding-top:6px; margin-top:4px; }
-    .totals .iqd   { font-size:12px; color:#444; }
-    .note   { font-size:11px; margin:4px 0; color:#555; }
-    .footer { text-align:center; font-size:11px; margin-top:10px; color:#555; }
-    @media print { @page { margin:4mm; size:80mm auto; } }
+    .total-row { font-weight:bold; font-size:${fsBig}; border-top:2px solid #000; margin-top:4px; }
+    .footer { text-align:center; font-size:${parseInt(fontSize)-2}px; margin-top:10px; color:#555; }
+    @media print { @page { margin:3mm; size:${billWidth} auto; } }
   </style>
 </head>
 <body>
   <div class="center">
-    <div class="name">${tenantName}</div>
-    <div class="bill">- - BILL - -</div>
+    <div style="font-size:${fsBig};font-weight:bold">${tenantName}</div>
+    <div style="letter-spacing:2px;margin:3px 0;font-size:${parseInt(fontSize)-1}px">— ${L('bill')} —</div>
   </div>
-  <hr class="dash">
-  <div class="meta">
-    <div><span>Table</span><span>${order.table_name || '—'}</span></div>
-    <div><span>Order #</span><span>${order.id}</span></div>
-    <div><span>Date</span><span>${now}</span></div>
-  </div>
-  <hr class="dash">
+  <hr>
+  ${headerRow}
+  <table>
+    <tr><td>${L('table')}</td><td style="text-align:right">${order.table_name || '—'}</td></tr>
+    <tr><td>${L('order')}</td><td style="text-align:right">${order.id}</td></tr>
+    <tr><td>${L('date')}</td><td style="text-align:right">${now}</td></tr>
+  </table>
+  <hr>
   <table><tbody>${itemRows}</tbody></table>
-  <hr class="dash">
-  <div class="totals">
-    <div class="row"><span>Subtotal</span><span>${CUR}${subtotal.toFixed(2)}</span></div>
+  <hr>
+  <table>
+    <tr><td>${L('subtotal')}</td><td style="text-align:right">${CUR}${subtotal.toFixed(2)}</td></tr>
     ${discountRow}
-    <div class="row total"><span>TOTAL</span><span>${CUR}${total.toFixed(2)}</span></div>
+    <tr class="total-row"><td>${L('total')}</td><td style="text-align:right">${CUR}${total.toFixed(2)}</td></tr>
     ${iqdRow}
-  </div>
+  </table>
   ${noteRow}
-  <hr class="dash">
-  <div class="footer">Thank you! &hearts;</div>
+  <hr>
+  <div class="footer">${footerText}</div>
 </body>
 </html>`;
 
-    const w = window.open('', '_blank', 'width=400,height=620,toolbar=no,menubar=no');
+    const w = window.open('', '_blank', 'width=420,height=650,toolbar=no,menubar=no');
     w.document.write(html);
     w.document.close();
     w.focus();
