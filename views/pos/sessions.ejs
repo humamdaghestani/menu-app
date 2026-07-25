@@ -129,7 +129,7 @@
         data-status="<%= s.status %>"
         data-sales="<%= sales %>"
       >
-        <tr class="session-row" onclick="if(!event.target.closest('a,button'))toggleSession(<%= s.id %>)">
+        <tr class="session-row" onclick="if(!event.target.closest('a,button'))window.location.href='/pos/sessions/<%= s.id %>'">
           <td style="color:#555;font-weight:600">#<%= s.id %></td>
           <td>
             <div><%= new Date(s.opened_at).toLocaleDateString() %></div>
@@ -147,8 +147,7 @@
           <td style="color:#666"><%= s.closing_cash != null ? Math.round(parseFloat(s.closing_cash)).toLocaleString() + ' IQD' : '—' %></td>
           <td><span class="badge badge-<%= s.status %>"><%= s.status %></span></td>
           <td>
-            <button class="expand-btn" id="btn_<%= s.id %>" onclick="event.stopPropagation();toggleSession(<%= s.id %>)">▼</button>
-            <a href="/pos/sessions/<%= s.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none;margin-left:6px" onclick="event.stopPropagation()">Log →</a>
+            <a href="/pos/sessions/<%= s.id %>" style="color:#7c5cbf;font-size:.72rem;text-decoration:none" onclick="event.stopPropagation()">Details →</a>
           </td>
         </tr>
       </tbody>
