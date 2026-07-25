@@ -511,10 +511,13 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
     const errors = [];
     const rows = [];
 
+    // If no recognized name column exists, use the first column as name
+    const firstCol = raw.length > 0 ? Object.keys(raw[0])[0] : null;
+
     for (let i = 0; i < raw.length; i++) {
       const r = raw[i];
       const rowNum = i + 2; // 1-indexed + header row
-      const name  = field(r, 'name', 'item_name', 'item', 'product', 'product_name', 'title', 'dish', 'food', 'اسم').trim();
+      const name  = (field(r, 'name', 'item_name', 'item', 'product', 'product_name', 'title', 'dish', 'food', 'اسم') || (firstCol ? String(r[firstCol] || '') : '')).trim();
       const price = field(r, 'price', 'unit_price', 'cost', 'amount', 'rate', 'سعر') || '0';
 
       if (!name) {
