@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customers — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; gap: 10px; }
+    .topbar-title { font-weight: 700; color: #fff; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-danger:hover { background: rgba(231,76,60,.25); }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+
+    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
+    .filter-bar { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; }
+    .search-input { padding: 8px 14px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .85rem; outline: none; font-family: inherit; flex: 1; max-width: 300px; }
+    .search-input:focus { border-color: #7c5cbf; }
+
+    .customers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .cust-card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+    .cust-avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(124,92,191,.2); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 800; color: #a78bdf; flex-shrink: 0; }
+    .cust-body { flex: 1; min-width: 0; }
+    .cust-name { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+    .cust-phone { font-size: .78rem; color: #555; }
+    .cust-stats { display: flex; gap: 12px; margin-top: 10px; }
+    .cust-stat { font-size: .72rem; }
+    .cust-stat-label { color: #444; text-transform: uppercase; font-weight: 700; }
+    .cust-stat-val { color: #ccc; font-weight: 600; }
+    .cust-actions { display: flex; gap: 6px; margin-top: 12px; }
+
+    .empty-state { text-align: center; padding: 80px 24px; color: #444; }
+
+    /* Modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; border: 1px solid #2a2a3e; width: 100%; max-width: 420px; padding: 24px; }
+    .modal-title { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 18px; }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; margin-bottom: 6px; display: block; }
+    .form-input { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .9rem; font-family: inherit; outline: none; }
+    .form-input:focus { border-color: #7c5cbf; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    .alert { padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-size: .85rem; }
+    .alert-success { background: rgba(0,184,148,.12); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
+    .alert-error   { background: rgba(231,76,60,.12);  color: #e74c3c;  border: 1px solid rgba(231,76,60,.3); }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">👥 Customers</div>
+  <div style="display:flex;gap:8px">
+    <a href="/pos" class="btn btn-ghost">← POS</a>
+    <button class="btn btn-primary" onclick="openCreate()">+ Add Customer</button>
+  </div>
+</div>
+
+<div class="main">
+  <% const qs = new URLSearchParams ? '' : ''; %>
+  <% if (typeof query !== 'undefined' && query.success) { %>
+  <div class="alert alert-success">✓ Customer saved.</div>
+  <% } %>
+
+  <div class="filter-bar">
+    <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search name or phone..." oninput="filterCards()" />
+    <span id="countLabel" style="font-size:.78rem;color:#444"></span>
+  </div>
+
+  <% if (customers.length === 0) { %>
+  <div class="empty-state">
+    <div style="font-size:3rem">👥</div>
+    <div style="margin-top:12px">No customers yet.</div>
+    <button class="btn btn-primary btn-sm" onclick="openCreate()" style="margin-top:12px">Add first customer</button>
+  </div>
+  <% } else { %>
+  <div class="customers-grid" id="custGrid">
+    <% customers.forEach(c => { %>
+    <div class="cust-card" data-search="<%= (c.name + ' ' + (c.phone||'')).toLowerCase() %>">
+      <div class="cust-avatar"><%= c.name.charAt(0).toUpperCase() %></div>
+      <div class="cust-body">
+        <div class="cust-name"><%= c.name %></div>
+        <% if (c.phone) { %><div class="cust-phone">📞 <%= c.phone %></div><% } %>
+        <% if (c.email) { %><div class="cust-phone">✉️ <%= c.email %></div><% } %>
+        <div class="cust-stats">
+          <div class="cust-stat">
+            <div class="cust-stat-label">Visits</div>
+            <div class="cust-stat-val"><%= c.visit_count %></div>
+          </div>
+          <div class="cust-stat">
+            <div class="cust-stat-label">Total Spent</div>
+            <div class="cust-stat-val"><%= tenant.currency || '$' %><%= parseFloat(c.total_spent).toFixed(2) %></div>
+          </div>
+        </div>
+        <div class="cust-actions">
+          <button class="btn btn-ghost btn-sm" onclick='openEdit(<%= JSON.stringify(c) %>)'>Edit</button>
+          <form method="POST" action="/pos/customers/<%= c.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this customer?')">
+            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+  <% } %>
+</div>
+
+<!-- Create Modal -->
+<div class="overlay" id="createOverlay" onclick="if(event.target===this)closeCreate()">
+  <div class="modal">
+    <div class="modal-title">➕ New Customer</div>
+    <form method="POST" action="/pos/customers">
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" name="name" class="form-input" required placeholder="e.g. Ahmed Ali" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="text" name="phone" class="form-input" placeholder="+964..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-input" placeholder="optional" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input type="text" name="notes" class="form-input" placeholder="optional" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Customer</div>
+    <form method="POST" id="editForm">
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" name="name" id="editName" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input type="text" name="phone" id="editPhone" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" id="editEmail" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input type="text" name="notes" id="editNotes" class="form-input" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreate() { document.getElementById('createOverlay').classList.add('open'); }
+function closeCreate() { document.getElementById('createOverlay').classList.remove('open'); }
+
+function openEdit(c) {
+  document.getElementById('editName').value  = c.name;
+  document.getElementById('editPhone').value = c.phone || '';
+  document.getElementById('editEmail').value = c.email || '';
+  document.getElementById('editNotes').value = c.notes || '';
+  document.getElementById('editForm').action = '/pos/customers/' + c.id + '/edit';
+  document.getElementById('editOverlay').classList.add('open');
+}
+function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+
+function filterCards() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let count = 0;
+  document.querySelectorAll('#custGrid .cust-card').forEach(card => {
+    const show = !q || card.dataset.search.includes(q);
+    card.style.display = show ? '' : 'none';
+    if (show) count++;
+  });
+  document.getElementById('countLabel').textContent = count + ' customer' + (count !== 1 ? 's' : '');
+}
+filterCards();
+
+// Flash from URL
+const _p = new URLSearchParams(location.search);
+if (_p.get('success')) {
+  const d = document.createElement('div');
+  d.className = 'alert alert-success';
+  d.textContent = '✓ Customer saved.';
+  document.querySelector('.main').prepend(d);
+  setTimeout(() => d.remove(), 3000);
+}
+</script>
+</body>
+</html>

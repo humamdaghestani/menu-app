@@ -178,6 +178,18 @@ const pool = new Pool({
     `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS item_name VARCHAR(120)`,
     `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS unit VARCHAR(20)`,
     `ALTER TABLE purchase_receipt_lines ALTER COLUMN item_id DROP NOT NULL`,
+    `CREATE TABLE IF NOT EXISTS customers (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name        VARCHAR(120) NOT NULL,
+      phone       VARCHAR(30),
+      email       VARCHAR(120),
+      notes       TEXT,
+      total_spent NUMERIC(12,2) DEFAULT 0,
+      visit_count INTEGER DEFAULT 0,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS is_raw_material  BOOLEAN DEFAULT false`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS is_semi_finished BOOLEAN DEFAULT false`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS can_be_sold      BOOLEAN DEFAULT false`,

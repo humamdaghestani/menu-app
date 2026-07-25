@@ -37,6 +37,26 @@
     .quick-amounts { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
     .quick-btn { padding: 7px 14px; border: 1.5px solid #2a2a3e; border-radius: 8px; background: #0f0f1a; color: #888; font-size: .8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .quick-btn:hover { border-color: #7c5cbf; color: #fff; }
+
+    /* Customer picker */
+    .customer-section { margin-bottom: 20px; }
+    .customer-search-wrap { position: relative; }
+    .customer-search { width: 100%; padding: 10px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 10px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; }
+    .customer-search:focus { border-color: #7c5cbf; }
+    .customer-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 10px; z-index: 50; max-height: 220px; overflow-y: auto; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .customer-dropdown.open { display: block; }
+    .cust-opt { padding: 10px 14px; cursor: pointer; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); display: flex; align-items: center; gap: 10px; }
+    .cust-opt:last-child { border-bottom: none; }
+    .cust-opt:hover { background: rgba(124,92,191,.15); color: #fff; }
+    .cust-opt.cash { color: #888; }
+    .cust-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(124,92,191,.25); display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; color: #a78bdf; flex-shrink: 0; }
+    .cust-info { flex: 1; min-width: 0; }
+    .cust-name { font-weight: 600; }
+    .cust-phone { font-size: .72rem; color: #555; }
+    .selected-customer { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: rgba(124,92,191,.1); border: 1.5px solid rgba(124,92,191,.4); border-radius: 10px; cursor: pointer; }
+    .selected-customer.cash-selected { background: rgba(255,255,255,.04); border-color: #2a2a3e; }
+    .selected-name { font-size: .88rem; font-weight: 600; color: #fff; flex: 1; }
+    .change-cust { font-size: .72rem; color: #555; }
   </style>
 </head>
 <body>
@@ -65,6 +85,40 @@
   </div>
 
   <form method="POST" action="/pos/order/<%= order.id %>/pay" id="payForm">
+    <!-- Customer -->
+    <div class="customer-section">
+      <label>Customer</label>
+      <input type="hidden" name="customer_id" id="customerIdInput" value="" />
+
+      <!-- Selected display -->
+      <div id="selectedCustomer" class="selected-customer cash-selected" onclick="openCustomerPicker()">
+        <div class="cust-avatar">👤</div>
+        <span class="selected-name" id="selectedName">Cash Customer</span>
+        <span class="change-cust">tap to change</span>
+      </div>
+
+      <!-- Picker dropdown -->
+      <div id="custPickerWrap" style="display:none;position:relative;margin-top:6px">
+        <input type="text" class="customer-search" id="custSearch" placeholder="Search by name or phone..." oninput="filterCustomers()" />
+        <div class="customer-dropdown open" id="custDropdown">
+          <div class="cust-opt cash" onclick="selectCustomer('', 'Cash Customer', '')">
+            <div class="cust-avatar" style="background:rgba(255,255,255,.06);color:#555">💵</div>
+            <div class="cust-info"><div class="cust-name" style="color:#888">Cash Customer</div></div>
+          </div>
+          <% customers.forEach(c => { %>
+          <div class="cust-opt" data-name="<%= c.name.toLowerCase() %>" data-phone="<%= (c.phone||'').toLowerCase() %>"
+               onclick="selectCustomer('<%= c.id %>', '<%= c.name.replace(/'/g, "\\'") %>', '<%= c.phone || '' %>')">
+            <div class="cust-avatar"><%= c.name.charAt(0).toUpperCase() %></div>
+            <div class="cust-info">
+              <div class="cust-name"><%= c.name %></div>
+              <% if (c.phone) { %><div class="cust-phone"><%= c.phone %></div><% } %>
+            </div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
     <!-- Payment Method -->
     <div class="method-row">
       <div class="method-btn active" id="btnCash" onclick="setMethod('cash')">💵 Cash</div>
@@ -128,6 +182,44 @@
   }
 
   calcChange();
+
+  // Customer picker
+  function openCustomerPicker() {
+    document.getElementById('selectedCustomer').style.display = 'none';
+    document.getElementById('custPickerWrap').style.display = '';
+    document.getElementById('custSearch').focus();
+  }
+
+  function selectCustomer(id, name, phone) {
+    document.getElementById('customerIdInput').value = id;
+    document.getElementById('selectedName').textContent = name;
+    const sel = document.getElementById('selectedCustomer');
+    sel.style.display = '';
+    sel.className = 'selected-customer' + (id ? '' : ' cash-selected');
+    document.getElementById('custPickerWrap').style.display = 'none';
+    document.getElementById('custSearch').value = '';
+    filterCustomers();
+  }
+
+  function filterCustomers() {
+    const q = document.getElementById('custSearch').value.toLowerCase();
+    document.querySelectorAll('.cust-opt:not(.cash)').forEach(el => {
+      const match = !q || el.dataset.name.includes(q) || el.dataset.phone.includes(q);
+      el.style.display = match ? '' : 'none';
+    });
+  }
+
+  // Close picker when clicking outside
+  document.addEventListener('click', e => {
+    const wrap = document.getElementById('custPickerWrap');
+    if (wrap && wrap.style.display !== 'none' && !wrap.contains(e.target) && !document.getElementById('selectedCustomer').contains(e.target)) {
+      selectCustomer(
+        document.getElementById('customerIdInput').value,
+        document.getElementById('selectedName').textContent,
+        ''
+      );
+    }
+  });
 </script>
 </body>
 </html>

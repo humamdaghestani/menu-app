@@ -437,20 +437,23 @@ router.post('/order/:orderId/discount', requireAuth, requirePOS, async (req, res
 router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
-    const order = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
-    if (!order.rows[0] || order.rows[0].status !== 'open') return res.redirect('/pos');
-    const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
-    const o = order.rows[0];
-    const subtotal = calcSubtotal(items.rows);
-    const total    = calcTotal(items.rows, o);
+    const [orderRes, itemsRes, customersRes] = await Promise.all([
+      db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]),
+      db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]),
+      db.query('SELECT id, name, phone FROM customers WHERE tenant_id=$1 ORDER BY name', [req.user.tenantId]),
+    ]);
+    if (!orderRes.rows[0] || orderRes.rows[0].status !== 'open') return res.redirect('/pos');
+    const o = orderRes.rows[0];
+    const subtotal = calcSubtotal(itemsRes.rows);
+    const total    = calcTotal(itemsRes.rows, o);
     const discount = subtotal - total;
-    res.render('pos/payment', { tenant, order: o, orderItems: items.rows, subtotal, total, discount, currentUser: req.user });
+    res.render('pos/payment', { tenant, order: o, orderItems: itemsRes.rows, subtotal, total, discount, customers: customersRes.rows, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Process payment ───────────────────────────────────────────────────────────
 router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
-  const { method, amount_paid } = req.body;
+  const { method, amount_paid, customer_id } = req.body;
   try {
     const orderRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
     const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
@@ -461,11 +464,18 @@ router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => 
       'INSERT INTO pos_payments (order_id, method, amount_paid, change_given) VALUES ($1,$2,$3,$4)',
       [req.params.orderId, method || 'cash', paid, change]
     );
+    const cid = parseInt(customer_id) || null;
     await db.query(
-      'UPDATE pos_orders SET status=$1, total=$2, paid_at=NOW() WHERE id=$3 AND tenant_id=$4',
-      ['paid', total, req.params.orderId, req.user.tenantId]
+      'UPDATE pos_orders SET status=$1, total=$2, paid_at=NOW(), customer_id=$3 WHERE id=$4 AND tenant_id=$5',
+      ['paid', total, cid, req.params.orderId, req.user.tenantId]
     );
-    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, change });
+    if (cid) {
+      await db.query(
+        'UPDATE customers SET total_spent=total_spent+$1, visit_count=visit_count+1 WHERE id=$2 AND tenant_id=$3',
+        [total, cid, req.user.tenantId]
+      );
+    }
+    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, change, customer_id: cid });
     // Auto-deduct inventory stock if module is enabled
     try {
       const { deductStockForOrder } = require('./inventory');
@@ -826,6 +836,51 @@ router.post('/api/order/:id/void', requireAuth, requirePOS, async (req, res) => 
     await logAction(req.user.tenantId, vr.rows[0]?.session_id, req.params.id, req.user.userId, 'order_void', { table_name: vr.rows[0]?.table_name });
     res.json({ ok: true, redirect: '/pos/tables' });
   } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── Customers ─────────────────────────────────────────────────────────────────
+router.get('/customers', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const customers = await db.query(
+      `SELECT c.*, COUNT(po.id) AS order_count
+       FROM customers c
+       LEFT JOIN pos_orders po ON po.customer_id=c.id AND po.status='paid'
+       WHERE c.tenant_id=$1
+       GROUP BY c.id ORDER BY c.name`,
+      [req.user.tenantId]
+    );
+    res.render('pos/customers', { tenant, customers: customers.rows, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/customers', requireAuth, requirePOS, async (req, res) => {
+  const { name, phone, email, notes } = req.body;
+  try {
+    await db.query(
+      'INSERT INTO customers (tenant_id, name, phone, email, notes) VALUES ($1,$2,$3,$4,$5)',
+      [req.user.tenantId, name.trim(), phone?.trim() || null, email?.trim() || null, notes?.trim() || null]
+    );
+    res.redirect('/pos/customers?success=1');
+  } catch (err) { console.error(err); res.redirect('/pos/customers?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/customers/:id/edit', requireAuth, requirePOS, async (req, res) => {
+  const { name, phone, email, notes } = req.body;
+  try {
+    await db.query(
+      'UPDATE customers SET name=$1, phone=$2, email=$3, notes=$4 WHERE id=$5 AND tenant_id=$6',
+      [name.trim(), phone?.trim() || null, email?.trim() || null, notes?.trim() || null, req.params.id, req.user.tenantId]
+    );
+    res.redirect('/pos/customers?success=1');
+  } catch (err) { console.error(err); res.redirect('/pos/customers?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/customers/:id/delete', requireAuth, requirePOS, async (req, res) => {
+  try {
+    await db.query('DELETE FROM customers WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/pos/customers');
+  } catch (err) { console.error(err); res.redirect('/pos/customers'); }
 });
 
 module.exports = router;
