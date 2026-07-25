@@ -33,7 +33,20 @@
     .lines-table td { padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: top; }
     .line-input { width: 100%; padding: 7px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 7px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
     .line-input:focus { border-color: #7c5cbf; }
-    select.line-input option { background: #1a1a2e; }
+
+    /* Searchable item picker */
+    .item-picker { position: relative; }
+    .item-search { width: 100%; padding: 7px 28px 7px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 7px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
+    .item-search:focus { border-color: #7c5cbf; }
+    .item-search::placeholder { color: #444; }
+    .picker-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: #555; pointer-events: none; font-size: .7rem; }
+    .picker-dropdown { display: none; position: absolute; top: calc(100% + 3px); left: 0; right: 0; background: #1a1a2e; border: 1.5px solid #7c5cbf; border-radius: 8px; z-index: 200; max-height: 220px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .picker-dropdown.open { display: block; }
+    .picker-opt { padding: 8px 12px; font-size: .85rem; color: #ccc; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+    .picker-opt:hover, .picker-opt.focused { background: rgba(124,92,191,.2); color: #fff; }
+    .picker-opt.create { color: #7c5cbf; font-weight: 600; border-bottom: 1px solid #2a2a3e; }
+    .picker-opt .unit-tag { font-size: .7rem; color: #555; background: #0f0f1a; padding: 1px 6px; border-radius: 4px; margin-left: auto; }
+    .picker-empty { padding: 12px; font-size: .82rem; color: #444; text-align: center; }
 
     /* New item inline */
     .new-item-row { display: none; margin-top: 4px; }
@@ -122,64 +135,158 @@
 
 <script>
 const CUR = '<%= tenant.currency || "IQD" %>';
-// Inventory items list passed from server
 const INV_ITEMS = <%- JSON.stringify(invItems) %>;
 let idx = 0;
 
-function buildItemOptions() {
-  let html = '<option value="">— Select item —</option>';
-  html += '<option value="new">➕ Create new item...</option>';
-  html += '<option disabled>──────────────────</option>';
-  INV_ITEMS.forEach(item => {
-    html += `<option value="${item.id}" data-unit="${item.unit}">${item.name} (${item.unit})</option>`;
-  });
-  return html;
+// ── Searchable picker ──────────────────────────────────────────────
+function createPicker(i) {
+  const wrap = document.createElement('div');
+  wrap.className = 'item-picker';
+  wrap.id = 'picker_' + i;
+
+  // Hidden value field submitted with form
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden';
+  hidden.name = 'item_id';
+  hidden.id   = 'item_id_' + i;
+
+  // Visible search input
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'item-search';
+  search.placeholder = 'Search item…';
+  search.autocomplete = 'off';
+  search.id = 'search_' + i;
+
+  const arrow = document.createElement('span');
+  arrow.className = 'picker-arrow';
+  arrow.textContent = '▾';
+
+  // Dropdown
+  const drop = document.createElement('div');
+  drop.className = 'picker-dropdown';
+  drop.id = 'drop_' + i;
+
+  wrap.appendChild(hidden);
+  wrap.appendChild(search);
+  wrap.appendChild(arrow);
+  wrap.appendChild(drop);
+
+  // Events
+  search.addEventListener('focus', () => { renderDrop(i, search.value); drop.classList.add('open'); });
+  search.addEventListener('input', () => { hidden.value = ''; renderDrop(i, search.value); drop.classList.add('open'); });
+  search.addEventListener('keydown', e => handleKey(e, i));
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) drop.classList.remove('open'); });
+
+  return wrap;
 }
+
+function renderDrop(i, q) {
+  const drop   = document.getElementById('drop_' + i);
+  const search = document.getElementById('search_' + i);
+  q = (q || '').toLowerCase().trim();
+
+  const filtered = INV_ITEMS.filter(it => it.name.toLowerCase().includes(q));
+  let html = `<div class="picker-opt create" onclick="selectNew(${i})">➕ Create new item${q ? ': <b>' + escH(q) + '</b>' : '…'}</div>`;
+
+  if (filtered.length === 0 && q) {
+    html += `<div class="picker-empty">No match — will create "${escH(q)}"</div>`;
+  } else {
+    filtered.forEach(it => {
+      html += `<div class="picker-opt" onclick="selectItem(${i},${it.id},'${escJ(it.name)}','${escJ(it.unit)}')">${escH(it.name)}<span class="unit-tag">${escH(it.unit)}</span></div>`;
+    });
+  }
+  drop.innerHTML = html;
+}
+
+function handleKey(e, i) {
+  const drop = document.getElementById('drop_' + i);
+  const opts = drop.querySelectorAll('.picker-opt:not([disabled])');
+  const cur  = drop.querySelector('.picker-opt.focused');
+  let curIdx = Array.from(opts).indexOf(cur);
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (cur) cur.classList.remove('focused');
+    const next = opts[Math.min(curIdx + 1, opts.length - 1)];
+    if (next) { next.classList.add('focused'); next.scrollIntoView({ block: 'nearest' }); }
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (cur) cur.classList.remove('focused');
+    const prev = opts[Math.max(curIdx - 1, 0)];
+    if (prev) { prev.classList.add('focused'); prev.scrollIntoView({ block: 'nearest' }); }
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (cur) cur.click();
+    else {
+      // Enter with no selection → treat typed text as "create new"
+      selectNew(i);
+    }
+  } else if (e.key === 'Escape') {
+    drop.classList.remove('open');
+  }
+}
+
+function selectItem(i, id, name, unit) {
+  document.getElementById('item_id_' + i).value = id;
+  document.getElementById('search_'  + i).value = name;
+  document.getElementById('drop_'    + i).classList.remove('open');
+  const unitFld = document.getElementById('unit_' + i);
+  unitFld.value = unit;
+  unitFld.setAttribute('readonly', 'readonly');
+  document.getElementById('newRow_'  + i).classList.remove('show');
+}
+
+function selectNew(i) {
+  const search = document.getElementById('search_' + i);
+  document.getElementById('item_id_' + i).value = 'new';
+  document.getElementById('drop_'    + i).classList.remove('open');
+  const unitFld = document.getElementById('unit_' + i);
+  unitFld.value = '';
+  unitFld.removeAttribute('readonly');
+  const newRow  = document.getElementById('newRow_' + i);
+  newRow.classList.add('show');
+  // Pre-fill new item name with whatever was typed
+  const nameInput = document.getElementById('newName_' + i);
+  if (search.value && !nameInput.value) nameInput.value = search.value;
+  search.value = '➕ Create new item';
+  nameInput.focus();
+}
+
+function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escJ(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ── Row management ─────────────────────────────────────────────────
+function mkTd(html) { const td = document.createElement('td'); td.innerHTML = html; return td; }
 
 function addLine() {
   const tbody = document.getElementById('linesBody');
   const tr = document.createElement('tr');
-  const i = idx++;
+  const i  = idx++;
   tr.id = 'line_' + i;
-  tr.innerHTML = `
-    <td>
-      <select name="item_id" class="line-input" onchange="onItemChange(${i}, this)">
-        ${buildItemOptions()}
-      </select>
-      <div class="new-item-row" id="newRow_${i}">
-        <div class="new-item-hint">New item — enter name:</div>
-        <input type="text" name="new_item_name" class="line-input" placeholder="Item name" id="newName_${i}" />
-      </div>
-    </td>
-    <td><input type="text" name="unit" id="unit_${i}" class="line-input" placeholder="kg" /></td>
-    <td><input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" oninput="recalc(${i})" required /></td>
-    <td><input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" oninput="recalc(${i})" required /></td>
-    <td><span class="line-total" id="lt_${i}">${CUR} 0.00</span></td>
-    <td><button type="button" class="btn-remove" onclick="removeLine(${i})">✕</button></td>
-  `;
+
+  // Cell 1: item picker + new-item row (built as DOM nodes to preserve listeners)
+  const tdItem = document.createElement('td');
+  tdItem.appendChild(createPicker(i));
+  const newRow = document.createElement('div');
+  newRow.className = 'new-item-row';
+  newRow.id = 'newRow_' + i;
+  newRow.innerHTML = `<div class="new-item-hint">✦ New item name:</div><input type="text" name="new_item_name" class="line-input" placeholder="Item name" id="newName_${i}" />`;
+  tdItem.appendChild(newRow);
+
+  // Remaining cells
+  const tdUnit  = mkTd(`<input type="text" name="unit" id="unit_${i}" class="line-input" placeholder="kg" />`);
+  const tdQty   = mkTd(`<input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" required />`);
+  const tdPrice = mkTd(`<input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" required />`);
+  const tdTotal = mkTd(`<span class="line-total" id="lt_${i}">${CUR} 0.00</span>`);
+  const tdDel   = mkTd(`<button type="button" class="btn-remove">✕</button>`);
+  tdDel.querySelector('button').onclick = () => removeLine(i);
+  tdQty.querySelector('input').oninput   = () => recalc(i);
+  tdPrice.querySelector('input').oninput = () => recalc(i);
+
+  tr.append(tdItem, tdUnit, tdQty, tdPrice, tdTotal, tdDel);
   tbody.appendChild(tr);
-}
-
-function onItemChange(i, sel) {
-  const newRow  = document.getElementById('newRow_' + i);
-  const unitFld = document.getElementById('unit_' + i);
-
-  if (sel.value === 'new') {
-    newRow.classList.add('show');
-    unitFld.value = '';
-    unitFld.removeAttribute('readonly');
-  } else if (sel.value === '') {
-    newRow.classList.remove('show');
-    unitFld.value = '';
-    unitFld.removeAttribute('readonly');
-  } else {
-    newRow.classList.remove('show');
-    // Auto-fill unit from inventory item
-    const opt = sel.options[sel.selectedIndex];
-    const unit = opt.getAttribute('data-unit') || '';
-    unitFld.value = unit;
-    unitFld.setAttribute('readonly', 'readonly');
-  }
+  document.getElementById('search_' + i).focus();
 }
 
 function recalc(i) {
@@ -204,7 +311,6 @@ function removeLine(i) {
   recalcTotal();
 }
 
-// Start with one row
 addLine();
 </script>
 </body>
