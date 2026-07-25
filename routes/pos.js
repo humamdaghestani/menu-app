@@ -128,6 +128,17 @@ router.post('/session/close', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/pos/session/close'); }
 });
 
+// ── Update exchange rate for open session ─────────────────────────────────────
+router.post('/session/exchange-rate', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const session = await getOpenSession(req.user.tenantId);
+    if (!session) return res.json({ ok: false, error: 'No open session' });
+    const rate = parseFloat(req.body.exchange_rate) || 1;
+    await db.query('UPDATE pos_sessions SET exchange_rate=$1 WHERE id=$2', [rate, session.id]);
+    res.json({ ok: true, rate });
+  } catch (err) { console.error(err); res.json({ ok: false, error: err.message }); }
+});
+
 // ── Order History ─────────────────────────────────────────────────────────────
 router.get('/orders', requireAuth, requirePOS, requireSession, async (req, res) => {
   try {

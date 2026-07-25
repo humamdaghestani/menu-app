@@ -66,6 +66,20 @@
     .nav-desc  { font-size: .75rem; color: #555; }
 
     @media (max-width: 500px) { .session-card { flex-direction: column; align-items: flex-start; } .main { padding: 16px; } }
+
+    /* Rate modal */
+    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; align-items:center; justify-content:center; }
+    .modal-bg.open { display:flex; }
+    .rate-modal { background:#1a1a2e; border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:28px 28px 22px; width:320px; }
+    .rate-modal h3 { font-size:1rem; font-weight:700; color:#fff; margin-bottom:6px; }
+    .rate-modal p  { font-size:.78rem; color:#555; margin-bottom:18px; }
+    .rate-input { width:100%; padding:12px 14px; background:#0f0f1a; border:2px solid #2a2a3e; border-radius:10px; color:#fff; font-size:1.3rem; font-weight:700; outline:none; font-family:inherit; margin-bottom:16px; }
+    .rate-input:focus { border-color:#f39c12; }
+    .rate-hint { font-size:.74rem; color:#555; margin-top:-10px; margin-bottom:16px; }
+    .modal-btns { display:flex; gap:10px; }
+    .btn-rate-save { flex:1; padding:11px; border:none; border-radius:10px; background:#f39c12; color:#111; font-weight:700; cursor:pointer; font-family:inherit; font-size:.88rem; }
+    .btn-rate-cancel { flex:1; padding:11px; border:none; border-radius:10px; background:rgba(255,255,255,.07); color:#888; font-weight:600; cursor:pointer; font-family:inherit; font-size:.88rem; }
+    .btn-rate { padding:6px 12px; border:1px solid rgba(243,156,18,.4); border-radius:8px; background:rgba(243,156,18,.08); color:#f39c12; font-size:.75rem; font-weight:700; cursor:pointer; font-family:inherit; }
   </style>
 </head>
 <body>
@@ -97,11 +111,36 @@
           <div class="session-stat-label">Sales</div>
           <div class="session-stat-val green"><%= tenant.currency || '$' %><%= parseFloat(stats.sales).toFixed(2) %></div>
         </div>
+        <div class="session-stat">
+          <div class="session-stat-label">Rate</div>
+          <div class="session-stat-val" id="rateDisplay">
+            <% if (parseFloat(session.exchange_rate) > 1) { %>
+              1 <%= tenant.currency || '$' %> = <%= parseFloat(session.exchange_rate).toFixed(0) %> IQD
+            <% } else { %>
+              —
+            <% } %>
+          </div>
+        </div>
       </div>
+      <button class="btn-rate" onclick="openRateModal(<%= parseFloat(session.exchange_rate) || 1 %>)" style="margin-top:10px">✏️ Edit Rate</button>
     </div>
     <div class="session-actions">
       <a href="/pos/tables" class="btn btn-continue">Go to Tables →</a>
       <a href="/pos/session/close" class="btn btn-close-session">🔒 Close</a>
+    </div>
+  </div>
+
+  <!-- Exchange Rate Modal -->
+  <div class="modal-bg" id="rateBg" onclick="if(event.target===this)closeRateModal()">
+    <div class="rate-modal">
+      <h3>✏️ Update Exchange Rate</h3>
+      <p>Change the IQD rate for this session's remaining payments.</p>
+      <input type="number" class="rate-input" id="rateModalInput" min="1" step="1" placeholder="e.g. 1480" oninput="updateRateModalHint()" />
+      <div class="rate-hint" id="rateModalHint"></div>
+      <div class="modal-btns">
+        <button class="btn-rate-save" onclick="saveRate()">Save Rate</button>
+        <button class="btn-rate-cancel" onclick="closeRateModal()">Cancel</button>
+      </div>
     </div>
   </div>
   <% } else { %>
@@ -174,6 +213,41 @@
   </div>
 
 </div>
+
+<script>
+  const CUR_SYM = '<%= tenant.currency || "$" %>';
+
+  function openRateModal(current) {
+    document.getElementById('rateModalInput').value = current > 1 ? current : '';
+    document.getElementById('rateBg').classList.add('open');
+    updateRateModalHint();
+    setTimeout(() => document.getElementById('rateModalInput').focus(), 50);
+  }
+  function closeRateModal() { document.getElementById('rateBg').classList.remove('open'); }
+  function updateRateModalHint() {
+    const r = parseFloat(document.getElementById('rateModalInput').value) || 0;
+    document.getElementById('rateModalHint').textContent = r > 1 ? '1 ' + CUR_SYM + ' = ' + r.toLocaleString() + ' IQD' : '';
+  }
+  async function saveRate() {
+    const r = parseFloat(document.getElementById('rateModalInput').value) || 1;
+    const btn = document.querySelector('.btn-rate-save');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+    try {
+      const res = await fetch('/pos/session/exchange-rate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exchange_rate: r })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const disp = document.getElementById('rateDisplay');
+        if (disp) disp.textContent = r > 1 ? '1 ' + CUR_SYM + ' = ' + r.toFixed(0) + ' IQD' : '—';
+        closeRateModal();
+      } else { alert('Failed to save: ' + (data.error || 'unknown error')); }
+    } catch (e) { alert('Network error'); }
+    btn.textContent = 'Save Rate'; btn.disabled = false;
+  }
+</script>
 
 <% if (currentUser.role === 'admin') { %>
 <script>
