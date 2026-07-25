@@ -484,7 +484,11 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
 
   try {
     const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
+    // Prefer 'Menu Items' sheet (template), then first non-hidden sheet, then sheet[0]
+    const sheetName = wb.SheetNames.find(n => n === 'Menu Items')
+                   || wb.SheetNames.find(n => !n.startsWith('_'))
+                   || wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json(ws, { defval: '' });
     const raw = rawData.map(row => {
       const n = {};
