@@ -77,6 +77,7 @@
   </div>
   <div class="topbar-right">
     <a href="/pos/kitchen" class="btn btn-ghost">🍳 Kitchen</a>
+    <a href="/pos/orders" class="btn btn-ghost">📋 Orders</a>
     <a href="/pos/settings" class="btn btn-ghost">⚙️ Tables</a>
     <a href="/pos" class="btn btn-ghost">← POS Home</a>
   </div>
@@ -101,7 +102,6 @@
     <span class="session-stat-val green"><%= tenant.currency || '$' %><%= parseFloat(sessionStats.sales).toFixed(2) %></span>
   </div>
   <div class="session-actions">
-    <a href="/pos/orders" class="btn btn-ghost">📋 Orders</a>
     <a href="/pos/session/close" class="btn btn-danger">🔒 Close Session</a>
   </div>
 </div>
