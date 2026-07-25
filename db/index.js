@@ -204,6 +204,11 @@ const pool = new Pool({
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_custom_footer TEXT`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_font_size     VARCHAR(10) DEFAULT 'normal'`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_paper_width   VARCHAR(10) DEFAULT '80mm'`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS selling_price NUMERIC(12,4) DEFAULT 0`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS notes TEXT`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS description TEXT`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS image_url TEXT`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS badge VARCHAR(40)`,
     `CREATE TABLE IF NOT EXISTS inventory_transactions (
       id             SERIAL PRIMARY KEY,
       tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

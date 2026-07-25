@@ -294,6 +294,7 @@
     <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
     <% if (_can('items')) { %><a href="/admin/dashboard" class="active"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
     <% if (_can('items')) { %><a href="/admin/items"><span class="icon">🍽️</span><span>Items</span></a><% } %>
+    <% if (_can('items')) { %><a href="/admin/inventory"><span class="icon">📦</span><span>Inventory</span></a><% } %>
     <% if (_can('orders') && tenant.feat_orders !== false) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
     <% if (_can('feedback') && tenant.feat_feedback !== false) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
     <% if (_can('import') && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>

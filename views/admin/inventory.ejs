@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
+
+    .sidebar { width: var(--sidebar-w); background: #1a1a2e; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px; }
+    .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
+    .sidebar-brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #fff; flex-shrink: 0; }
+    .sidebar-brand .brand-emoji { font-size: 1.6rem; }
+    .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+    .sidebar-nav a, .sidebar-nav button { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem; background: none; border: none; cursor: pointer; width: 100%; transition: background .15s, color .15s; font-family: inherit; }
+    .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer { padding: 0 12px; }
+    .view-menu-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.07); color: #ccc; padding: 10px; border-radius: 10px; text-decoration: none; font-size: .85rem; }
+    .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .dark-toggle { background: none; border: none; cursor: pointer; padding: 8px; border-radius: 8px; color: #aaa; width: 100%; text-align: left; display: flex; align-items: center; gap: 10px; font-family: inherit; font-size: .9rem; }
+    .dark-toggle:hover { background: rgba(255,255,255,.07); color: #fff; }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; min-height: 100vh; }
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
+    .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .stat-icon { font-size: 1.3rem; margin-bottom: 6px; }
+    .stat-value { font-size: 1.6rem; font-weight: 800; color: #1a1a2e; }
+    .stat-label { color: #888; font-size: .78rem; margin-top: 2px; }
+
+    .card { background: #fff; border-radius: 14px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .card-header h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1/-1; }
+    label { font-size: .8rem; font-weight: 600; color: #555; }
+    input[type=text], input[type=number], input[type=url], select, textarea {
+      padding: 10px 12px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .9rem;
+      outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+    textarea { resize: vertical; min-height: 70px; }
+
+    .form-actions { display: flex; justify-content: flex-end; margin-top: 16px; gap: 10px; }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: opacity .15s; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost { background: #f0f0f0; color: #555; }
+    .btn-ghost:hover { background: #e4e4e4; }
+    .btn-danger { background: #fff0f3; color: #e94560; border: 1px solid #f5c2cb; }
+    .btn-danger:hover { background: #fde0e6; }
+    .btn-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .btn-green:hover { background: #bbf7d0; }
+    .btn-sm { padding: 6px 12px; font-size: .78rem; }
+
+    /* sell section toggle */
+    .sell-toggle-row { display: flex; align-items: center; gap: 12px; padding: 14px; background: #f8f9fa; border-radius: 10px; border: 1.5px solid #e8e8e8; cursor: pointer; margin-bottom: 0; }
+    .sell-toggle-row label { cursor: pointer; font-size: .9rem; font-weight: 600; color: #333; margin: 0; }
+    .sell-section { display: none; border: 1.5px solid #e0f0e8; border-radius: 10px; padding: 16px; margin-top: 10px; background: #f0fdf4; }
+    .sell-section.open { display: block; }
+
+    /* Table */
+    .tbl { width: 100%; border-collapse: collapse; }
+    .tbl th { text-align: left; padding: 10px 12px; font-size: .72rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; border-bottom: 2px solid #f0f0f0; background: #fafafa; white-space: nowrap; }
+    .tbl td { padding: 12px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; font-size: .85rem; }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: #fafcff; }
+    .item-name-cell { font-weight: 600; }
+    .item-sku { color: #aaa; font-size: .72rem; margin-top: 2px; }
+
+    .stock-val { font-weight: 700; font-size: .95rem; }
+    .stock-ok   { color: #16a34a; }
+    .stock-low  { color: #d97706; }
+    .stock-zero { color: #dc2626; }
+
+    .badge-sold { display: inline-flex; align-items: center; gap: 4px; background: #dcfce7; color: #166534; font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+    .badge-raw  { display: inline-flex; align-items: center; gap: 4px; background: #f0f0f0; color: #666; font-size: .7rem; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+
+    .actions-cell { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .table-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-wrap { position: relative; flex: 1; min-width: 180px; }
+    .search-wrap svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #bbb; pointer-events: none; }
+    .search-wrap input { padding: 8px 12px 8px 32px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .85rem; width: 100%; outline: none; font-family: inherit; background: #fafafa; }
+    .search-wrap input:focus { border-color: var(--accent); background: #fff; }
+
+    /* Modals */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+    .overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; animation: popIn .2s ease; }
+    @keyframes popIn { from { transform: scale(.93); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    #toast { position: fixed; bottom: 28px; right: 28px; background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.2); transform: translateY(80px); opacity: 0; transition: transform .3s, opacity .3s; z-index: 999; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-left: 4px solid #00b894; }
+    #toast.error   { border-left: 4px solid #e94560; }
+
+    .img-row { display: flex; gap: 8px; align-items: center; }
+    .img-row input { flex: 1; }
+    .img-preview { width: 70px; height: 52px; border-radius: 8px; object-fit: cover; border: 1.5px dashed #ddd; display: none; margin-top: 6px; }
+    .img-preview.show { display: block; }
+
+    @media (max-width:768px) {
+      .sidebar { width: 64px; }
+      .sidebar-brand-text, .sidebar-nav span:not(.icon) { display: none; }
+      .main { margin-left: 64px; padding: 16px; }
+      .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %>
+      <img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" />
+    <% } else { %>
+      <span class="brand-emoji">🍽️</span>
+    <% } %>
+    <div class="sidebar-brand-text">
+      <h2><%= tenant.name %></h2>
+      <span>Admin Panel</span>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
+    <% if (_can('items')) { %><a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
+    <% if (_can('items')) { %><a href="/admin/items"><span class="icon">🍽️</span><span>Items</span></a><% } %>
+    <% if (_can('items')) { %><a href="/admin/inventory" class="active"><span class="icon">📦</span><span>Inventory</span></a><% } %>
+    <% if (_can('orders') && tenant.feat_orders !== false) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
+    <% if (_can('feedback') && tenant.feat_feedback !== false) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
+    <% if (_can('import') && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
+    <% if (_isAdmin) { %><a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a><% } %>
+    <% if (tenant.feat_pos) { %><a href="/pos"><span class="icon">🖥️</span><span>POS</span></a><% } %>
+    <% if (_isAdmin) { %><a href="/admin/users"><span class="icon">👥</span><span>Users</span></a><% } %>
+    <% if (_isAdmin) { %><a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a><% } %>
+    <button class="dark-toggle" id="darkToggle" onclick="toggleDark()" style="margin-top:auto">
+      <span class="icon" id="darkIcon">🌙</span><span id="darkLabel">Dark Mode</span>
+    </button>
+    <form method="POST" action="/admin/logout">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn">
+      <span>🔗</span><span>View Menu</span>
+    </a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="page-header">
+    <h1>📦 Inventory</h1>
+    <p>Track stock levels and link items to the POS menu</p>
+  </div>
+
+  <%
+    const rootCats = categories.filter(c => !c.parent_id);
+    const getSubCats = pid => categories.filter(c => String(c.parent_id) === String(pid));
+    const lowStock  = items.filter(i => parseFloat(i.stock_qty) <= parseFloat(i.reorder_level) && parseFloat(i.reorder_level) > 0).length;
+    const canSold   = items.filter(i => i.can_be_sold).length;
+  %>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-value"><%= items.length %></div><div class="stat-label">Total Items</div></div>
+    <div class="stat-card"><div class="stat-icon">🛒</div><div class="stat-value"><%= canSold %></div><div class="stat-label">Can Be Sold</div></div>
+    <div class="stat-card"><div class="stat-icon" style="color:#d97706">⚠️</div><div class="stat-value" style="color:<%= lowStock>0?'#d97706':'#16a34a' %>"><%= lowStock %></div><div class="stat-label">Low Stock</div></div>
+  </div>
+
+  <!-- Add Item -->
+  <div class="card">
+    <div class="card-header"><h2>Add Inventory Item</h2></div>
+    <form id="addForm" onsubmit="submitAdd(event)">
+      <div class="form-grid three">
+        <div class="form-group">
+          <label>Item Name *</label>
+          <input type="text" name="name" placeholder="e.g. Coffee Beans" required />
+        </div>
+        <div class="form-group">
+          <label>SKU / Code</label>
+          <input type="text" name="sku" placeholder="e.g. CB-001" />
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select name="unit">
+            <option value="pcs">Pieces (pcs)</option>
+            <option value="kg">Kilograms (kg)</option>
+            <option value="g">Grams (g)</option>
+            <option value="ltr">Liters (ltr)</option>
+            <option value="ml">Milliliters (ml)</option>
+            <option value="box">Box</option>
+            <option value="bag">Bag</option>
+            <option value="bottle">Bottle</option>
+            <option value="can">Can</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Current Stock</label>
+          <input type="number" name="stock_qty" placeholder="0" min="0" step="0.001" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Reorder Level (low stock alert)</label>
+          <input type="number" name="reorder_level" placeholder="0" min="0" step="0.001" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Cost Price (per unit)</label>
+          <input type="number" name="avg_cost" placeholder="0" min="0" step="0.01" value="0" />
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <input type="text" name="notes" placeholder="Optional notes..." />
+        </div>
+      </div>
+
+      <!-- Can be sold toggle -->
+      <div style="margin-top:16px">
+        <div class="sell-toggle-row" onclick="toggleSellSection(this)">
+          <input type="checkbox" name="can_be_sold" id="addCanBeSold" style="width:18px;height:18px;cursor:pointer" onclick="event.stopPropagation();toggleSellSection(this.closest('.sell-toggle-row'))" />
+          <label for="addCanBeSold">🛒 Can be sold in POS — add this item to the menu</label>
+        </div>
+        <div class="sell-section" id="addSellSection">
+          <input type="hidden" name="add_to_menu" value="on" />
+          <p style="font-size:.82rem;color:#166534;margin-bottom:14px">Fill in the details below to add this item to your menu so it appears in the POS.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Selling Price *</label>
+              <input type="number" name="selling_price" placeholder="0" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label>Menu Category</label>
+              <select name="category_id">
+                <option value="">No category</option>
+                <% rootCats.forEach(cat => { %>
+                  <% const subs = getSubCats(cat.id); %>
+                  <% if (subs.length > 0) { %>
+                    <optgroup label="<%= cat.name %>">
+                      <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
+                      <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                    </optgroup>
+                  <% } else { %>
+                    <option value="<%= cat.id %>"><%= cat.name %></option>
+                  <% } %>
+                <% }) %>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Description (shown in menu)</label>
+              <textarea name="description" placeholder="Describe this item..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Image URL</label>
+              <div class="img-row">
+                <input type="url" name="image_url" id="addImgUrl" placeholder="https://…" oninput="previewImg(this,'addImgPreview')" />
+              </div>
+              <img id="addImgPreview" class="img-preview" />
+            </div>
+            <div class="form-group">
+              <label>Badge</label>
+              <select name="badge">
+                <option value="">None</option>
+                <option value="popular">⭐ Popular</option>
+                <option value="new">🆕 New</option>
+                <option value="spicy">🌶 Spicy</option>
+                <option value="vegetarian">🌱 Vegetarian</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="addBtn">Add Item</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Items List -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Stock List</h2>
+      <span style="color:#aaa;font-size:.85rem"><%= items.length %> items</span>
+    </div>
+    <% if (items.length === 0) { %>
+      <p style="text-align:center;color:#bbb;padding:40px 0">No inventory items yet. Add one above.</p>
+    <% } else { %>
+    <div class="table-toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search items…" oninput="filterTable(this.value)" />
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="invTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Unit</th>
+            <th>Stock</th>
+            <th>Reorder At</th>
+            <th>Cost Price</th>
+            <th>Selling Price</th>
+            <th>Status</th>
+            <th>In Menu</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="invTbody">
+          <% items.forEach(item => {
+            const qty = parseFloat(item.stock_qty);
+            const rl  = parseFloat(item.reorder_level);
+            const stockClass = qty <= 0 ? 'stock-zero' : (rl > 0 && qty <= rl ? 'stock-low' : 'stock-ok');
+          %>
+          <tr data-id="<%= item.id %>" data-name="<%= (item.name||'').toLowerCase() %>">
+            <td>
+              <div class="item-name-cell"><%= item.name %></div>
+              <% if (item.sku) { %><div class="item-sku">SKU: <%= item.sku %></div><% } %>
+            </td>
+            <td style="color:#666"><%= item.unit %></td>
+            <td>
+              <span class="stock-val <%= stockClass %>" id="stock_<%= item.id %>"><%= parseFloat(item.stock_qty).toLocaleString() %></span>
+              <% if (rl > 0 && qty <= rl) { %><div style="font-size:.68rem;color:#d97706;margin-top:2px">⚠ Low stock</div><% } %>
+              <% if (qty <= 0) { %><div style="font-size:.68rem;color:#dc2626;margin-top:2px">✕ Out of stock</div><% } %>
+            </td>
+            <td style="color:#888"><%= parseFloat(item.reorder_level).toLocaleString() %></td>
+            <td><%= parseFloat(item.avg_cost).toLocaleString() %></td>
+            <td><%= parseFloat(item.selling_price||0).toLocaleString() %></td>
+            <td>
+              <% if (item.can_be_sold) { %>
+                <span class="badge-sold">🛒 Can sell</span>
+              <% } else { %>
+                <span class="badge-raw">📦 Stock only</span>
+              <% } %>
+            </td>
+            <td>
+              <% if (item.menu_item_id) { %>
+                <a href="/admin/items" style="color:#7c5cbf;font-size:.78rem;font-weight:600">✓ In Menu</a>
+              <% } else { %>
+                <span style="color:#ccc;font-size:.78rem">—</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="actions-cell">
+                <button type="button" class="btn btn-green btn-sm" onclick='openStock(<%= item.id %>, "<%= item.name.replace(/"/g,"&quot;") %>", "<%= item.unit %>")'>± Stock</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(<%= item.id %>, this)">Delete</button>
+              </div>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- Stock Adjustment Modal -->
+<div class="overlay" id="stockOverlay">
+  <div class="modal" style="max-width:400px">
+    <h3>Adjust Stock</h3>
+    <p id="stockItemName" style="color:#888;font-size:.88rem;margin-bottom:16px"></p>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Adjustment Amount</label>
+      <input type="number" id="stockAdjQty" step="0.001" placeholder="+50 to add, -10 to remove" />
+      <span style="font-size:.75rem;color:#aaa;margin-top:4px">Positive = add stock &nbsp;·&nbsp; Negative = remove stock</span>
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Reason / Notes</label>
+      <input type="text" id="stockAdjNotes" placeholder="e.g. Purchase from supplier, Daily usage..." />
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeStock()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="stockSaveBtn" onclick="submitStock()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="overlay" id="editOverlay">
+  <div class="modal">
+    <h3>Edit Inventory Item</h3>
+    <form id="editForm" onsubmit="submitEdit(event)">
+      <div class="form-grid three">
+        <div class="form-group">
+          <label>Item Name *</label>
+          <input type="text" name="name" id="eName" required />
+        </div>
+        <div class="form-group">
+          <label>SKU / Code</label>
+          <input type="text" name="sku" id="eSku" />
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select name="unit" id="eUnit">
+            <option value="pcs">Pieces (pcs)</option>
+            <option value="kg">Kilograms (kg)</option>
+            <option value="g">Grams (g)</option>
+            <option value="ltr">Liters (ltr)</option>
+            <option value="ml">Milliliters (ml)</option>
+            <option value="box">Box</option>
+            <option value="bag">Bag</option>
+            <option value="bottle">Bottle</option>
+            <option value="can">Can</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Current Stock</label>
+          <input type="number" name="stock_qty" id="eStockQty" min="0" step="0.001" />
+        </div>
+        <div class="form-group">
+          <label>Reorder Level</label>
+          <input type="number" name="reorder_level" id="eReorderLevel" min="0" step="0.001" />
+        </div>
+        <div class="form-group">
+          <label>Cost Price</label>
+          <input type="number" name="avg_cost" id="eAvgCost" min="0" step="0.01" />
+        </div>
+        <div class="form-group full">
+          <label>Notes</label>
+          <input type="text" name="notes" id="eNotes" />
+        </div>
+      </div>
+
+      <!-- Can be sold -->
+      <div style="margin-top:16px">
+        <div class="sell-toggle-row" onclick="toggleSellSection(this)">
+          <input type="checkbox" name="can_be_sold" id="eCanBeSold" style="width:18px;height:18px;cursor:pointer" onclick="event.stopPropagation();toggleSellSection(this.closest('.sell-toggle-row'))" />
+          <label for="eCanBeSold">🛒 Can be sold in POS / shown in menu</label>
+        </div>
+        <div class="sell-section" id="eSellSection">
+          <p style="font-size:.82rem;color:#166534;margin-bottom:14px">Changes here update the linked menu item automatically.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Selling Price</label>
+              <input type="number" name="selling_price" id="eSellingPrice" min="0" step="0.01" />
+            </div>
+            <div class="form-group">
+              <label>Menu Category</label>
+              <select name="category_id" id="eCategoryId">
+                <option value="">No category</option>
+                <% rootCats.forEach(cat => { %>
+                  <% const subs = getSubCats(cat.id); %>
+                  <% if (subs.length > 0) { %>
+                    <optgroup label="<%= cat.name %>">
+                      <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
+                      <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                    </optgroup>
+                  <% } else { %>
+                    <option value="<%= cat.id %>"><%= cat.name %></option>
+                  <% } %>
+                <% }) %>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Description</label>
+              <textarea name="description" id="eDescription"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Image URL</label>
+              <input type="url" name="image_url" id="eImageUrl" placeholder="https://…" oninput="previewImg(this,'eImgPreview')" />
+              <img id="eImgPreview" class="img-preview" />
+            </div>
+            <div class="form-group">
+              <label>Badge</label>
+              <select name="badge" id="eBadge">
+                <option value="">None</option>
+                <option value="popular">⭐ Popular</option>
+                <option value="new">🆕 New</option>
+                <option value="spicy">🌶 Spicy</option>
+                <option value="vegetarian">🌱 Vegetarian</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── Sell section toggle ──
+  function toggleSellSection(row) {
+    const cb = row.querySelector('input[type=checkbox]');
+    const section = row.nextElementSibling;
+    if (!cb || !section) return;
+    const open = cb.checked;
+    section.classList.toggle('open', open);
+  }
+
+  // ── Add form ──
+  function formToParams(form) {
+    const p = new URLSearchParams();
+    new FormData(form).forEach((v, k) => { if (typeof v === 'string') p.append(k, v); });
+    return p;
+  }
+
+  async function submitAdd(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('addBtn');
+    btn.disabled = true; btn.textContent = 'Adding…';
+    try {
+      const r = await fetch('/admin/inventory?json=1', { method: 'POST', body: formToParams(form) });
+      const j = await r.json();
+      if (j.ok) {
+        showToast('Item added');
+        setTimeout(() => location.reload(), 800);
+      } else { showToast(j.error || 'Failed to add', 'error'); btn.disabled = false; btn.textContent = 'Add Item'; }
+    } catch(err) { console.error(err); showToast('Failed to add', 'error'); btn.disabled = false; btn.textContent = 'Add Item'; }
+  }
+
+  // ── Stock adjustment ──
+  let _stockId = null;
+  function openStock(id, name, unit) {
+    _stockId = id;
+    document.getElementById('stockItemName').textContent = name + ' (' + unit + ')';
+    document.getElementById('stockAdjQty').value = '';
+    document.getElementById('stockAdjNotes').value = '';
+    document.getElementById('stockOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('stockAdjQty').focus(), 100);
+  }
+  function closeStock() { document.getElementById('stockOverlay').classList.remove('open'); }
+  document.getElementById('stockOverlay').addEventListener('click', e => { if (e.target === document.getElementById('stockOverlay')) closeStock(); });
+
+  async function submitStock() {
+    const qty = document.getElementById('stockAdjQty').value;
+    if (!qty) { showToast('Enter a quantity', 'error'); return; }
+    const btn = document.getElementById('stockSaveBtn');
+    btn.disabled = true;
+    const p = new URLSearchParams({ adjustment: qty, notes: document.getElementById('stockAdjNotes').value });
+    try {
+      const r = await fetch('/admin/inventory/' + _stockId + '/stock?json=1', { method: 'POST', body: p });
+      const j = await r.json();
+      if (j.ok) {
+        const el = document.getElementById('stock_' + _stockId);
+        if (el) el.textContent = parseFloat(j.stock_qty).toLocaleString();
+        closeStock();
+        showToast('Stock updated');
+      } else { showToast('Failed', 'error'); }
+    } catch { showToast('Failed', 'error'); }
+    btn.disabled = false;
+  }
+
+  // ── Edit ──
+  let _editId = null;
+  function openEdit(item) {
+    _editId = item.id;
+    document.getElementById('eName').value          = item.name;
+    document.getElementById('eSku').value           = item.sku || '';
+    document.getElementById('eUnit').value          = item.unit || 'pcs';
+    document.getElementById('eStockQty').value      = item.stock_qty || 0;
+    document.getElementById('eReorderLevel').value  = item.reorder_level || 0;
+    document.getElementById('eAvgCost').value       = item.avg_cost || 0;
+    document.getElementById('eSellingPrice').value  = item.selling_price || 0;
+    document.getElementById('eNotes').value         = item.notes || '';
+    document.getElementById('eDescription').value   = item.description || '';
+    document.getElementById('eImageUrl').value      = item.image_url || '';
+    document.getElementById('eBadge').value         = item.badge || '';
+    document.getElementById('eCategoryId').value    = item.category_id || '';
+    const cb = document.getElementById('eCanBeSold');
+    cb.checked = !!item.can_be_sold;
+    document.getElementById('eSellSection').classList.toggle('open', !!item.can_be_sold);
+    previewImg(document.getElementById('eImageUrl'), 'eImgPreview');
+    document.getElementById('editOverlay').classList.add('open');
+  }
+  function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
+  document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === document.getElementById('editOverlay')) closeEdit(); });
+
+  async function submitEdit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type=submit]');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const r = await fetch('/admin/inventory/' + _editId + '/edit?json=1', { method: 'POST', body: formToParams(form) });
+      const j = await r.json();
+      if (j.ok) {
+        closeEdit();
+        showToast('Item updated');
+        setTimeout(() => location.reload(), 800);
+      } else { showToast('Failed to save', 'error'); }
+    } catch { showToast('Failed to save', 'error'); }
+    btn.disabled = false; btn.textContent = 'Save Changes';
+  }
+
+  // ── Delete ──
+  async function deleteItem(id, btn) {
+    if (!confirm('Delete this inventory item?')) return;
+    btn.disabled = true;
+    try {
+      const r = await fetch('/admin/inventory/' + id + '/delete?json=1', { method: 'POST' });
+      const j = await r.json();
+      if (j.ok) {
+        const row = document.querySelector(`#invTbody tr[data-id="${id}"]`);
+        if (row) { row.style.opacity = '0'; row.style.transition = 'opacity .2s'; setTimeout(() => row.remove(), 200); }
+        showToast('Item deleted');
+      } else { showToast('Failed', 'error'); btn.disabled = false; }
+    } catch { showToast('Failed', 'error'); btn.disabled = false; }
+  }
+
+  // ── Search ──
+  function filterTable(q) {
+    q = q.toLowerCase();
+    document.querySelectorAll('#invTbody tr').forEach(row => {
+      row.style.display = (!q || row.dataset.name.includes(q)) ? '' : 'none';
+    });
+  }
+
+  // ── Helpers ──
+  function previewImg(input, id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (input.value) { el.src = input.value; el.classList.add('show'); el.onerror = () => el.classList.remove('show'); }
+    else el.classList.remove('show');
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = (type === 'success' ? '✓ ' : '✗ ') + msg;
+    t.className = 'show ' + type;
+    setTimeout(() => t.className = '', 3000);
+  }
+
+  function toggleDark() {
+    const isDark = document.body.classList.toggle('dark');
+    localStorage.setItem('adminDark', isDark ? '1' : '');
+    document.getElementById('darkIcon').textContent = isDark ? '☀️' : '🌙';
+    document.getElementById('darkLabel').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+  }
+  if (localStorage.getItem('adminDark') === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('darkIcon').textContent = '☀️';
+    document.getElementById('darkLabel').textContent = 'Light Mode';
+  }
+
+  const params = new URLSearchParams(location.search);
+  if (params.get('success')) showToast(decodeURIComponent(params.get('success')));
+</script>
+</body>
+</html>

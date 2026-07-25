@@ -407,6 +407,103 @@ router.post('/settings', requireAuth, requireAdmin, bust, async (req, res) => {
   }
 });
 
+// ── Inventory ──────────────────────────────────────
+router.get('/inventory', requireAuth, requirePerm('items'), async (req, res) => {
+  try {
+    const [invRes, catsRes, tenantRes] = await Promise.all([
+      db.query(`
+        SELECT i.*, m.name AS menu_name, m.is_available AS menu_available, c.name AS menu_cat
+        FROM inventory_items i
+        LEFT JOIN menu_items  m ON m.id = i.menu_item_id
+        LEFT JOIN categories  c ON c.id = m.category_id
+        WHERE i.tenant_id=$1 AND i.is_active=true
+        ORDER BY i.name
+      `, [req.user.tenantId]),
+      db.query('SELECT id,name,parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order,name', [req.user.tenantId]),
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+    ]);
+    res.render('admin/inventory', { tenant: tenantRes.rows[0], items: invRes.rows, categories: catsRes.rows, currentUser: req.user });
+  } catch(err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/inventory', requireAuth, requirePerm('items'), bust, async (req, res) => {
+  const { name, sku, unit, stock_qty, reorder_level, avg_cost, selling_price, notes, can_be_sold, add_to_menu, category_id, description, image_url, badge } = req.body;
+  try {
+    let menuItemId = null;
+    if (can_be_sold === 'on' && add_to_menu === 'on') {
+      const cats = await db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order,name', [req.user.tenantId]);
+      const rootCats = cats.rows.filter(c => !c.parent_id);
+      const mi = await db.query(
+        `INSERT INTO menu_items (tenant_id,category_id,name,price,description,image_url,badge) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [req.user.tenantId, category_id||null, name, selling_price||0, description||null, image_url||null, badge||null]
+      );
+      menuItemId = mi.rows[0].id;
+    }
+    const ins = await db.query(
+      `INSERT INTO inventory_items (tenant_id,name,sku,unit,stock_qty,reorder_level,avg_cost,selling_price,can_be_sold,menu_item_id,notes,description,image_url,badge)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+      [req.user.tenantId, name, sku||null, unit||'pcs', stock_qty||0, reorder_level||0, avg_cost||0, selling_price||0, can_be_sold==='on', menuItemId, notes||null, description||null, image_url||null, badge||null]
+    );
+    if (req.query.json) return res.json({ ok: true, item: ins.rows[0], menu_item_id: menuItemId });
+    res.redirect('/admin/inventory?success=Item+added');
+  } catch(err) { console.error(err); if (req.query.json) return res.json({ ok: false, error: err.message }); res.status(500).send('Server error'); }
+});
+
+router.post('/inventory/:id/edit', requireAuth, requirePerm('items'), bust, async (req, res) => {
+  const { name, sku, unit, stock_qty, reorder_level, avg_cost, selling_price, notes, can_be_sold, category_id, description, image_url, badge } = req.body;
+  try {
+    const existing = await db.query('SELECT * FROM inventory_items WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    if (!existing.rows[0]) return res.status(404).json({ ok: false });
+    const prev = existing.rows[0];
+    const nowSold = can_be_sold === 'on';
+
+    // Handle menu item link changes
+    if (nowSold && !prev.menu_item_id) {
+      // Create new menu item if it doesn't exist
+      const mi = await db.query(
+        `INSERT INTO menu_items (tenant_id,category_id,name,price,description,image_url,badge) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [req.user.tenantId, category_id||null, name, selling_price||0, description||null, image_url||null, badge||null]
+      );
+      await db.query('UPDATE inventory_items SET menu_item_id=$1 WHERE id=$2', [mi.rows[0].id, req.params.id]);
+    } else if (prev.menu_item_id) {
+      // Update linked menu item
+      await db.query(
+        `UPDATE menu_items SET name=$1, price=$2, description=$3, image_url=$4, badge=$5, category_id=$6, is_available=$7 WHERE id=$8`,
+        [name, selling_price||0, description||null, image_url||null, badge||null, category_id||null, nowSold, prev.menu_item_id]
+      );
+    }
+
+    await db.query(
+      `UPDATE inventory_items SET name=$1,sku=$2,unit=$3,stock_qty=$4,reorder_level=$5,avg_cost=$6,selling_price=$7,can_be_sold=$8,notes=$9,description=$10,image_url=$11,badge=$12 WHERE id=$13 AND tenant_id=$14`,
+      [name, sku||null, unit||'pcs', stock_qty||0, reorder_level||0, avg_cost||0, selling_price||0, nowSold, notes||null, description||null, image_url||null, badge||null, req.params.id, req.user.tenantId]
+    );
+    if (req.query.json) return res.json({ ok: true });
+    res.redirect('/admin/inventory?success=Item+updated');
+  } catch(err) { console.error(err); if (req.query.json) return res.json({ ok: false }); res.status(500).send('Server error'); }
+});
+
+router.post('/inventory/:id/stock', requireAuth, requirePerm('items'), bust, async (req, res) => {
+  const { adjustment, notes } = req.body;
+  try {
+    const qty = parseFloat(adjustment) || 0;
+    await db.query('UPDATE inventory_items SET stock_qty = stock_qty + $1 WHERE id=$2 AND tenant_id=$3', [qty, req.params.id, req.user.tenantId]);
+    await db.query(
+      `INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,notes,created_by) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [req.user.tenantId, req.params.id, qty >= 0 ? 'purchase' : 'adjustment', qty, notes||null, req.user.id]
+    );
+    if (req.query.json) { const r = await db.query('SELECT stock_qty FROM inventory_items WHERE id=$1', [req.params.id]); return res.json({ ok: true, stock_qty: r.rows[0]?.stock_qty }); }
+    res.redirect('/admin/inventory');
+  } catch(err) { console.error(err); if (req.query.json) return res.json({ ok: false }); res.status(500).send('Server error'); }
+});
+
+router.post('/inventory/:id/delete', requireAuth, requirePerm('items'), bust, async (req, res) => {
+  try {
+    await db.query('UPDATE inventory_items SET is_active=false WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    if (req.query.json) return res.json({ ok: true });
+    res.redirect('/admin/inventory');
+  } catch(err) { console.error(err); if (req.query.json) return res.json({ ok: false }); res.status(500).send('Server error'); }
+});
+
 // ── Import ─────────────────────────────────────────
 router.get('/import', requireAuth, requirePerm('import'), requireFeature('feat_import'), async (req, res) => {
   try {
