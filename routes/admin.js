@@ -485,7 +485,12 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
   try {
     const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const raw = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const rawData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+    const raw = rawData.map(row => {
+      const n = {};
+      for (const k of Object.keys(row)) n[k.toLowerCase().trim()] = row[k];
+      return n;
+    });
 
     const categoryCache = {};
     let imported = 0;
