@@ -90,7 +90,7 @@
   </div>
   <div class="session-stat">
     <span class="session-stat-label">Opening Cash</span>
-    <span class="session-stat-val"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></span>
+    <span class="session-stat-val"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</span>
   </div>
   <div class="session-stat">
     <span class="session-stat-label">Orders</span>

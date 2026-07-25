@@ -139,12 +139,12 @@
             </div>
           </td>
           <td><%= s.opened_by_name || '—' %></td>
-          <td><%= tenant.currency || '$' %><%= parseFloat(s.opening_cash).toFixed(2) %></td>
+          <td><%= Math.round(parseFloat(s.opening_cash)).toLocaleString() %> IQD</td>
           <td style="text-align:center"><%= s.order_count %></td>
           <td><strong style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(s.total_sales).toFixed(2) %></strong></td>
           <td><%= tenant.currency || '$' %><%= parseFloat(s.cash_sales).toFixed(2) %></td>
           <td><%= tenant.currency || '$' %><%= parseFloat(s.card_sales).toFixed(2) %></td>
-          <td style="color:#666"><%= s.closing_cash != null ? (tenant.currency || '$') + parseFloat(s.closing_cash).toFixed(2) : '—' %></td>
+          <td style="color:#666"><%= s.closing_cash != null ? Math.round(parseFloat(s.closing_cash)).toLocaleString() + ' IQD' : '—' %></td>
           <td><span class="badge badge-<%= s.status %>"><%= s.status %></span></td>
           <td>
             <button class="expand-btn" id="btn_<%= s.id %>" onclick="event.stopPropagation();toggleSession(<%= s.id %>)">▼</button>

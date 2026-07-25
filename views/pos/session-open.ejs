@@ -34,8 +34,8 @@
   <div class="sub">Enter the opening cash amount in the drawer before starting your shift</div>
 
   <form method="POST" action="/pos/session/open">
-    <label>Opening Cash Amount (<%= tenant.currency || '$' %>)</label>
-    <input type="number" class="amount-input" name="opening_cash" value="0" min="0" step="0.01" placeholder="0.00" autofocus />
+    <label>Opening Cash Amount (IQD)</label>
+    <input type="number" class="amount-input" name="opening_cash" value="0" min="0" step="500" placeholder="0" autofocus />
     <div class="hint">Enter 0 if starting with an empty drawer</div>
 
     <label style="margin-top:20px">Today's Exchange Rate <span style="color:#7c5cbf">1 <%= tenant.currency || '$' %> = ? IQD</span></label>

@@ -67,7 +67,7 @@
   </div>
   <div class="stat">
     <div class="stat-label">Opening Cash</div>
-    <div class="stat-val purple"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></div>
+    <div class="stat-val purple"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</div>
   </div>
 </div>
 

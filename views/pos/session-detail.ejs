@@ -105,8 +105,8 @@
 
   <!-- Stats -->
   <div class="stat-row">
-    <div class="stat"><div class="stat-label">Opening Cash</div><div class="stat-val"><%= tenant.currency || '$' %><%= parseFloat(session.opening_cash).toFixed(2) %></div></div>
-    <div class="stat"><div class="stat-label">Closing Cash</div><div class="stat-val"><%= session.closing_cash != null ? (tenant.currency||'$') + parseFloat(session.closing_cash).toFixed(2) : '—' %></div></div>
+    <div class="stat"><div class="stat-label">Opening Cash</div><div class="stat-val"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</div></div>
+    <div class="stat"><div class="stat-label">Closing Cash</div><div class="stat-val"><%= session.closing_cash != null ? Math.round(parseFloat(session.closing_cash)).toLocaleString() + ' IQD' : '—' %></div></div>
     <div class="stat"><div class="stat-label">Paid Orders</div><div class="stat-val green"><%= stats.paid %></div></div>
     <div class="stat"><div class="stat-label">Voided</div><div class="stat-val red"><%= stats.voided %></div></div>
     <div class="stat"><div class="stat-label">Open</div><div class="stat-val"><%= stats.open %></div></div>

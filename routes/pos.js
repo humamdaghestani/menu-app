@@ -112,6 +112,15 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
       s.count++;
       return s;
     }, { total: 0, cash: 0, card: 0, count: 0 });
+    // Sum IQD cash received this session (from payments table)
+    const cashIQDRes = await db.query(
+      `SELECT COALESCE(SUM(pp.amount_paid_iqd),0) AS cash_iqd
+       FROM pos_payments pp
+       JOIN pos_orders po ON po.id = pp.order_id
+       WHERE po.session_id=$1 AND pp.method='cash'`,
+      [session.id]
+    );
+    summary.cashIQD = parseFloat(cashIQDRes.rows[0].cash_iqd) || 0;
     const openRes = await db.query(
       `SELECT id, table_name, status, total, created_at
        FROM pos_orders
