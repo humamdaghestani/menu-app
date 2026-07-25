@@ -167,7 +167,8 @@
         <span style="font-size:1.3rem"><%= result.errors.length === 0 ? '✅' : (result.imported > 0 ? '⚠️' : '❌') %></span>
         <span>
           <%= result.imported %> item<%= result.imported !== 1 ? 's' : '' %> imported successfully.
-          <% if (result.errors.length > 0) { %> <%= result.errors.length %> row<%= result.errors.length !== 1 ? 's' : '' %> had errors and were skipped.<% } %>
+          <% if (result.skipped > 0) { %> <%= result.skipped %> skipped (already exist).<% } %>
+          <% if (result.errors.length - (result.skipped||0) > 0) { %> <%= result.errors.length - (result.skipped||0) %> had errors.<% } %>
         </span>
       </div>
 

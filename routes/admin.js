@@ -489,6 +489,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
 
     const categoryCache = {};
     let imported = 0;
+    let skipped  = 0;
     const errors = [];
     const rows = [];
 
@@ -496,16 +497,22 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       const r = raw[i];
       const rowNum = i + 2; // 1-indexed + header row
       const name  = String(r.name || '').trim();
-      const price = String(r.price || '').trim();
+      const price = String(r.price || '').trim() || '0'; // optional, default 0
 
       if (!name) {
         errors.push(`Row ${rowNum}: missing name`);
         rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'Missing name' });
         continue;
       }
-      if (!price) {
-        errors.push(`Row ${rowNum}: missing price`);
-        rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'Missing price' });
+
+      // Skip if item with same name already exists
+      const dup = await db.query(
+        'SELECT id FROM menu_items WHERE tenant_id=$1 AND LOWER(name)=LOWER($2)',
+        [req.user.tenantId, name]
+      );
+      if (dup.rows.length > 0) {
+        skipped++;
+        rows.push({ row: rowNum, name, category: String(r.category || ''), price, ok: false, error: 'Skipped — already exists' });
         continue;
       }
 
@@ -583,7 +590,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       }
     }
 
-    res.render('admin/import', { tenant, result: { imported, errors, rows } });
+    res.render('admin/import', { tenant, result: { imported, skipped, errors, rows } });
   } catch (err) {
     console.error(err);
     res.render('admin/import', { tenant, result: { imported: 0, errors: ['Failed to parse file — make sure it is a valid .xlsx file'], rows: [] } });
