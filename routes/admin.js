@@ -488,9 +488,21 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
     const rawData = XLSX.utils.sheet_to_json(ws, { defval: '' });
     const raw = rawData.map(row => {
       const n = {};
-      for (const k of Object.keys(row)) n[k.toLowerCase().trim()] = row[k];
+      for (const k of Object.keys(row)) n[k.toLowerCase().trim().replace(/\s+/g, '_')] = row[k];
       return n;
     });
+
+    // Fuzzy field extractor — tries multiple common header spellings
+    function field(row, ...keys) {
+      for (const k of keys) {
+        const v = row[k];
+        if (v !== undefined && v !== '') return String(v);
+      }
+      return '';
+    }
+
+    // Detect what columns the file actually has (for error reporting)
+    const detectedCols = raw.length > 0 ? Object.keys(raw[0]).join(', ') : '(empty file)';
 
     const categoryCache = {};
     let imported = 0;
@@ -501,12 +513,13 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
     for (let i = 0; i < raw.length; i++) {
       const r = raw[i];
       const rowNum = i + 2; // 1-indexed + header row
-      const name  = String(r.name || '').trim();
-      const price = String(r.price || '').trim() || '0'; // optional, default 0
+      const name  = field(r, 'name', 'item_name', 'item', 'product', 'product_name', 'title', 'dish', 'food', 'اسم').trim();
+      const price = field(r, 'price', 'unit_price', 'cost', 'amount', 'rate', 'سعر') || '0';
 
       if (!name) {
+        if (i === 0) errors.push(`Detected columns: ${detectedCols}`);
         errors.push(`Row ${rowNum}: missing name`);
-        rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'Missing name' });
+        rows.push({ row: rowNum, name, category: field(r, 'category', 'cat', 'group', 'section', 'تصنيف'), price, ok: false, error: 'Missing name' });
         continue;
       }
 
@@ -517,14 +530,14 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       );
       if (dup.rows.length > 0) {
         skipped++;
-        rows.push({ row: rowNum, name, category: String(r.category || ''), price, ok: false, error: 'Skipped — already exists' });
+        rows.push({ row: rowNum, name, category: field(r, 'category', 'cat', 'group', 'section', 'تصنيف'), price, ok: false, error: 'Skipped — already exists' });
         continue;
       }
 
       try {
         // Resolve parent category
         let categoryId = null;
-        const catName = String(r.category || '').trim();
+        const catName = field(r, 'category', 'cat', 'group', 'section', 'تصنيف').trim();
         if (catName) {
           if (categoryCache[catName] !== undefined) {
             categoryId = categoryCache[catName];
@@ -547,7 +560,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
         }
 
         // Resolve subcategory (overrides categoryId if provided)
-        const subName = String(r.subcategory || '').trim();
+        const subName = field(r, 'subcategory', 'sub_category', 'sub').trim();
         if (subName && categoryId) {
           const subKey = `${categoryId}__${subName.toLowerCase()}`;
           if (categoryCache[subKey] !== undefined) {
@@ -591,7 +604,7 @@ router.post('/import', requireAuth, requirePerm('import'), bust, upload.single('
       } catch (rowErr) {
         console.error(rowErr);
         errors.push(`Row ${rowNum}: ${rowErr.message}`);
-        rows.push({ row: rowNum, name, category: r.category, price, ok: false, error: 'DB error' });
+        rows.push({ row: rowNum, name, category: field(r, 'category', 'cat', 'group', 'section', 'تصنيف'), price, ok: false, error: 'DB error' });
       }
     }
 
