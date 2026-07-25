@@ -47,20 +47,23 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
 router.get('/items', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
-    const [itemsRes, menuItemsRes, catsRes] = await Promise.all([
+    const [itemsRes, menuItemsRes, menuCatsRes, invCatsRes] = await Promise.all([
       db.query(`
         SELECT ii.*, mi.name AS menu_item_name,
+          ic.name AS inv_category_name, ic.color AS inv_category_color,
           ROUND((SELECT COALESCE(SUM(ir.quantity * ing.avg_cost),0) FROM inventory_recipes ir
                  JOIN inventory_items ing ON ing.id=ir.ingredient_id
                  WHERE ir.item_id=ii.id),4) AS recipe_cost,
           (SELECT COUNT(*) FROM inventory_recipes WHERE item_id=ii.id) AS recipe_lines
         FROM inventory_items ii
         LEFT JOIN menu_items mi ON mi.id=ii.menu_item_id
+        LEFT JOIN inventory_categories ic ON ic.id=ii.inv_category_id
         WHERE ii.tenant_id=$1 AND ii.is_active=true
         ORDER BY ii.name
       `, [tid]),
       db.query(`SELECT id, name FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
       db.query(`SELECT id, name, parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
+      db.query(`SELECT * FROM inventory_categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
     ]);
 
     res.render('inventory/items', {
@@ -68,19 +71,39 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
       currentUser: req.user,
       items: itemsRes.rows,
       menuItems: menuItemsRes.rows,
-      categories: catsRes.rows,
+      categories: menuCatsRes.rows,
+      invCategories: invCatsRes.rows,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// ── Inventory Categories ───────────────────────────────────────────────────────
+router.post('/categories', requireAuth, requireInventory, async (req, res) => {
+  const { name, color } = req.body;
+  if (!name?.trim()) return res.redirect('/inventory/items');
+  try {
+    await db.query(`INSERT INTO inventory_categories (tenant_id, name, color) VALUES ($1,$2,$3)`,
+      [req.user.tenantId, name.trim(), color || '#7c5cbf']);
+    res.redirect('/inventory/items');
+  } catch (err) { console.error(err); res.redirect('/inventory/items'); }
+});
+
+router.post('/categories/:id/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`UPDATE inventory_items SET inv_category_id=NULL WHERE inv_category_id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    await db.query(`DELETE FROM inventory_categories WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect('/inventory/items');
+  } catch (err) { console.error(err); res.redirect('/inventory/items'); }
 });
 
 // Create item
 router.post('/items', requireAuth, requireInventory, async (req, res) => {
   const { name, sku, unit, reorder_level, is_raw_material, is_semi_finished, can_be_sold,
-          add_to_menu, menu_category_id, selling_price, menu_name } = req.body;
+          add_to_menu, menu_category_id, selling_price, menu_name, inv_category_id } = req.body;
   try {
     let menuItemId = null;
 
-    if (can_be_sold && add_to_menu) {
+    if (can_be_sold && add_to_menu === 'yes') {
       const miRes = await db.query(
         `INSERT INTO menu_items (tenant_id, category_id, name, price, is_available)
          VALUES ($1, $2, $3, $4, true) RETURNING id`,
@@ -91,11 +114,12 @@ router.post('/items', requireAuth, requireInventory, async (req, res) => {
     }
 
     await db.query(
-      `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [req.user.tenantId, name.trim(), sku?.trim() || null, unit || 'pcs',
        parseFloat(reorder_level) || 0, menuItemId,
-       !!is_raw_material, !!is_semi_finished, !!can_be_sold]
+       !!is_raw_material, !!is_semi_finished, !!can_be_sold,
+       inv_category_id || null]
     );
     res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items?error=' + encodeURIComponent(err.message)); }
@@ -103,15 +127,15 @@ router.post('/items', requireAuth, requireInventory, async (req, res) => {
 
 // Edit item
 router.post('/items/:id/edit', requireAuth, requireInventory, async (req, res) => {
-  const { name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold } = req.body;
+  const { name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id } = req.body;
   try {
     await db.query(
       `UPDATE inventory_items SET name=$1, sku=$2, unit=$3, reorder_level=$4, menu_item_id=$5,
-        is_raw_material=$6, is_semi_finished=$7, can_be_sold=$8
-       WHERE id=$9 AND tenant_id=$10`,
+        is_raw_material=$6, is_semi_finished=$7, can_be_sold=$8, inv_category_id=$9
+       WHERE id=$10 AND tenant_id=$11`,
       [name.trim(), sku?.trim() || null, unit || 'pcs', parseFloat(reorder_level) || 0,
        menu_item_id || null, !!is_raw_material, !!is_semi_finished, !!can_be_sold,
-       req.params.id, req.user.tenantId]
+       inv_category_id || null, req.params.id, req.user.tenantId]
     );
     res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items?error=' + encodeURIComponent(err.message)); }

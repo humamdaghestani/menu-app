@@ -76,6 +76,7 @@
   <div class="topbar-brand">📦 Inventory Items</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <a href="/inventory" class="btn btn-ghost">← Dashboard</a>
+    <button class="btn btn-ghost" onclick="openCatMgr()">🏷️ Categories</button>
     <button class="btn btn-primary" onclick="openCreate()">+ Add Item</button>
   </div>
 </div>
@@ -83,10 +84,15 @@
 <div class="main">
   <div class="filter-bar">
     <input type="text" class="search-input" placeholder="🔍 Search items..." id="searchInput" oninput="filterRows()" />
-    <button class="type-btn active" id="filterAll" onclick="setFilter('all', this)">All</button>
-    <button class="type-btn" onclick="setFilter('rm', this)">🔵 Raw Material</button>
-    <button class="type-btn" onclick="setFilter('sf', this)">🟣 Semi-Finished</button>
-    <button class="type-btn" onclick="setFilter('sold', this)">🟢 Can Be Sold</button>
+    <button class="type-btn active" id="filterAll" onclick="setFilter('all','',this)">All</button>
+    <button class="type-btn" onclick="setFilter('type','rm',this)">🔵 Raw Material</button>
+    <button class="type-btn" onclick="setFilter('type','sf',this)">🟣 Semi-Finished</button>
+    <button class="type-btn" onclick="setFilter('type','sold',this)">🟢 Can Be Sold</button>
+    <% invCategories.forEach(ic => { %>
+    <button class="type-btn" onclick="setFilter('cat','<%= ic.id %>',this)" style="border-color:<%= ic.color %>">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<%= ic.color %>;margin-right:4px"></span><%= ic.name %>
+    </button>
+    <% }) %>
   </div>
 
   <% if (items.length === 0) { %>
@@ -102,6 +108,7 @@
       <thead>
         <tr>
           <th>Name</th>
+          <th>Category</th>
           <th>Type</th>
           <th>Unit</th>
           <th>Stock</th>
@@ -118,10 +125,18 @@
         data-rm="<%= item.is_raw_material ? '1' : '0' %>"
         data-sf="<%= item.is_semi_finished ? '1' : '0' %>"
         data-sold="<%= item.can_be_sold ? '1' : '0' %>"
+        data-cat="<%= item.inv_category_id || '' %>"
       >
         <td style="color:#fff;font-weight:600">
           <%= item.name %>
           <% if (item.sku) { %><span style="font-size:.7rem;color:#444;margin-left:4px">(<%= item.sku %>)</span><% } %>
+        </td>
+        <td>
+          <% if (item.inv_category_name) { %>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:8px;background:<%= item.inv_category_color %>22;color:<%= item.inv_category_color %>">
+              <span style="width:6px;height:6px;border-radius:50%;background:<%= item.inv_category_color %>"></span><%= item.inv_category_name %>
+            </span>
+          <% } else { %><span style="color:#333;font-size:.75rem">—</span><% } %>
         </td>
         <td>
           <div class="flags">
@@ -223,6 +238,16 @@
           <label class="form-label">Reorder Level</label>
           <input type="number" name="reorder_level" class="form-input" placeholder="0" step="0.001" min="0" />
         </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Inventory Category</label>
+        <select name="inv_category_id" class="form-input">
+          <option value="">No category</option>
+          <% invCategories.forEach(ic => { %>
+          <option value="<%= ic.id %>"><%= ic.name %></option>
+          <% }) %>
+        </select>
       </div>
 
       <div id="c_menuLinkGroup" style="display:none;margin-top:4px">
@@ -338,6 +363,16 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label">Inventory Category</label>
+        <select name="inv_category_id" id="editInvCategory" class="form-input">
+          <option value="">No category</option>
+          <% invCategories.forEach(ic => { %>
+          <option value="<%= ic.id %>"><%= ic.name %></option>
+          <% }) %>
+        </select>
+      </div>
+
       <div class="form-group" id="e_menuLinkGroup" style="display:none">
         <label class="form-label">Link to Menu Item (POS)</label>
         <select name="menu_item_id" id="editMenuLink" class="form-input">
@@ -404,8 +439,9 @@ function openEdit(item) {
   document.getElementById('editSku').value     = item.sku || '';
   document.getElementById('editUnit').value    = item.unit;
   document.getElementById('editReorder').value = item.reorder_level;
-  document.getElementById('editMenuLink').value = item.menu_item_id || '';
-  document.getElementById('editForm').action   = '/inventory/items/' + item.id + '/edit';
+  document.getElementById('editMenuLink').value     = item.menu_item_id || '';
+  document.getElementById('editInvCategory').value  = item.inv_category_id || '';
+  document.getElementById('editForm').action        = '/inventory/items/' + item.id + '/edit';
 
   const rm   = !!item.is_raw_material;
   const sf   = !!item.is_semi_finished;
@@ -435,9 +471,9 @@ function openAdjust(id, name, unit) {
 function closeAdjust() { document.getElementById('adjustOverlay').classList.remove('open'); }
 
 // Filter
-let _activeFilter = 'all';
-function setFilter(f, btn) {
-  _activeFilter = f;
+let _filterType = 'all', _filterVal = '';
+function setFilter(type, val, btn) {
+  _filterType = type; _filterVal = val;
   document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   filterRows();
@@ -446,13 +482,62 @@ function filterRows() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   document.querySelectorAll('#itemsTable tbody tr').forEach(row => {
     const matchName = row.dataset.name.includes(q);
-    const matchType = _activeFilter === 'all'
-      || (_activeFilter === 'rm'   && row.dataset.rm   === '1')
-      || (_activeFilter === 'sf'   && row.dataset.sf   === '1')
-      || (_activeFilter === 'sold' && row.dataset.sold === '1');
-    row.style.display = matchName && matchType ? '' : 'none';
+    const matchFilter = _filterType === 'all'
+      || (_filterType === 'type' && _filterVal === 'rm'   && row.dataset.rm   === '1')
+      || (_filterType === 'type' && _filterVal === 'sf'   && row.dataset.sf   === '1')
+      || (_filterType === 'type' && _filterVal === 'sold' && row.dataset.sold === '1')
+      || (_filterType === 'cat'  && row.dataset.cat === _filterVal);
+    row.style.display = matchName && matchFilter ? '' : 'none';
   });
 }
+
+// Category manager
+function openCatMgr() { document.getElementById('catMgrOverlay').classList.add('open'); }
+function closeCatMgr() { document.getElementById('catMgrOverlay').classList.remove('open'); }
 </script>
+
+<!-- Category Manager Modal -->
+<div class="overlay" id="catMgrOverlay" onclick="if(event.target===this)closeCatMgr()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">🏷️ Inventory Categories</div>
+
+    <!-- Add category form -->
+    <form method="POST" action="/inventory/categories" style="margin-bottom:20px">
+      <div class="form-row" style="grid-template-columns:1fr auto auto;align-items:end;gap:8px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Category Name</label>
+          <input type="text" name="name" class="form-input" placeholder="e.g. Beverages" required />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Color</label>
+          <input type="color" name="color" value="#7c5cbf" style="width:44px;height:38px;padding:2px;border-radius:8px;border:1.5px solid #2a2a3e;background:#0f0f1a;cursor:pointer" />
+        </div>
+        <button type="submit" class="btn btn-primary" style="height:38px;white-space:nowrap">+ Add</button>
+      </div>
+    </form>
+
+    <!-- Existing categories -->
+    <% if (invCategories.length === 0) { %>
+      <p style="color:#444;font-size:.85rem;text-align:center;padding:20px 0">No categories yet.</p>
+    <% } else { %>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <% invCategories.forEach(ic => { %>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0f0f1a;border-radius:9px;border:1px solid #2a2a3e">
+          <span style="width:12px;height:12px;border-radius:50%;background:<%= ic.color %>;flex-shrink:0"></span>
+          <span style="flex:1;color:#ddd;font-size:.88rem;font-weight:600"><%= ic.name %></span>
+          <form method="POST" action="/inventory/categories/<%= ic.id %>/delete" onsubmit="return confirm('Delete category? Items will be uncategorised.')">
+            <button type="submit" class="btn btn-danger btn-sm">✕</button>
+          </form>
+        </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeCatMgr()">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

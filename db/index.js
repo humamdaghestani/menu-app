@@ -222,6 +222,14 @@ const pool = new Pool({
       created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at     TIMESTAMP DEFAULT NOW()
     )`,
+    `CREATE TABLE IF NOT EXISTS inventory_categories (
+      id        SERIAL PRIMARY KEY,
+      tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name      VARCHAR(80) NOT NULL,
+      color     VARCHAR(20) DEFAULT '#7c5cbf',
+      sort_order INTEGER DEFAULT 0
+    )`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS inv_category_id INTEGER REFERENCES inventory_categories(id) ON DELETE SET NULL`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);
