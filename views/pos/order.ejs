@@ -719,11 +719,16 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 </body>
 </html>`;
 
-    const w = window.open('', '_blank', 'width=420,height=650,toolbar=no,menubar=no');
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => { w.print(); }, 300);
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+    document.body.appendChild(frame);
+    const fdoc = frame.contentDocument || frame.contentWindow.document;
+    fdoc.open(); fdoc.write(html); fdoc.close();
+    frame.contentWindow.focus();
+    setTimeout(() => {
+      frame.contentWindow.print();
+      setTimeout(() => frame.remove(), 1000);
+    }, 300);
   }
 </script>
 </body>
