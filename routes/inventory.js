@@ -47,10 +47,6 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
 router.get('/items', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
-    const type = req.query.type || 'all';
-    const whereType = type !== 'all' ? `AND ii.type=$2` : '';
-    const params = type !== 'all' ? [tid, type] : [tid];
-
     const [itemsRes, menuItemsRes] = await Promise.all([
       db.query(`
         SELECT ii.*, mi.name AS menu_item_name,
@@ -60,9 +56,9 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
           (SELECT COUNT(*) FROM inventory_recipes WHERE item_id=ii.id) AS recipe_lines
         FROM inventory_items ii
         LEFT JOIN menu_items mi ON mi.id=ii.menu_item_id
-        WHERE ii.tenant_id=$1 ${whereType} AND ii.is_active=true
-        ORDER BY ii.type, ii.name
-      `, params),
+        WHERE ii.tenant_id=$1 AND ii.is_active=true
+        ORDER BY ii.name
+      `, [tid]),
       db.query(`SELECT id, name FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
     ]);
 
@@ -71,34 +67,36 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
       currentUser: req.user,
       items: itemsRes.rows,
       menuItems: menuItemsRes.rows,
-      activeType: type,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // Create item
 router.post('/items', requireAuth, requireInventory, async (req, res) => {
-  const { name, sku, type, unit, reorder_level, menu_item_id } = req.body;
+  const { name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold } = req.body;
   try {
     await db.query(
-      `INSERT INTO inventory_items (tenant_id, name, sku, type, unit, reorder_level, menu_item_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [req.user.tenantId, name.trim(), sku?.trim() || null, type || 'raw_material', unit || 'pcs',
-       parseFloat(reorder_level) || 0, menu_item_id || null]
+      `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [req.user.tenantId, name.trim(), sku?.trim() || null, unit || 'pcs',
+       parseFloat(reorder_level) || 0, menu_item_id || null,
+       !!is_raw_material, !!is_semi_finished, !!can_be_sold]
     );
-    res.redirect('/inventory/items?type=' + (type || 'raw_material'));
+    res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items?error=' + encodeURIComponent(err.message)); }
 });
 
 // Edit item
 router.post('/items/:id/edit', requireAuth, requireInventory, async (req, res) => {
-  const { name, sku, unit, reorder_level, menu_item_id } = req.body;
+  const { name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold } = req.body;
   try {
     await db.query(
-      `UPDATE inventory_items SET name=$1, sku=$2, unit=$3, reorder_level=$4, menu_item_id=$5
-       WHERE id=$6 AND tenant_id=$7`,
+      `UPDATE inventory_items SET name=$1, sku=$2, unit=$3, reorder_level=$4, menu_item_id=$5,
+        is_raw_material=$6, is_semi_finished=$7, can_be_sold=$8
+       WHERE id=$9 AND tenant_id=$10`,
       [name.trim(), sku?.trim() || null, unit || 'pcs', parseFloat(reorder_level) || 0,
-       menu_item_id || null, req.params.id, req.user.tenantId]
+       menu_item_id || null, !!is_raw_material, !!is_semi_finished, !!can_be_sold,
+       req.params.id, req.user.tenantId]
     );
     res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items?error=' + encodeURIComponent(err.message)); }
