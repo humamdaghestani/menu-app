@@ -202,7 +202,7 @@
   <!-- Add Item -->
   <div class="card">
     <div class="card-header"><h2>Add New Item</h2></div>
-    <form method="POST" action="/admin/items">
+    <form id="addForm" onsubmit="submitAdd(event)">
       <div class="form-grid">
         <div class="form-group">
           <label>Item Name *</label>
@@ -273,7 +273,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" type="submit">Add Item</button>
+        <button class="btn btn-primary" type="submit" id="addBtn">Add Item</button>
       </div>
     </form>
   </div>
@@ -334,10 +334,10 @@
             </td>
             <td>
               <div class="actions-cell">
-                <button class="btn btn-star btn-sm <%= item.is_featured ? 'active' : '' %>" onclick="featureItem(<%= item.id %>, this)" title="Feature">⭐</button>
-                <button class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
-                <button class="btn btn-dupe btn-sm" onclick="duplicateItem(<%= item.id %>, this)" title="Duplicate">⧉ Copy</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteItem(<%= item.id %>, this)">Delete</button>
+                <button type="button" class="btn btn-star btn-sm <%= item.is_featured ? 'active' : '' %>" onclick="featureItem(<%= item.id %>, this)" title="Feature">⭐</button>
+                <button type="button" class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(item) %>)'>Edit</button>
+                <button type="button" class="btn btn-dupe btn-sm" onclick="duplicateItem(<%= item.id %>, this)" title="Duplicate">⧉ Copy</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(<%= item.id %>, this)">Delete</button>
               </div>
             </td>
           </tr>
@@ -508,6 +508,56 @@
   function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
   document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === document.getElementById('editOverlay')) closeEdit(); });
 
+  async function submitAdd(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = document.getElementById('addBtn');
+    btn.disabled = true; btn.textContent = 'Adding…';
+    const data = new FormData(form);
+    try {
+      const r = await fetch('/admin/items?json=1', { method: 'POST', body: data });
+      const j = await r.json();
+      if (j.ok && j.item) {
+        const ni = j.item;
+        const catSel = form.querySelector('[name=category_id]');
+        const catName = catSel.options[catSel.selectedIndex]?.text.replace(/^↳ /,'') || '—';
+        const tbody = document.getElementById('itemsTbody');
+        const tr = document.createElement('tr');
+        tr.dataset.id = ni.id;
+        tr.innerHTML = buildRow(ni, catName);
+        tbody.appendChild(tr);
+        form.reset();
+        document.getElementById('addPreview').classList.remove('show');
+        showToast('Item added');
+        // update count
+        const hdr = document.querySelector('.card-header span[style*="aaa"]');
+        if (hdr) hdr.textContent = tbody.querySelectorAll('tr').length + ' items';
+      } else { showToast('Failed to add item', 'error'); }
+    } catch(err) { console.error(err); showToast('Failed to add item', 'error'); }
+    btn.disabled = false; btn.textContent = 'Add Item';
+  }
+
+  function buildRow(ni, catName) {
+    const badge = ni.badge ? `<span class="badge badge-${ni.badge}">${ni.badge}</span>` : `<span class="badge badge-none">—</span>`;
+    const img = ni.image_url || 'https://placehold.co/52x42?text=?';
+    const desc = (ni.description || '').substring(0, 60);
+    const itemJson = JSON.stringify(ni).replace(/'/g, '&#39;');
+    return `
+      <td><span class="drag-handle">⋮⋮</span></td>
+      <td><img class="item-img" src="${img}" alt="${ni.name}" /></td>
+      <td><div class="item-name">${ni.name}</div><div class="item-desc">${desc}</div></td>
+      <td><strong>${ni.price || 0}</strong></td>
+      <td>${catName === 'No category' ? '—' : catName}</td>
+      <td>${badge}</td>
+      <td><label class="toggle"><input type="checkbox" checked onchange="toggleItem(${ni.id},this)"/><span class="slider"></span></label></td>
+      <td><div class="actions-cell">
+        <button type="button" class="btn btn-star btn-sm" onclick="featureItem(${ni.id},this)" title="Feature">⭐</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick='openEdit(${itemJson})'>Edit</button>
+        <button type="button" class="btn btn-dupe btn-sm" onclick="duplicateItem(${ni.id},this)">⧉ Copy</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteItem(${ni.id},this)">Delete</button>
+      </div></td>`;
+  }
+
   async function submitEdit(e) {
     e.preventDefault();
     const form = e.target;
@@ -515,8 +565,8 @@
     btn.disabled = true; btn.textContent = 'Saving…';
     const data = new FormData(form);
     try {
-      const r = await fetch('/admin/items/' + _editItemId + '/edit', {
-        method: 'POST', body: data, headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      const r = await fetch('/admin/items/' + _editItemId + '/edit?json=1', {
+        method: 'POST', body: data
       });
       const j = await r.json();
       if (j.ok) {
@@ -546,9 +596,7 @@
     if (!confirm('Delete this item?')) return;
     btn.disabled = true;
     try {
-      const r = await fetch('/admin/items/' + id + '/delete', {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
+      const r = await fetch('/admin/items/' + id + '/delete?json=1', { method: 'POST' });
       const j = await r.json();
       if (j.ok) {
         const row = document.querySelector(`#itemsTbody tr[data-id="${id}"]`);
@@ -560,17 +608,13 @@
 
   async function toggleItem(id, checkbox) {
     try {
-      await fetch('/admin/items/' + id + '/toggle', {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
+      await fetch('/admin/items/' + id + '/toggle?json=1', { method: 'POST' });
     } catch { checkbox.checked = !checkbox.checked; }
   }
 
   async function featureItem(id, btn) {
     try {
-      const r = await fetch('/admin/items/' + id + '/feature', {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
+      const r = await fetch('/admin/items/' + id + '/feature?json=1', { method: 'POST' });
       const j = await r.json();
       if (j.ok) {
         btn.classList.toggle('active', j.is_featured);
@@ -582,29 +626,14 @@
   async function duplicateItem(id, btn) {
     btn.disabled = true; btn.textContent = '…';
     try {
-      const r = await fetch('/admin/items/' + id + '/duplicate', {
-        method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }
-      });
+      const r = await fetch('/admin/items/' + id + '/duplicate?json=1', { method: 'POST' });
       const j = await r.json();
       if (j.ok && j.item) {
         const orig = document.querySelector(`#itemsTbody tr[data-id="${id}"]`);
-        const ni = j.item;
+        const catName = orig?.cells[4]?.textContent || '—';
         const tr = document.createElement('tr');
-        tr.dataset.id = ni.id;
-        tr.innerHTML = `
-          <td><span class="drag-handle">⋮⋮</span></td>
-          <td><img class="item-img" src="${ni.image_url || 'https://placehold.co/52x42?text=?'}" alt="${ni.name}" /></td>
-          <td><div class="item-name">${ni.name}</div><div class="item-desc">${(ni.description||'').substring(0,60)}</div></td>
-          <td><strong>${ni.price}</strong></td>
-          <td>${orig?.cells[4]?.textContent || '—'}</td>
-          <td><span class="badge badge-none">—</span></td>
-          <td><label class="toggle"><input type="checkbox" checked onchange="toggleItem(${ni.id},this)"/><span class="slider"></span></label></td>
-          <td><div class="actions-cell">
-            <button class="btn btn-star btn-sm" onclick="featureItem(${ni.id},this)" title="Feature">⭐</button>
-            <button class="btn btn-ghost btn-sm" onclick='openEdit(${JSON.stringify(ni)})'>Edit</button>
-            <button class="btn btn-dupe btn-sm" onclick="duplicateItem(${ni.id},this)" title="Duplicate">⧉ Copy</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem(${ni.id},this)">Delete</button>
-          </div></td>`;
+        tr.dataset.id = j.item.id;
+        tr.innerHTML = buildRow(j.item, catName);
         if (orig) orig.insertAdjacentElement('afterend', tr);
         else document.getElementById('itemsTbody').appendChild(tr);
         showToast('Item duplicated');

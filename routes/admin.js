@@ -158,14 +158,16 @@ router.get('/items', requireAuth, requirePerm('items'), async (req, res) => {
 router.post('/items', requireAuth, bust, async (req, res) => {
   const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;
   try {
-    await db.query(
+    const ins = await db.query(
       `INSERT INTO menu_items (tenant_id, category_id, name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, badge)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [req.user.tenantId, category_id || null, name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, badge || null]
     );
+    if (req.query.json) return res.json({ ok: true, item: ins.rows[0] });
     res.redirect('/admin/items?success=Item+added');
   } catch (err) {
     console.error(err);
+    if (req.query.json) return res.json({ ok: false, error: err.message });
     res.status(500).send('Server error');
   }
 });
@@ -180,11 +182,11 @@ router.post('/items/:id/edit', requireAuth, bust, async (req, res) => {
        WHERE id=$12 AND tenant_id=$13`,
       [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, optionsJson, req.params.id, req.user.tenantId]
     );
-    if (req.xhr) return res.json({ ok: true });
+    if (req.query.json) return res.json({ ok: true });
     res.redirect('/admin/items?success=Item+updated');
   } catch (err) {
     console.error(err);
-    if (req.xhr) return res.json({ ok: false });
+    if (req.query.json) return res.json({ ok: false });
     res.status(500).send('Server error');
   }
 });
@@ -195,11 +197,11 @@ router.post('/items/:id/delete', requireAuth, bust, async (req, res) => {
       'DELETE FROM menu_items WHERE id=$1 AND tenant_id=$2',
       [req.params.id, req.user.tenantId]
     );
-    if (req.xhr) return res.json({ ok: true });
+    if (req.query.json) return res.json({ ok: true });
     res.redirect('/admin/items');
   } catch (err) {
     console.error(err);
-    if (req.xhr) return res.json({ ok: false });
+    if (req.query.json) return res.json({ ok: false });
     res.status(500).send('Server error');
   }
 });
@@ -253,11 +255,11 @@ router.post('/items/:id/toggle', requireAuth, bust, async (req, res) => {
       `UPDATE menu_items SET is_available = NOT is_available WHERE id=$1 AND tenant_id=$2 RETURNING is_available`,
       [req.params.id, req.user.tenantId]
     );
-    if (req.xhr) return res.json({ ok: true, is_available: r.rows[0]?.is_available });
+    if (req.query.json) return res.json({ ok: true, is_available: r.rows[0]?.is_available });
     res.redirect('/admin/items');
   } catch (err) {
     console.error(err);
-    if (req.xhr) return res.json({ ok: false });
+    if (req.query.json) return res.json({ ok: false });
     res.status(500).send('Server error');
   }
 });
@@ -269,25 +271,25 @@ router.post('/items/:id/feature', requireAuth, bust, async (req, res) => {
       'UPDATE menu_items SET is_featured = NOT COALESCE(is_featured, false) WHERE id=$1 AND tenant_id=$2 RETURNING is_featured',
       [req.params.id, req.user.tenantId]
     );
-    if (req.xhr) return res.json({ ok: true, is_featured: r.rows[0]?.is_featured });
+    if (req.query.json) return res.json({ ok: true, is_featured: r.rows[0]?.is_featured });
     res.redirect('/admin/items');
-  } catch (err) { console.error(err); if (req.xhr) return res.json({ ok: false }); res.status(500).send('Server error'); }
+  } catch (err) { console.error(err); if (req.query.json) return res.json({ ok: false }); res.status(500).send('Server error'); }
 });
 
 // ── Duplicate item ─────────────────────────────────
 router.post('/items/:id/duplicate', requireAuth, bust, async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM menu_items WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-    if (r.rows.length === 0) { if (req.xhr) return res.json({ ok: false }); return res.redirect('/admin/items'); }
+    if (r.rows.length === 0) { if (req.query.json) return res.json({ ok: false }); return res.redirect('/admin/items'); }
     const i = r.rows[0];
     const ins = await db.query(
       `INSERT INTO menu_items (tenant_id,category_id,name,name_ar,name_ku,price,description,description_ar,description_ku,image_url,badge,sort_order)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
       [req.user.tenantId, i.category_id, i.name+' (Copy)', i.name_ar, i.name_ku, i.price, i.description, i.description_ar, i.description_ku, i.image_url, i.badge, i.sort_order]
     );
-    if (req.xhr) return res.json({ ok: true, item: ins.rows[0] });
+    if (req.query.json) return res.json({ ok: true, item: ins.rows[0] });
     res.redirect('/admin/items?success=Item+duplicated');
-  } catch (err) { console.error(err); if (req.xhr) return res.json({ ok: false }); res.status(500).send('Server error'); }
+  } catch (err) { console.error(err); if (req.query.json) return res.json({ ok: false }); res.status(500).send('Server error'); }
 });
 
 // ── Reorder items ──────────────────────────────────
