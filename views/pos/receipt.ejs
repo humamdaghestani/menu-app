@@ -12,6 +12,7 @@
     .btn { padding: 9px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; font-family: 'Segoe UI', sans-serif; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-primary { background: #7c5cbf; color: #fff; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-done { background: #00b894; color: #fff; font-size: 1rem; padding: 14px 0; width: 320px; justify-content: center; border-radius: 10px; margin-top: 18px; }
 
     .receipt { background: #fff; color: #111; width: 320px; padding: 24px 20px; border-radius: 4px; }
     .receipt-header { text-align: center; margin-bottom: 16px; }
@@ -45,7 +46,7 @@
 
 <div class="actions">
   <button class="btn btn-primary" onclick="window.print()">🖨️ Print Receipt</button>
-  <a href="/pos" class="btn btn-ghost">← Tables</a>
+  <a href="/pos/tables" class="btn btn-ghost">← Tables</a>
   <a href="/pos/order/<%= order.id %>" class="btn btn-ghost">View Order</a>
 </div>
 
@@ -100,6 +101,8 @@
     Powered by m-menus.com
   </div>
 </div>
+
+<a href="/pos/tables" class="btn btn-done">✓ Done — Back to Tables</a>
 
 </body>
 </html>
