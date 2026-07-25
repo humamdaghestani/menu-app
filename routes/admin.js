@@ -134,6 +134,26 @@ router.get('/dashboard', requireAuth, requirePerm('items'), async (req, res) => 
   }
 });
 
+router.get('/items', requireAuth, requirePerm('items'), async (req, res) => {
+  try {
+    const [categoriesRes, itemsRes, tenantRes] = await Promise.all([
+      db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
+      db.query(`SELECT i.*, c.name as category_name FROM menu_items i LEFT JOIN categories c ON i.category_id=c.id WHERE i.tenant_id=$1 ORDER BY i.sort_order`, [req.user.tenantId]),
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+    ]);
+    const canEditPrices = req.user.role === 'admin' || (req.user.permissions || []).includes('edit_prices');
+    res.render('admin/items', {
+      tenant: tenantRes.rows[0],
+      categories: categoriesRes.rows,
+      items: itemsRes.rows,
+      canEditPrices,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error');
+  }
+});
+
 // ── Items CRUD ─────────────────────────────────────
 router.post('/items', requireAuth, bust, async (req, res) => {
   const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge } = req.body;

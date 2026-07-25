@@ -3,111 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — <%= tenant.name %></title>
+  <title>Items — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --accent: <%= tenant.theme_color || '#e94560' %>;
-      --sidebar-w: 240px;
-    }
+    :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
     body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      width: var(--sidebar-w); background: #1a1a2e;
-      display: flex; flex-direction: column;
-      position: fixed; top: 0; left: 0; bottom: 0;
-      z-index: 100; padding: 0 0 24px;
-    }
-    .sidebar-brand {
-      padding: 24px 20px 20px;
-      border-bottom: 1px solid rgba(255,255,255,.08);
-      display: flex; align-items: center; gap: 12px;
-    }
-    .sidebar-brand img {
-      width: 40px; height: 40px; border-radius: 10px;
-      object-fit: cover; background: #fff; flex-shrink: 0;
-    }
+    .sidebar { width: var(--sidebar-w); background: #1a1a2e; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px; }
+    .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
+    .sidebar-brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #fff; flex-shrink: 0; }
     .sidebar-brand .brand-emoji { font-size: 1.6rem; }
     .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
     .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
-
     .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
-    .sidebar-nav a, .sidebar-nav button {
-      display: flex; align-items: center; gap: 10px;
-      padding: 11px 14px; border-radius: 10px;
-      color: #aaa; text-decoration: none; font-size: .9rem;
-      background: none; border: none; cursor: pointer; width: 100%;
-      transition: background .15s, color .15s; font-family: inherit;
-    }
+    .sidebar-nav a, .sidebar-nav button { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem; background: none; border: none; cursor: pointer; width: 100%; transition: background .15s, color .15s; font-family: inherit; }
     .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
     .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
     .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
-
     .sidebar-footer { padding: 0 12px; }
-    .view-menu-btn {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      background: rgba(255,255,255,.07); color: #ccc;
-      padding: 10px; border-radius: 10px;
-      text-decoration: none; font-size: .85rem;
-      transition: background .15s, color .15s;
-    }
+    .view-menu-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.07); color: #ccc; padding: 10px; border-radius: 10px; text-decoration: none; font-size: .85rem; transition: background .15s; }
     .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .dark-toggle { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 8px; border-radius: 8px; transition: background .15s; color: #aaa; width: 100%; text-align: left; display: flex; align-items: center; gap: 10px; }
+    .dark-toggle:hover { background: rgba(255,255,255,.07); color: #fff; }
 
-    /* ── Main ── */
     .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; min-height: 100vh; }
-
-    .page-header { margin-bottom: 28px; }
+    .page-header { margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
     .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
 
-    /* ── Stats ── */
-    .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 28px; }
-    .stat-card {
-      background: #fff; border-radius: 14px;
-      padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.06);
-      display: flex; flex-direction: column; gap: 6px;
-    }
-    .stat-icon { font-size: 1.5rem; }
-    .stat-value { font-size: 1.8rem; font-weight: 800; color: #1a1a2e; line-height: 1; }
-    .stat-label { color: #888; font-size: .82rem; }
-
-    /* ── Card ── */
-    .card {
-      background: #fff; border-radius: 14px;
-      padding: 24px; margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
-    }
-    .card-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px;
-    }
+    .card { background: #fff; border-radius: 14px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .card-header h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
 
-    /* ── Form ── */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group.span2 { grid-column: span 2; }
     .form-group.full { grid-column: 1 / -1; }
     label { font-size: .8rem; font-weight: 600; color: #555; }
-    input, select, textarea {
-      padding: 10px 12px; border: 1.5px solid #e8e8e8;
-      border-radius: 8px; font-size: .9rem; outline: none;
-      font-family: inherit; background: #fafafa;
-      transition: border-color .2s, box-shadow .2s;
-    }
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
-      background: #fff;
-    }
+    input, select, textarea { padding: 10px 12px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .9rem; outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s, box-shadow .2s; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); background: #fff; }
     textarea { resize: vertical; min-height: 80px; }
-
     .form-actions { display: flex; justify-content: flex-end; margin-top: 16px; }
 
-    /* ── Buttons ── */
-    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; font-family: inherit; transition: opacity .15s, transform .1s; }
+    .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: .88rem; font-weight: 600; font-family: inherit; transition: opacity .15s, transform .1s; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn:active { transform: scale(.97); }
     .btn-primary { background: var(--accent); color: #fff; }
     .btn-primary:hover { opacity: .88; }
@@ -116,35 +53,22 @@
     .btn-danger { background: #fff0f3; color: #e94560; border: 1px solid #f5c2cb; }
     .btn-danger:hover { background: #fde0e6; }
     .btn-sm { padding: 6px 12px; font-size: .8rem; }
+    .btn-dupe { background: #f0f4ff; color: #4c6ef5; border: 1px solid #c5d0fa; }
+    .btn-dupe:hover { background: #dce4ff; }
+    .btn-star { background: #f5f5f5; color: #bbb; border: 1px solid #e0e0e0; }
+    .btn-star.active { background: #fff3d4; color: #d4880a; border-color: #f5d98e; }
+    .btn-upload { background: #f0f4ff; color: #4c6ef5; border: 1px solid #c5d0fa; }
+    .btn-upload:hover { background: #dce4ff; }
 
-    /* ── Categories ── */
-    .cat-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .cat-tag {
-      display: flex; align-items: center; gap: 8px;
-      background: #f0f0f0; border-radius: 20px;
-      padding: 6px 10px 6px 14px; font-size: .85rem; font-weight: 500;
-    }
-    .cat-tag button { background: none; border: none; cursor: pointer; color: #aaa; font-size: .9rem; padding: 0; line-height: 1; transition: color .15s; }
-    .cat-tag button:hover { color: #e94560; }
-
-    /* ── Items Table ── */
     .items-table { width: 100%; border-collapse: collapse; }
-    .items-table th {
-      text-align: left; padding: 10px 14px;
-      font-size: .78rem; font-weight: 700; color: #888;
-      text-transform: uppercase; letter-spacing: .5px;
-      border-bottom: 2px solid #f0f0f0;
-      background: #fafafa;
-    }
+    .items-table th { text-align: left; padding: 10px 14px; font-size: .78rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid #f0f0f0; background: #fafafa; }
     .items-table td { padding: 14px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
     .items-table tr:last-child td { border-bottom: none; }
     .items-table tr:hover td { background: #fafcff; }
-
     .item-img { width: 52px; height: 42px; object-fit: cover; border-radius: 8px; background: #f0f0f0; }
     .item-name { font-weight: 600; font-size: .9rem; }
     .item-desc { color: #aaa; font-size: .78rem; margin-top: 2px; }
 
-    /* Badge */
     .badge { display: inline-block; padding: 3px 9px; border-radius: 12px; font-size: .72rem; font-weight: 700; text-transform: uppercase; }
     .badge-spicy      { background: #ffe5e5; color: #e00; }
     .badge-popular    { background: #fff3d4; color: #d4880a; }
@@ -152,82 +76,41 @@
     .badge-vegetarian { background: #d4f0d4; color: #1a7a1a; }
     .badge-none       { background: #f0f0f0; color: #aaa; }
 
-    /* Toggle */
     .toggle { position: relative; display: inline-block; width: 40px; height: 22px; }
     .toggle input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; inset: 0; background: #ccc;
-      border-radius: 22px; cursor: pointer; transition: .2s;
-    }
-    .slider::before {
-      content: ''; position: absolute;
-      width: 16px; height: 16px; border-radius: 50%;
-      background: #fff; left: 3px; top: 3px;
-      transition: .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2);
-    }
+    .slider { position: absolute; inset: 0; background: #ccc; border-radius: 22px; cursor: pointer; transition: .2s; }
+    .slider::before { content: ''; position: absolute; width: 16px; height: 16px; border-radius: 50%; background: #fff; left: 3px; top: 3px; transition: .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
     input:checked + .slider { background: var(--accent); }
     input:checked + .slider::before { transform: translateX(18px); }
 
     .actions-cell { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .btn-dupe { background: #f0f4ff; color: #4c6ef5; border: 1px solid #c5d0fa; }
-    .btn-dupe:hover { background: #dce4ff; }
-
-    /* ── Drag handle ── */
     .drag-handle { cursor: grab; color: #ccc; font-size: 1rem; padding: 0 4px; user-select: none; flex-shrink: 0; }
     .drag-handle:hover { color: #888; }
     .sortable-ghost { opacity: .4; background: #f0f4ff !important; }
     .sortable-chosen { box-shadow: 0 4px 16px rgba(0,0,0,.12); }
 
-    /* ── Search bar ── */
     .table-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
     .table-search { position: relative; }
     .table-search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #bbb; pointer-events: none; }
-    .table-search input { padding: 8px 12px 8px 32px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .85rem; width: 220px; outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s; }
+    .table-search input { padding: 8px 12px 8px 32px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .85rem; width: 240px; outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s; }
     .table-search input:focus { border-color: var(--accent); background: #fff; }
 
-    /* ── Badge presets ── */
     .badge-presets { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
-    .preset-btn { background: #f0f0f0; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 4px 9px; font-size: .75rem; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s; }
-    .preset-btn:hover { background: #e4e4e4; border-color: #ccc; }
+    .preset-btn { background: #f0f0f0; border: 1.5px solid #e0e0e0; border-radius: 6px; padding: 4px 9px; font-size: .75rem; cursor: pointer; font-family: inherit; transition: background .15s; }
+    .preset-btn:hover { background: #e4e4e4; }
     .preset-btn.clear { color: #aaa; }
 
-    /* Image input row */
     .img-row { display: flex; gap: 8px; align-items: center; }
     .img-row input[type="url"] { flex: 1; min-width: 0; }
     .upload-lbl { cursor: pointer; flex-shrink: 0; }
-    .btn-upload { background: #f0f4ff; color: #4c6ef5; border: 1px solid #c5d0fa; }
-    .btn-upload:hover { background: #dce4ff; }
-
-    /* Featured star */
-    .btn-star { background: #f5f5f5; color: #bbb; border: 1px solid #e0e0e0; }
-    .btn-star.active { background: #fff3d4; color: #d4880a; border-color: #f5d98e; }
-
-    /* Image preview */
-    .img-preview {
-      width: 80px; height: 60px; border-radius: 8px;
-      object-fit: cover; background: #f0f0f0;
-      border: 1.5px dashed #ddd; display: none;
-      margin-top: 8px;
-    }
+    .img-preview { width: 80px; height: 60px; border-radius: 8px; object-fit: cover; background: #f0f0f0; border: 1.5px dashed #ddd; display: none; margin-top: 8px; }
     .img-preview.show { display: block; }
 
-    /* ── Toast ── */
-    #toast {
-      position: fixed; bottom: 28px; right: 28px;
-      background: #1a1a2e; color: #fff;
-      padding: 12px 20px; border-radius: 10px;
-      font-size: .88rem; font-weight: 500;
-      box-shadow: 0 8px 24px rgba(0,0,0,.2);
-      transform: translateY(80px); opacity: 0;
-      transition: transform .3s, opacity .3s;
-      z-index: 999; max-width: 320px;
-      display: flex; align-items: center; gap: 10px;
-    }
+    #toast { position: fixed; bottom: 28px; right: 28px; background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.2); transform: translateY(80px); opacity: 0; transition: transform .3s, opacity .3s; z-index: 999; max-width: 320px; display: flex; align-items: center; gap: 10px; }
     #toast.show { transform: translateY(0); opacity: 1; }
     #toast.success { border-left: 4px solid #00b894; }
     #toast.error   { border-left: 4px solid #e94560; }
 
-    /* ── Edit Modal ── */
     .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
     .overlay.open { display: flex; }
     .modal { background: #fff; border-radius: 16px; padding: 28px; width: 100%; max-width: 540px; animation: popIn .2s ease; max-height: 90vh; overflow-y: auto; }
@@ -239,21 +122,14 @@
       .sidebar { width: 64px; }
       .sidebar-brand-text, .sidebar-nav span:not(.icon) { display: none; }
       .main { margin-left: 64px; padding: 20px 16px; }
-      .form-grid, .form-grid.three { grid-template-columns: 1fr; }
-      .form-group.span2, .form-group.full { grid-column: 1; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: 1; }
     }
 
-    /* ── Dark Mode ── */
     body.dark { background: #0f1117; color: #d0d0d0; }
     body.dark .card { background: #1a1a2e; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
-    body.dark .card-header h2,
-    body.dark .page-header h1,
-    body.dark .stat-value,
-    body.dark .item-name { color: #e0e0e0; }
-    body.dark .stat-card { background: #1a1a2e; }
-    body.dark input, body.dark select, body.dark textarea {
-      background: #111827; border-color: rgba(255,255,255,.12); color: #d0d0d0;
-    }
+    body.dark .card-header h2, body.dark .page-header h1, body.dark .item-name { color: #e0e0e0; }
+    body.dark input, body.dark select, body.dark textarea { background: #111827; border-color: rgba(255,255,255,.12); color: #d0d0d0; }
     body.dark input:focus, body.dark select:focus, body.dark textarea:focus { background: #1a1a2e; }
     body.dark label { color: #999; }
     body.dark .items-table th { background: #0f1117; color: #888; border-bottom-color: rgba(255,255,255,.08); }
@@ -262,7 +138,6 @@
     body.dark .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
     body.dark .btn-ghost:hover { background: rgba(255,255,255,.14); }
     body.dark .btn-danger { background: rgba(233,69,96,.15); border-color: rgba(233,69,96,.3); }
-    body.dark .cat-tag { background: rgba(255,255,255,.08); color: #ccc; }
     body.dark .modal { background: #1a1a2e; }
     body.dark .modal h3 { color: #e0e0e0; }
     body.dark .overlay { background: rgba(0,0,0,.7); }
@@ -270,13 +145,10 @@
     body.dark .table-search input { background: #111827; border-color: rgba(255,255,255,.12); color: #d0d0d0; }
     body.dark .preset-btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.12); color: #ccc; }
     body.dark .img-preview { border-color: rgba(255,255,255,.15); }
-    .dark-toggle { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 8px; border-radius: 8px; transition: background .15s; color: #aaa; width: 100%; text-align: left; display: flex; align-items: center; gap: 10px; }
-    .dark-toggle:hover { background: rgba(255,255,255,.07); color: #fff; }
   </style>
 </head>
 <body>
 
-<!-- Sidebar -->
 <aside class="sidebar">
   <div class="sidebar-brand">
     <% if (tenant.logo_url) { %>
@@ -289,11 +161,10 @@
       <span>Admin Panel</span>
     </div>
   </div>
-
   <nav class="sidebar-nav">
     <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
-    <% if (_can('items')) { %><a href="/admin/dashboard" class="active"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
-    <% if (_can('items')) { %><a href="/admin/items"><span class="icon">🍽️</span><span>Items</span></a><% } %>
+    <% if (_can('items')) { %><a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
+    <% if (_can('items')) { %><a href="/admin/items" class="active"><span class="icon">🍽️</span><span>Items</span></a><% } %>
     <% if (_can('orders') && tenant.feat_orders !== false) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
     <% if (_can('feedback') && tenant.feat_feedback !== false) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
     <% if (_can('import') && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
@@ -302,185 +173,34 @@
     <% if (_isAdmin) { %><a href="/admin/users"><span class="icon">👥</span><span>Users</span></a><% } %>
     <% if (_isAdmin) { %><a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a><% } %>
     <button class="dark-toggle" id="darkToggle" onclick="toggleDark()" style="margin-top:auto">
-      <span class="icon" id="darkIcon">🌙</span>
-      <span id="darkLabel">Dark Mode</span>
+      <span class="icon" id="darkIcon">🌙</span><span id="darkLabel">Dark Mode</span>
     </button>
     <form method="POST" action="/admin/logout">
-      <button type="submit">
-        <span class="icon">🚪</span>
-        <span>Logout</span>
-      </button>
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
     </form>
   </nav>
-
   <div class="sidebar-footer">
     <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn">
-      <span>🔗</span>
-      <span>View Menu</span>
+      <span>🔗</span><span>View Menu</span>
     </a>
   </div>
 </aside>
 
-<!-- Main Content -->
 <div class="main">
-
   <div class="page-header">
-    <h1>Dashboard</h1>
-    <p>Manage your menu items and categories</p>
-  </div>
-
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat-card">
-      <span class="stat-icon">🍽️</span>
-      <div class="stat-value"><%= items.length %></div>
-      <div class="stat-label">Total Items</div>
-    </div>
-    <div class="stat-card">
-      <span class="stat-icon">✅</span>
-      <div class="stat-value"><%= items.filter(i => i.is_available !== false).length %></div>
-      <div class="stat-label">Available</div>
-    </div>
-    <div class="stat-card">
-      <span class="stat-icon">🚫</span>
-      <div class="stat-value"><%= items.filter(i => i.is_available === false).length %></div>
-      <div class="stat-label">Unavailable</div>
-    </div>
-    <div class="stat-card">
-      <span class="stat-icon">📂</span>
-      <div class="stat-value"><%= categories.length %></div>
-      <div class="stat-label">Categories</div>
-    </div>
-    <div class="stat-card">
-      <span class="stat-icon">👁️</span>
-      <div class="stat-value"><%= tenant.view_count || 0 %></div>
-      <div class="stat-label">Menu Views</div>
+    <div>
+      <h1>Menu Items</h1>
+      <p><%= items.length %> item<%= items.length !== 1 ? 's' : '' %> in your menu</p>
     </div>
   </div>
 
-  <!-- Category breakdown -->
-  <% if (categories.length > 0) { %>
-  <div class="card" style="margin-bottom:24px">
-    <div class="card-header">
-      <h2>Items per Category</h2>
-    </div>
-    <div style="display:flex; flex-wrap:wrap; gap:10px; padding-top:4px">
-      <% categories.forEach(cat => { %>
-        <% const count = items.filter(i => i.category_id === cat.id).length; %>
-        <% const avail = items.filter(i => i.category_id === cat.id && i.is_available !== false).length; %>
-        <div style="background:#f8f9fa; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:10px; min-width:160px">
-          <% if (cat.image_url) { %>
-            <img src="<%= cat.image_url %>" style="width:32px;height:32px;border-radius:50%;object-fit:cover" />
-          <% } else { %>
-            <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);opacity:.15;"></div>
-          <% } %>
-          <div>
-            <div style="font-weight:700;font-size:.88rem;color:#1a1a2e"><%= cat.name %></div>
-            <div style="font-size:.78rem;color:#aaa"><%= count %> items &nbsp;·&nbsp; <%= avail %> available</div>
-          </div>
-        </div>
-      <% }) %>
-      <% const uncatCount = items.filter(i => !i.category_id).length; %>
-      <% if (uncatCount > 0) { %>
-        <div style="background:#f8f9fa; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:10px; min-width:160px">
-          <div style="width:32px;height:32px;border-radius:50%;background:#ddd;display:flex;align-items:center;justify-content:center;font-size:.9rem">?</div>
-          <div>
-            <div style="font-weight:700;font-size:.88rem;color:#1a1a2e">Uncategorized</div>
-            <div style="font-size:.78rem;color:#aaa"><%= uncatCount %> items</div>
-          </div>
-        </div>
-      <% } %>
-    </div>
-  </div>
-  <% } %>
-
-  <!-- Categories -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Categories</h2>
-    </div>
-    <p style="font-size:.8rem;color:#aaa;margin-bottom:10px">⋮⋮ Drag to reorder (top-level only)</p>
-    <%
-      const rootCatsAdmin = categories.filter(c => !c.parent_id);
-      const getSubcatsAdmin = pid => categories.filter(c => String(c.parent_id) === String(pid));
-    %>
-    <div class="cat-list" id="catList">
-      <% rootCatsAdmin.forEach(cat => { %>
-        <div class="cat-tag" data-id="<%= cat.id %>">
-          <span class="drag-handle">⋮⋮</span>
-          <% if (cat.image_url) { %>
-            <img src="<%= cat.image_url %>" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #ddd" />
-          <% } %>
-          <strong><%= cat.name %></strong>
-          <button type="button" class="btn btn-ghost btn-sm" onclick='openCatEdit(<%- JSON.stringify(cat) %>)' style="padding:2px 8px;font-size:.75rem">Edit</button>
-          <button type="button" class="btn btn-ghost btn-sm" onclick="openAddSubcat('<%= cat.id %>','<%= cat.name.replace(/'/g, "\\'") %>')" style="padding:2px 8px;font-size:.75rem;color:#7c5cbf">+ Sub</button>
-          <form method="POST" action="/admin/categories/<%= cat.id %>/delete" onsubmit="return confirm('Delete category?')" style="margin:0">
-            <button type="submit" title="Delete" style="background:none;border:none;cursor:pointer;color:#aaa;font-size:.9rem">✕</button>
-          </form>
-        </div>
-        <% getSubcatsAdmin(cat.id).forEach(sub => { %>
-        <div style="display:flex;align-items:center;gap:8px;padding:4px 8px 4px 28px;background:#fafafa;border-radius:8px;margin-bottom:4px;font-size:.85rem">
-          <span style="color:#bbb">↳</span>
-          <% if (sub.image_url) { %>
-            <img src="<%= sub.image_url %>" style="width:20px;height:20px;border-radius:50%;object-fit:cover" />
-          <% } %>
-          <span style="color:#666"><%= sub.name %></span>
-          <button type="button" class="btn btn-ghost btn-sm" onclick='openCatEdit(<%- JSON.stringify(sub) %>)' style="padding:1px 6px;font-size:.72rem;margin-left:auto">Edit</button>
-          <form method="POST" action="/admin/categories/<%= sub.id %>/delete" onsubmit="return confirm('Delete subcategory?')" style="margin:0">
-            <button type="submit" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:.85rem">✕</button>
-          </form>
-        </div>
-        <% }) %>
-      <% }) %>
-    </div>
-    <form method="POST" action="/admin/categories">
-      <div class="form-grid" style="margin-bottom:12px">
-        <div class="form-group">
-          <label>Name (English) *</label>
-          <input type="text" name="name" placeholder="e.g. Burgers" required />
-        </div>
-        <div class="form-group">
-          <label>Parent Category <span style="color:#bbb;font-weight:400">(optional — makes this a sub-category)</span></label>
-          <select name="parent_id">
-            <option value="">— Top-level category —</option>
-            <% rootCatsAdmin.forEach(cat => { %>
-              <option value="<%= cat.id %>"><%= cat.name %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Image URL</label>
-          <div class="img-row">
-            <input type="url" name="image_url" placeholder="https://…" id="catImgUrl" oninput="previewImg(this,'catImgPreview')" />
-            <label class="btn btn-upload btn-sm upload-lbl">
-              <span id="catUploadTxt">📷</span>
-              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'catImgUrl','catImgPreview','catUploadTxt')" />
-            </label>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>الاسم (Arabic)</label>
-          <input type="text" name="name_ar" placeholder="مثال: برغر" dir="rtl" />
-        </div>
-        <div class="form-group">
-          <label>ناو (Kurdish)</label>
-          <input type="text" name="name_ku" placeholder="نموونە: برگەر" dir="rtl" />
-        </div>
-      </div>
-      <img id="catImgPreview" class="img-preview" />
-      <div class="form-actions">
-        <button class="btn btn-primary" type="submit">Add Category</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- Items shortcut -->
-  <div style="margin-bottom:24px">
-    <a href="/admin/items" style="display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;padding:11px 22px;border-radius:10px;text-decoration:none;font-size:.9rem;font-weight:700">🍽️ Manage Items →</a>
-  </div>
+  <%
+    const rootCatsAdmin = categories.filter(c => !c.parent_id);
+    const getSubcatsAdmin = pid => categories.filter(c => String(c.parent_id) === String(pid));
+  %>
 
   <!-- Add Item -->
-  <div class="card" style="display:none">
+  <div class="card">
     <div class="card-header"><h2>Add New Item</h2></div>
     <form method="POST" action="/admin/items">
       <div class="form-grid">
@@ -489,8 +209,8 @@
           <input type="text" name="name" placeholder="e.g. Classic Burger" required />
         </div>
         <div class="form-group">
-          <label>Price *</label>
-          <input type="text" name="price" placeholder="e.g. $9.99" required <% if(!canEditPrices){%>readonly style="background:#f0f0f0;cursor:not-allowed" title="You don't have permission to edit prices"<%}%> />
+          <label>Price</label>
+          <input type="text" name="price" placeholder="e.g. 5000" <% if(!canEditPrices){%>readonly style="background:#f0f0f0;cursor:not-allowed" title="You don't have permission to edit prices"<%}%> />
         </div>
         <div class="form-group">
           <label>Category</label>
@@ -511,7 +231,7 @@
         </div>
         <div class="form-group">
           <label>Badge <span style="color:#bbb;font-weight:400">(optional)</span></label>
-          <input type="text" name="badge" id="addBadge" placeholder="e.g. Chef's Pick, Hot, Vegan…" maxlength="24" />
+          <input type="text" name="badge" id="addBadge" placeholder="e.g. spicy, popular, new…" maxlength="24" />
           <div class="badge-presets">
             <button type="button" class="preset-btn" onclick="setBadge('addBadge','spicy')">🌶 Spicy</button>
             <button type="button" class="preset-btn" onclick="setBadge('addBadge','popular')">⭐ Popular</button>
@@ -559,13 +279,13 @@
   </div>
 
   <!-- Items List -->
-  <div class="card" style="display:none">
+  <div class="card">
     <div class="card-header">
-      <h2>Menu Items</h2>
+      <h2>All Items</h2>
       <span style="color:#aaa;font-size:.85rem"><%= items.length %> items</span>
     </div>
     <% if (items.length === 0) { %>
-      <p style="text-align:center;color:#bbb;padding:32px 0">No items yet. Add one above.</p>
+      <p style="text-align:center;color:#bbb;padding:40px 0">No items yet. Add one above.</p>
     <% } else { %>
     <div class="table-toolbar">
       <div class="table-search">
@@ -635,55 +355,6 @@
     </div>
     <% } %>
   </div>
-
-</div>
-
-<!-- Category Edit Modal -->
-<div class="overlay" id="catEditOverlay">
-  <div class="modal" style="max-width:420px">
-    <h3>Edit Category</h3>
-    <form method="POST" id="catEditForm">
-      <input type="hidden" name="parent_id" id="catEditParentId" value="" />
-      <div class="form-grid" style="grid-template-columns:1fr">
-        <div class="form-group">
-          <label>Name (English) *</label>
-          <input type="text" name="name" id="catEditName" required />
-        </div>
-        <div class="form-group">
-          <label>Parent Category</label>
-          <select id="catEditParentSel" onchange="document.getElementById('catEditParentId').value=this.value">
-            <option value="">— Top-level category —</option>
-            <% rootCatsAdmin.forEach(cat => { %>
-              <option value="<%= cat.id %>"><%= cat.name %></option>
-            <% }) %>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>الاسم (Arabic)</label>
-          <input type="text" name="name_ar" id="catEditNameAr" dir="rtl" />
-        </div>
-        <div class="form-group">
-          <label>ناو (Kurdish)</label>
-          <input type="text" name="name_ku" id="catEditNameKu" dir="rtl" />
-        </div>
-        <div class="form-group">
-          <label>Image URL</label>
-          <div class="img-row">
-            <input type="url" name="image_url" id="catEditImgUrl" oninput="previewImg(this,'catEditImgPreview')" placeholder="https://…" />
-            <label class="btn btn-upload btn-sm upload-lbl">
-              <span id="catEditUploadTxt">📷</span>
-              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'catEditImgUrl','catEditImgPreview','catEditUploadTxt')" />
-            </label>
-          </div>
-          <img id="catEditImgPreview" class="img-preview" style="width:80px;height:80px;border-radius:50%;margin-top:8px" />
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" onclick="closeCatEdit()">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save</button>
-      </div>
-    </form>
-  </div>
 </div>
 
 <!-- Edit Modal -->
@@ -697,8 +368,8 @@
           <input type="text" name="name" id="editName" required />
         </div>
         <div class="form-group">
-          <label>Price *</label>
-          <input type="text" name="price" id="editPrice" required <% if(!canEditPrices){%>readonly style="background:#f0f0f0;cursor:not-allowed" title="You don't have permission to edit prices"<%}%> />
+          <label>Price</label>
+          <input type="text" name="price" id="editPrice" <% if(!canEditPrices){%>readonly style="background:#f0f0f0;cursor:not-allowed" title="You don't have permission to edit prices"<%}%> />
         </div>
         <div class="form-group">
           <label>Category</label>
@@ -718,8 +389,8 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Badge <span style="color:#bbb;font-weight:400">(optional)</span></label>
-          <input type="text" name="badge" id="editBadge" placeholder="e.g. Chef's Pick, Hot, Vegan…" maxlength="24" />
+          <label>Badge</label>
+          <input type="text" name="badge" id="editBadge" placeholder="e.g. spicy, popular…" maxlength="24" />
           <div class="badge-presets">
             <button type="button" class="preset-btn" onclick="setBadge('editBadge','spicy')">🌶 Spicy</button>
             <button type="button" class="preset-btn" onclick="setBadge('editBadge','popular')">⭐ Popular</button>
@@ -751,7 +422,7 @@
         <div class="form-group full">
           <label>Image URL</label>
           <div class="img-row">
-            <input type="url" name="image_url" id="editImageUrl" placeholder="https://… or use Upload →" oninput="previewImg(this,'editPreview')" />
+            <input type="url" name="image_url" id="editImageUrl" placeholder="https://…" oninput="previewImg(this,'editPreview')" />
             <label class="btn btn-upload btn-sm upload-lbl">
               <span id="editUploadTxt">📷 Upload</span>
               <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'editImageUrl','editPreview','editUploadTxt')" />
@@ -760,7 +431,6 @@
           <img id="editPreview" class="img-preview" />
         </div>
       </div>
-      <!-- Options / Add-ons -->
       <div class="form-group full" style="margin-top:4px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
           <label style="margin:0">Options / Add-ons</label>
@@ -769,7 +439,6 @@
         <div id="optionGroups" style="display:flex;flex-direction:column;gap:8px"></div>
         <input type="hidden" name="options" id="editOptions" value="[]" />
       </div>
-
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -778,41 +447,9 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script>
-  function openCatEdit(cat) {
-    document.getElementById('catEditName').value    = cat.name;
-    document.getElementById('catEditNameAr').value  = cat.name_ar || '';
-    document.getElementById('catEditNameKu').value  = cat.name_ku || '';
-    document.getElementById('catEditImgUrl').value  = cat.image_url || '';
-    document.getElementById('catEditParentId').value = cat.parent_id || '';
-    document.getElementById('catEditParentSel').value = cat.parent_id || '';
-    document.getElementById('catEditForm').action   = '/admin/categories/' + cat.id + '/edit';
-    previewImg(document.getElementById('catEditImgUrl'), 'catEditImgPreview');
-    document.getElementById('catEditOverlay').classList.add('open');
-  }
-  function closeCatEdit() { document.getElementById('catEditOverlay').classList.remove('open'); }
-
-  function openAddSubcat(parentId, parentName) {
-    // Pre-fill add-category form with parent selected
-    const form = document.querySelector('form[action="/admin/categories"]');
-    if (!form) return;
-    form.querySelector('[name="parent_id"]').value = parentId;
-    form.querySelector('[name="name"]').value = '';
-    form.querySelector('[name="name"]').focus();
-    form.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    // Visual hint
-    const lbl = form.querySelector('[name="parent_id"]').closest('.form-group').querySelector('label');
-    const orig = lbl.textContent;
-    lbl.textContent = `↳ Adding sub-category under "${parentName}"`;
-    setTimeout(() => { lbl.textContent = orig; }, 3000);
-  }
-  document.getElementById('catEditOverlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('catEditOverlay')) closeCatEdit();
-  });
-
   let _optGroups = [];
 
   function renderOptionGroups() {
@@ -822,7 +459,7 @@
     container.innerHTML = _optGroups.map((g, gi) => `
       <div style="border:1.5px solid #e0e0e0;border-radius:8px;padding:12px">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-          <input type="text" value="${g.name.replace(/"/g,'&quot;')}" placeholder="Group name (e.g. Size, Sauce)"
+          <input type="text" value="${g.name.replace(/"/g,'&quot;')}" placeholder="Group name (e.g. Size)"
             style="flex:1;min-width:100px;padding:6px 10px;border:1.5px solid #ddd;border-radius:6px;font-family:inherit"
             oninput="_optGroups[${gi}].name=this.value;syncOptions()" />
           <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer;white-space:nowrap">
@@ -851,32 +488,11 @@
     `).join('');
   }
 
-  function syncOptions() {
-    document.getElementById('editOptions').value = JSON.stringify(_optGroups);
-  }
-
-  function addOptionGroup() {
-    _optGroups.push({ name: '', required: false, multi: false, choices: [{ label: '', price: 0 }] });
-    renderOptionGroups();
-    syncOptions();
-  }
-
-  function removeOptionGroup(gi) {
-    _optGroups.splice(gi, 1);
-    renderOptionGroups();
-    syncOptions();
-  }
-
-  function addChoice(gi) {
-    _optGroups[gi].choices.push({ label: '', price: 0 });
-    renderOptionGroups();
-  }
-
-  function removeChoice(gi, ci) {
-    _optGroups[gi].choices.splice(ci, 1);
-    renderOptionGroups();
-    syncOptions();
-  }
+  function syncOptions() { document.getElementById('editOptions').value = JSON.stringify(_optGroups); }
+  function addOptionGroup() { _optGroups.push({ name: '', required: false, multi: false, choices: [{ label: '', price: 0 }] }); renderOptionGroups(); syncOptions(); }
+  function removeOptionGroup(gi) { _optGroups.splice(gi, 1); renderOptionGroups(); syncOptions(); }
+  function addChoice(gi) { _optGroups[gi].choices.push({ label: '', price: 0 }); renderOptionGroups(); }
+  function removeChoice(gi, ci) { _optGroups[gi].choices.splice(ci, 1); renderOptionGroups(); syncOptions(); }
 
   function openEdit(item) {
     document.getElementById('editName').value          = item.name;
@@ -891,25 +507,17 @@
     document.getElementById('editBadge').value         = item.badge || '';
     document.getElementById('editForm').action         = '/admin/items/' + item.id + '/edit';
     _optGroups = item.options ? JSON.parse(JSON.stringify(item.options)) : [];
-    renderOptionGroups();
-    syncOptions();
+    renderOptionGroups(); syncOptions();
     previewImg(document.getElementById('editImageUrl'), 'editPreview');
     document.getElementById('editOverlay').classList.add('open');
   }
   function closeEdit() { document.getElementById('editOverlay').classList.remove('open'); }
-  document.getElementById('editOverlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('editOverlay')) closeEdit();
-  });
+  document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === document.getElementById('editOverlay')) closeEdit(); });
 
   function previewImg(input, previewId) {
     const preview = document.getElementById(previewId);
-    if (input.value) {
-      preview.src = input.value;
-      preview.classList.add('show');
-      preview.onerror = () => preview.classList.remove('show');
-    } else {
-      preview.classList.remove('show');
-    }
+    if (input.value) { preview.src = input.value; preview.classList.add('show'); preview.onerror = () => preview.classList.remove('show'); }
+    else { preview.classList.remove('show'); }
   }
 
   function showToast(msg, type = 'success') {
@@ -919,12 +527,10 @@
     setTimeout(() => t.className = '', 3000);
   }
 
-  // Show toast from URL param
   const params = new URLSearchParams(location.search);
   if (params.get('success')) showToast(decodeURIComponent(params.get('success')));
   if (params.get('error'))   showToast(decodeURIComponent(params.get('error')), 'error');
 
-  // Dark mode
   function toggleDark() {
     const isDark = document.body.classList.toggle('dark');
     localStorage.setItem('adminDark', isDark ? '1' : '');
@@ -937,7 +543,6 @@
     document.getElementById('darkLabel').textContent = 'Light Mode';
   }
 
-  // Image upload — compress in browser, store as base64 in DB
   function compressImage(file, maxW, quality) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -975,65 +580,35 @@
         document.getElementById(urlId).value = data.url;
         previewImg(document.getElementById(urlId), previewId);
         showToast('Image uploaded — save the form to apply');
-      } else {
-        showToast('Upload failed: ' + (data.error || 'unknown error'), 'error');
-      }
+      } else { showToast('Upload failed: ' + (data.error || 'unknown error'), 'error'); }
     } catch { showToast('Upload failed', 'error'); }
     textEl.textContent = orig;
     fileInput.disabled = false;
     fileInput.value = '';
   }
 
-  // Badge preset helper
-  function setBadge(inputId, value) {
-    document.getElementById(inputId).value = value;
-  }
+  function setBadge(inputId, value) { document.getElementById(inputId).value = value; }
 
-  // Search filter
   function filterItems(query) {
     const q = query.toLowerCase();
     document.querySelectorAll('#itemsTbody tr').forEach(row => {
-      const text = row.querySelector('.item-name') ? row.querySelector('.item-name').textContent.toLowerCase() : '';
-      const cat  = row.cells[4] ? row.cells[4].textContent.toLowerCase() : '';
+      const text = row.querySelector('.item-name')?.textContent.toLowerCase() || '';
+      const cat  = row.cells[4]?.textContent.toLowerCase() || '';
       row.style.display = (!q || text.includes(q) || cat.includes(q)) ? '' : 'none';
     });
   }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script>
-  // Drag-and-drop: items table
   const itemsTbody = document.getElementById('itemsTbody');
   if (itemsTbody) {
     Sortable.create(itemsTbody, {
-      handle: '.drag-handle',
-      animation: 150,
-      ghostClass: 'sortable-ghost',
-      chosenClass: 'sortable-chosen',
+      handle: '.drag-handle', animation: 150,
+      ghostClass: 'sortable-ghost', chosenClass: 'sortable-chosen',
       onEnd() {
         const order = [...itemsTbody.querySelectorAll('tr')].map(r => r.dataset.id);
-        fetch('/admin/items/reorder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order })
-        }).then(r => r.json()).then(d => { if (d.ok) showToast('Order saved'); });
-      }
-    });
-  }
-
-  // Drag-and-drop: categories
-  const catList = document.getElementById('catList');
-  if (catList) {
-    Sortable.create(catList, {
-      handle: '.drag-handle',
-      animation: 150,
-      ghostClass: 'sortable-ghost',
-      onEnd() {
-        const order = [...catList.querySelectorAll('[data-id]')].map(el => el.dataset.id);
-        fetch('/admin/categories/reorder', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order })
-        }).then(r => r.json()).then(d => { if (d.ok) showToast('Category order saved'); });
+        fetch('/admin/items/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order }) })
+          .then(r => r.json()).then(d => { if (d.ok) showToast('Order saved'); });
       }
     });
   }
