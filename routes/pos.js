@@ -82,8 +82,8 @@ router.post('/session/open', requireAuth, requirePOS, async (req, res) => {
     const existing = await getOpenSession(req.user.tenantId);
     if (existing) return res.redirect('/pos');
     await db.query(
-      'INSERT INTO pos_sessions (tenant_id, opened_by, opening_cash) VALUES ($1,$2,$3)',
-      [req.user.tenantId, req.user.userId, parseFloat(req.body.opening_cash) || 0]
+      'INSERT INTO pos_sessions (tenant_id, opened_by, opening_cash, exchange_rate) VALUES ($1,$2,$3,$4)',
+      [req.user.tenantId, req.user.userId, parseFloat(req.body.opening_cash) || 0, parseFloat(req.body.exchange_rate) || 1]
     );
     res.redirect('/pos');
   } catch (err) { console.error(err); res.redirect('/pos/session/open'); }
@@ -447,22 +447,29 @@ router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
     const subtotal = calcSubtotal(itemsRes.rows);
     const total    = calcTotal(itemsRes.rows, o);
     const discount = subtotal - total;
-    res.render('pos/payment', { tenant, order: o, orderItems: itemsRes.rows, subtotal, total, discount, customers: customersRes.rows, currentUser: req.user });
+    // Get exchange rate from open session
+    const sessionRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
+    const exchangeRate = parseFloat(sessionRes.rows[0]?.exchange_rate) || 1;
+    res.render('pos/payment', { tenant, order: o, orderItems: itemsRes.rows, subtotal, total, discount, customers: customersRes.rows, exchangeRate, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Process payment ───────────────────────────────────────────────────────────
 router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
-  const { method, amount_paid, customer_id } = req.body;
+  const { method, amount_paid, customer_id, received_currency, exchange_rate } = req.body;
   try {
     const orderRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
     const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
     const total = calcTotal(items.rows, orderRes.rows[0]);
-    const paid = parseFloat(amount_paid) || 0;
-    const change = Math.max(0, paid - total);
+    const paid    = parseFloat(amount_paid) || 0;
+    const recvCur = received_currency || 'USD';
+    const exRate  = parseFloat(exchange_rate) || 1;
+    const paidUSD = recvCur === 'IQD' ? paid / exRate : paid;
+    const paidIQD = recvCur === 'IQD' ? paid : paid * exRate;
+    const change  = Math.max(0, paidUSD - total);
     await db.query(
-      'INSERT INTO pos_payments (order_id, method, amount_paid, change_given) VALUES ($1,$2,$3,$4)',
-      [req.params.orderId, method || 'cash', paid, change]
+      'INSERT INTO pos_payments (order_id, method, amount_paid, change_given, received_currency, amount_paid_iqd, exchange_rate) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [req.params.orderId, method || 'cash', paidUSD, change, recvCur, paidIQD, exRate]
     );
     const cid = parseInt(customer_id) || null;
     await db.query(

@@ -38,6 +38,15 @@
     .quick-btn { padding: 7px 14px; border: 1.5px solid #2a2a3e; border-radius: 8px; background: #0f0f1a; color: #888; font-size: .8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
     .quick-btn:hover { border-color: #7c5cbf; color: #fff; }
 
+    /* Currency toggle */
+    .currency-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+    .cur-btn { flex: 1; padding: 10px; border: 2px solid #2a2a3e; border-radius: 10px; background: #0f0f1a; color: #888; font-size: .88rem; font-weight: 700; cursor: pointer; font-family: inherit; text-align: center; transition: all .15s; }
+    .cur-btn.active { border-color: #f39c12; color: #f39c12; background: rgba(243,156,18,.1); }
+    .iqd-equiv { background: rgba(243,156,18,.08); border: 1px solid rgba(243,156,18,.2); border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; font-size: .85rem; }
+    .iqd-label { color: #f39c12; font-weight: 600; }
+    .iqd-val   { color: #fff; font-weight: 800; font-size: 1rem; }
+    .rate-badge { font-size: .72rem; color: #555; margin-top: 2px; }
+
     /* Customer picker */
     .customer-section { margin-bottom: 20px; }
     .customer-search-wrap { position: relative; }
@@ -125,22 +134,49 @@
       <div class="method-btn" id="btnCard" onclick="setMethod('card')">💳 Card</div>
     </div>
     <input type="hidden" name="method" id="methodInput" value="cash" />
+    <input type="hidden" name="received_currency" id="currencyInput" value="USD" />
+    <input type="hidden" name="exchange_rate" value="<%= exchangeRate %>" />
 
     <!-- Amount Paid -->
     <div id="cashSection">
-      <label>Amount Received</label>
-      <div class="quick-amounts">
+      <!-- Currency toggle (only shown when exchange rate > 1) -->
+      <% if (exchangeRate > 1) { %>
+      <div class="currency-toggle">
+        <button type="button" class="cur-btn active" id="btnUSD" onclick="setCurrency('USD')">$ USD</button>
+        <button type="button" class="cur-btn" id="btnIQD" onclick="setCurrency('IQD')">🇮🇶 IQD</button>
+      </div>
+      <!-- IQD equiv display -->
+      <div class="iqd-equiv" id="iqdEquiv" style="display:none">
+        <div>
+          <div class="iqd-label">Total in IQD</div>
+          <div class="rate-badge">Rate: 1 <%= tenant.currency || '$' %> = <%= exchangeRate.toFixed(0) %> IQD</div>
+        </div>
+        <div class="iqd-val" id="totalIQD"><%= (total * exchangeRate).toFixed(0) %> IQD</div>
+      </div>
+      <% } %>
+
+      <label id="amountLabel">Amount Received (<%= tenant.currency || '$' %>)</label>
+      <div class="quick-amounts" id="quickAmounts">
         <% [total, Math.ceil(total/5)*5, Math.ceil(total/10)*10, Math.ceil(total/50)*50].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
-        <button type="button" class="quick-btn" onclick="setAmount(<%= amt.toFixed(2) %>)"><%= tenant.currency || '$' %><%= amt.toFixed(2) %></button>
+        <button type="button" class="quick-btn usd-btn" onclick="setAmountUSD(<%= amt.toFixed(2) %>)"><%= tenant.currency || '$' %><%= amt.toFixed(2) %></button>
         <% }) %>
+        <% const EXRATE = exchangeRate; %>
+        <% if (exchangeRate > 1) { [total * exchangeRate, Math.ceil(total * exchangeRate / 1000)*1000, Math.ceil(total * exchangeRate / 5000)*5000].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
+        <button type="button" class="quick-btn iqd-btn" style="display:none;border-color:rgba(243,156,18,.3);color:#f39c12" onclick="setAmountIQD(<%= amt.toFixed(0) %>)"><%= amt.toFixed(0) %> IQD</button>
+        <% }) } %>
       </div>
       <input type="number" class="amount-input" name="amount_paid" id="amountInput"
-        value="<%= total.toFixed(2) %>" min="<%= total.toFixed(2) %>" step="0.01"
+        value="<%= total.toFixed(2) %>" min="0" step="0.01"
         oninput="calcChange()" />
 
       <div class="change-box">
         <span class="change-label">Change</span>
         <span class="change-amount" id="changeAmt"><%= tenant.currency || '$' %>0.00</span>
+      </div>
+      <!-- IQD change display -->
+      <div class="iqd-equiv" id="changeIQDBox" style="display:none;margin-top:-10px;margin-bottom:16px;background:rgba(0,184,148,.06);border-color:rgba(0,184,148,.2)">
+        <span class="iqd-label" style="color:#00b894">Change in IQD</span>
+        <span class="iqd-val" id="changeIQD" style="color:#00b894">0 IQD</span>
       </div>
     </div>
 
@@ -150,33 +186,90 @@
 </div>
 
 <script>
-  const TOTAL = <%= total.toFixed(2) %>;
-  const CUR   = '<%= tenant.currency || "$" %>';
+  const TOTAL    = <%= total.toFixed(2) %>;
+  const CUR      = '<%= tenant.currency || "$" %>';
+  const EXRATE   = <%= exchangeRate %>;
+  let   curMode  = 'USD';   // 'USD' | 'IQD'
 
   function setMethod(m) {
     document.getElementById('methodInput').value = m;
     document.getElementById('btnCash').classList.toggle('active', m === 'cash');
     document.getElementById('btnCard').classList.toggle('active', m === 'card');
     document.getElementById('cashSection').style.display = m === 'cash' ? '' : 'none';
-    if (m === 'card') document.getElementById('amountInput').value = TOTAL.toFixed(2);
+    if (m === 'card') {
+      document.getElementById('amountInput').value = TOTAL.toFixed(2);
+      calcChange();
+    }
   }
 
-  function setAmount(v) {
+  function setCurrency(mode) {
+    curMode = mode;
+    document.getElementById('currencyInput').value = mode;
+
+    const btnUSD = document.getElementById('btnUSD');
+    const btnIQD = document.getElementById('btnIQD');
+    if (btnUSD) btnUSD.classList.toggle('active', mode === 'USD');
+    if (btnIQD) btnIQD.classList.toggle('active', mode === 'IQD');
+
+    const iqdEquiv   = document.getElementById('iqdEquiv');
+    const changeIQDB = document.getElementById('changeIQDBox');
+    const label      = document.getElementById('amountLabel');
+
+    document.querySelectorAll('.usd-btn').forEach(b => b.style.display = mode === 'USD' ? '' : 'none');
+    document.querySelectorAll('.iqd-btn').forEach(b => b.style.display = mode === 'IQD' ? '' : 'none');
+
+    if (mode === 'IQD') {
+      if (iqdEquiv)   iqdEquiv.style.display   = '';
+      if (changeIQDB) changeIQDB.style.display  = '';
+      if (label)      label.textContent          = 'Amount Received (IQD)';
+      // Default to total in IQD
+      document.getElementById('amountInput').value = (TOTAL * EXRATE).toFixed(0);
+    } else {
+      if (iqdEquiv)   iqdEquiv.style.display   = 'none';
+      if (changeIQDB) changeIQDB.style.display  = 'none';
+      if (label)      label.textContent          = 'Amount Received (' + CUR + ')';
+      document.getElementById('amountInput').value = TOTAL.toFixed(2);
+    }
+    calcChange();
+  }
+
+  function setAmountUSD(v) {
     document.getElementById('amountInput').value = v.toFixed(2);
+    calcChange();
+  }
+
+  function setAmountIQD(v) {
+    document.getElementById('amountInput').value = v.toFixed(0);
     calcChange();
   }
 
   function calcChange() {
     const paid = parseFloat(document.getElementById('amountInput').value) || 0;
-    const change = Math.max(0, paid - TOTAL);
-    document.getElementById('changeAmt').textContent = CUR + change.toFixed(2);
+    if (curMode === 'IQD') {
+      // paid is in IQD
+      const totalIQD  = TOTAL * EXRATE;
+      const changeIQD = Math.max(0, paid - totalIQD);
+      // Display change in IQD
+      document.getElementById('changeAmt').textContent = changeIQD.toFixed(0) + ' IQD';
+      const ciqd = document.getElementById('changeIQD');
+      if (ciqd) ciqd.textContent = changeIQD.toFixed(0) + ' IQD';
+    } else {
+      const change = Math.max(0, paid - TOTAL);
+      document.getElementById('changeAmt').textContent = CUR + change.toFixed(2);
+    }
   }
 
   function validatePay() {
     const paid = parseFloat(document.getElementById('amountInput').value) || 0;
-    if (document.getElementById('methodInput').value === 'cash' && paid < TOTAL) {
-      alert('Amount received must be at least ' + CUR + TOTAL.toFixed(2));
-      return false;
+    if (document.getElementById('methodInput').value === 'cash') {
+      const minRequired = curMode === 'IQD' ? TOTAL * EXRATE : TOTAL;
+      if (paid < minRequired) {
+        const msg = curMode === 'IQD'
+          ? 'Amount received must be at least ' + (TOTAL * EXRATE).toFixed(0) + ' IQD'
+          : 'Amount received must be at least ' + CUR + TOTAL.toFixed(2);
+        alert(msg);
+        return false;
+      }
     }
     return true;
   }

@@ -178,6 +178,10 @@ const pool = new Pool({
     `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS item_name VARCHAR(120)`,
     `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS unit VARCHAR(20)`,
     `ALTER TABLE purchase_receipt_lines ALTER COLUMN item_id DROP NOT NULL`,
+    `ALTER TABLE pos_sessions ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(12,4) DEFAULT 1`,
+    `ALTER TABLE pos_payments ADD COLUMN IF NOT EXISTS received_currency VARCHAR(5) DEFAULT 'USD'`,
+    `ALTER TABLE pos_payments ADD COLUMN IF NOT EXISTS amount_paid_iqd  NUMERIC(14,2) DEFAULT 0`,
+    `ALTER TABLE pos_payments ADD COLUMN IF NOT EXISTS exchange_rate     NUMERIC(12,4) DEFAULT 1`,
     `CREATE TABLE IF NOT EXISTS customers (
       id          SERIAL PRIMARY KEY,
       tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,

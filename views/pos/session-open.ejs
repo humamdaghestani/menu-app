@@ -34,10 +34,15 @@
   <div class="sub">Enter the opening cash amount in the drawer before starting your shift</div>
 
   <form method="POST" action="/pos/session/open">
-    <label>Opening Cash Amount</label>
+    <label>Opening Cash Amount (<%= tenant.currency || '$' %>)</label>
     <input type="number" class="amount-input" name="opening_cash" value="0" min="0" step="0.01" placeholder="0.00" autofocus />
     <div class="hint">Enter 0 if starting with an empty drawer</div>
-    <button type="submit" class="btn btn-open">Open Session →</button>
+
+    <label style="margin-top:20px">Today's Exchange Rate <span style="color:#7c5cbf">1 <%= tenant.currency || '$' %> = ? IQD</span></label>
+    <input type="number" class="amount-input" name="exchange_rate" id="rateInput" value="1" min="1" step="1" placeholder="e.g. 1480" style="font-size:1.2rem" oninput="updateRateHint()" />
+    <div class="hint" id="rateHint">Set the IQD rate for today's cash payments</div>
+
+    <button type="submit" class="btn btn-open" style="margin-top:8px">Open Session →</button>
   </form>
 
   <div class="nav-row">
@@ -53,6 +58,11 @@
 <script>
   function tick() { document.getElementById('clock').textContent = new Date().toLocaleString(); }
   tick(); setInterval(tick, 1000);
+  function updateRateHint() {
+    const r = parseFloat(document.getElementById('rateInput').value) || 1;
+    document.getElementById('rateHint').textContent = r > 1 ? '1 <%= tenant.currency || "$" %> = ' + r.toLocaleString() + ' IQD' : 'Set the IQD rate for today\'s cash payments';
+  }
+  updateRateHint();
 </script>
 </body>
 </html>
