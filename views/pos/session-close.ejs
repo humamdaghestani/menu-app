@@ -34,12 +34,38 @@
     .badge { padding: 2px 8px; border-radius: 10px; font-size: .68rem; font-weight: 700; }
     .badge-paid { background: rgba(0,184,148,.15); color: #00b894; }
     .badge-void { background: rgba(255,71,87,.12); color: #ff6b7a; }
+    .blocker { background: rgba(231,76,60,.08); border: 1.5px solid rgba(231,76,60,.35); border-radius: 14px; padding: 22px; margin-bottom: 16px; }
+    .blocker h2 { color: #e74c3c; font-size: .95rem; margin-bottom: 10px; }
+    .blocker p  { font-size: .82rem; color: #888; margin-bottom: 16px; }
+    .open-order-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(231,76,60,.06); border-radius: 8px; margin-bottom: 6px; font-size: .82rem; }
+    .open-order-row:last-child { margin-bottom: 0; }
+    .open-table  { font-weight: 700; color: #fff; }
+    .open-status { padding: 2px 8px; border-radius: 10px; font-size: .68rem; font-weight: 700; background: rgba(241,196,15,.15); color: #f1c40f; text-transform: capitalize; }
+    .btn-tables { background: #7c5cbf; color: #fff; }
+    .btn-tables:hover { opacity: .88; }
   </style>
 </head>
 <body>
 <div class="main">
   <h1>🔒 Close Session</h1>
   <div class="sub">Session opened <%= new Date(session.opened_at).toLocaleString() %></div>
+
+  <!-- Blocker: open orders -->
+  <% if (openOrders && openOrders.length > 0) { %>
+  <div class="blocker">
+    <h2>⚠️ Cannot close — <%= openOrders.length %> open order<%= openOrders.length > 1 ? 's' : '' %></h2>
+    <p>All tables must be paid or voided before you can close the session.</p>
+    <% openOrders.forEach(o => { %>
+    <div class="open-order-row">
+      <span class="open-table"><%= o.table_name || ('Order #' + o.id) %></span>
+      <span class="open-status"><%= o.status %></span>
+    </div>
+    <% }) %>
+    <div class="btns" style="margin-top:16px">
+      <a href="/pos/tables" class="btn btn-tables">Go to Tables →</a>
+    </div>
+  </div>
+  <% } %>
 
   <!-- Summary -->
   <div class="card">
@@ -87,7 +113,11 @@
       </div>
       <div class="btns">
         <a href="/pos/tables" class="btn btn-ghost">← Tables</a>
+        <% if (openOrders && openOrders.length > 0) { %>
+        <button type="button" class="btn btn-close" disabled style="opacity:.35;cursor:not-allowed" title="Resolve open orders first">🔒 Close Session</button>
+        <% } else { %>
         <button type="submit" class="btn btn-close" onclick="return confirm('Close this session? You will need to enter a new opening cash to continue.')">🔒 Close Session</button>
+        <% } %>
       </div>
     </form>
   </div>

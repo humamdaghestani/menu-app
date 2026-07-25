@@ -112,7 +112,20 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
       s.count++;
       return s;
     }, { total: 0, cash: 0, card: 0, count: 0 });
-    res.render('pos/session-close', { tenant, session, orders: orders.rows, summary, currentUser: req.user });
+    const openRes = await db.query(
+      `SELECT id, table_name, status, total, created_at
+       FROM pos_orders
+       WHERE session_id=$1 AND status NOT IN ('paid','void')
+       ORDER BY created_at`,
+      [session.id]
+    );
+    res.render('pos/session-close', {
+      tenant, session,
+      orders: orders.rows,
+      openOrders: openRes.rows,
+      summary,
+      currentUser: req.user,
+    });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
@@ -120,6 +133,13 @@ router.post('/session/close', requireAuth, requirePOS, async (req, res) => {
   try {
     const session = await getOpenSession(req.user.tenantId);
     if (!session) return res.redirect('/pos');
+
+    const openCheck = await db.query(
+      `SELECT id FROM pos_orders WHERE session_id=$1 AND status NOT IN ('paid','void') LIMIT 1`,
+      [session.id]
+    );
+    if (openCheck.rows.length > 0) return res.redirect('/pos/session/close');
+
     await db.query(
       "UPDATE pos_sessions SET status='closed', closing_cash=$1, notes=$2, closed_at=NOW() WHERE id=$3",
       [parseFloat(req.body.closing_cash) || 0, req.body.notes || null, session.id]
