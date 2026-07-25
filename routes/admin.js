@@ -385,19 +385,76 @@ router.get('/import', requireAuth, requirePerm('import'), requireFeature('feat_i
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
-// Download blank template
-router.get('/import/template', requireAuth, requirePerm('import'), (req, res) => {
-  const wb = XLSX.utils.book_new();
-  const headers = ['name','name_ar','name_ku','price','category','description','description_ar','description_ku','image_url','badge'];
-  const example = ['Chicken Burger','برجر دجاج','برگەری مریشک','12.99','Burgers','Crispy fried chicken with lettuce','دجاج مقلي مع خس','مریشکی سووتاو','','popular'];
-  const ws = XLSX.utils.aoa_to_sheet([headers, example]);
-  // Column widths
-  ws['!cols'] = [22,22,22,10,16,34,34,34,30,12].map(w => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, ws, 'Menu Items');
-  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-  res.setHeader('Content-Disposition', 'attachment; filename="menu-import-template.xlsx"');
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.send(buf);
+// Download blank template — category column uses a dropdown from tenant's categories
+router.get('/import/template', requireAuth, requirePerm('import'), async (req, res) => {
+  try {
+    const catsRes = await db.query(
+      'SELECT name FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name',
+      [req.user.tenantId]
+    );
+    const cats = catsRes.rows.map(c => c.name);
+
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+
+    // Hidden helper sheet that the dropdown formula references
+    const catSheet = wb.addWorksheet('_Categories', { state: 'veryHidden' });
+    if (cats.length > 0) {
+      catSheet.addRows(cats.map(c => [c]));
+    } else {
+      catSheet.addRow(['(no categories yet)']);
+    }
+
+    // Main import sheet
+    const ws = wb.addWorksheet('Menu Items');
+    ws.columns = [
+      { header: 'name',           width: 24 },
+      { header: 'name_ar',        width: 24 },
+      { header: 'name_ku',        width: 24 },
+      { header: 'price',          width: 10 },
+      { header: 'category',       width: 20 },
+      { header: 'description',    width: 36 },
+      { header: 'description_ar', width: 36 },
+      { header: 'description_ku', width: 36 },
+      { header: 'image_url',      width: 30 },
+      { header: 'badge',          width: 12 },
+    ];
+
+    // Style the header row
+    ws.getRow(1).eachCell(cell => {
+      cell.font      = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B1F6E' } };
+      cell.alignment = { horizontal: 'center' };
+    });
+
+    // Example row
+    ws.addRow([
+      'Chicken Burger', 'برجر دجاج', 'برگەری مریشک',
+      12.99, cats[0] || 'Burgers',
+      'Crispy fried chicken with lettuce', 'دجاج مقلي مع خس', 'مریشکی سووتاو',
+      '', 'popular'
+    ]);
+
+    // Category dropdown for rows 2..1001
+    if (cats.length > 0) {
+      ws.dataValidations.add('E2:E1001', {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`_Categories!$A$1:$A$${cats.length}`],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Category',
+        error: 'Please choose a category from the dropdown list.'
+      });
+    }
+
+    res.setHeader('Content-Disposition', 'attachment; filename="menu-import-template.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Server error generating template');
+  }
 });
 
 // Handle upload
