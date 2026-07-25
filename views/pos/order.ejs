@@ -728,6 +728,19 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 
 // Fix initial render: re-render from JS state so all items have onclick handlers
 _render();
+
+// Physical keyboard → numpad
+document.addEventListener('keydown', e => {
+  // Don't intercept when typing in an input/textarea
+  if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+  // Don't intercept when a modal is open
+  if (document.querySelector('.modal-overlay.open')) return;
+
+  if (e.key >= '0' && e.key <= '9') { e.preventDefault(); numpadPress(e.key); }
+  else if (e.key === 'Backspace')    { e.preventDefault(); numpadPress('back'); }
+  else if (e.key === 'Enter' || e.key === 'NumpadEnter') { e.preventDefault(); numpadPress('ok'); }
+  else if (e.key === 'Escape')       { _selectedItemId = null; _npInput = ''; _render(); _npUpdate(); }
+});
 </script>
 
 <script>
