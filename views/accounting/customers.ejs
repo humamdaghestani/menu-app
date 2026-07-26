@@ -113,6 +113,9 @@
             <td style="text-align:right;font-weight:700;white-space:nowrap;color:<%= c.balance > 0 ? '#e74c3c' : '#00b894' %>"><%= c.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
             <td><span class="status-badge status-<%= c.status %>"><%= c.status %></span></td>
             <td style="white-space:nowrap">
+              <% if (c.customer_id) { %>
+              <a href="/accounting/customers/<%= c.customer_id %>/ledger" class="btn btn-ghost" style="padding:4px 8px;font-size:.72rem">📋 Ledger</a>
+              <% } %>
               <% if (c.status !== 'paid') { %>
               <button class="btn btn-green" style="padding:4px 8px;font-size:.72rem" onclick='openPay(<%= c.id %>, "<%= c.customer_name.replace(/"/g, "&quot;") %>", <%= c.balance %>)'>Pay</button>
               <% } %>

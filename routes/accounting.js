@@ -110,54 +110,192 @@ router.get('/', requireAuth, requireAccounting, async (req, res) => {
 router.get('/suppliers', requireAuth, requireAccounting, async (req, res) => {
   const tid = req.user.tenantId;
 
-  const [ledgerRes, paymentsRes, customersRes] = await Promise.all([
-    // Balance per supplier: purchased - paid
+  const [suppEntRes, ledgerRes, paymentsRes] = await Promise.all([
+    // Proper supplier entities
+    db.query(`SELECT s.*,
+        COALESCE((SELECT SUM(pr.total) FROM purchase_receipts pr WHERE pr.tenant_id=$1 AND (pr.supplier_id=s.id OR pr.supplier_name=s.name)),0) AS total_purchased,
+        COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.tenant_id=$1 AND (sp.supplier_id=s.id OR sp.supplier_name=s.name)),0) AS total_paid
+      FROM suppliers s WHERE s.tenant_id=$1 ORDER BY s.name`, [tid]),
+
+    // Ledger for suppliers by name that don't have an entity yet
     db.query(`
       SELECT supplier_name,
         COALESCE(SUM(pr.total),0) AS total_purchased,
         COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp
                   WHERE sp.tenant_id=$1 AND sp.supplier_name=pr.supplier_name),0) AS total_paid
       FROM purchase_receipts pr
-      WHERE pr.tenant_id=$1 AND pr.supplier_name IS NOT NULL
+      WHERE pr.tenant_id=$1 AND pr.supplier_name IS NOT NULL AND pr.supplier_id IS NULL
       GROUP BY supplier_name ORDER BY total_purchased DESC
     `, [tid]),
 
     // Recent supplier payments
     db.query(`SELECT * FROM supplier_payments WHERE tenant_id=$1 ORDER BY payment_date DESC, id DESC LIMIT 30`, [tid]),
-
-    // Distinct supplier names for autocomplete
-    db.query(`SELECT DISTINCT supplier_name FROM purchase_receipts WHERE tenant_id=$1 AND supplier_name IS NOT NULL ORDER BY supplier_name`, [tid]),
   ]);
+
+  const suppEntities = suppEntRes.rows.map(r => ({
+    ...r,
+    total_purchased: parseFloat(r.total_purchased) + parseFloat(r.opening_balance),
+    total_paid: parseFloat(r.total_paid),
+    balance: parseFloat(r.total_purchased) + parseFloat(r.opening_balance) - parseFloat(r.total_paid),
+    isEntity: true,
+  }));
+
+  const nameOnlyLedger = ledgerRes.rows.map(r => ({
+    ...r,
+    total_purchased: parseFloat(r.total_purchased),
+    total_paid: parseFloat(r.total_paid),
+    balance: parseFloat(r.total_purchased) - parseFloat(r.total_paid),
+    isEntity: false,
+  }));
 
   res.render('accounting/suppliers', {
     tenant: req.tenant, currentUser: req.user,
-    ledger: ledgerRes.rows.map(r => ({
-      ...r,
-      total_purchased: parseFloat(r.total_purchased),
-      total_paid: parseFloat(r.total_paid),
-      balance: parseFloat(r.total_purchased) - parseFloat(r.total_paid),
-    })),
+    suppliers: suppEntities,
+    nameOnlyLedger,
     recentPayments: paymentsRes.rows,
-    supplierNames: customersRes.rows.map(r => r.supplier_name),
+    supplierNames: [...suppEntities.map(s => s.name), ...nameOnlyLedger.map(s => s.supplier_name)],
   });
 });
 
+// CRUD for supplier entities
+router.post('/suppliers/add', requireAuth, requireAccounting, async (req, res) => {
+  const { name, phone, email, address, tax_no, opening_balance, notes } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO suppliers (tenant_id,name,phone,email,address,tax_no,opening_balance,notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [req.user.tenantId, name.trim(), phone||null, email||null, address||null,
+       tax_no||null, parseFloat(opening_balance)||0, notes||null]
+    );
+    res.redirect('/accounting/suppliers');
+  } catch (err) { res.redirect('/accounting/suppliers?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/suppliers/:id/edit', requireAuth, requireAccounting, async (req, res) => {
+  const { name, phone, email, address, tax_no, opening_balance, notes } = req.body;
+  try {
+    await db.query(
+      `UPDATE suppliers SET name=$1,phone=$2,email=$3,address=$4,tax_no=$5,opening_balance=$6,notes=$7 WHERE id=$8 AND tenant_id=$9`,
+      [name.trim(), phone||null, email||null, address||null, tax_no||null,
+       parseFloat(opening_balance)||0, notes||null, req.params.id, req.user.tenantId]
+    );
+    res.redirect('/accounting/suppliers');
+  } catch (err) { res.redirect('/accounting/suppliers?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/suppliers/:id/delete', requireAuth, requireAccounting, async (req, res) => {
+  await db.query('DELETE FROM suppliers WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+  res.redirect('/accounting/suppliers');
+});
+
+// Supplier ledger detail (by entity id)
+router.get('/suppliers/:id/ledger', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const suppRes = await db.query('SELECT * FROM suppliers WHERE id=$1 AND tenant_id=$2', [req.params.id, tid]);
+    if (!suppRes.rows[0]) return res.redirect('/accounting/suppliers');
+    const supp = suppRes.rows[0];
+
+    const txnRes = await db.query(`
+      SELECT * FROM (
+        SELECT receipt_date AS txn_date, 'Purchase' AS type, invoice_no AS reference,
+               COALESCE(total,0) AS debit, 0 AS credit, id AS source_id, 'purchase' AS source_type, notes
+        FROM purchase_receipts
+        WHERE tenant_id=$1 AND (supplier_id=$2 OR supplier_name=$3)
+        UNION ALL
+        SELECT payment_date AS txn_date, 'Payment' AS type, method AS reference,
+               0 AS debit, COALESCE(amount,0) AS credit, id AS source_id, 'payment' AS source_type, notes
+        FROM supplier_payments
+        WHERE tenant_id=$1 AND (supplier_id=$2 OR supplier_name=$3)
+      ) t ORDER BY txn_date ASC, source_type DESC
+    `, [tid, req.params.id, supp.name]);
+
+    // Compute running balance
+    let balance = parseFloat(supp.opening_balance) || 0;
+    const ledger = txnRes.rows.map(r => {
+      balance += parseFloat(r.debit) - parseFloat(r.credit);
+      return { ...r, running_balance: balance };
+    });
+
+    const totalDebit  = ledger.reduce((s, r) => s + parseFloat(r.debit), 0);
+    const totalCredit = ledger.reduce((s, r) => s + parseFloat(r.credit), 0);
+
+    res.render('accounting/supplier-ledger', {
+      tenant: req.tenant, currentUser: req.user,
+      supplier: supp, ledger,
+      totalDebit: parseFloat(supp.opening_balance) + totalDebit,
+      totalCredit, closingBalance: balance,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+// Supplier payment (keep existing + add supplier_id support)
 router.post('/suppliers/pay', requireAuth, requireAccounting, async (req, res) => {
-  const { supplier_name, amount, payment_date, method, notes } = req.body;
+  const { supplier_name, supplier_id, amount, payment_date, method, notes } = req.body;
   if (!supplier_name?.trim() || !amount) return res.redirect('/accounting/suppliers');
   await db.query(
-    `INSERT INTO supplier_payments (tenant_id,supplier_name,amount,payment_date,method,notes,created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-    [req.user.tenantId, supplier_name.trim(), parseFloat(amount),
+    `INSERT INTO supplier_payments (tenant_id,supplier_id,supplier_name,amount,payment_date,method,notes,created_by)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [req.user.tenantId, supplier_id||null, supplier_name.trim(), parseFloat(amount),
      payment_date || new Date().toISOString().slice(0,10),
      method || 'cash', notes?.trim() || null, req.user.userId]
   );
-  res.redirect('/accounting/suppliers');
+  const redir = req.body.from_ledger ? '/accounting/suppliers/' + supplier_id + '/ledger' : '/accounting/suppliers';
+  res.redirect(redir);
 });
 
 router.post('/suppliers/pay/:id/delete', requireAuth, requireAccounting, async (req, res) => {
   await db.query(`DELETE FROM supplier_payments WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
   res.redirect('/accounting/suppliers');
+});
+
+// ── Customer Ledger Detail ─────────────────────────────────────────
+router.get('/customers/:id/ledger', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [custRes, txnRes, statsRes] = await Promise.all([
+      db.query('SELECT * FROM customers WHERE id=$1 AND tenant_id=$2', [req.params.id, tid]),
+      db.query(`
+        SELECT * FROM (
+          SELECT cc.credit_date AS txn_date, 'Credit Issued' AS type, cc.notes AS reference,
+                 cc.amount AS debit, 0 AS credit, cc.id AS source_id, cc.due_date, cc.status
+          FROM customer_credits cc
+          WHERE cc.tenant_id=$1 AND cc.customer_id=$2
+          UNION ALL
+          SELECT p.payment_date AS txn_date, 'Payment Received' AS type, p.notes AS reference,
+                 0 AS debit, p.amount AS credit, p.id AS source_id, NULL AS due_date, NULL AS status
+          FROM customer_credit_payments p
+          JOIN customer_credits cc ON cc.id=p.credit_id
+          WHERE p.tenant_id=$1 AND cc.customer_id=$2
+          UNION ALL
+          SELECT po.paid_at::date AS txn_date, 'POS Sale' AS type, 'Order #'||po.id AS reference,
+                 po.total AS debit, 0 AS credit, po.id AS source_id, NULL AS due_date, po.status
+          FROM pos_orders po WHERE po.tenant_id=$1 AND po.customer_id=$2 AND po.status IN ('paid','closed')
+        ) t ORDER BY txn_date ASC NULLS LAST
+      `, [tid, req.params.id]),
+      db.query(`SELECT
+          COALESCE(SUM(po.total),0) AS total_sales,
+          COUNT(DISTINCT po.id)::int AS visit_count
+        FROM pos_orders po WHERE po.tenant_id=$1 AND po.customer_id=$2 AND po.status IN ('paid','closed')`, [tid, req.params.id]),
+    ]);
+
+    if (!custRes.rows[0]) return res.redirect('/accounting/customers');
+
+    let balance = 0;
+    const ledger = txnRes.rows.map(r => {
+      balance += parseFloat(r.debit) - parseFloat(r.credit);
+      return { ...r, running_balance: balance };
+    });
+
+    res.render('accounting/customer-ledger', {
+      tenant: req.tenant, currentUser: req.user,
+      customer: custRes.rows[0],
+      ledger,
+      totalSales: parseFloat(statsRes.rows[0].total_sales) || 0,
+      visitCount: statsRes.rows[0].visit_count || 0,
+      closingBalance: balance,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
 });
 
 // ── Customer Credits ───────────────────────────────────────────────
@@ -365,6 +503,133 @@ router.post('/categories/:id/delete', requireAuth, requireAccounting, async (req
   await db.query(`UPDATE expenses SET category_id=NULL WHERE category_id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
   await db.query(`DELETE FROM expense_categories WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
   res.redirect('/accounting/expenses');
+});
+
+// ── AP / AR Aging ─────────────────────────────────────────────────────────────
+router.get('/aging', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    // AP Aging — per supplier: balance breakdown by days overdue
+    const apRes = await db.query(`
+      SELECT pr.supplier_name,
+        COALESCE(SUM(pr.total),0) AS total_purchased,
+        COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp
+                  WHERE sp.tenant_id=$1 AND sp.supplier_name=pr.supplier_name),0) AS total_paid,
+        -- bucket by age of oldest unpaid purchase
+        MIN(pr.receipt_date) AS oldest_date
+      FROM purchase_receipts pr
+      WHERE pr.tenant_id=$1 AND pr.supplier_name IS NOT NULL
+      GROUP BY pr.supplier_name
+      HAVING COALESCE(SUM(pr.total),0) > COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.tenant_id=$1 AND sp.supplier_name=pr.supplier_name),0)
+      ORDER BY total_purchased DESC
+    `, [tid]);
+
+    // AR Aging — per customer credit: balance breakdown
+    const arRes = await db.query(`
+      SELECT cc.customer_name, cc.customer_id, cc.due_date,
+             (cc.amount - cc.amount_paid) AS balance,
+             cc.credit_date,
+             CURRENT_DATE - cc.credit_date AS age_days
+      FROM customer_credits cc
+      WHERE cc.tenant_id=$1 AND cc.status != 'paid'
+      ORDER BY cc.credit_date ASC
+    `, [tid]);
+
+    const today = new Date();
+    const ageBucket = (date) => {
+      if (!date) return '90+';
+      const days = Math.floor((today - new Date(date)) / 86400000);
+      if (days <= 30) return '0-30';
+      if (days <= 60) return '31-60';
+      if (days <= 90) return '61-90';
+      return '90+';
+    };
+
+    // Build AP rows with buckets
+    const apRows = apRes.rows.map(r => {
+      const balance = parseFloat(r.total_purchased) - parseFloat(r.total_paid);
+      const bucket = ageBucket(r.oldest_date);
+      return { supplier_name: r.supplier_name, balance, bucket, oldest_date: r.oldest_date };
+    });
+
+    // Build AR rows with buckets
+    const arRows = arRes.rows.map(r => {
+      const balance = parseFloat(r.balance);
+      const bucket = ageBucket(r.credit_date);
+      return { customer_name: r.customer_name, customer_id: r.customer_id, balance, bucket, due_date: r.due_date, credit_date: r.credit_date };
+    });
+
+    const buckets = ['0-30', '31-60', '61-90', '90+'];
+    const apSummary = Object.fromEntries(buckets.map(b => [b, apRows.filter(r => r.bucket === b).reduce((s, r) => s + r.balance, 0)]));
+    const arSummary = Object.fromEntries(buckets.map(b => [b, arRows.filter(r => r.bucket === b).reduce((s, r) => s + r.balance, 0)]));
+
+    res.render('accounting/aging', {
+      tenant: req.tenant, currentUser: req.user,
+      apRows, arRows, buckets, apSummary, arSummary,
+      apTotal: apRows.reduce((s, r) => s + r.balance, 0),
+      arTotal: arRows.reduce((s, r) => s + r.balance, 0),
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+// ── Cheques ───────────────────────────────────────────────────────────────────
+router.get('/cheques', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [chequesRes, bankRes] = await Promise.all([
+      db.query(`SELECT ch.*, ba.name AS bank_name FROM cheques ch
+                LEFT JOIN bank_accounts ba ON ba.id=ch.bank_account_id
+                WHERE ch.tenant_id=$1 ORDER BY ch.issue_date DESC, ch.id DESC`, [tid]),
+      db.query(`SELECT * FROM bank_accounts WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+    ]);
+
+    const issued   = chequesRes.rows.filter(c => c.type === 'issued');
+    const received = chequesRes.rows.filter(c => c.type === 'received');
+    const totalIssued   = issued.filter(c => c.status !== 'cancelled').reduce((s, c) => s + parseFloat(c.amount), 0);
+    const totalReceived = received.filter(c => c.status !== 'cancelled').reduce((s, c) => s + parseFloat(c.amount), 0);
+
+    res.render('accounting/cheques', {
+      tenant: req.tenant, currentUser: req.user,
+      cheques: chequesRes.rows, bankAccounts: bankRes.rows,
+      totalIssued, totalReceived,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/cheques', requireAuth, requireAccounting, async (req, res) => {
+  const { bank_account_id, cheque_no, type, party_name, amount, issue_date, due_date, notes } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO cheques (tenant_id,bank_account_id,cheque_no,type,party_name,amount,issue_date,due_date,notes,created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [req.user.tenantId, bank_account_id||null, cheque_no||null, type||'issued', party_name||null,
+       parseFloat(amount), issue_date||null, due_date||null, notes||null, req.user.userId]
+    );
+    res.redirect('/accounting/cheques');
+  } catch (err) { console.error(err); res.redirect('/accounting/cheques?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/cheques/:id/status', requireAuth, requireAccounting, async (req, res) => {
+  const { status } = req.body;
+  await db.query('UPDATE cheques SET status=$1 WHERE id=$2 AND tenant_id=$3', [status, req.params.id, req.user.tenantId]);
+  res.redirect('/accounting/cheques');
+});
+
+router.post('/cheques/:id/delete', requireAuth, requireAccounting, async (req, res) => {
+  await db.query('DELETE FROM cheques WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+  res.redirect('/accounting/cheques');
+});
+
+// ── Bank Accounts ─────────────────────────────────────────────────────────────
+router.post('/bank-accounts', requireAuth, requireAccounting, async (req, res) => {
+  const { name, bank_name, account_no, type, opening_balance } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO bank_accounts (tenant_id,name,bank_name,account_no,type,opening_balance) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [req.user.tenantId, name, bank_name||null, account_no||null, type||'bank', parseFloat(opening_balance)||0]
+    );
+    res.redirect('/accounting/cheques');
+  } catch (err) { res.redirect('/accounting/cheques?error=' + encodeURIComponent(err.message)); }
 });
 
 // ── Tax Rates ─────────────────────────────────────────────────────────────────

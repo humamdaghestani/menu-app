@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= supplier.name %> — Ledger</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); gap: 12px; position: sticky; top: 0; z-index: 100; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost   { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-success { background: rgba(0,184,148,.15); color: #00b894; }
+    .btn-print   { background: rgba(116,185,255,.12); color: #74b9ff; }
+    .main { padding: 24px; max-width: 960px; margin: 0 auto; }
+    .info-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .info-card { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a3e; padding: 14px 18px; }
+    .info-label { font-size: .68rem; text-transform: uppercase; color: #555; font-weight: 700; margin-bottom: 4px; }
+    .info-val { font-size: 1.05rem; font-weight: 700; color: #fff; }
+    .info-val.red { color: #e74c3c; }
+    .info-val.green { color: #00b894; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: .92rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .type-debit  { color: #e74c3c; font-weight: 700; }
+    .type-credit { color: #00b894; font-weight: 700; }
+    .running-bal { font-weight: 700; text-align: right; }
+    .running-pos  { color: #e74c3c; }
+    .running-zero { color: #00b894; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+    .form-group label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 8px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px;
+      color: #fff; font-family: inherit; font-size: .85rem; outline: none;
+    }
+    .form-group input:focus { border-color: #7c5cbf; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 460px; border: 1px solid #2a2a3e; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .supp-meta { color: #666; font-size: .8rem; margin-top: 2px; }
+    @media print {
+      .topbar, .no-print { display: none !important; }
+      body { background: #fff; color: #000; }
+      .card { border: 1px solid #ddd; background: #fff; }
+      th { color: #333; } td { color: #000; }
+      .info-card { background: #f9f9f9; border: 1px solid #ddd; }
+    }
+  </style>
+</head>
+<body>
+<div class="topbar no-print">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">🏠</a>
+    <span style="font-weight:700;color:#fff"><%= supplier.name %> — Statement</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounting/suppliers" class="btn btn-ghost">← Suppliers</a>
+    <button onclick="document.getElementById('payOverlay').classList.add('open')" class="btn btn-success">💳 Record Payment</button>
+    <button onclick="window.print()" class="btn btn-print">🖨 Print</button>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Supplier info strip -->
+  <div class="info-strip">
+    <div class="info-card">
+      <div class="info-label">Supplier</div>
+      <div class="info-val"><%= supplier.name %></div>
+      <% if (supplier.phone) { %><div class="supp-meta">📞 <%= supplier.phone %></div><% } %>
+      <% if (supplier.email) { %><div class="supp-meta">✉️ <%= supplier.email %></div><% } %>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Total Purchased</div>
+      <div class="info-val red">$<%= totalDebit.toFixed(2) %></div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Total Paid</div>
+      <div class="info-val green">$<%= totalCredit.toFixed(2) %></div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">Balance Due</div>
+      <div class="info-val <%= closingBalance > 0 ? 'red' : 'green' %>">$<%= closingBalance.toFixed(2) %></div>
+    </div>
+  </div>
+
+  <!-- Ledger table -->
+  <div class="card">
+    <div class="card-title">📋 Account Statement</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Type</th>
+          <th style="text-align:right">Debit</th>
+          <th style="text-align:right">Credit</th>
+          <th style="text-align:right">Balance</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% if (supplier.opening_balance && parseFloat(supplier.opening_balance) !== 0) { %>
+      <tr>
+        <td style="color:#555;font-size:.78rem">—</td>
+        <td style="color:#888">Opening Balance</td>
+        <td>—</td>
+        <td style="text-align:right"></td>
+        <td style="text-align:right"></td>
+        <td class="running-bal <%= parseFloat(supplier.opening_balance) > 0 ? 'running-pos' : 'running-zero' %>">$<%= parseFloat(supplier.opening_balance).toFixed(2) %></td>
+      </tr>
+      <% } %>
+      <% ledger.forEach(row => { %>
+      <tr>
+        <td style="color:#888;font-size:.78rem;white-space:nowrap"><%= row.txn_date %></td>
+        <td>
+          <%= row.description %>
+          <% if (row.notes) { %><div style="font-size:.72rem;color:#555"><%= row.notes %></div><% } %>
+        </td>
+        <td><span class="<%= row.txn_type === 'purchase' ? 'type-debit' : 'type-credit' %>"><%= row.txn_type %></span></td>
+        <td style="text-align:right" class="type-debit"><%= row.debit > 0 ? '$' + parseFloat(row.debit).toFixed(2) : '' %></td>
+        <td style="text-align:right" class="type-credit"><%= row.credit > 0 ? '$' + parseFloat(row.credit).toFixed(2) : '' %></td>
+        <td class="running-bal <%= row.running_balance > 0 ? 'running-pos' : 'running-zero' %>">$<%= parseFloat(row.running_balance).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      <% if (!ledger.length) { %>
+      <tr><td colspan="6" style="color:#555;text-align:center;padding:20px">No transactions yet</td></tr>
+      <% } %>
+      </tbody>
+      <tfoot>
+        <tr style="border-top:1px solid #2a2a3e">
+          <td colspan="3" style="text-align:right;font-weight:700;font-size:.78rem;color:#666;padding:10px">TOTAL</td>
+          <td style="text-align:right;font-weight:700;color:#e74c3c;padding:10px">$<%= totalDebit.toFixed(2) %></td>
+          <td style="text-align:right;font-weight:700;color:#00b894;padding:10px">$<%= totalCredit.toFixed(2) %></td>
+          <td class="running-bal <%= closingBalance > 0 ? 'running-pos' : 'running-zero' %>" style="padding:10px">$<%= closingBalance.toFixed(2) %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="overlay no-print" id="payOverlay">
+  <div class="modal">
+    <h3>💳 Record Payment — <%= supplier.name %></h3>
+    <form method="POST" action="/accounting/suppliers/pay">
+      <input type="hidden" name="supplier_name" value="<%= supplier.name %>" />
+      <input type="hidden" name="supplier_id" value="<%= supplier.id %>" />
+      <div class="form-row">
+        <div class="form-group"><label>Amount *</label><input type="number" name="amount" step="0.01" required placeholder="0.00" /></div>
+        <div class="form-group"><label>Date</label><input type="date" name="payment_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Method</label>
+          <select name="method">
+            <option value="cash">Cash</option>
+            <option value="bank">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="card">Card</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('payOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-success">Record Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

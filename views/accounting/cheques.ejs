@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cheques & Bank Accounts</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); gap: 12px; position: sticky; top: 0; z-index: 100; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost   { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-success { background: rgba(0,184,148,.15); color: #00b894; }
+    .btn-red     { background: #e74c3c22; color: #e74c3c; }
+    .btn-red:hover { background: #e74c3c; color: #fff; }
+    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 16px; }
+    .card-title { font-size: .92rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    .status-pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .s-pending   { background: #fdcb6e22; color: #fdcb6e; }
+    .s-cleared   { background: #00b89422; color: #00b894; }
+    .s-bounced   { background: #e74c3c22; color: #e74c3c; }
+    .s-cancelled { background: rgba(255,255,255,.06); color: #666; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab { padding: 7px 16px; border-radius: 8px; font-size: .82rem; font-weight: 600; color: #aaa; border: 1.5px solid #2a2a3e; cursor: pointer; background: transparent; font-family: inherit; }
+    .tab.active { background: #7c5cbf; color: #fff; border-color: #7c5cbf; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+    .form-group label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .form-group input, .form-group select {
+      padding: 8px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px;
+      color: #fff; font-family: inherit; font-size: .85rem; outline: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #7c5cbf; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 520px; border: 1px solid #2a2a3e; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .bank-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .bank-card { background: #0f0f1a; border: 1px solid #2a2a3e; border-radius: 12px; padding: 16px; }
+    .bank-name { font-weight: 700; color: #fff; font-size: .9rem; margin-bottom: 2px; }
+    .bank-meta { font-size: .75rem; color: #666; }
+    .bank-balance { font-size: 1.05rem; font-weight: 700; color: #00b894; margin-top: 8px; }
+    .kpi-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .kpi { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a3e; padding: 14px 18px; }
+    .kpi-label { font-size: .68rem; text-transform: uppercase; color: #555; font-weight: 700; margin-bottom: 4px; }
+    .kpi-val { font-size: 1.05rem; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<%
+  const issuedCheques   = cheques.filter(c => c.type === 'issued');
+  const receivedCheques = cheques.filter(c => c.type === 'received');
+%>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">🏠</a>
+    <span style="font-weight:700;color:#fff">🧾 Cheques & Bank Accounts</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounting" class="btn btn-ghost">📒 Dashboard</a>
+    <button onclick="document.getElementById('addChequeOverlay').classList.add('open')" class="btn btn-primary">+ Add Cheque</button>
+    <button onclick="document.getElementById('addBankOverlay').classList.add('open')" class="btn btn-success">🏦 Add Bank</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Summary strip -->
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-label">Total Issued</div><div class="kpi-val" style="color:#e74c3c">$<%= totalIssued.toFixed(2) %></div></div>
+    <div class="kpi"><div class="kpi-label">Total Received</div><div class="kpi-val" style="color:#00b894">$<%= totalReceived.toFixed(2) %></div></div>
+  </div>
+
+  <!-- Bank Accounts -->
+  <div class="card">
+    <div class="card-title">🏦 Bank Accounts</div>
+    <div class="bank-grid">
+    <% bankAccounts.forEach(b => { %>
+      <div class="bank-card">
+        <div class="bank-name"><%= b.name %></div>
+        <div class="bank-meta"><%= b.bank_name || '' %></div>
+        <% if (b.account_no) { %><div class="bank-meta">Acc: <%= b.account_no %></div><% } %>
+        <div class="bank-balance">$<%= parseFloat(b.opening_balance || 0).toFixed(2) %></div>
+      </div>
+    <% }) %>
+    <% if (!bankAccounts.length) { %>
+      <div style="color:#555;font-size:.85rem;padding:10px">No bank accounts yet — click "Add Bank"</div>
+    <% } %>
+    </div>
+  </div>
+
+  <!-- Cheques Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab-btn-issued" onclick="switchTab('issued')">📤 Issued (<%= issuedCheques.length %>)</button>
+    <button class="tab" id="tab-btn-received" onclick="switchTab('received')">📥 Received (<%= receivedCheques.length %>)</button>
+  </div>
+
+  <!-- Issued -->
+  <div class="tab-panel active" id="tab-issued">
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Cheque #</th><th>Issue Date</th><th>Due Date</th>
+            <th>Payee</th><th>Bank</th><th>Amount</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+        <% issuedCheques.forEach(c => { %>
+        <tr>
+          <td style="font-family:monospace;color:#a29bfe"><%= c.cheque_no || '—' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.issue_date ? String(c.issue_date).slice(0,10) : '—' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.due_date ? String(c.due_date).slice(0,10) : '—' %></td>
+          <td style="font-weight:600"><%= c.party_name || '—' %></td>
+          <td style="color:#666;font-size:.8rem"><%= c.bank_name || '—' %></td>
+          <td style="font-weight:700;color:#e74c3c">$<%= parseFloat(c.amount).toFixed(2) %></td>
+          <td><span class="status-pill s-<%= c.status %>"><%= c.status %></span></td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <% if (c.status === 'pending') { %>
+            <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
+              <input type="hidden" name="status" value="cleared" />
+              <button class="btn btn-success" style="font-size:.7rem;padding:3px 8px">✓ Clear</button>
+            </form>
+            <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
+              <input type="hidden" name="status" value="bounced" />
+              <button class="btn btn-red" style="font-size:.7rem;padding:3px 8px">✗ Bounce</button>
+            </form>
+            <% } %>
+            <form method="POST" action="/accounting/cheques/<%= c.id %>/delete" onsubmit="return confirm('Delete cheque?')">
+              <button class="btn btn-ghost" style="font-size:.7rem;padding:3px 8px">🗑</button>
+            </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% if (!issuedCheques.length) { %><tr><td colspan="8" style="color:#555;text-align:center;padding:20px">No issued cheques</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Received -->
+  <div class="tab-panel" id="tab-received">
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Cheque #</th><th>Issue Date</th><th>Due Date</th>
+            <th>From (Payer)</th><th>Bank</th><th>Amount</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+        <% receivedCheques.forEach(c => { %>
+        <tr>
+          <td style="font-family:monospace;color:#a29bfe"><%= c.cheque_no || '—' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.issue_date ? String(c.issue_date).slice(0,10) : '—' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.due_date ? String(c.due_date).slice(0,10) : '—' %></td>
+          <td style="font-weight:600"><%= c.party_name || '—' %></td>
+          <td style="color:#666;font-size:.8rem"><%= c.bank_name || '—' %></td>
+          <td style="font-weight:700;color:#00b894">$<%= parseFloat(c.amount).toFixed(2) %></td>
+          <td><span class="status-pill s-<%= c.status %>"><%= c.status %></span></td>
+          <td>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <% if (c.status === 'pending') { %>
+            <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
+              <input type="hidden" name="status" value="cleared" />
+              <button class="btn btn-success" style="font-size:.7rem;padding:3px 8px">✓ Clear</button>
+            </form>
+            <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
+              <input type="hidden" name="status" value="bounced" />
+              <button class="btn btn-red" style="font-size:.7rem;padding:3px 8px">✗ Bounce</button>
+            </form>
+            <% } %>
+            <form method="POST" action="/accounting/cheques/<%= c.id %>/delete" onsubmit="return confirm('Delete cheque?')">
+              <button class="btn btn-ghost" style="font-size:.7rem;padding:3px 8px">🗑</button>
+            </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% if (!receivedCheques.length) { %><tr><td colspan="8" style="color:#555;text-align:center;padding:20px">No received cheques</td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add Cheque Modal -->
+<div class="overlay" id="addChequeOverlay">
+  <div class="modal">
+    <h3>+ Add Cheque</h3>
+    <form method="POST" action="/accounting/cheques">
+      <div class="form-row">
+        <div class="form-group"><label>Type</label>
+          <select name="type">
+            <option value="issued">Issued (we pay)</option>
+            <option value="received">Received (we collect)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Cheque No. *</label><input type="text" name="cheque_no" required /></div>
+      </div>
+      <div class="form-group"><label>Payee / Payer *</label><input type="text" name="party_name" required /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount *</label><input type="number" name="amount" step="0.01" required placeholder="0.00" /></div>
+        <div class="form-group"><label>Issue Date</label><input type="date" name="issue_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Due / Clearing Date</label><input type="date" name="due_date" /></div>
+        <div class="form-group"><label>Bank Account</label>
+          <select name="bank_account_id">
+            <option value="">— None —</option>
+            <% bankAccounts.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %>
+          </select>
+        </div>
+      </div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addChequeOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Cheque</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add Bank Account Modal -->
+<div class="overlay" id="addBankOverlay">
+  <div class="modal">
+    <h3>🏦 Add Bank Account</h3>
+    <form method="POST" action="/accounting/bank-accounts">
+      <div class="form-group"><label>Account Name *</label><input type="text" name="name" required placeholder="e.g. Main Checking" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Bank Name</label><input type="text" name="bank_name" placeholder="e.g. National Bank" /></div>
+        <div class="form-group"><label>Account Number</label><input type="text" name="account_no" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Currency</label>
+          <select name="currency"><option value="USD">USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="SAR">SAR</option><option value="AED">AED</option></select>
+        </div>
+        <div class="form-group"><label>Opening Balance ($)</label><input type="number" name="opening_balance" step="0.01" value="0" /></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addBankOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-success">Add Bank Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-btn-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+</body>
+</html>

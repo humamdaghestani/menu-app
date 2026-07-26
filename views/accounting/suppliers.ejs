@@ -3,244 +3,280 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Supplier Ledger — <%= tenant.name %></title>
+  <title>Suppliers — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
-    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); gap: 12px; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); gap: 12px; position: sticky; top: 0; z-index: 100; }
     .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
     .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-ghost   { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
     .btn-primary { background: #7c5cbf; color: #fff; }
-    .btn-primary:hover { opacity: .88; }
+    .btn-success { background: rgba(0,184,148,.15); color: #00b894; }
     .btn-red { background: #e74c3c22; color: #e74c3c; }
     .btn-red:hover { background: #e74c3c; color: #fff; }
-
-    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
-    .two-col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 16px; }
-    @media (max-width: 740px) { .two-col { grid-template-columns: 1fr; } }
+    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
     .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 16px; }
-    .card-title { font-size: .92rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
-
-    /* ledger table */
-    .ledger-table { width: 100%; border-collapse: collapse; font-size: .84rem; }
-    .ledger-table th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid #2a2a3e; }
-    .ledger-table td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
-    .ledger-table tr:last-child td { border-bottom: none; }
-    .ledger-table tr:hover td { background: rgba(255,255,255,.02); }
-
+    .card-title { font-size: .92rem; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
     .balance-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: .72rem; font-weight: 700; }
-    .balance-pos { background: #e74c3c22; color: #e74c3c; }
+    .balance-pos  { background: #e74c3c22; color: #e74c3c; }
     .balance-zero { background: #00b89422; color: #00b894; }
-
-    /* pay form */
-    .pay-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    @media (max-width: 520px) { .pay-form { grid-template-columns: 1fr; } }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .4px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+    .form-group label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
     .form-group input, .form-group select, .form-group textarea {
-      padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px;
+      padding: 8px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px;
       color: #fff; font-family: inherit; font-size: .85rem; outline: none;
     }
     .form-group input:focus, .form-group select:focus { border-color: #7c5cbf; }
-    .form-group.full { grid-column: 1 / -1; }
-
-    /* autocomplete */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; align-items: center; justify-content: center; }
+    .overlay.open { display: flex; }
+    .modal { background: #1a1a2e; border-radius: 16px; padding: 28px; width: 90%; max-width: 520px; border: 1px solid #2a2a3e; max-height: 90vh; overflow-y: auto; }
+    .modal h3 { color: #fff; margin-bottom: 20px; font-size: 1rem; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .err { background: rgba(231,76,60,.12); color: #e74c3c; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: .85rem; }
     .ac-wrap { position: relative; }
-    .ac-drop { position: absolute; top: 100%; left: 0; right: 0; z-index: 999; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; max-height: 180px; overflow-y: auto; margin-top: 3px; display: none; }
-    .ac-opt { padding: 9px 12px; cursor: pointer; font-size: .85rem; color: #ccc; }
-    .ac-opt:hover, .ac-opt.focused { background: rgba(124,92,191,.25); color: #fff; }
-
-    /* payments list */
-    .pay-list { list-style: none; }
-    .pay-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.04); gap: 8px; }
-    .pay-item:last-child { border-bottom: none; }
-    .pay-meta { font-size: .78rem; color: #444; margin-top: 2px; }
+    .ac-list { position: absolute; top: 100%; left: 0; right: 0; background: #1a1a2e; border: 1px solid #333; border-radius: 8px; z-index: 300; max-height: 180px; overflow-y: auto; }
+    .ac-list div { padding: 8px 12px; cursor: pointer; font-size: .85rem; }
+    .ac-list div:hover { background: rgba(124,92,191,.2); }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab { padding: 7px 16px; border-radius: 8px; font-size: .82rem; font-weight: 600; color: #aaa; border: 1.5px solid #2a2a3e; cursor: pointer; background: transparent; font-family: inherit; }
+    .tab.active { background: #7c5cbf; color: #fff; border-color: #7c5cbf; }
   </style>
 </head>
 <body>
-
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
     <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-brand">🏭 Supplier Ledger</div>
+    <div class="topbar-brand">🏭 Suppliers</div>
   </div>
-  <div style="display:flex;gap:8px">
-    <a href="/accounting" class="btn btn-ghost">← Accounting</a>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a href="/accounting" class="btn btn-ghost">📒 Dashboard</a>
+    <a href="/accounting/aging" class="btn btn-ghost">📅 Aging</a>
+    <a href="/accounting/cheques" class="btn btn-ghost">🧾 Cheques</a>
+    <button onclick="document.getElementById('addSuppOverlay').classList.add('open')" class="btn btn-primary">+ Add Supplier</button>
+    <button onclick="document.getElementById('payOverlay').classList.add('open')" class="btn btn-success">💳 Record Payment</button>
     <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
 <div class="main">
-  <div class="two-col">
+  <% if (locals.error) { %><div class="err"><%= locals.error %></div><% } %>
 
-    <!-- LEFT: supplier balances + payment form -->
-    <div>
-      <!-- Supplier Balances -->
-      <div class="card">
-        <div class="card-title">Supplier Balances</div>
-        <% if (ledger.length === 0) { %>
-          <p style="color:#444;text-align:center;padding:30px 0;font-size:.85rem">No purchase receipts recorded yet.</p>
-        <% } else { %>
-        <div style="overflow-x:auto">
-        <table class="ledger-table">
-          <thead>
-            <tr>
-              <th>Supplier</th>
-              <th style="text-align:right">Purchased</th>
-              <th style="text-align:right">Paid</th>
-              <th style="text-align:right">Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-          <% let grandBalance = 0; ledger.forEach(row => { grandBalance += row.balance; %>
-          <tr>
-            <td style="color:#ddd;font-weight:600"><%= row.supplier_name %></td>
-            <td style="text-align:right;color:#f39c12"><%= row.total_purchased.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
-            <td style="text-align:right;color:#00b894"><%= row.total_paid.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
-            <td style="text-align:right">
-              <span class="balance-badge <%= row.balance > 0 ? 'balance-pos' : 'balance-zero' %>">
-                <%= row.balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
-              </span>
-            </td>
-          </tr>
-          <% }) %>
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="3" style="padding:10px;font-weight:700;color:#fff;font-size:.88rem">Total Payable</td>
-              <td style="text-align:right;padding:10px">
-                <span class="balance-badge <%= grandBalance > 0 ? 'balance-pos' : 'balance-zero' %>" style="font-size:.82rem">
-                  <%= grandBalance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
-                </span>
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-        </div>
-        <% } %>
-      </div>
+  <!-- Supplier Entities -->
+  <div class="card">
+    <div class="card-title">👤 Supplier Accounts</div>
+    <table>
+      <thead><tr><th>Supplier</th><th>Phone</th><th>Tax No.</th><th>Total Purchased</th><th>Total Paid</th><th>Balance</th><th>Actions</th></tr></thead>
+      <tbody>
+      <% suppliers.forEach(s => { %>
+      <tr>
+        <td>
+          <a href="/accounting/suppliers/<%= s.id %>/ledger" style="color:#7c5cbf;font-weight:700;text-decoration:none"><%= s.name %></a>
+          <% if (s.email) { %><div style="font-size:.72rem;color:#555"><%= s.email %></div><% } %>
+        </td>
+        <td><%= s.phone || '—' %></td>
+        <td><%= s.tax_no || '—' %></td>
+        <td>$<%= s.total_purchased.toFixed(2) %></td>
+        <td style="color:#00b894">$<%= s.total_paid.toFixed(2) %></td>
+        <td>
+          <span class="balance-badge <%= s.balance > 0 ? 'balance-pos' : 'balance-zero' %>">
+            $<%= s.balance.toFixed(2) %>
+          </span>
+        </td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-ghost" style="font-size:.72rem;padding:3px 10px" data-suppidx="<%= suppliers.indexOf(s) %>" onclick="openEditSuppIdx(this.dataset.suppidx)">Edit</button>
+          <form method="POST" action="/accounting/suppliers/<%= s.id %>/delete" onsubmit="return confirm('Delete supplier?')">
+            <button class="btn btn-red" style="font-size:.72rem;padding:3px 10px">✕</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (!suppliers.length) { %><tr><td colspan="7" style="color:#555;text-align:center;padding:20px">No suppliers added yet — click "+ Add Supplier"</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
 
-      <!-- Record Payment -->
-      <div class="card">
-        <div class="card-title">Record Supplier Payment</div>
-        <form method="POST" action="/accounting/suppliers/pay">
-          <div class="pay-form">
-            <div class="form-group full">
-              <label>Supplier Name</label>
-              <div class="ac-wrap">
-                <input type="text" id="suppInput" placeholder="Type supplier name…" autocomplete="off" oninput="suppFilter(this.value)" onfocus="suppFilter(this.value)" />
-                <input type="hidden" name="supplier_name" id="suppHidden" />
-                <div class="ac-drop" id="suppDrop"></div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Amount</label>
-              <input type="number" name="amount" step="0.01" min="0" placeholder="0.00" required />
-            </div>
-            <div class="form-group">
-              <label>Date</label>
-              <input type="date" name="payment_date" value="<%= new Date().toISOString().slice(0,10) %>" required />
-            </div>
-            <div class="form-group">
-              <label>Method</label>
-              <select name="method">
-                <option value="cash">Cash</option>
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cheque">Cheque</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Notes</label>
-              <input type="text" name="notes" placeholder="Optional note" />
-            </div>
-            <div class="form-group full" style="margin-top:4px">
-              <button type="submit" class="btn btn-primary">✅ Record Payment</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
+  <!-- Name-only suppliers (from purchase receipts without entity) -->
+  <% if (nameOnlyLedger.length) { %>
+  <div class="card">
+    <div class="card-title" style="font-size:.82rem;color:#555">Legacy — suppliers by name only (from purchase receipts without a supplier record)</div>
+    <table>
+      <thead><tr><th>Supplier Name</th><th>Total Purchased</th><th>Total Paid</th><th>Balance</th></tr></thead>
+      <tbody>
+      <% nameOnlyLedger.forEach(s => { %>
+      <tr>
+        <td style="color:#ccc"><%= s.supplier_name %></td>
+        <td>$<%= s.total_purchased.toFixed(2) %></td>
+        <td style="color:#00b894">$<%= s.total_paid.toFixed(2) %></td>
+        <td><span class="balance-badge <%= s.balance > 0 ? 'balance-pos' : 'balance-zero' %>">$<%= s.balance.toFixed(2) %></span></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
 
-    <!-- RIGHT: recent payments -->
-    <div>
-      <div class="card">
-        <div class="card-title">Recent Payments</div>
-        <% if (recentPayments.length === 0) { %>
-          <p style="color:#444;text-align:center;padding:30px 0;font-size:.85rem">No payments recorded yet.</p>
-        <% } else { %>
-        <ul class="pay-list">
-        <% recentPayments.forEach(p => { %>
-          <li class="pay-item">
-            <div>
-              <div style="font-weight:600;color:#ddd"><%= p.supplier_name %></div>
-              <div class="pay-meta"><%= String(p.payment_date).slice(0,10) %> · <%= p.method %><% if (p.notes) { %> · <%= p.notes %><% } %></div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="font-weight:700;color:#00b894"><%= parseFloat(p.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
-              <form method="POST" action="/accounting/suppliers/pay/<%= p.id %>/delete" onsubmit="return confirm('Delete this payment?')">
-                <button type="submit" class="btn btn-red" style="padding:4px 8px;font-size:.7rem">✕</button>
-              </form>
-            </div>
-          </li>
-        <% }) %>
-        </ul>
-        <% } %>
-      </div>
-    </div>
-
+  <!-- Recent Payments -->
+  <div class="card">
+    <div class="card-title">💳 Recent Payments</div>
+    <table>
+      <thead><tr><th>Date</th><th>Supplier</th><th>Amount</th><th>Method</th><th>Notes</th><th></th></tr></thead>
+      <tbody>
+      <% recentPayments.forEach(p => { %>
+      <tr>
+        <td><%= p.payment_date %></td>
+        <td><%= p.supplier_name %></td>
+        <td style="font-weight:700;color:#e74c3c">$<%= parseFloat(p.amount).toFixed(2) %></td>
+        <td><%= p.method %></td>
+        <td style="font-size:.78rem;color:#555"><%= p.notes || '' %></td>
+        <td>
+          <form method="POST" action="/accounting/suppliers/pay/<%= p.id %>/delete" onsubmit="return confirm('Delete payment?')">
+            <button class="btn btn-red" style="font-size:.72rem;padding:2px 8px">✕</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (!recentPayments.length) { %><tr><td colspan="6" style="color:#555;text-align:center;padding:20px">No payments recorded</td></tr><% } %>
+      </tbody>
+    </table>
   </div>
 </div>
 
+<!-- Add Supplier Modal -->
+<div class="overlay" id="addSuppOverlay">
+  <div class="modal">
+    <h3>➕ Add Supplier</h3>
+    <form method="POST" action="/accounting/suppliers/add">
+      <div class="form-group"><label>Name *</label><input type="text" name="name" required /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Phone</label><input type="text" name="phone" /></div>
+        <div class="form-group"><label>Email</label><input type="email" name="email" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Tax / VAT No.</label><input type="text" name="tax_no" /></div>
+        <div class="form-group"><label>Opening Balance ($)</label><input type="number" name="opening_balance" step="0.01" value="0" /></div>
+      </div>
+      <div class="form-group"><label>Address</label><textarea name="address" style="height:56px;resize:vertical"></textarea></div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('addSuppOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add Supplier</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Supplier Modal -->
+<div class="overlay" id="editSuppOverlay">
+  <div class="modal">
+    <h3>✏️ Edit Supplier</h3>
+    <form method="POST" id="editSuppForm">
+      <div class="form-group"><label>Name *</label><input type="text" name="name" id="es_name" required /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Phone</label><input type="text" name="phone" id="es_phone" /></div>
+        <div class="form-group"><label>Email</label><input type="email" name="email" id="es_email" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Tax / VAT No.</label><input type="text" name="tax_no" id="es_tax" /></div>
+        <div class="form-group"><label>Opening Balance ($)</label><input type="number" name="opening_balance" id="es_ob" step="0.01" /></div>
+      </div>
+      <div class="form-group"><label>Address</label><textarea name="address" id="es_addr" style="height:56px;resize:vertical"></textarea></div>
+      <div class="form-group"><label>Notes</label><input type="text" name="notes" id="es_notes" /></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editSuppOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Record Payment Modal -->
+<div class="overlay" id="payOverlay">
+  <div class="modal">
+    <h3>💳 Record Supplier Payment</h3>
+    <form method="POST" action="/accounting/suppliers/pay">
+      <div class="form-group">
+        <label>Supplier *</label>
+        <div class="ac-wrap">
+          <input type="text" id="suppInput" placeholder="Type supplier name..." autocomplete="off" oninput="suppFilter()" onfocus="suppFilter()" />
+          <input type="hidden" name="supplier_name" id="suppName" />
+          <input type="hidden" name="supplier_id" id="suppId" />
+          <div class="ac-list" id="suppList" style="display:none"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Amount *</label><input type="number" name="amount" step="0.01" required placeholder="0.00" /></div>
+        <div class="form-group"><label>Date</label><input type="date" name="payment_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Method</label>
+          <select name="method"><option value="cash">Cash</option><option value="bank">Bank Transfer</option><option value="cheque">Cheque</option><option value="card">Card</option></select>
+        </div>
+        <div class="form-group"><label>Notes</label><input type="text" name="notes" /></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('payOverlay').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-success">Record Payment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="__suppdata"
+  data-names="<%= encodeURIComponent(JSON.stringify(supplierNames)) %>"
+  data-entities="<%= encodeURIComponent(JSON.stringify(suppliers)) %>"
+  style="display:none"></div>
+
 <script>
-const SUPPLIERS = <%- JSON.stringify(supplierNames) %>;
-let suppIdx = -1;
+const __d = document.getElementById('__suppdata');
+const SUPPLIERS = JSON.parse(decodeURIComponent(__d.dataset.names));
+const SUPPLIER_ENTITIES = JSON.parse(decodeURIComponent(__d.dataset.entities));
 
-function suppFilter(q) {
-  const drop = document.getElementById('suppDrop');
-  const matches = q.trim() === '' ? SUPPLIERS : SUPPLIERS.filter(s => s.toLowerCase().includes(q.toLowerCase()));
-  if (matches.length === 0) { drop.style.display = 'none'; return; }
-  drop.innerHTML = '';
-  matches.forEach((s, i) => {
+function suppFilter() {
+  const q = document.getElementById('suppInput').value.toLowerCase();
+  const list = document.getElementById('suppList');
+  const matches = SUPPLIERS.filter(s => s.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = '';
+  matches.forEach(s => {
     const d = document.createElement('div');
-    d.className = 'ac-opt';
     d.textContent = s;
-    d.onmousedown = () => suppSelect(s);
-    drop.appendChild(d);
+    d.onclick = () => suppSelect(s);
+    list.appendChild(d);
   });
-  drop.style.display = 'block';
-  suppIdx = -1;
+  list.style.display = 'block';
 }
-
 function suppSelect(name) {
   document.getElementById('suppInput').value = name;
-  document.getElementById('suppHidden').value = name;
-  document.getElementById('suppDrop').style.display = 'none';
+  document.getElementById('suppName').value = name;
+  const ent = SUPPLIER_ENTITIES.find(s => s.name === name);
+  document.getElementById('suppId').value = ent ? ent.id : '';
+  document.getElementById('suppList').style.display = 'none';
 }
-
-document.getElementById('suppInput').addEventListener('keydown', function(e) {
-  const drop = document.getElementById('suppDrop');
-  const opts = drop.querySelectorAll('.ac-opt');
-  if (e.key === 'ArrowDown') { suppIdx = Math.min(suppIdx+1, opts.length-1); }
-  else if (e.key === 'ArrowUp') { suppIdx = Math.max(suppIdx-1, 0); }
-  else if (e.key === 'Enter') {
-    if (suppIdx >= 0 && opts[suppIdx]) { suppSelect(opts[suppIdx].textContent); e.preventDefault(); return; }
-    document.getElementById('suppHidden').value = this.value;
-    drop.style.display = 'none';
-  } else if (e.key === 'Escape') { drop.style.display = 'none'; return; }
-  opts.forEach((o, i) => o.classList.toggle('focused', i === suppIdx));
-});
-
-document.getElementById('suppInput').addEventListener('blur', function() {
-  document.getElementById('suppHidden').value = this.value;
-  setTimeout(() => document.getElementById('suppDrop').style.display = 'none', 150);
-});
-
 document.addEventListener('click', e => {
-  if (!e.target.closest('.ac-wrap')) document.getElementById('suppDrop').style.display = 'none';
+  if (!e.target.closest('.ac-wrap')) document.getElementById('suppList').style.display = 'none';
 });
+
+function openEditSuppIdx(idx) {
+  const s = SUPPLIER_ENTITIES[parseInt(idx)];
+  if (!s) return;
+  document.getElementById('editSuppForm').action = '/accounting/suppliers/' + s.id + '/edit';
+  document.getElementById('es_name').value = s.name || '';
+  document.getElementById('es_phone').value = s.phone || '';
+  document.getElementById('es_email').value = s.email || '';
+  document.getElementById('es_tax').value = s.tax_no || '';
+  document.getElementById('es_ob').value = s.opening_balance || 0;
+  document.getElementById('es_addr').value = s.address || '';
+  document.getElementById('es_notes').value = s.notes || '';
+  document.getElementById('editSuppOverlay').classList.add('open');
+}
 </script>
 </body>
 </html>

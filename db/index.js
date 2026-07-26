@@ -284,6 +284,49 @@ const pool = new Pool({
       created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at  TIMESTAMP DEFAULT NOW()
     )`,
+    // Proper supplier entities
+    `CREATE TABLE IF NOT EXISTS suppliers (
+      id              SERIAL PRIMARY KEY,
+      tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name            VARCHAR(120) NOT NULL,
+      phone           VARCHAR(30),
+      email           VARCHAR(120),
+      address         TEXT,
+      tax_no          VARCHAR(60),
+      opening_balance NUMERIC(12,2) DEFAULT 0,
+      notes           TEXT,
+      created_at      TIMESTAMP DEFAULT NOW()
+    )`,
+    `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL`,
+    `ALTER TABLE supplier_payments  ADD COLUMN IF NOT EXISTS supplier_id INTEGER REFERENCES suppliers(id) ON DELETE SET NULL`,
+    // Bank accounts & cheques
+    `CREATE TABLE IF NOT EXISTS bank_accounts (
+      id              SERIAL PRIMARY KEY,
+      tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name            VARCHAR(80) NOT NULL,
+      bank_name       VARCHAR(80),
+      account_no      VARCHAR(40),
+      type            VARCHAR(20) DEFAULT 'bank',
+      currency        VARCHAR(5)  DEFAULT 'USD',
+      opening_balance NUMERIC(12,2) DEFAULT 0,
+      is_active       BOOLEAN DEFAULT true,
+      created_at      TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS cheques (
+      id              SERIAL PRIMARY KEY,
+      tenant_id       INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      bank_account_id INTEGER REFERENCES bank_accounts(id) ON DELETE SET NULL,
+      cheque_no       VARCHAR(40),
+      type            VARCHAR(20) DEFAULT 'issued',
+      party_name      VARCHAR(120),
+      amount          NUMERIC(12,2) NOT NULL,
+      issue_date      DATE DEFAULT CURRENT_DATE,
+      due_date        DATE,
+      status          VARCHAR(20) DEFAULT 'pending',
+      notes           TEXT,
+      created_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at      TIMESTAMP DEFAULT NOW()
+    )`,
     // ERP feature flags
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_hr           BOOLEAN DEFAULT false`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_reservations BOOLEAN DEFAULT false`,
