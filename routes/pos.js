@@ -128,11 +128,33 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
        ORDER BY created_at`,
       [session.id]
     );
+    // Z-Report data
+    const [topItemsRes, zStatsRes, voidRes] = await Promise.all([
+      db.query(`
+        SELECT poi.name, SUM(poi.quantity) AS qty, SUM(poi.price * poi.quantity) AS revenue
+        FROM pos_order_items poi
+        JOIN pos_orders po ON po.id = poi.order_id
+        WHERE po.session_id=$1 AND po.status='paid'
+        GROUP BY poi.name ORDER BY revenue DESC LIMIT 8`, [session.id]),
+      db.query(`
+        SELECT
+          COALESCE(SUM(tip_amount),0)   AS total_tips,
+          COALESCE(SUM(cover_count),0)  AS total_covers,
+          COUNT(*) FILTER (WHERE discount_type != 'none') AS discount_orders,
+          COALESCE(SUM(CASE WHEN discount_type='fixed' THEN discount_value
+                            WHEN discount_type='percent' THEN total * discount_value / (100 - discount_value)
+                            ELSE 0 END), 0) AS total_discounts
+        FROM pos_orders WHERE session_id=$1 AND status='paid'`, [session.id]),
+      db.query(`SELECT COUNT(*) AS cnt FROM pos_orders WHERE session_id=$1 AND status='void'`, [session.id]),
+    ]);
+    const zStats = zStatsRes.rows[0] || {};
     res.render('pos/session-close', {
       tenant, session,
       orders: orders.rows,
       openOrders: openRes.rows,
-      summary,
+      summary: { ...summary, tips: parseFloat(zStats.total_tips)||0, covers: parseInt(zStats.total_covers)||0 },
+      topItems: topItemsRes.rows,
+      zStats: { ...zStats, voids: parseInt(voidRes.rows[0]?.cnt)||0 },
       currentUser: req.user,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -273,13 +295,14 @@ router.get('/tables', requireAuth, requirePOS, requireSession, async (req, res) 
     const tables = await db.query(
       `SELECT t.*,
         o.id AS order_id, o.status AS order_status, o.bill_requested,
+        o.cover_count, o.is_held,
         COALESCE(SUM(oi.price * oi.quantity),0) AS order_total,
         COUNT(oi.id) AS item_count
        FROM restaurant_tables t
        LEFT JOIN pos_orders o ON o.table_id = t.id AND o.status = 'open'
        LEFT JOIN pos_order_items oi ON oi.order_id = o.id
        WHERE t.tenant_id = $1
-       GROUP BY t.id, o.id, o.status, o.bill_requested
+       GROUP BY t.id, o.id, o.status, o.bill_requested, o.cover_count, o.is_held
        ORDER BY t.sort_order, t.name`,
       [req.user.tenantId]
     );
@@ -338,28 +361,24 @@ router.post('/takeaway/open', requireAuth, requirePOS, requireSession, async (re
 router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
-    const order = await db.query(
-      'SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2',
-      [req.params.orderId, req.user.tenantId]
-    );
-    if (!order.rows[0]) return res.redirect('/pos');
-    const items = await db.query(
-      'SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id',
-      [req.params.orderId]
-    );
-    const categories = await db.query(
-      'SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order',
-      [req.user.tenantId]
-    );
-    const menuItems = await db.query(
-      'SELECT * FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY sort_order',
-      [req.user.tenantId]
-    );
-    const o = order.rows[0];
-    const subtotal = calcSubtotal(items.rows);
-    const total    = calcTotal(items.rows, o);
+    const [orderRes, itemsRes, categoriesRes, menuRes, tablesRes] = await Promise.all([
+      db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]),
+      db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.orderId]),
+      db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
+      db.query('SELECT * FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY sort_order', [req.user.tenantId]),
+      db.query(
+        `SELECT t.*, o.id AS current_order_id
+         FROM restaurant_tables t
+         LEFT JOIN pos_orders o ON o.table_id=t.id AND o.status='open' AND o.id!=$1
+         WHERE t.tenant_id=$2 ORDER BY t.sort_order, t.name`,
+        [req.params.orderId, req.user.tenantId]
+      ),
+    ]);
+    if (!orderRes.rows[0]) return res.redirect('/pos');
+    const o = orderRes.rows[0];
+    const subtotal = calcSubtotal(itemsRes.rows);
+    const total    = calcTotal(itemsRes.rows, o);
     const discount = subtotal - total;
-    // Get exchange rate from the order's session for bill printing
     let exchangeRate = 1;
     if (o.session_id) {
       const sesRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
@@ -367,9 +386,10 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
     }
     res.render('pos/order', {
       tenant, order: o,
-      orderItems: items.rows,
-      categories: categories.rows,
-      menuItems: menuItems.rows,
+      orderItems: itemsRes.rows,
+      categories: categoriesRes.rows,
+      menuItems: menuRes.rows,
+      tables: tablesRes.rows,
       subtotal, total, discount,
       exchangeRate,
       errorParam: req.query.error || null,
@@ -503,34 +523,40 @@ router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
 
 // ── Process payment ───────────────────────────────────────────────────────────
 router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
-  const { method, amount_paid, customer_id, received_currency, exchange_rate } = req.body;
+  const { method, amount_paid, customer_id, received_currency, exchange_rate, tip_amount } = req.body;
   try {
     const orderRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
     const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
-    const total = calcTotal(items.rows, orderRes.rows[0]);
+    const total   = calcTotal(items.rows, orderRes.rows[0]);
+    const tip     = parseFloat(tip_amount) || 0;
     const paid    = parseFloat(amount_paid) || 0;
     const recvCur = received_currency || 'USD';
     const exRate  = parseFloat(exchange_rate) || 1;
     const paidUSD = recvCur === 'IQD' ? paid / exRate : paid;
     const paidIQD = recvCur === 'IQD' ? paid : paid * exRate;
-    const change  = Math.max(0, paidUSD - total);
+    const change  = Math.max(0, paidUSD - total - tip);
     await db.query(
       'INSERT INTO pos_payments (order_id, method, amount_paid, change_given, received_currency, amount_paid_iqd, exchange_rate) VALUES ($1,$2,$3,$4,$5,$6,$7)',
       [req.params.orderId, method || 'cash', paidUSD, change, recvCur, paidIQD, exRate]
     );
+    // Generate sequential receipt number
+    const seqRes = await db.query(
+      'UPDATE tenants SET receipt_seq = COALESCE(receipt_seq, 0) + 1 WHERE id=$1 RETURNING receipt_seq, COALESCE(receipt_prefix,\'\') AS receipt_prefix',
+      [req.user.tenantId]
+    );
+    const receiptNo = (seqRes.rows[0]?.receipt_prefix || '') + String(seqRes.rows[0]?.receipt_seq || 1).padStart(4, '0');
     const cid = parseInt(customer_id) || null;
     await db.query(
-      'UPDATE pos_orders SET status=$1, total=$2, paid_at=NOW(), customer_id=$3 WHERE id=$4 AND tenant_id=$5',
-      ['paid', total, cid, req.params.orderId, req.user.tenantId]
+      'UPDATE pos_orders SET status=$1, total=$2, tip_amount=$3, receipt_no=$4, paid_at=NOW(), customer_id=$5 WHERE id=$6 AND tenant_id=$7',
+      ['paid', total, tip, receiptNo, cid, req.params.orderId, req.user.tenantId]
     );
     if (cid) {
       await db.query(
         'UPDATE customers SET total_spent=total_spent+$1, visit_count=visit_count+1 WHERE id=$2 AND tenant_id=$3',
-        [total, cid, req.user.tenantId]
+        [total + tip, cid, req.user.tenantId]
       );
     }
-    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, change, customer_id: cid });
-    // Auto-deduct inventory stock if module is enabled
+    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, tip, change, customer_id: cid, receipt_no: receiptNo });
     try {
       const { deductStockForOrder } = require('./inventory');
       const tenantRow = await db.query('SELECT feat_inventory FROM tenants WHERE id=$1', [req.user.tenantId]);
@@ -918,6 +944,109 @@ router.post('/api/order/:id/void', requireAuth, requirePOS, async (req, res) => 
     await logAction(req.user.tenantId, vr.rows[0]?.session_id, req.params.id, req.user.userId, 'order_void', { table_name: vr.rows[0]?.table_name });
     res.json({ ok: true, redirect: '/pos/tables' });
   } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── POS Pro: cover count ─────────────────────────────────────────────────────
+router.post('/api/order/:id/cover', requireAuth, requirePOS, async (req, res) => {
+  const covers = Math.max(1, parseInt(req.body.cover_count) || 1);
+  try {
+    await db.query('UPDATE pos_orders SET cover_count=$1 WHERE id=$2 AND tenant_id=$3', [covers, req.params.id, req.user.tenantId]);
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// ── POS Pro: fire items to kitchen ────────────────────────────────────────────
+router.post('/api/order/:id/fire', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const unfiredRes = await db.query(
+      'SELECT COUNT(*) AS cnt FROM pos_order_items WHERE order_id=$1 AND sent_to_kitchen=false', [req.params.id]
+    );
+    if (parseInt(unfiredRes.rows[0].cnt) === 0) return res.json({ ok: false, error: 'nothing_to_fire' });
+    await db.query('UPDATE pos_order_items SET sent_to_kitchen=true WHERE order_id=$1 AND sent_to_kitchen=false', [req.params.id]);
+    await db.query('UPDATE pos_orders SET kitchen_sent_at=NOW() WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    const sRow = await db.query('SELECT session_id FROM pos_orders WHERE id=$1', [req.params.id]);
+    await logAction(req.user.tenantId, sRow.rows[0]?.session_id, req.params.id, req.user.userId, 'fire_kitchen', {});
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── POS Pro: hold / unhold order ──────────────────────────────────────────────
+router.post('/api/order/:id/hold', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const r = await db.query(
+      'UPDATE pos_orders SET is_held = NOT COALESCE(is_held,false) WHERE id=$1 AND tenant_id=$2 RETURNING is_held',
+      [req.params.id, req.user.tenantId]
+    );
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, is_held: r.rows[0]?.is_held, ...state });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// ── POS Pro: transfer table ────────────────────────────────────────────────────
+router.post('/order/:id/transfer', requireAuth, requirePOS, async (req, res) => {
+  const { target_table_id } = req.body;
+  const back = '/pos/order/' + req.params.id;
+  try {
+    const tableRes = await db.query('SELECT * FROM restaurant_tables WHERE id=$1 AND tenant_id=$2', [target_table_id, req.user.tenantId]);
+    if (!tableRes.rows[0]) return res.redirect(back + '?error=no_table');
+    const existing = await db.query(
+      "SELECT id FROM pos_orders WHERE table_id=$1 AND status='open' AND id!=$2",
+      [target_table_id, req.params.id]
+    );
+    if (existing.rows[0]) return res.redirect(back + '?error=table_occupied');
+    await db.query(
+      'UPDATE pos_orders SET table_id=$1, table_name=$2 WHERE id=$3 AND tenant_id=$4',
+      [target_table_id, tableRes.rows[0].name, req.params.id, req.user.tenantId]
+    );
+    const sRow = await db.query('SELECT session_id FROM pos_orders WHERE id=$1', [req.params.id]);
+    await logAction(req.user.tenantId, sRow.rows[0]?.session_id, req.params.id, req.user.userId, 'table_transfer', { to_table: tableRes.rows[0].name });
+    res.redirect(back);
+  } catch (err) { console.error(err); res.redirect(back); }
+});
+
+// ── POS Pro: merge order into another ─────────────────────────────────────────
+router.post('/order/:id/merge', requireAuth, requirePOS, async (req, res) => {
+  const { target_order_id } = req.body;
+  const back = '/pos/order/' + req.params.id;
+  try {
+    const targetRes = await db.query(
+      "SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2 AND status='open'",
+      [target_order_id, req.user.tenantId]
+    );
+    if (!targetRes.rows[0]) return res.redirect(back + '?error=no_target');
+    await db.query('UPDATE pos_order_items SET order_id=$1 WHERE order_id=$2', [target_order_id, req.params.id]);
+    await db.query("UPDATE pos_orders SET status='void' WHERE id=$1 AND tenant_id=$2", [req.params.id, req.user.tenantId]);
+    const sRow = await db.query('SELECT session_id FROM pos_orders WHERE id=$1', [target_order_id]);
+    await logAction(req.user.tenantId, sRow.rows[0]?.session_id, target_order_id, req.user.userId, 'order_merge', { from_order: parseInt(req.params.id) });
+    res.redirect('/pos/order/' + target_order_id);
+  } catch (err) { console.error(err); res.redirect(back); }
+});
+
+// ── POS Pro: toggle menu item out-of-stock ────────────────────────────────────
+router.post('/api/menu/:id/toggle-stock', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const r = await db.query(
+      'UPDATE menu_items SET is_out_of_stock = NOT COALESCE(is_out_of_stock,false) WHERE id=$1 AND tenant_id=$2 RETURNING is_out_of_stock',
+      [req.params.id, req.user.tenantId]
+    );
+    res.json({ ok: true, is_out_of_stock: r.rows[0]?.is_out_of_stock });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// ── POS Pro: update item course ───────────────────────────────────────────────
+router.post('/api/order/:id/item/:itemId/course', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const valid = ['starter', 'main', 'dessert', 'drink'];
+    const course = valid.includes(req.body.course) ? req.body.course : 'main';
+    await db.query(
+      'UPDATE pos_order_items SET course=$1 WHERE id=$2 AND order_id=$3',
+      [course, req.params.itemId, req.params.id]
+    );
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    res.json({ ok: true, ...state });
+  } catch (err) { res.json({ ok: false }); }
 });
 
 // ── Customers ─────────────────────────────────────────────────────────────────

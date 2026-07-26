@@ -47,6 +47,14 @@
     .iqd-val   { color: #fff; font-weight: 800; font-size: 1rem; }
     .rate-badge { font-size: .72rem; color: #555; margin-top: 2px; }
 
+    /* Tip */
+    .tip-section { margin-bottom: 20px; }
+    .tip-quick { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .tip-pct-btn { padding: 7px 14px; border: 1.5px solid #2a2a3e; border-radius: 8px; background: #0f0f1a; color: #888; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .15s; }
+    .tip-pct-btn.active { border-color: #00b894; color: #00b894; background: rgba(0,184,148,.08); }
+    .tip-pct-btn:hover:not(.active) { border-color: #555; color: #ccc; }
+    .tip-input { width: 100%; padding: 10px 14px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 10px; color: #00b894; font-size: 1.1rem; font-weight: 700; outline: none; font-family: inherit; }
+    .tip-input:focus { border-color: #00b894; }
     /* Customer picker */
     .customer-section { margin-bottom: 20px; }
     .customer-search-wrap { position: relative; }
@@ -87,9 +95,13 @@
       <span>−<%= tenant.currency || '$' %><%= discount.toFixed(2) %></span>
     </div>
     <% } %>
+    <div class="summary-row" id="tipSummaryRow" style="display:none;color:#00b894">
+      <span>Tip</span>
+      <span id="tipSummaryAmt"><%= tenant.currency || '$' %>0.00</span>
+    </div>
     <div class="summary-row total">
-      <span>Total</span>
-      <span><%= tenant.currency || '$' %><%= total.toFixed(2) %></span>
+      <span>Grand Total</span>
+      <span id="grandTotal"><%= tenant.currency || '$' %><%= total.toFixed(2) %></span>
     </div>
   </div>
 
@@ -126,6 +138,19 @@
           <% }) %>
         </div>
       </div>
+    </div>
+
+    <!-- Tip -->
+    <div class="tip-section">
+      <label>Tip</label>
+      <div class="tip-quick">
+        <button type="button" class="tip-pct-btn active" onclick="setTipPct(0)">No Tip</button>
+        <button type="button" class="tip-pct-btn" onclick="setTipPct(10)">10%</button>
+        <button type="button" class="tip-pct-btn" onclick="setTipPct(15)">15%</button>
+        <button type="button" class="tip-pct-btn" onclick="setTipPct(20)">20%</button>
+        <button type="button" class="tip-pct-btn" onclick="setTipPct(-1)">Custom</button>
+      </div>
+      <input type="number" class="tip-input" name="tip_amount" id="tipInput" value="0.00" min="0" step="0.01" oninput="tipChanged()" placeholder="0.00" style="display:none" />
     </div>
 
     <!-- Payment Method -->
@@ -190,6 +215,45 @@
   const CUR      = '<%= tenant.currency || "$" %>';
   const EXRATE   = <%= exchangeRate %>;
   let   curMode  = 'USD';   // 'USD' | 'IQD'
+  let   _tip     = 0;
+  let   _tipMode = 0;   // 0 = no tip, -1 = custom, else pct
+
+  function setTipPct(pct) {
+    _tipMode = pct;
+    document.querySelectorAll('.tip-pct-btn').forEach((b, i) => b.classList.remove('active'));
+    event.target.classList.add('active');
+    const tipInput = document.getElementById('tipInput');
+    if (pct === -1) {
+      tipInput.style.display = '';
+      tipInput.focus();
+      _tip = parseFloat(tipInput.value) || 0;
+    } else {
+      tipInput.style.display = 'none';
+      _tip = pct > 0 ? parseFloat((TOTAL * pct / 100).toFixed(2)) : 0;
+      tipInput.value = _tip.toFixed(2);
+    }
+    updateTipDisplay();
+    calcChange();
+  }
+
+  function tipChanged() {
+    _tip = parseFloat(document.getElementById('tipInput').value) || 0;
+    updateTipDisplay();
+    calcChange();
+  }
+
+  function updateTipDisplay() {
+    const row = document.getElementById('tipSummaryRow');
+    const amt = document.getElementById('tipSummaryAmt');
+    const gt  = document.getElementById('grandTotal');
+    if (_tip > 0) {
+      row.style.display = '';
+      amt.textContent = CUR + _tip.toFixed(2);
+    } else {
+      row.style.display = 'none';
+    }
+    gt.textContent = CUR + (TOTAL + _tip).toFixed(2);
+  }
 
   function setMethod(m) {
     document.getElementById('methodInput').value = m;
@@ -244,29 +308,29 @@
   }
 
   function calcChange() {
-    const paid = parseFloat(document.getElementById('amountInput').value) || 0;
+    const paid     = parseFloat(document.getElementById('amountInput').value) || 0;
+    const grandTot = TOTAL + _tip;
     if (curMode === 'IQD') {
-      // paid is in IQD
-      const totalIQD  = TOTAL * EXRATE;
+      const totalIQD  = grandTot * EXRATE;
       const changeIQD = Math.max(0, paid - totalIQD);
-      // Display change in IQD
       document.getElementById('changeAmt').textContent = changeIQD.toFixed(0) + ' IQD';
       const ciqd = document.getElementById('changeIQD');
       if (ciqd) ciqd.textContent = changeIQD.toFixed(0) + ' IQD';
     } else {
-      const change = Math.max(0, paid - TOTAL);
+      const change = Math.max(0, paid - grandTot);
       document.getElementById('changeAmt').textContent = CUR + change.toFixed(2);
     }
   }
 
   function validatePay() {
-    const paid = parseFloat(document.getElementById('amountInput').value) || 0;
+    const paid     = parseFloat(document.getElementById('amountInput').value) || 0;
+    const grandTot = TOTAL + _tip;
     if (document.getElementById('methodInput').value === 'cash') {
-      const minRequired = curMode === 'IQD' ? TOTAL * EXRATE : TOTAL;
+      const minRequired = curMode === 'IQD' ? grandTot * EXRATE : grandTot;
       if (paid < minRequired) {
         const msg = curMode === 'IQD'
-          ? 'Amount received must be at least ' + (TOTAL * EXRATE).toFixed(0) + ' IQD'
-          : 'Amount received must be at least ' + CUR + TOTAL.toFixed(2);
+          ? 'Amount received must be at least ' + (grandTot * EXRATE).toFixed(0) + ' IQD'
+          : 'Amount received must be at least ' + CUR + grandTot.toFixed(2);
         alert(msg);
         return false;
       }

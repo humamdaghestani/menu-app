@@ -43,11 +43,21 @@
     .open-status { padding: 2px 8px; border-radius: 10px; font-size: .68rem; font-weight: 700; background: rgba(241,196,15,.15); color: #f1c40f; text-transform: capitalize; }
     .btn-tables { background: #7c5cbf; color: #fff; }
     .btn-tables:hover { opacity: .88; }
+    .z-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .z-table th { text-align: left; color: #444; font-size: .68rem; text-transform: uppercase; padding: 5px 8px; border-bottom: 1px solid #2a2a3e; }
+    .z-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .z-table tr:last-child td { border-bottom: none; }
+    .z-bar { height: 6px; background: rgba(124,92,191,.25); border-radius: 3px; margin-top: 4px; }
+    .z-bar-fill { height: 100%; background: #7c5cbf; border-radius: 3px; }
+    @media print { .no-print { display: none !important; } body { background: #fff; color: #000; } .card { border: 1px solid #ddd; background: #fff; } }
   </style>
 </head>
 <body>
 <div class="main">
-  <h1>🔒 Close Session</h1>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+    <h1>🔒 Close Session</h1>
+    <button onclick="window.print()" class="btn btn-ghost no-print" style="padding:7px 14px;font-size:.78rem">🖨 Print Z-Report</button>
+  </div>
   <div class="sub">Session opened <%= new Date(session.opened_at).toLocaleString() %></div>
 
   <!-- Blocker: open orders -->
@@ -67,17 +77,50 @@
   </div>
   <% } %>
 
-  <!-- Summary -->
+  <!-- Z-Report Summary -->
   <div class="card">
-    <h2>Session Summary</h2>
+    <h2>📊 Z-Report</h2>
     <div class="stat-row"><span class="stat-label">Orders Completed</span><span class="stat-val"><%= summary.count %></span></div>
     <div class="stat-row"><span class="stat-label">Total Sales</span><span class="stat-val green"><%= tenant.currency || '$' %><%= summary.total.toFixed(2) %></span></div>
     <div class="stat-row"><span class="stat-label">Cash Sales</span><span class="stat-val"><%= tenant.currency || '$' %><%= summary.cash.toFixed(2) %></span></div>
     <div class="stat-row"><span class="stat-label">Card Sales</span><span class="stat-val"><%= tenant.currency || '$' %><%= summary.card.toFixed(2) %></span></div>
+    <% if (summary.tips > 0) { %>
+    <div class="stat-row"><span class="stat-label">Tips Collected</span><span class="stat-val green"><%= tenant.currency || '$' %><%= summary.tips.toFixed(2) %></span></div>
+    <% } %>
+    <div class="stat-row"><span class="stat-label">Total Covers</span><span class="stat-val"><%= summary.covers %></span></div>
+    <% if (parseFloat(zStats.total_discounts) > 0) { %>
+    <div class="stat-row"><span class="stat-label">Discounts Given (<%= zStats.discount_orders %> orders)</span><span class="stat-val" style="color:#e17055">−<%= tenant.currency || '$' %><%= parseFloat(zStats.total_discounts).toFixed(2) %></span></div>
+    <% } %>
+    <% if (zStats.voids > 0) { %>
+    <div class="stat-row"><span class="stat-label">Void Orders</span><span class="stat-val" style="color:#e74c3c"><%= zStats.voids %></span></div>
+    <% } %>
     <div class="stat-row"><span class="stat-label">Opening Cash</span><span class="stat-val purple"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</span></div>
     <div class="stat-row"><span class="stat-label">Cash Received (IQD)</span><span class="stat-val"><%= Math.round(summary.cashIQD).toLocaleString() %> IQD</span></div>
     <div class="stat-row"><span class="stat-label">Expected in Drawer</span><span class="stat-val green"><%= Math.round(parseFloat(session.opening_cash) + summary.cashIQD).toLocaleString() %> IQD</span></div>
   </div>
+
+  <!-- Top Items -->
+  <% if (topItems && topItems.length > 0) { %>
+  <% const maxRev = Math.max(...topItems.map(i => parseFloat(i.revenue) || 0)); %>
+  <div class="card">
+    <h2>🔥 Top Selling Items</h2>
+    <table class="z-table">
+      <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Revenue</th></tr></thead>
+      <tbody>
+      <% topItems.forEach(item => { %>
+      <tr>
+        <td>
+          <%= item.name %>
+          <div class="z-bar"><div class="z-bar-fill" style="width:<%= maxRev > 0 ? Math.round(parseFloat(item.revenue)/maxRev*100) : 0 %>%"></div></div>
+        </td>
+        <td style="color:#888"><%= item.qty %></td>
+        <td style="text-align:right;font-weight:700;color:#7c5cbf"><%= tenant.currency || '$' %><%= parseFloat(item.revenue).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
 
   <!-- Close form -->
   <div class="card">

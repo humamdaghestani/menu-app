@@ -26,9 +26,14 @@
     .ticket-items { padding: 12px 16px; }
     .ticket-item { display: flex; justify-content: space-between; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
     .ticket-item:last-child { border-bottom: none; }
+    .ticket-item.new-item { background: rgba(253,203,110,.04); border-radius: 6px; padding: 8px 6px; }
     .ti-name { font-size: .9rem; color: #fff; font-weight: 600; }
     .ti-qty { font-size: .9rem; color: #7c5cbf; font-weight: 700; min-width: 28px; }
     .ti-note { font-size: .72rem; color: #555; margin-top: 3px; }
+    .new-badge { font-size: .58rem; font-weight: 900; background: #fdcb6e; color: #0a0a0f; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; letter-spacing: .3px; }
+    .course-header { font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .8px; color: #444; padding: 6px 0 2px; }
+    .has-new { border-color: rgba(253,203,110,.5) !important; }
+    .cover-chip { font-size: .68rem; color: #74b9ff; background: rgba(116,185,255,.12); padding: 2px 7px; border-radius: 10px; }
     .ticket-note { padding: 10px 16px; background: rgba(255,200,0,.06); border-top: 1px solid rgba(255,200,0,.1); font-size: .78rem; color: #f0b429; }
     .ticket-footer { padding: 12px 16px; border-top: 1px solid #2a2a3e; display: flex; gap: 8px; }
     .btn-done { flex: 1; padding: 9px; border: none; border-radius: 8px; background: #00b894; color: #fff; font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit; }
@@ -68,25 +73,33 @@
     <% } %>
     <% orders.forEach(o => { %>
     <% const mins = Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000); %>
-    <div class="order-ticket" id="ticket_<%= o.id %>">
+    <% const hasNew = (o.items || []).some(i => !i.sent_to_kitchen); %>
+    <% const courseOrder = ['starter','main','dessert','drink']; %>
+    <% const grouped = {}; (o.items||[]).forEach(i => { const c = i.course || 'main'; if (!grouped[c]) grouped[c]=[]; grouped[c].push(i); }); %>
+    <div class="order-ticket<%= hasNew ? ' has-new' : '' %>" id="ticket_<%= o.id %>">
       <div class="ticket-header">
         <div>
-          <div class="ticket-table">🪑 <%= o.table_name %></div>
-          <div class="ticket-order">Order #<%= o.id %></div>
+          <div class="ticket-table">🪑 <%= o.table_name %> <% if (o.cover_count > 1) { %><span class="cover-chip">×<%= o.cover_count %></span><% } %></div>
+          <div class="ticket-order">Order #<%= o.id %><% if (hasNew) { %> <span style="color:#fdcb6e;font-size:.68rem;font-weight:700">● NEW</span><% } %></div>
         </div>
         <span class="elapsed <%= mins < 10 ? 'elapsed-ok' : mins < 20 ? 'elapsed-warn' : 'elapsed-late' %>">
-          <%= mins %>m ago
+          <%= mins %>m
         </span>
       </div>
       <div class="ticket-items">
-        <% (o.items || []).forEach(item => { %>
-        <div class="ticket-item">
+        <% courseOrder.forEach(course => { if (!grouped[course]) return; %>
+        <% if (Object.keys(grouped).length > 1) { %>
+        <div class="course-header"><%= course === 'main' ? '🍽 Main' : course === 'starter' ? '🥗 Starter' : course === 'dessert' ? '🍮 Dessert' : '🥤 Drink' %></div>
+        <% } %>
+        <% grouped[course].forEach(item => { %>
+        <div class="ticket-item<%= !item.sent_to_kitchen ? ' new-item' : '' %>">
           <div>
-            <div class="ti-name"><%= item.name %></div>
+            <div class="ti-name"><%= item.name %><% if (!item.sent_to_kitchen) { %><span class="new-badge">NEW</span><% } %></div>
             <% if (item.notes) { %><div class="ti-note">📝 <%= item.notes %></div><% } %>
           </div>
           <div class="ti-qty">×<%= item.quantity %></div>
         </div>
+        <% }) %>
         <% }) %>
       </div>
       <% if (o.note) { %>
@@ -107,6 +120,41 @@
     window.location.href = '/pos/order/' + orderId + '/pay';
   }
 
+  const COURSE_ORDER = ['starter','main','dessert','drink'];
+  function renderTicket(o, now) {
+    const mins    = Math.floor((now - new Date(o.created_at).getTime()) / 60000);
+    const cls     = mins < 10 ? 'elapsed-ok' : mins < 20 ? 'elapsed-warn' : 'elapsed-late';
+    const hasNew  = (o.items||[]).some(i => !i.sent_to_kitchen);
+    const grouped = {};
+    (o.items||[]).forEach(i => { const c = i.course||'main'; if (!grouped[c]) grouped[c]=[]; grouped[c].push(i); });
+    const multiCourse = Object.keys(grouped).length > 1;
+    const courseLabels = { starter:'🥗 Starter', main:'🍽 Main', dessert:'🍮 Dessert', drink:'🥤 Drink' };
+    let itemsHtml = '';
+    COURSE_ORDER.forEach(c => {
+      if (!grouped[c]) return;
+      if (multiCourse) itemsHtml += `<div class="course-header">${courseLabels[c]||c}</div>`;
+      grouped[c].forEach(item => {
+        const isNew = !item.sent_to_kitchen;
+        itemsHtml += `<div class="ticket-item${isNew?' new-item':''}">
+          <div><div class="ti-name">${item.name}${isNew?'<span class="new-badge">NEW</span>':''}</div>${item.notes?`<div class="ti-note">📝 ${item.notes}</div>`:''}</div>
+          <div class="ti-qty">×${item.quantity}</div></div>`;
+      });
+    });
+    const coverChip = o.cover_count > 1 ? `<span class="cover-chip">×${o.cover_count}</span>` : '';
+    const newLabel  = hasNew ? ' <span style="color:#fdcb6e;font-size:.68rem;font-weight:700">● NEW</span>' : '';
+    return `<div class="order-ticket${hasNew?' has-new':''}" id="ticket_${o.id}">
+      <div class="ticket-header">
+        <div><div class="ticket-table">🪑 ${o.table_name} ${coverChip}</div><div class="ticket-order">Order #${o.id}${newLabel}</div></div>
+        <span class="elapsed ${cls}">${mins}m</span>
+      </div>
+      <div class="ticket-items">${itemsHtml}</div>
+      ${o.note?`<div class="ticket-note">📋 ${o.note}</div>`:''}
+      <div class="ticket-footer">
+        <button class="btn-done" onclick="markDone(${o.id})">✓ Done</button>
+        <a href="/pos/order/${o.id}" class="btn-view">View</a>
+      </div></div>`;
+  }
+
   // Auto-refresh every 8 seconds
   async function refresh() {
     try {
@@ -117,27 +165,7 @@
         return;
       }
       const now = Date.now();
-      let html = '';
-      data.orders.forEach(o => {
-        const mins = Math.floor((now - new Date(o.created_at).getTime()) / 60000);
-        const cls = mins < 10 ? 'elapsed-ok' : mins < 20 ? 'elapsed-warn' : 'elapsed-late';
-        const items = (o.items || []).map(item =>
-          `<div class="ticket-item"><div><div class="ti-name">${item.name}</div>${item.notes ? `<div class="ti-note">📝 ${item.notes}</div>` : ''}</div><div class="ti-qty">×${item.quantity}</div></div>`
-        ).join('');
-        html += `<div class="order-ticket" id="ticket_${o.id}">
-          <div class="ticket-header">
-            <div><div class="ticket-table">🪑 ${o.table_name}</div><div class="ticket-order">Order #${o.id}</div></div>
-            <span class="elapsed ${cls}">${mins}m ago</span>
-          </div>
-          <div class="ticket-items">${items}</div>
-          ${o.note ? `<div class="ticket-note">📋 ${o.note}</div>` : ''}
-          <div class="ticket-footer">
-            <button class="btn-done" onclick="markDone(${o.id})">✓ Done — Close Order</button>
-            <a href="/pos/order/${o.id}" class="btn-view">View</a>
-          </div>
-        </div>`;
-      });
-      document.getElementById('ordersGrid').innerHTML = html;
+      document.getElementById('ordersGrid').innerHTML = data.orders.map(o => renderTicket(o, now)).join('');
     } catch {}
   }
 

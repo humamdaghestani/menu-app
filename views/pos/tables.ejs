@@ -32,6 +32,9 @@
     .table-card.free:hover { border-color: #00b894; }
     .table-card.bill-req { border-color: #f39c12; background: rgba(243,156,18,.07); }
     .table-card.bill-req:hover { border-color: #e67e22; }
+    .table-card.held-table { border-color: rgba(253,203,110,.4); background: rgba(253,203,110,.04); }
+    .cover-chip { font-size: .65rem; color: #74b9ff; background: rgba(116,185,255,.15); padding: 2px 7px; border-radius: 10px; margin-left: 4px; }
+    .held-chip  { font-size: .65rem; color: #fdcb6e; background: rgba(253,203,110,.15); padding: 2px 7px; border-radius: 10px; margin-left: 4px; }
 
     .table-icon { font-size: 2rem; margin-bottom: 10px; }
     .table-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
@@ -148,13 +151,14 @@
   <div class="tables-grid">
     <% tables.forEach(t => { %>
     <% const occupied = !!t.order_id; %>
-    <div class="table-card <%= t.bill_requested ? 'bill-req' : occupied ? 'occupied' : 'free' %>" onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')">
+    <div class="table-card <%= t.bill_requested ? 'bill-req' : t.is_held ? 'held-table' : occupied ? 'occupied' : 'free' %>" onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')">
       <% if (t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#f39c12;color:#000;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:10px">🔔 BILL</span><% } %>
-      <div class="table-icon"><%= t.bill_requested ? '🔔' : occupied ? '🔴' : '🟢' %></div>
-      <div class="table-name"><%= t.name %></div>
+      <% if (t.is_held && !t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#fdcb6e;color:#0a0a0f;font-size:.6rem;font-weight:900;padding:3px 8px;border-radius:10px">⏸ HELD</span><% } %>
+      <div class="table-icon"><%= t.bill_requested ? '🔔' : t.is_held ? '⏸' : occupied ? '🔴' : '🟢' %></div>
+      <div class="table-name"><%= t.name %><% if (occupied && t.cover_count > 1) { %><span class="cover-chip">🪑×<%= t.cover_count %></span><% } %></div>
       <div class="table-cap">Capacity: <%= t.capacity %></div>
       <span class="table-status <%= t.bill_requested ? 'status-bill' : occupied ? 'status-occupied' : 'status-free' %>">
-        <%= t.bill_requested ? 'Bill Requested' : occupied ? 'Occupied' : 'Free' %>
+        <%= t.bill_requested ? 'Bill Requested' : t.is_held ? 'On Hold' : occupied ? 'Occupied' : 'Free' %>
       </span>
       <% if (occupied) { %>
       <div class="table-order-info">

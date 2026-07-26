@@ -118,6 +118,31 @@
     .split-per { font-size: 1.3rem; font-weight: 700; color: #fff; }
     .split-sub { font-size: .75rem; color: #555; margin-top: 4px; }
 
+    /* ── POS Pro additions ── */
+    .cover-badge { background: rgba(116,185,255,.18); color: #74b9ff; font-size: .7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+    .cover-badge:hover { background: rgba(116,185,255,.28); }
+    .held-badge { background: rgba(253,203,110,.2); color: #fdcb6e; font-size: .68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; animation: pulse .9s ease-in-out infinite alternate; }
+    @keyframes pulse { from { opacity:.7 } to { opacity:1 } }
+    .item-card.oos { opacity: .38; }
+    .item-card.oos .item-card-price::after { content: ' · 86\'d'; color: #e74c3c; font-size: .65rem; font-weight: 700; }
+    .item-card.oos::after { content: 'OUT'; position: absolute; top: 4px; right: 4px; background: #e74c3c; color: #fff; font-size: .58rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; }
+    .item-card { position: relative; }
+    .oi-fired   { font-size: .6rem; color: #00b894; font-weight: 700; margin-left: 3px; }
+    .oi-unfired { font-size: .6rem; color: #444; margin-left: 3px; }
+    .course-pill { font-size: .58rem; color: #a78bdf; background: rgba(124,92,191,.15); padding: 1px 5px; border-radius: 6px; margin-left: 4px; text-transform: uppercase; letter-spacing: .3px; }
+    .action-btn.btn-fire     { color: #fd7e14; }
+    .action-btn.btn-fire:hover { background: rgba(253,126,20,.12); color: #fd7e14; }
+    .action-btn.btn-hold     { color: #fdcb6e; }
+    .action-btn.btn-hold:hover { background: rgba(253,203,110,.12); color: #fdcb6e; }
+    .action-btn.btn-transfer { color: #74b9ff; }
+    .action-btn.btn-transfer:hover { background: rgba(116,185,255,.1); color: #74b9ff; }
+    .note-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+    .note-preset { padding: 4px 10px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #777; font-size: .72rem; cursor: pointer; font-family: inherit; }
+    .note-preset:hover { border-color: #7c5cbf; color: #c4b5fd; }
+    .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap: 8px; margin-top: 12px; max-height: 280px; overflow-y: auto; }
+    .tbl-pick { padding: 12px 6px; border-radius: 10px; border: 1.5px solid #2a2a3e; background: #0f0f1a; color: #ccc; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; }
+    .tbl-pick:hover { border-color: #74b9ff; color: #74b9ff; }
+    .tbl-pick.occupied { border-color: rgba(231,76,60,.3); color: #555; opacity: .5; pointer-events: none; }
     @media (max-width: 680px) {
       .order-panel { width: 100%; position: fixed; bottom: 0; left: 0; right: 0; max-height: 75vh; z-index: 10; border-top: 2px solid #7c5cbf; border-left: none; }
       .menu-panel { padding-bottom: 75vh; }
@@ -133,6 +158,8 @@
     <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
     <span class="table-chip">🪑 <%= order.table_name %></span>
     <span class="order-num">#<%= order.id %></span>
+    <span class="cover-badge" onclick="openCoverModal()" title="Covers">🪑 <span id="coverBadgeNum"><%= order.cover_count || 1 %></span></span>
+    <span class="held-badge" id="heldBadge" style="<%= order.is_held ? '' : 'display:none' %>">⏸ HELD</span>
   </div>
   <div class="topbar-right">
     <button class="btn btn-ghost" onclick="printBill()" title="Print bill">🖨️</button>
@@ -159,7 +186,7 @@
     </div>
     <div class="items-grid" id="itemsGrid">
       <% menuItems.forEach(item => { %>
-      <div class="item-card" data-cat="<%= item.category_id %>" data-name="<%= item.name.toLowerCase() %>" onclick="addItem(<%= item.id %>)">
+      <div class="item-card<%= item.is_out_of_stock ? ' oos' : '' %>" data-cat="<%= item.category_id %>" data-name="<%= item.name.toLowerCase() %>" onclick="<%= !item.is_out_of_stock ? 'addItem(' + item.id + ')' : '' %>">
         <% if (item.image_url) { %>
         <img class="item-card-img" src="<%= item.image_url %>" alt="<%= item.name %>" loading="lazy" />
         <% } else { %>
@@ -184,7 +211,7 @@
       <% orderItems.forEach(oi => { %>
       <div class="order-item">
         <div class="oi-info">
-          <div class="oi-name"><%= oi.name %></div>
+          <div class="oi-name"><%= oi.name %><% if (oi.sent_to_kitchen) { %><span class="oi-fired" title="Fired to kitchen">🔥</span><% } else { %><span class="oi-unfired" title="Not yet sent">●</span><% } %><% if (oi.course && oi.course !== 'main') { %><span class="course-pill"><%= oi.course %></span><% } %></div>
           <div class="oi-note">
             <% if (oi.notes) { %><span>📝 <%= oi.notes %></span><% } %>
             <button class="oi-note-edit" onclick="openItemNote(<%= oi.id %>, <%- JSON.stringify(oi.notes||'') %>)">
@@ -233,7 +260,10 @@
 
     <!-- ── Action buttons ── -->
     <div class="order-actions">
-      <button class="action-btn" onclick="openDiscount()">🏷️<span>Discount</span></button>
+      <button class="action-btn" onclick="openDiscount()">🏷️<span>Disc</span></button>
+      <button class="action-btn btn-fire" onclick="fireKitchen()">🔥<span>Fire</span></button>
+      <button class="action-btn btn-hold" id="btnHold" onclick="holdOrder()"><span id="holdIcon"><%= order.is_held ? '▶' : '⏸' %></span><span id="holdLabel"><%= order.is_held ? 'Unhold' : 'Hold' %></span></button>
+      <button class="action-btn btn-transfer" onclick="openTransfer()">↕<span>Move</span></button>
       <button class="action-btn" onclick="openSplit()">✂️<span>Split</span></button>
       <button class="action-btn" onclick="openOrderNote()">📝<span>Note</span></button>
       <button class="action-btn" onclick="printBill()">🖨️<span>Print</span></button>
@@ -360,12 +390,59 @@
   <div class="modal-box">
     <h3>📝 Item Note</h3>
     <form id="itemNoteForm">
+      <div class="note-presets">
+        <button type="button" class="note-preset" onclick="appendPreset('No Onion')">No Onion</button>
+        <button type="button" class="note-preset" onclick="appendPreset('Well Done')">Well Done</button>
+        <button type="button" class="note-preset" onclick="appendPreset('Extra Spicy')">Extra Spicy</button>
+        <button type="button" class="note-preset" onclick="appendPreset('No Sauce')">No Sauce</button>
+        <button type="button" class="note-preset" onclick="appendPreset('Medium Rare')">Medium Rare</button>
+        <button type="button" class="note-preset" onclick="appendPreset('Gluten Free')">Gluten Free</button>
+        <button type="button" class="note-preset" onclick="appendPreset('Extra Cheese')">Extra Cheese</button>
+        <button type="button" class="note-preset" onclick="appendPreset('No Ice')">No Ice</button>
+      </div>
       <textarea class="modal-input" id="itemNoteText" rows="3" placeholder="e.g. no onions, well done..."></textarea>
       <div class="modal-footer">
         <button type="button" class="btn btn-modal-cancel" onclick="closeModal('itemNoteModal')">Cancel</button>
         <button type="submit" class="btn btn-modal-ok">Save</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ── Cover Count Modal ── -->
+<div class="modal-overlay" id="coverModal">
+  <div class="modal-box" style="max-width:280px">
+    <h3>🪑 Cover Count</h3>
+    <label style="font-size:.78rem;color:#666;margin-bottom:6px;display:block">How many guests?</label>
+    <input type="number" class="modal-input" id="coverInput" value="<%= order.cover_count || 1 %>" min="1" max="50" />
+    <div class="modal-footer">
+      <button type="button" class="btn btn-modal-cancel" onclick="closeModal('coverModal')">Cancel</button>
+      <button type="button" class="btn btn-modal-ok" onclick="saveCovers()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Transfer Table Modal ── -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal-box" style="max-width:460px">
+    <h3>↕ Transfer to Table</h3>
+    <p style="font-size:.78rem;color:#555;margin-bottom:8px">Select a free table to move this order to</p>
+    <div class="table-grid">
+      <% tables.forEach(t => { %>
+      <button type="button"
+        class="tbl-pick<%= t.current_order_id ? ' occupied' : '' %>"
+        onclick="<%= !t.current_order_id ? 'confirmTransfer(' + t.id + ')' : '' %>"
+        title="<%= t.current_order_id ? 'Occupied' : 'Free' %>">
+        <%= t.name %><% if (t.current_order_id) { %><br/><span style="font-size:.58rem;color:#e74c3c">Busy</span><% } %>
+      </button>
+      <% }) %>
+      <% if (!tables.length) { %>
+      <div style="color:#555;font-size:.82rem;padding:8px;grid-column:1/-1">No other tables available</div>
+      <% } %>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button type="button" class="btn btn-modal-cancel" onclick="closeModal('transferModal')">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -376,11 +453,13 @@ const CUR      = <%- JSON.stringify(tenant.currency || '$') %>;
 const ORDER_ID = <%= order.id %>;
 const menuCache = <%- JSON.stringify(menuItems.map(m => ({ id: m.id, name: m.name, price: parseFloat(m.price) || 0, category_id: m.category_id }))) %>;
 
-let _items = <%- JSON.stringify(orderItems.map(i => ({ id: i.id, menu_item_id: i.menu_item_id, name: i.name, price: parseFloat(i.price) || 0, quantity: i.quantity, notes: i.notes || null }))) %>;
+let _items = <%- JSON.stringify(orderItems.map(i => ({ id: i.id, menu_item_id: i.menu_item_id, name: i.name, price: parseFloat(i.price) || 0, quantity: i.quantity, notes: i.notes || null, sent_to_kitchen: !!i.sent_to_kitchen, course: i.course || 'main' }))) %>;
 let _order = {
   discount_type:  <%- JSON.stringify(order.discount_type  || 'none') %>,
   discount_value: <%= parseFloat(order.discount_value || 0) %>,
   note:           <%- JSON.stringify(order.note || null) %>,
+  cover_count:    <%= order.cover_count || 1 %>,
+  is_held:        <%= order.is_held ? 'true' : 'false' %>,
 };
 let _currentItemNoteId = null;
 let _selectedItemId    = null;
@@ -404,7 +483,20 @@ function _totals() {
 
 /* ── Render order panel from _items / _order ── */
 function _render(srv) {
-  if (srv) { _items = srv.items.map(i => ({ ...i, price: parseFloat(i.price) || 0 })); _order = srv.order; }
+  if (srv) {
+    _items = srv.items.map(i => ({ ...i, price: parseFloat(i.price) || 0, sent_to_kitchen: !!i.sent_to_kitchen, course: i.course || 'main' }));
+    _order = srv.order;
+  }
+  // Sync cover badge
+  const cb = document.getElementById('coverBadgeNum');
+  if (cb) cb.textContent = _order.cover_count || 1;
+  // Sync hold button
+  const hl = document.getElementById('holdLabel');
+  const hi = document.getElementById('holdIcon');
+  const heldBadge = document.getElementById('heldBadge');
+  if (hl) hl.textContent = _order.is_held ? 'Unhold' : 'Hold';
+  if (hi) hi.textContent = _order.is_held ? '▶' : '⏸';
+  if (heldBadge) heldBadge.style.display = _order.is_held ? '' : 'none';
   const { subtotal, total, discount } = srv || _totals();
 
   // Order list
@@ -415,7 +507,7 @@ function _render(srv) {
     list.innerHTML = _items.map(oi => `
       <div class="order-item${oi.id === _selectedItemId ? ' selected' : ''}" onclick="selectItem(${oi.id}, event)">
         <div class="oi-info">
-          <div class="oi-name">${_esc(oi.name)}</div>
+          <div class="oi-name">${_esc(oi.name)}${oi.sent_to_kitchen ? '<span class="oi-fired" title="Fired">🔥</span>' : '<span class="oi-unfired" title="Not fired">●</span>'}${oi.course !== 'main' ? `<span class="course-pill">${oi.course}</span>` : ''}</div>
           <div class="oi-note">
             ${oi.notes ? `<span>📝 ${_esc(oi.notes)}</span>` : ''}
             <button class="oi-note-edit" onclick="event.stopPropagation();openItemNote(${oi.id}, ${JSON.stringify(oi.notes||'')})">
@@ -714,6 +806,57 @@ document.getElementById('itemNoteForm').addEventListener('submit', async e => {
     if (r.ok && !r.offline) _render(r.data);
   }
 });
+
+/* ── Note presets ── */
+function appendPreset(text) {
+  const ta = document.getElementById('itemNoteText');
+  ta.value = ta.value ? ta.value + ', ' + text : text;
+  ta.focus();
+}
+
+/* ── Cover count ── */
+function openCoverModal() { openModal('coverModal'); }
+async function saveCovers() {
+  const count = parseInt(document.getElementById('coverInput').value) || 1;
+  closeModal('coverModal');
+  _order.cover_count = count;
+  const cb = document.getElementById('coverBadgeNum');
+  if (cb) cb.textContent = count;
+  posAction(`/pos/api/order/${ORDER_ID}/cover`, { cover_count: count });
+}
+
+/* ── Fire to kitchen ── */
+async function fireKitchen() {
+  const unfired = _items.filter(i => !i.sent_to_kitchen);
+  if (!unfired.length) { _showErrorToast('All items already fired to kitchen'); return; }
+  _items.forEach(i => { i.sent_to_kitchen = true; });
+  _render();
+  const r = await posAction(`/pos/api/order/${ORDER_ID}/fire`, {});
+  if (r.ok && !r.offline) _render(r.data);
+  else if (!r.ok && r.error === 'nothing_to_fire') _showErrorToast('Nothing new to fire');
+}
+
+/* ── Hold / Unhold ── */
+async function holdOrder() {
+  _order.is_held = !_order.is_held;
+  _render();
+  const r = await posAction(`/pos/api/order/${ORDER_ID}/hold`, {});
+  if (r.ok && !r.offline) _render(r.data);
+}
+
+/* ── Transfer table ── */
+function openTransfer() { openModal('transferModal'); }
+function confirmTransfer(tableId) {
+  closeModal('transferModal');
+  const f = document.createElement('form');
+  f.method = 'POST';
+  f.action = `/pos/order/${ORDER_ID}/transfer`;
+  const inp = document.createElement('input');
+  inp.type = 'hidden'; inp.name = 'target_table_id'; inp.value = tableId;
+  f.appendChild(inp);
+  document.body.appendChild(f);
+  f.submit();
+}
 
 /* ── Split ── */
 function openSplit() { openModal('splitModal'); calcSplit(); }

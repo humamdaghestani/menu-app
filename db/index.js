@@ -505,6 +505,16 @@ const pool = new Pool({
       notes          TEXT,
       created_at     TIMESTAMP DEFAULT NOW()
     )`,
+    // ── POS Pro upgrades ─────────────────────────────────────────────────
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS cover_count  INTEGER DEFAULT 1`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS tip_amount   NUMERIC(10,2) DEFAULT 0`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS receipt_no   VARCHAR(20)`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS is_held      BOOLEAN DEFAULT false`,
+    `ALTER TABLE pos_order_items ADD COLUMN IF NOT EXISTS sent_to_kitchen BOOLEAN DEFAULT false`,
+    `ALTER TABLE pos_order_items ADD COLUMN IF NOT EXISTS course   VARCHAR(20) DEFAULT 'main'`,
+    `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_out_of_stock BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS receipt_seq     INTEGER DEFAULT 0`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS receipt_prefix  VARCHAR(10) DEFAULT ''`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);
