@@ -268,9 +268,14 @@
       <button class="action-btn" onclick="openSplit()">✂️<span>Split</span></button>
       <button class="action-btn" onclick="openOrderNote()">📝<span>Note</span></button>
       <button class="action-btn" onclick="printBill()">🖨️<span>Print</span></button>
+      <% if (serviceFeePct > 0) { %>
+      <button class="action-btn" id="svcFeeBtn" onclick="showSvcFee()" style="color:#e17055">💰<span>Svc Fee</span></button>
+      <% } %>
     </div>
 
     <div class="order-footer">
+      <% const svcFeeAmt = serviceFeePct > 0 ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0; %>
+      <% const grandTotalAmt = total + svcFeeAmt; %>
       <div class="totals" id="totalsArea">
         <div class="total-row"><span>Subtotal</span><span><%= tenant.currency || '$' %><%= subtotal.toFixed(2) %></span></div>
         <% if (discount > 0) { %>
@@ -279,13 +284,19 @@
           <span>−<%= tenant.currency || '$' %><%= discount.toFixed(2) %></span>
         </div>
         <% } %>
+        <% if (svcFeeAmt > 0) { %>
+        <div class="total-row" style="color:#e17055">
+          <span>Service Fee (<%= serviceFeePct %>%)</span>
+          <span>+<%= tenant.currency || '$' %><%= svcFeeAmt.toFixed(2) %></span>
+        </div>
+        <% } %>
         <% if (order.note) { %><div class="total-row"><span style="color:#f39c12">📝 <%= order.note %></span></div><% } %>
-        <div class="total-row grand"><span>Total</span><span><%= tenant.currency || '$' %><%= total.toFixed(2) %></span></div>
+        <div class="total-row grand"><span>Total</span><span><%= tenant.currency || '$' %><%= grandTotalAmt.toFixed(2) %></span></div>
       </div>
       <div id="payArea">
         <% if (orderItems.length > 0) { %>
         <a href="/pos/order/<%= order.id %>/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">
-          💳 Pay <%= tenant.currency || '$' %><%= total.toFixed(2) %>
+          💳 Pay <%= tenant.currency || '$' %><%= grandTotalAmt.toFixed(2) %>
         </a>
         <% } else { %>
         <button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay</button>
@@ -453,6 +464,20 @@
   </div>
 </div>
 
+<!-- ── Service Fee Info Modal ── -->
+<% if (serviceFeePct > 0) { %>
+<div class="modal-overlay" id="svcFeeModal">
+  <div class="modal-box" style="max-width:300px;text-align:center">
+    <h3>💰 Service Fee</h3>
+    <div style="font-size:2rem;font-weight:700;color:#e17055;margin:16px 0" id="svcFeeModalAmt">—</div>
+    <div style="font-size:.8rem;color:#666;margin-bottom:18px"><%= serviceFeePct %>% applied to order total</div>
+    <div class="modal-footer" style="justify-content:center">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('svcFeeModal')">Close</button>
+    </div>
+  </div>
+</div>
+<% } %>
+
 <!-- ── Comp Modal (remove fired item) ── -->
 <div class="modal-overlay" id="compModal">
   <div class="modal-box" style="max-width:380px">
@@ -501,8 +526,9 @@
 <script src="/pos-offline.js"></script>
 <script>
 /* ── Seed state from server ── */
-const CUR      = <%- JSON.stringify(tenant.currency || '$') %>;
-const ORDER_ID = <%= order.id %>;
+const CUR             = <%- JSON.stringify(tenant.currency || '$') %>;
+const ORDER_ID        = <%= order.id %>;
+const SERVICE_FEE_PCT = <%= serviceFeePct || 0 %>;
 const menuCache = <%- JSON.stringify(menuItems.map(m => ({ id: m.id, name: m.name, price: parseFloat(m.price) || 0, category_id: m.category_id }))) %>;
 
 let _items = <%- JSON.stringify(orderItems.map(i => ({ id: i.id, menu_item_id: i.menu_item_id, name: i.name, price: parseFloat(i.price) || 0, quantity: i.quantity, notes: i.notes || null, sent_to_kitchen: !!i.sent_to_kitchen, course: i.course || 'main' }))) %>;
@@ -533,7 +559,8 @@ function _totals() {
   const dv = _order.discount_value;
   if (_order.discount_type === 'percent' && dv) tot = Math.max(0, sub - sub * dv / 100);
   else if (_order.discount_type === 'fixed' && dv) tot = Math.max(0, sub - dv);
-  return { subtotal: sub, total: tot, discount: sub - tot };
+  const svcFee = SERVICE_FEE_PCT > 0 ? parseFloat((tot * SERVICE_FEE_PCT / 100).toFixed(2)) : 0;
+  return { subtotal: sub, total: tot, discount: sub - tot, svcFee, grandTotal: tot + svcFee };
 }
 
 /* ── Render order panel from _items / _order ── */
@@ -552,7 +579,7 @@ function _render(srv) {
   if (hl) hl.textContent = _order.is_held ? 'Unhold' : 'Hold';
   if (hi) hi.textContent = _order.is_held ? '▶' : '⏸';
   if (heldBadge) heldBadge.style.display = _order.is_held ? '' : 'none';
-  const { subtotal, total, discount } = srv || _totals();
+  const { subtotal, total, discount, svcFee, grandTotal } = srv || _totals();
 
   // Order list
   const list = document.getElementById('orderList');
@@ -584,12 +611,13 @@ function _render(srv) {
   document.getElementById('totalsArea').innerHTML = `
     <div class="total-row"><span>Subtotal</span><span>${CUR}${subtotal.toFixed(2)}</span></div>
     ${discount > 0 ? `<div class="total-row discount"><span>Discount (${_order.discount_type === 'percent' ? dv + '%' : CUR + dv.toFixed(2)})</span><span>−${CUR}${discount.toFixed(2)}</span></div>` : ''}
+    ${svcFee > 0 ? `<div class="total-row" style="color:#e17055"><span>Service Fee (${SERVICE_FEE_PCT}%)</span><span>+${CUR}${svcFee.toFixed(2)}</span></div>` : ''}
     ${_order.note ? `<div class="total-row"><span style="color:#f39c12">📝 ${_esc(_order.note)}</span></div>` : ''}
-    <div class="total-row grand"><span>Total</span><span>${CUR}${total.toFixed(2)}</span></div>`;
+    <div class="total-row grand"><span>Total</span><span>${CUR}${grandTotal.toFixed(2)}</span></div>`;
 
   // Pay button
   document.getElementById('payArea').innerHTML = _items.length
-    ? `<a href="/pos/order/${ORDER_ID}/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay ${CUR}${total.toFixed(2)}</a>`
+    ? `<a href="/pos/order/${ORDER_ID}/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay ${CUR}${grandTotal.toFixed(2)}</a>`
     : `<button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay</button>`;
 
   // Keep split modal in sync
@@ -983,6 +1011,14 @@ async function applyPriceOverride() {
       setTimeout(() => document.getElementById('priceOverridePasskey').focus(), 80);
     }, 150);
   }
+}
+
+/* ── Service Fee ── */
+function showSvcFee() {
+  const { svcFee } = _totals();
+  const el = document.getElementById('svcFeeModalAmt');
+  if (el) el.textContent = CUR + svcFee.toFixed(2);
+  openModal('svcFeeModal');
 }
 
 /* ── Split ── */

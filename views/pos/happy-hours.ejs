@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Happy Hours — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    .main { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .sub { font-size: .82rem; color: #555; margin-bottom: 24px; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); padding: 22px; margin-bottom: 16px; }
+    .card h2 { font-size: .88rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 16px; }
+    .btn { padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-sm { padding: 5px 10px; font-size: .75rem; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: #666; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    input:focus, select:focus { border-color: #7c5cbf; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .btns { display: flex; gap: 8px; align-items: center; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .hh-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #13132a; border-radius: 10px; margin-bottom: 10px; border: 1px solid #2a2a3e; }
+    .hh-name { font-weight: 700; color: #fff; }
+    .hh-meta { font-size: .78rem; color: #666; margin-top: 3px; }
+    .hh-disc { font-size: .85rem; color: #7c5cbf; font-weight: 700; }
+    .badge-active { background: rgba(0,184,148,.15); color: #00b894; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; }
+    .badge-inactive { background: rgba(255,71,87,.12); color: #ff6b7a; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; }
+    .day-grid { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+    .day-check { display: flex; align-items: center; gap: 5px; font-size: .78rem; color: #888; }
+    .day-check input { width: auto; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.3); z-index: 999; border-left: 4px solid #00b894; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <div class="section-header">
+    <div>
+      <h1>🎉 Happy Hours</h1>
+      <div class="sub">Set time-based automatic discounts for POS orders</div>
+    </div>
+    <a href="/pos/settings" class="btn btn-ghost">← Settings</a>
+  </div>
+
+  <!-- Create -->
+  <div class="card">
+    <h2>➕ New Happy Hour Rule</h2>
+    <form method="POST" action="/pos/happy-hours">
+      <div class="form-row">
+        <div>
+          <label>Name *</label>
+          <input type="text" name="name" required placeholder="e.g. Happy Hour, Lunch Special" />
+        </div>
+        <div>
+          <label>Discount Type</label>
+          <select name="discount_type">
+            <option value="percent">Percent (%)</option>
+            <option value="fixed">Fixed Amount</option>
+          </select>
+        </div>
+        <div>
+          <label>Discount Value</label>
+          <input type="number" name="discount_value" value="10" min="0" step="0.01" />
+        </div>
+        <div>
+          <label>Start Time</label>
+          <input type="time" name="start_time" value="14:00" required />
+        </div>
+        <div>
+          <label>End Time</label>
+          <input type="time" name="end_time" value="17:00" required />
+        </div>
+      </div>
+      <div style="margin-bottom:14px">
+        <label>Days of Week</label>
+        <div class="day-grid">
+          <% ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((d, i) => { %>
+          <label class="day-check">
+            <input type="checkbox" name="days_of_week" value="<%= i+1 %>" checked />
+            <%= d %>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">+ Create Rule</button>
+    </form>
+  </div>
+
+  <!-- List -->
+  <% if (hours.length === 0) { %>
+  <div class="card" style="text-align:center;color:#555;padding:40px">No happy hour rules yet.</div>
+  <% } else { %>
+  <% hours.forEach(h => { %>
+  <div class="hh-row">
+    <div>
+      <div class="hh-name"><%= h.name %> <span class="<%= h.is_active ? 'badge-active' : 'badge-inactive' %>"><%= h.is_active ? 'Active' : 'Off' %></span></div>
+      <div class="hh-meta"><%= h.start_time.slice(0,5) %> – <%= h.end_time.slice(0,5) %> · Days: <%= (h.days_of_week || [1,2,3,4,5,6,7]).map(d => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d-1]).join(', ') %></div>
+    </div>
+    <div class="btns">
+      <div class="hh-disc"><%= h.discount_type === 'percent' ? h.discount_value + '%' : (tenant.currency||'$') + parseFloat(h.discount_value).toFixed(2) %> off</div>
+      <form method="POST" action="/pos/happy-hours/<%= h.id %>/toggle" style="display:inline">
+        <button type="submit" class="btn btn-ghost btn-sm"><%= h.is_active ? '⏸ Pause' : '▶ Enable' %></button>
+      </form>
+      <button class="btn btn-ghost btn-sm" onclick="openEdit(<%= JSON.stringify(h) %>)">Edit</button>
+      <form method="POST" action="/pos/happy-hours/<%= h.id %>/delete" style="display:inline" onsubmit="return confirm('Delete rule?')">
+        <button type="submit" class="btn btn-danger btn-sm">✕</button>
+      </form>
+    </div>
+  </div>
+  <% }) %>
+  <% } %>
+</div>
+
+<!-- Edit Modal -->
+<div id="editOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#1a1a2e;border-radius:16px;padding:28px;width:520px;max-width:calc(100% - 32px);max-height:90vh;overflow-y:auto">
+    <h3 style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:20px">Edit Happy Hour Rule</h3>
+    <form method="POST" id="editForm">
+      <div class="form-row">
+        <div>
+          <label>Name *</label>
+          <input type="text" name="name" id="eName" required />
+        </div>
+        <div>
+          <label>Discount Type</label>
+          <select name="discount_type" id="eType">
+            <option value="percent">Percent (%)</option>
+            <option value="fixed">Fixed Amount</option>
+          </select>
+        </div>
+        <div>
+          <label>Discount Value</label>
+          <input type="number" name="discount_value" id="eVal" min="0" step="0.01" />
+        </div>
+        <div>
+          <label>Start Time</label>
+          <input type="time" name="start_time" id="eStart" required />
+        </div>
+        <div>
+          <label>End Time</label>
+          <input type="time" name="end_time" id="eEnd" required />
+        </div>
+        <div>
+          <label>Active</label>
+          <select name="is_active" id="eActive">
+            <option value="1">Active</option>
+            <option value="0">Paused</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <label>Days of Week</label>
+        <div class="day-grid" id="eDays">
+          <% ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach((d, i) => { %>
+          <label class="day-check">
+            <input type="checkbox" name="days_of_week" value="<%= i+1 %>" id="eDay<%= i+1 %>" />
+            <%= d %>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+      <div class="btns" style="justify-content:flex-end">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openEdit(h) {
+    document.getElementById('eName').value = h.name;
+    document.getElementById('eType').value = h.discount_type;
+    document.getElementById('eVal').value = h.discount_value;
+    document.getElementById('eStart').value = (h.start_time||'').slice(0,5);
+    document.getElementById('eEnd').value = (h.end_time||'').slice(0,5);
+    document.getElementById('eActive').value = h.is_active ? '1' : '0';
+    const days = h.days_of_week || [1,2,3,4,5,6,7];
+    for (let i = 1; i <= 7; i++) document.getElementById('eDay'+i).checked = days.includes(i);
+    document.getElementById('editForm').action = '/pos/happy-hours/' + h.id + '/edit';
+    document.getElementById('editOverlay').style.display = 'flex';
+  }
+  function closeEdit() { document.getElementById('editOverlay').style.display = 'none'; }
+  document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
+
+  const p = new URLSearchParams(location.search);
+  if (p.get('success')) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = '✓ ' + p.get('success');
+    document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+  }
+</script>
+</body>
+</html>

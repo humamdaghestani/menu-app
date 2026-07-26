@@ -74,6 +74,15 @@
     .selected-customer.cash-selected { background: rgba(255,255,255,.04); border-color: #2a2a3e; }
     .selected-name { font-size: .88rem; font-weight: 600; color: #fff; flex: 1; }
     .change-cust { font-size: .72rem; color: #555; }
+    /* Loyalty */
+    .loyalty-box { background: rgba(253,203,110,.06); border: 1px solid rgba(253,203,110,.2); border-radius: 10px; padding: 12px 14px; margin-bottom: 20px; }
+    .loyalty-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .loyalty-title { font-size: .82rem; font-weight: 700; color: #fdcb6e; }
+    .loyalty-pts { font-size: 1rem; font-weight: 700; color: #fdcb6e; }
+    .loyalty-redeem-row { display: flex; gap: 8px; align-items: center; }
+    .loyalty-redeem-input { flex: 1; padding: 8px 10px; background: #0f0f1a; border: 1.5px solid rgba(253,203,110,.3); border-radius: 8px; color: #fdcb6e; font-size: .88rem; font-family: inherit; outline: none; }
+    .loyalty-redeem-input:focus { border-color: #fdcb6e; }
+    .loyalty-value { font-size: .75rem; color: #888; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -95,13 +104,19 @@
       <span>−<%= tenant.currency || '$' %><%= discount.toFixed(2) %></span>
     </div>
     <% } %>
+    <% if (serviceFeePct > 0) { %>
+    <div class="summary-row" style="color:#e17055">
+      <span>Service Fee (<%= serviceFeePct %>%)</span>
+      <span><%= tenant.currency || '$' %><%= serviceFee.toFixed(2) %></span>
+    </div>
+    <% } %>
     <div class="summary-row" id="tipSummaryRow" style="display:none;color:#00b894">
       <span>Tip</span>
       <span id="tipSummaryAmt"><%= tenant.currency || '$' %>0.00</span>
     </div>
     <div class="summary-row total">
       <span>Grand Total</span>
-      <span id="grandTotal"><%= tenant.currency || '$' %><%= total.toFixed(2) %></span>
+      <span id="grandTotal"><%= tenant.currency || '$' %><%= grandTotal.toFixed(2) %></span>
     </div>
   </div>
 
@@ -122,13 +137,13 @@
       <div id="custPickerWrap" style="display:none;position:relative;margin-top:6px">
         <input type="text" class="customer-search" id="custSearch" placeholder="Search by name or phone..." oninput="filterCustomers()" />
         <div class="customer-dropdown open" id="custDropdown">
-          <div class="cust-opt cash" onclick="selectCustomer('', 'Cash Customer', '')">
+          <div class="cust-opt cash" onclick="selectCustomer('', 'Cash Customer', '', 0)">
             <div class="cust-avatar" style="background:rgba(255,255,255,.06);color:#555">💵</div>
             <div class="cust-info"><div class="cust-name" style="color:#888">Cash Customer</div></div>
           </div>
           <% customers.forEach(c => { %>
           <div class="cust-opt" data-name="<%= c.name.toLowerCase() %>" data-phone="<%= (c.phone||'').toLowerCase() %>"
-               onclick="selectCustomer('<%= c.id %>', '<%= c.name.replace(/'/g, "\\'") %>', '<%= c.phone || '' %>')">
+               onclick="selectCustomer('<%= c.id %>', '<%= c.name.replace(/'/g, "\\'") %>', '<%= c.phone || '' %>', <%= c.loyalty_points || 0 %>)">
             <div class="cust-avatar"><%= c.name.charAt(0).toUpperCase() %></div>
             <div class="cust-info">
               <div class="cust-name"><%= c.name %></div>
@@ -139,6 +154,24 @@
         </div>
       </div>
     </div>
+
+    <!-- Loyalty Points Redemption -->
+    <% if (loyaltyProgram) { %>
+    <div class="loyalty-box" id="loyaltyBox" style="display:none">
+      <div class="loyalty-header">
+        <div class="loyalty-title">⭐ Loyalty Points</div>
+        <div class="loyalty-pts" id="custLoyaltyPts">0 pts</div>
+      </div>
+      <div class="loyalty-redeem-row">
+        <input type="number" class="loyalty-redeem-input" name="redeem_points" id="redeemPtsInput"
+          value="0" min="0" placeholder="0" oninput="updateLoyaltyDiscount()" />
+        <span style="font-size:.82rem;color:#fdcb6e;white-space:nowrap">pts to redeem</span>
+      </div>
+      <div class="loyalty-value" id="loyaltyDiscountVal">Redemption value: <%= tenant.currency||'$' %>0.00</div>
+    </div>
+    <% } else { %>
+    <input type="hidden" name="redeem_points" value="0" />
+    <% } %>
 
     <!-- Tip -->
     <div class="tip-section">
@@ -161,6 +194,7 @@
     <input type="hidden" name="method" id="methodInput" value="cash" />
     <input type="hidden" name="received_currency" id="currencyInput" value="USD" />
     <input type="hidden" name="exchange_rate" value="<%= exchangeRate %>" />
+    <input type="hidden" name="service_fee_pct" value="<%= serviceFeePct %>" />
 
     <!-- Amount Paid -->
     <div id="cashSection">
@@ -176,22 +210,22 @@
           <div class="iqd-label">Total in IQD</div>
           <div class="rate-badge">Rate: 1 <%= tenant.currency || '$' %> = <%= exchangeRate.toFixed(0) %> IQD</div>
         </div>
-        <div class="iqd-val" id="totalIQD"><%= (total * exchangeRate).toFixed(0) %> IQD</div>
+        <div class="iqd-val" id="totalIQD"><%= (grandTotal * exchangeRate).toFixed(0) %> IQD</div>
       </div>
       <% } %>
 
       <label id="amountLabel">Amount Received (<%= tenant.currency || '$' %>)</label>
       <div class="quick-amounts" id="quickAmounts">
-        <% [total, Math.ceil(total/5)*5, Math.ceil(total/10)*10, Math.ceil(total/50)*50].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
+        <% [grandTotal, Math.ceil(grandTotal/5)*5, Math.ceil(grandTotal/10)*10, Math.ceil(grandTotal/50)*50].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
         <button type="button" class="quick-btn usd-btn" onclick="setAmountUSD(<%= amt.toFixed(2) %>)"><%= tenant.currency || '$' %><%= amt.toFixed(2) %></button>
         <% }) %>
         <% const EXRATE = exchangeRate; %>
-        <% if (exchangeRate > 1) { [total * exchangeRate, Math.ceil(total * exchangeRate / 1000)*1000, Math.ceil(total * exchangeRate / 5000)*5000].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
+        <% if (exchangeRate > 1) { [grandTotal * exchangeRate, Math.ceil(grandTotal * exchangeRate / 1000)*1000, Math.ceil(grandTotal * exchangeRate / 5000)*5000].filter((v,i,a)=>a.indexOf(v)===i).forEach(amt => { %>
         <button type="button" class="quick-btn iqd-btn" style="display:none;border-color:rgba(243,156,18,.3);color:#f39c12" onclick="setAmountIQD(<%= amt.toFixed(0) %>)"><%= amt.toFixed(0) %> IQD</button>
         <% }) } %>
       </div>
       <input type="number" class="amount-input" name="amount_paid" id="amountInput"
-        value="<%= total.toFixed(2) %>" min="0" step="0.01"
+        value="<%= grandTotal.toFixed(2) %>" min="0" step="0.01"
         oninput="calcChange()" />
 
       <div class="change-box">
@@ -211,12 +245,15 @@
 </div>
 
 <script>
-  const TOTAL    = <%= total.toFixed(2) %>;
-  const CUR      = '<%= tenant.currency || "$" %>';
-  const EXRATE   = <%= exchangeRate %>;
+  const TOTAL       = <%= grandTotal.toFixed(2) %>;
+  const CUR         = '<%= tenant.currency || "$" %>';
+  const EXRATE      = <%= exchangeRate %>;
+  const REDEEM_RATE = <%= loyaltyProgram ? parseFloat(loyaltyProgram.redeem_rate) : 0 %>;
+  const MIN_REDEEM  = <%= loyaltyProgram ? loyaltyProgram.min_redeem_pts : 0 %>;
   let   curMode  = 'USD';   // 'USD' | 'IQD'
   let   _tip     = 0;
   let   _tipMode = 0;   // 0 = no tip, -1 = custom, else pct
+  let   _redeemPts = 0;
 
   function setTipPct(pct) {
     _tipMode = pct;
@@ -347,7 +384,7 @@
     document.getElementById('custSearch').focus();
   }
 
-  function selectCustomer(id, name, phone) {
+  function selectCustomer(id, name, phone, loyaltyPts) {
     document.getElementById('customerIdInput').value = id;
     document.getElementById('selectedName').textContent = name;
     const sel = document.getElementById('selectedCustomer');
@@ -356,6 +393,32 @@
     document.getElementById('custPickerWrap').style.display = 'none';
     document.getElementById('custSearch').value = '';
     filterCustomers();
+    // Loyalty
+    const lbox = document.getElementById('loyaltyBox');
+    const lpts = document.getElementById('custLoyaltyPts');
+    const rinp = document.getElementById('redeemPtsInput');
+    if (lbox) {
+      if (id && loyaltyPts >= MIN_REDEEM) {
+        lbox.style.display = '';
+        if (lpts) lpts.textContent = loyaltyPts.toLocaleString() + ' pts';
+        if (rinp) { rinp.max = loyaltyPts; rinp.value = 0; }
+        _redeemPts = 0;
+        updateLoyaltyDiscount();
+      } else {
+        lbox.style.display = 'none';
+        if (rinp) rinp.value = 0;
+        _redeemPts = 0;
+      }
+    }
+  }
+
+  function updateLoyaltyDiscount() {
+    const rinp = document.getElementById('redeemPtsInput');
+    if (!rinp) return;
+    _redeemPts = Math.max(0, parseInt(rinp.value) || 0);
+    const discVal = _redeemPts * REDEEM_RATE;
+    const el = document.getElementById('loyaltyDiscountVal');
+    if (el) el.textContent = 'Redemption value: ' + CUR + discVal.toFixed(2) + ' (applied as discount at save)';
   }
 
   function filterCustomers() {

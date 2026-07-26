@@ -515,6 +515,74 @@ const pool = new Pool({
     `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS is_out_of_stock BOOLEAN DEFAULT false`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS receipt_seq     INTEGER DEFAULT 0`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS receipt_prefix  VARCHAR(10) DEFAULT ''`,
+    // ── Advanced POS feature flags ─────────────────────────────────────────────
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_modifiers       BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_happy_hour      BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_kitchen_routing BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_no_sale         BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS feat_prep_time       BOOLEAN DEFAULT false`,
+    // Kitchen routing per category
+    `ALTER TABLE categories ADD COLUMN IF NOT EXISTS kitchen_station   VARCHAR(40) DEFAULT 'main'`,
+    // Manager PIN
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_pin            VARCHAR(6)`,
+    // Prep time tracking
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS kitchen_done_at   TIMESTAMP`,
+    // Modifier groups
+    `CREATE TABLE IF NOT EXISTS modifier_groups (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name        VARCHAR(80) NOT NULL,
+      min_select  INTEGER DEFAULT 0,
+      max_select  INTEGER DEFAULT 1,
+      is_required BOOLEAN DEFAULT false,
+      created_at  TIMESTAMP DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS modifier_options (
+      id          SERIAL PRIMARY KEY,
+      group_id    INTEGER REFERENCES modifier_groups(id) ON DELETE CASCADE,
+      name        VARCHAR(80) NOT NULL,
+      price_adj   NUMERIC(10,2) DEFAULT 0,
+      sort_order  INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS menu_item_modifier_groups (
+      menu_item_id INTEGER REFERENCES menu_items(id) ON DELETE CASCADE,
+      group_id     INTEGER REFERENCES modifier_groups(id) ON DELETE CASCADE,
+      sort_order   INTEGER DEFAULT 0,
+      PRIMARY KEY (menu_item_id, group_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS pos_order_item_modifiers (
+      id            SERIAL PRIMARY KEY,
+      order_item_id INTEGER REFERENCES pos_order_items(id) ON DELETE CASCADE,
+      option_id     INTEGER REFERENCES modifier_options(id) ON DELETE SET NULL,
+      name          VARCHAR(80) NOT NULL,
+      price_adj     NUMERIC(10,2) DEFAULT 0
+    )`,
+    // Happy hours
+    `CREATE TABLE IF NOT EXISTS happy_hours (
+      id             SERIAL PRIMARY KEY,
+      tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name           VARCHAR(80) NOT NULL,
+      discount_type  VARCHAR(10) DEFAULT 'percent',
+      discount_value NUMERIC(10,2) DEFAULT 10,
+      days_of_week   INTEGER[] DEFAULT '{1,2,3,4,5,6,7}',
+      start_time     TIME NOT NULL,
+      end_time       TIME NOT NULL,
+      is_active      BOOLEAN DEFAULT true,
+      created_at     TIMESTAMP DEFAULT NOW()
+    )`,
+    // Service fee
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_service_fee_enabled BOOLEAN DEFAULT false`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_service_fee_pct     NUMERIC(5,2) DEFAULT 0`,
+    `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS service_fee          NUMERIC(10,2) DEFAULT 0`,
+    // No-sale cash drawer log
+    `CREATE TABLE IF NOT EXISTS pos_no_sale_log (
+      id         SERIAL PRIMARY KEY,
+      tenant_id  INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      session_id INTEGER REFERENCES pos_sessions(id) ON DELETE CASCADE,
+      user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      reason     TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

@@ -106,8 +106,11 @@
 <div class="tabs">
   <div class="tab active" onclick="switchTab('tables', this)">🪑 Tables</div>
   <div class="tab" onclick="switchTab('permissions', this)">🔐 Permissions</div>
+  <div class="tab" onclick="switchTab('fees', this)">💰 Fees</div>
   <div class="tab" onclick="switchTab('printers', this)">🖨️ Printers</div>
   <div class="tab" onclick="switchTab('bill', this)">🧾 Bill</div>
+  <% if (tenant.feat_modifiers) { %><a href="/pos/modifiers" class="tab" style="text-decoration:none;color:inherit">⚙️ Modifiers</a><% } %>
+  <% if (tenant.feat_happy_hour) { %><a href="/pos/happy-hours" class="tab" style="text-decoration:none;color:inherit">🎉 Happy Hours</a><% } %>
 </div>
 
 <div class="main">
@@ -256,6 +259,41 @@
         </div>
         <div class="save-row">
           <button type="submit" class="btn btn-primary">Save Display</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- FEES TAB -->
+  <div class="tab-panel" id="tab-fees">
+    <div class="card">
+      <h2>💰 Service Fee</h2>
+      <p class="card-desc">Automatically add a service charge on every order at checkout. When enabled a <strong>Service Fee</strong> button appears on the cashier screen showing the calculated amount.</p>
+      <form method="POST" action="/pos/settings/service-fee">
+        <div class="perm-row">
+          <div class="perm-info">
+            <div class="perm-label">Enable Service Fee</div>
+            <div class="perm-desc">Adds a percentage on top of the order total, shown at payment</div>
+          </div>
+          <label class="toggle-wrap">
+            <input type="checkbox" name="pos_service_fee_enabled" value="1" id="sfToggle"
+              <%= tenant.pos_service_fee_enabled ? 'checked' : '' %> onchange="toggleSFInput(this)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div id="sfPctRow" style="margin-top:18px;<%= tenant.pos_service_fee_enabled ? '' : 'display:none' %>">
+          <label>Service Fee Percentage</label>
+          <div style="display:flex;align-items:center;gap:10px;max-width:240px;margin-top:6px">
+            <input type="number" name="pos_service_fee_pct" id="sfPctInput"
+              value="<%= parseFloat(tenant.pos_service_fee_pct) || 0 %>"
+              min="0" max="100" step="0.01" placeholder="e.g. 10" style="width:130px" />
+            <span style="color:#888;font-size:1rem;font-weight:700">%</span>
+          </div>
+          <p style="font-size:.72rem;color:#444;margin-top:6px">Enter a number between 0 and 100. Example: 10 = 10% service charge.</p>
+        </div>
+        <div class="save-row" style="margin-top:20px">
+          <button type="submit" class="btn btn-primary">Save Service Fee</button>
         </div>
       </form>
     </div>
@@ -426,6 +464,35 @@
       <% } %>
     </div>
 
+    <!-- Kitchen Station Assignment -->
+    <% if (tenant.feat_kitchen_routing) { %>
+    <div class="card">
+      <h2>🍳 Kitchen Stations</h2>
+      <p class="card-desc">Assign each category to a kitchen station. The kitchen display can then filter by station (e.g. /pos/kitchen?station=grill).</p>
+      <% if (categories.length === 0) { %>
+      <p style="color:#444;font-size:.82rem;padding:12px 0">No menu categories found.</p>
+      <% } else { %>
+      <form method="POST" action="/pos/settings/kitchen-stations">
+        <div style="display:flex;flex-direction:column;gap:0">
+          <% categories.forEach((cat, i) => { %>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.05)<%= i===categories.length-1?';border-bottom:none':'' %>">
+            <div style="font-size:.88rem;font-weight:600;color:#ccc;display:flex;align-items:center;gap:8px">
+              <% if (cat.image_url) { %><img src="<%= cat.image_url %>" style="width:26px;height:26px;border-radius:6px;object-fit:cover" /><% } else { %><span style="width:26px;height:26px;background:#2a2a3e;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:.8rem">🍽️</span><% } %>
+              <%= cat.name %>
+            </div>
+            <input type="text" name="station[<%= cat.id %>]" value="<%= cat.kitchen_station || 'main' %>"
+              placeholder="main" style="width:160px;padding:7px 10px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-size:.82rem;outline:none;font-family:inherit" />
+          </div>
+          <% }) %>
+        </div>
+        <div class="save-row" style="margin-top:14px">
+          <button type="submit" class="btn btn-primary">Save Stations</button>
+        </div>
+      </form>
+      <% } %>
+    </div>
+    <% } %>
+
     <!-- Info box -->
     <div style="background:rgba(52,152,219,.06);border:1px solid rgba(52,152,219,.2);border-radius:12px;padding:16px 20px;font-size:.78rem;color:#666;line-height:1.7">
       <strong style="color:#3498db">ℹ️ How network printing works</strong><br>
@@ -533,6 +600,9 @@ function switchTab(name, el) {
 }
 function toggleEdit(id) {
   document.getElementById(id).classList.toggle('open');
+}
+function toggleSFInput(cb) {
+  document.getElementById('sfPctRow').style.display = cb.checked ? '' : 'none';
 }
 
 async function testPrinter(id) {

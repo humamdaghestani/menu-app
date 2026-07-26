@@ -63,6 +63,15 @@
   <button onclick="history.back()" class="btn btn-ghost">← Back</button>
 </div>
 
+<% if (tenant.feat_kitchen_routing && stations && stations.length > 1) { %>
+<div style="background:#111;border-bottom:1px solid #222;padding:0 20px;display:flex;gap:4px;overflow-x:auto">
+  <a href="/pos/kitchen" class="<%= !station ? 'station-tab active' : 'station-tab' %>" style="padding:10px 16px;text-decoration:none;font-size:.82rem;font-weight:700;color:<%=!station?'#fff':'#555'%>;border-bottom:2px solid <%=!station?'#7c5cbf':'transparent'%>;white-space:nowrap">All Stations</a>
+  <% stations.forEach(s => { %>
+  <a href="/pos/kitchen?station=<%= encodeURIComponent(s) %>" style="padding:10px 16px;text-decoration:none;font-size:.82rem;font-weight:700;color:<%=station===s?'#fff':'#555'%>;border-bottom:2px solid <%=station===s?'#7c5cbf':'transparent'%>;white-space:nowrap">🍳 <%= s %></a>
+  <% }) %>
+</div>
+<% } %>
+
 <div class="main">
   <div class="orders-grid" id="ordersGrid">
     <% if (orders.length === 0) { %>
@@ -105,6 +114,11 @@
       <% if (o.note) { %>
       <div class="ticket-note">📋 <%= o.note %></div>
       <% } %>
+      <% if (o.kitchen_done_at) { %>
+      <div style="padding:8px 16px;font-size:.72rem;color:#00b894;background:rgba(0,184,148,.05);border-top:1px solid #2a2a3e">
+        ✓ Kitchen done <%= Math.floor((new Date(o.kitchen_done_at) - new Date(o.kitchen_sent_at || o.created_at)) / 60000) %>m prep time
+      </div>
+      <% } %>
       <div class="ticket-footer">
         <button class="btn-done" onclick="markDone(<%= o.id %>)">✓ Done — Close Order</button>
         <a href="/pos/order/<%= o.id %>" class="btn-view">View</a>
@@ -116,6 +130,10 @@
 
 <script>
   async function markDone(orderId) {
+    // Log kitchen done time first (for prep time tracking)
+    try {
+      await fetch('/pos/api/order/' + orderId + '/kitchen-done', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    } catch {}
     if (!confirm('Mark this order as paid/done?')) return;
     window.location.href = '/pos/order/' + orderId + '/pay';
   }

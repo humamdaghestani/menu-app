@@ -138,8 +138,9 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
         GROUP BY poi.name ORDER BY revenue DESC LIMIT 8`, [session.id]),
       db.query(`
         SELECT
-          COALESCE(SUM(tip_amount),0)   AS total_tips,
-          COALESCE(SUM(cover_count),0)  AS total_covers,
+          COALESCE(SUM(tip_amount),0)    AS total_tips,
+          COALESCE(SUM(cover_count),0)   AS total_covers,
+          COALESCE(SUM(service_fee),0)   AS total_service_fees,
           COUNT(*) FILTER (WHERE discount_type != 'none') AS discount_orders,
           COALESCE(SUM(CASE WHEN discount_type='fixed' THEN discount_value
                             WHEN discount_type='percent' THEN total * discount_value / (100 - discount_value)
@@ -167,7 +168,7 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
     const compRes = await db.query(`
       SELECT u.name AS cashier_name, COUNT(*)::int AS comp_count,
         pal.details->>'name' AS item_name, pal.details->>'reason' AS reason
-      FROM pos_action_log pal
+      FROM pos_activity_log pal
       LEFT JOIN users u ON u.id = pal.user_id
       WHERE pal.session_id=$1 AND pal.action='item_comp'
       ORDER BY pal.created_at DESC LIMIT 20`, [session.id]);
@@ -409,6 +410,8 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
       const sesRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
       exchangeRate = parseFloat(sesRes.rows[0]?.exchange_rate) || 1;
     }
+    const sfEnabled = tenant.pos_service_fee_enabled && parseFloat(tenant.pos_service_fee_pct) > 0;
+    const serviceFeePct = sfEnabled ? parseFloat(tenant.pos_service_fee_pct) : 0;
     res.render('pos/order', {
       tenant, order: o,
       orderItems: itemsRes.rows,
@@ -416,7 +419,7 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
       menuItems: menuRes.rows,
       tables: tablesRes.rows,
       subtotal, total, discount,
-      exchangeRate,
+      exchangeRate, serviceFeePct,
       errorParam: req.query.error || null,
       modalParam: req.query.modal || null,
       currentUser: req.user
@@ -529,30 +532,39 @@ router.post('/order/:orderId/discount', requireAuth, requirePOS, async (req, res
 router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
-    const [orderRes, itemsRes, customersRes] = await Promise.all([
+    const [orderRes, itemsRes, customersRes, loyaltyProgRes] = await Promise.all([
       db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]),
       db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]),
-      db.query('SELECT id, name, phone FROM customers WHERE tenant_id=$1 ORDER BY name', [req.user.tenantId]),
+      db.query('SELECT id, name, phone, loyalty_points FROM customers WHERE tenant_id=$1 ORDER BY name', [req.user.tenantId]),
+      db.query("SELECT * FROM loyalty_programs WHERE tenant_id=$1 AND is_active=true LIMIT 1", [req.user.tenantId]),
     ]);
     if (!orderRes.rows[0] || orderRes.rows[0].status !== 'open') return res.redirect('/pos');
     const o = orderRes.rows[0];
     const subtotal = calcSubtotal(itemsRes.rows);
     const total    = calcTotal(itemsRes.rows, o);
     const discount = subtotal - total;
-    // Get exchange rate from open session
     const sessionRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
     const exchangeRate = parseFloat(sessionRes.rows[0]?.exchange_rate) || 1;
-    res.render('pos/payment', { tenant, order: o, orderItems: itemsRes.rows, subtotal, total, discount, customers: customersRes.rows, exchangeRate, currentUser: req.user });
+    const loyaltyProgram = loyaltyProgRes.rows[0] || null;
+    const serviceFeeEnabled = tenant.pos_service_fee_enabled && parseFloat(tenant.pos_service_fee_pct) > 0;
+    const serviceFeePct = serviceFeeEnabled ? parseFloat(tenant.pos_service_fee_pct) : 0;
+    const serviceFee    = serviceFeeEnabled ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0;
+    const grandTotal    = total + serviceFee;
+    res.render('pos/payment', { tenant, order: o, orderItems: itemsRes.rows, subtotal, total, discount, customers: customersRes.rows, exchangeRate, loyaltyProgram, serviceFeePct, serviceFee, grandTotal, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Process payment ───────────────────────────────────────────────────────────
 router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
-  const { method, amount_paid, customer_id, received_currency, exchange_rate, tip_amount } = req.body;
+  const { method, amount_paid, customer_id, received_currency, exchange_rate, tip_amount, redeem_points } = req.body;
   try {
     const orderRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]);
     const items = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1', [req.params.orderId]);
-    const total   = calcTotal(items.rows, orderRes.rows[0]);
+    const baseTotal = calcTotal(items.rows, orderRes.rows[0]);
+    // Service fee
+    const feePct  = parseFloat(req.body.service_fee_pct) || 0;
+    const serviceFee = feePct > 0 ? parseFloat((baseTotal * feePct / 100).toFixed(2)) : 0;
+    const total   = baseTotal + serviceFee;
     const tip     = parseFloat(tip_amount) || 0;
     const paid    = parseFloat(amount_paid) || 0;
     const recvCur = received_currency || 'USD';
@@ -572,16 +584,41 @@ router.post('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => 
     const receiptNo = (seqRes.rows[0]?.receipt_prefix || '') + String(seqRes.rows[0]?.receipt_seq || 1).padStart(4, '0');
     const cid = parseInt(customer_id) || null;
     await db.query(
-      'UPDATE pos_orders SET status=$1, total=$2, tip_amount=$3, receipt_no=$4, paid_at=NOW(), customer_id=$5 WHERE id=$6 AND tenant_id=$7',
-      ['paid', total, tip, receiptNo, cid, req.params.orderId, req.user.tenantId]
+      'UPDATE pos_orders SET status=$1, total=$2, tip_amount=$3, receipt_no=$4, paid_at=NOW(), customer_id=$5, service_fee=$6 WHERE id=$7 AND tenant_id=$8',
+      ['paid', total, tip, receiptNo, cid, serviceFee, req.params.orderId, req.user.tenantId]
     );
     if (cid) {
       await db.query(
         'UPDATE customers SET total_spent=total_spent+$1, visit_count=visit_count+1 WHERE id=$2 AND tenant_id=$3',
         [total + tip, cid, req.user.tenantId]
       );
+      // Loyalty: redeem points if requested
+      const pointsToRedeem = parseInt(redeem_points) || 0;
+      if (pointsToRedeem > 0) {
+        const progRes = await db.query("SELECT * FROM loyalty_programs WHERE tenant_id=$1 AND is_active=true LIMIT 1", [req.user.tenantId]);
+        if (progRes.rows[0]) {
+          await db.query('UPDATE customers SET loyalty_points = GREATEST(0, loyalty_points - $1) WHERE id=$2', [pointsToRedeem, cid]);
+          await db.query(
+            'INSERT INTO loyalty_transactions (tenant_id, customer_id, order_id, type, points, notes) VALUES ($1,$2,$3,$4,$5,$6)',
+            [req.user.tenantId, cid, req.params.orderId, 'redeem', -pointsToRedeem, `Redeemed at POS order #${req.params.orderId}`]
+          );
+        }
+      }
+      // Loyalty: earn points on this order
+      const progRes2 = await db.query("SELECT * FROM loyalty_programs WHERE tenant_id=$1 AND is_active=true LIMIT 1", [req.user.tenantId]);
+      if (progRes2.rows[0]) {
+        const prog = progRes2.rows[0];
+        const earnedPts = Math.floor(total / parseFloat(prog.unit_amount) * parseFloat(prog.points_per_unit));
+        if (earnedPts > 0) {
+          await db.query('UPDATE customers SET loyalty_points = loyalty_points + $1 WHERE id=$2', [earnedPts, cid]);
+          await db.query(
+            'INSERT INTO loyalty_transactions (tenant_id, customer_id, order_id, type, points, notes) VALUES ($1,$2,$3,$4,$5,$6)',
+            [req.user.tenantId, cid, req.params.orderId, 'earn', earnedPts, `Earned on POS order #${req.params.orderId}`]
+          );
+        }
+      }
     }
-    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, tip, change, customer_id: cid, receipt_no: receiptNo });
+    await logAction(req.user.tenantId, orderRes.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_paid', { method: method || 'cash', amount_paid: paid, total, tip, change, customer_id: cid, receipt_no: receiptNo, redeem_points: parseInt(redeem_points) || 0 });
     try {
       const { deductStockForOrder } = require('./inventory');
       const tenantRow = await db.query('SELECT feat_inventory FROM tenants WHERE id=$1', [req.user.tenantId]);
@@ -621,30 +658,71 @@ router.get('/receipt/:orderId', requireAuth, requirePOS, async (req, res) => {
 router.get('/kitchen', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
-    const orders = await db.query(
-      `SELECT po.*, json_agg(poi.* ORDER BY poi.id) AS items
-       FROM pos_orders po
-       JOIN pos_order_items poi ON poi.order_id = po.id
-       WHERE po.tenant_id=$1 AND po.status='open'
-       GROUP BY po.id ORDER BY po.created_at`,
-      [req.user.tenantId]
-    );
-    res.render('pos/kitchen', { tenant, orders: orders.rows, currentUser: req.user });
+    const station = req.query.station || null;
+    // If kitchen routing enabled + station filter, join items with categories
+    let ordersRes;
+    if (tenant.feat_kitchen_routing && station) {
+      ordersRes = await db.query(
+        `SELECT DISTINCT po.*, json_agg(poi.* ORDER BY poi.id) OVER (PARTITION BY po.id) AS items
+         FROM pos_orders po
+         JOIN pos_order_items poi ON poi.order_id = po.id
+         JOIN menu_items mi ON mi.id = poi.menu_item_id
+         JOIN categories cat ON cat.id = mi.category_id
+         WHERE po.tenant_id=$1 AND po.status='open' AND COALESCE(cat.kitchen_station,'main')=$2
+         ORDER BY po.created_at`,
+        [req.user.tenantId, station]
+      );
+    } else {
+      ordersRes = await db.query(
+        `SELECT po.*, json_agg(poi.* ORDER BY poi.id) AS items
+         FROM pos_orders po
+         JOIN pos_order_items poi ON poi.order_id = po.id
+         WHERE po.tenant_id=$1 AND po.status='open'
+         GROUP BY po.id ORDER BY po.created_at`,
+        [req.user.tenantId]
+      );
+    }
+    // Fetch distinct stations if routing enabled
+    let stations = [];
+    if (tenant.feat_kitchen_routing) {
+      const sRes = await db.query(
+        'SELECT DISTINCT COALESCE(kitchen_station,\'main\') AS station FROM categories WHERE tenant_id=$1 ORDER BY station',
+        [req.user.tenantId]
+      );
+      stations = sRes.rows.map(r => r.station);
+    }
+    res.render('pos/kitchen', { tenant, orders: ordersRes.rows, currentUser: req.user, station, stations });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Kitchen API: poll orders ──────────────────────────────────────────────────
 router.get('/api/kitchen', requireAuth, requirePOS, async (req, res) => {
   try {
-    const orders = await db.query(
-      `SELECT po.*, json_agg(poi.* ORDER BY poi.id) AS items
-       FROM pos_orders po
-       JOIN pos_order_items poi ON poi.order_id = po.id
-       WHERE po.tenant_id=$1 AND po.status='open'
-       GROUP BY po.id ORDER BY po.created_at`,
-      [req.user.tenantId]
-    );
-    res.json({ orders: orders.rows });
+    const tenant = await getTenant(req.user.tenantId);
+    const station = req.query.station || null;
+    let ordersRes;
+    if (tenant.feat_kitchen_routing && station) {
+      ordersRes = await db.query(
+        `SELECT DISTINCT ON (po.id) po.*, json_agg(poi.* ORDER BY poi.id) OVER (PARTITION BY po.id) AS items
+         FROM pos_orders po
+         JOIN pos_order_items poi ON poi.order_id = po.id
+         JOIN menu_items mi ON mi.id = poi.menu_item_id
+         JOIN categories cat ON cat.id = mi.category_id
+         WHERE po.tenant_id=$1 AND po.status='open' AND COALESCE(cat.kitchen_station,'main')=$2
+         ORDER BY po.id, po.created_at`,
+        [req.user.tenantId, station]
+      );
+    } else {
+      ordersRes = await db.query(
+        `SELECT po.*, json_agg(poi.* ORDER BY poi.id) AS items
+         FROM pos_orders po
+         JOIN pos_order_items poi ON poi.order_id = po.id
+         WHERE po.tenant_id=$1 AND po.status='open'
+         GROUP BY po.id ORDER BY po.created_at`,
+        [req.user.tenantId]
+      );
+    }
+    res.json({ orders: ordersRes.rows });
   } catch (err) { res.json({ orders: [] }); }
 });
 
@@ -723,6 +801,18 @@ router.post('/settings/display', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/pos/settings'); }
 });
 
+router.post('/settings/service-fee', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const enabled = req.body.pos_service_fee_enabled === '1';
+    const pct     = Math.max(0, Math.min(100, parseFloat(req.body.pos_service_fee_pct) || 0));
+    await db.query(
+      'UPDATE tenants SET pos_service_fee_enabled=$1, pos_service_fee_pct=$2 WHERE id=$3',
+      [enabled, pct, req.user.tenantId]
+    );
+    res.redirect('/pos/settings?tab=fees');
+  } catch (err) { console.error(err); res.redirect('/pos/settings?tab=fees'); }
+});
+
 router.post('/settings/bill', requireAuth, requirePOS, async (req, res) => {
   try {
     const { bill_language, bill_show_iqd, bill_font_size, bill_paper_width, bill_custom_header, bill_custom_footer } = req.body;
@@ -755,6 +845,19 @@ router.post('/settings/printers/:id/edit', requireAuth, requirePOS, async (req, 
       [name, role || 'receipt', connection_type || 'network', ip_address || null, parseInt(port) || 9100, paper_width || '80mm', is_active === '1', req.params.id, req.user.tenantId]
     );
     res.redirect('/pos/settings?tab=printers');
+  } catch (err) { console.error(err); res.redirect('/pos/settings?tab=printers'); }
+});
+
+router.post('/settings/kitchen-stations', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const assignments = req.body.station || {};
+    for (const [catId, station] of Object.entries(assignments)) {
+      await db.query(
+        'UPDATE categories SET kitchen_station=$1 WHERE id=$2 AND tenant_id=$3',
+        [station?.trim() || 'main', parseInt(catId), req.user.tenantId]
+      );
+    }
+    res.redirect('/pos/settings?tab=printers&success=stations');
   } catch (err) { console.error(err); res.redirect('/pos/settings?tab=printers'); }
 });
 
@@ -1091,6 +1194,47 @@ router.post('/api/order/:id/item/:itemId/course', requireAuth, requirePOS, async
     res.json({ ok: true, ...state });
   } catch (err) { res.json({ ok: false }); }
 });
+
+// ── POS Pro: no-sale log (open cash drawer) ───────────────────────────────────
+router.post('/api/no-sale', requireAuth, requirePOS, requireSession, async (req, res) => {
+  try {
+    const reason = (req.body.reason || '').trim() || 'No reason given';
+    await db.query(
+      'INSERT INTO pos_no_sale_log (tenant_id, session_id, user_id, reason) VALUES ($1,$2,$3,$4)',
+      [req.user.tenantId, req.posSession.id, req.user.userId, reason]
+    );
+    await logAction(req.user.tenantId, req.posSession.id, null, req.user.userId, 'no_sale', { reason });
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// ── POS Pro: mark kitchen done (prep time) ────────────────────────────────────
+router.post('/api/order/:id/kitchen-done', requireAuth, requirePOS, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE pos_orders SET kitchen_done_at=NOW() WHERE id=$1 AND tenant_id=$2',
+      [req.params.id, req.user.tenantId]
+    );
+    const sRow = await db.query('SELECT session_id FROM pos_orders WHERE id=$1', [req.params.id]);
+    await logAction(req.user.tenantId, sRow.rows[0]?.session_id, req.params.id, req.user.userId, 'kitchen_done', {});
+    res.json({ ok: true });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// ── POS: loyalty lookup at payment ────────────────────────────────────────────
+router.get('/api/loyalty/customer/:customerId', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const [custRes, progRes] = await Promise.all([
+      db.query('SELECT id, name, loyalty_points FROM customers WHERE id=$1 AND tenant_id=$2', [req.params.customerId, req.user.tenantId]),
+      db.query("SELECT * FROM loyalty_programs WHERE tenant_id=$1 AND is_active=true LIMIT 1", [req.user.tenantId]),
+    ]);
+    if (!custRes.rows[0]) return res.json({ ok: false });
+    res.json({ ok: true, customer: custRes.rows[0], program: progRes.rows[0] || null });
+  } catch (err) { res.json({ ok: false }); }
+});
+
+// ── POS: process payment with loyalty points ──────────────────────────────────
+// (extended version – loyalty redeem handled inline in existing pay route via redeem_points field)
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 router.get('/customers', requireAuth, requirePOS, async (req, res) => {

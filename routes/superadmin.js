@@ -135,7 +135,7 @@ router.post('/tenants/:id/style', requireSuperAdmin, async (req, res) => {
 // Update feature flags
 router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
   try {
-    const features = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart','feat_pos','feat_captain','feat_inventory','feat_accounting','feat_hr','feat_reservations','feat_loyalty','feat_delivery','feat_assets','feat_reports'];
+    const features = ['feat_feedback','feat_orders','feat_import','feat_custom_css','feat_multilang','feat_valet','feat_splash_custom','feat_cart','feat_pos','feat_captain','feat_inventory','feat_accounting','feat_hr','feat_reservations','feat_loyalty','feat_delivery','feat_assets','feat_reports','feat_modifiers','feat_happy_hour','feat_kitchen_routing','feat_no_sale','feat_prep_time'];
     const values = features.map(f => req.body[f] === '1');
     console.log(`[features] tenant=${req.params.id} body=${JSON.stringify(req.body)} values=${JSON.stringify(values)}`);
     const result = await db.query(
@@ -144,8 +144,9 @@ router.post('/tenants/:id/features', requireSuperAdmin, async (req, res) => {
         feat_custom_css=$4, feat_multilang=$5, feat_valet=$6, feat_splash_custom=$7, feat_cart=$8, feat_pos=$9,
         feat_captain=$10, feat_inventory=$11, feat_accounting=$12,
         feat_hr=$13, feat_reservations=$14, feat_loyalty=$15,
-        feat_delivery=$16, feat_assets=$17, feat_reports=$18
-       WHERE id=$19`,
+        feat_delivery=$16, feat_assets=$17, feat_reports=$18,
+        feat_modifiers=$19, feat_happy_hour=$20, feat_kitchen_routing=$21, feat_no_sale=$22, feat_prep_time=$23
+       WHERE id=$24`,
       [...values, req.params.id]
     );
     console.log(`[features] rowCount=${result.rowCount}`);

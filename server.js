@@ -18,6 +18,9 @@ const reservationsRouter = require('./routes/reservations');
 const assetsRouter      = require('./routes/assets');
 const loyaltyRouter     = require('./routes/loyalty');
 const deliveryRouter    = require('./routes/delivery');
+const modifiersRouter   = require('./routes/modifiers');
+const happyHoursRouter  = require('./routes/happy-hours');
+const posReportsRouter  = require('./routes/pos-reports');
 const db = require('./db');
 
 const app = express();
@@ -79,6 +82,9 @@ app.get('/manifest.json', async (req, res) => {
 
 app.use('/superadmin', superAdminRouter);
 app.use('/admin', adminRouter);
+app.use('/pos/modifiers',   modifiersRouter);
+app.use('/pos/happy-hours', happyHoursRouter);
+app.use('/pos/reports',     posReportsRouter);
 app.use('/pos',     posRouter);
 app.use('/captain', captainRouter);
 app.use('/inventory',   inventoryRouter);

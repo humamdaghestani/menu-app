@@ -82,6 +82,7 @@
   <div class="topbar-right">
     <a href="/pos/kitchen" class="btn btn-ghost">🍳 Kitchen</a>
     <a href="/pos/orders" class="btn btn-ghost">📋 Orders</a>
+    <a href="/pos/reports" class="btn btn-ghost">📊 Reports</a>
     <a href="/pos/settings" class="btn btn-ghost">⚙️ Tables</a>
     <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
@@ -106,6 +107,9 @@
     <span class="session-stat-val green"><%= tenant.currency || '$' %><%= parseFloat(sessionStats.sales).toFixed(2) %></span>
   </div>
   <div class="session-actions">
+    <% if (tenant.feat_no_sale) { %>
+    <button class="btn btn-ghost" onclick="noSale()" style="color:#fdcb6e" title="Open cash drawer">🔔 No Sale</button>
+    <% } %>
     <a href="/pos/session/close" class="btn btn-danger">🔒 Close Session</a>
   </div>
 </div>
@@ -185,6 +189,26 @@
       form.action = '/pos/tables/' + tableId + '/open';
       form.submit();
     }
+  }
+
+  async function noSale() {
+    const reason = prompt('Reason for opening cash drawer:');
+    if (reason === null) return;
+    try {
+      const r = await fetch('/pos/api/no-sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason || 'No reason given' })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        const t = document.createElement('div');
+        t.style = 'position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fdcb6e;padding:12px 20px;border-radius:10px;font-weight:700;z-index:999;border-left:4px solid #fdcb6e';
+        t.textContent = '🔔 Cash drawer opened — logged';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+      }
+    } catch {}
   }
 
   // Auto-refresh every 15 seconds

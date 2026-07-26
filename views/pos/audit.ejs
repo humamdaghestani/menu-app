@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS Audit Log — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    .main { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .sub { font-size: .82rem; color: #555; margin-bottom: 24px; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); padding: 22px; margin-bottom: 16px; }
+    .btn { padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: #666; margin-bottom: 5px; }
+    input, select { padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    input:focus, select:focus { border-color: #7c5cbf; }
+    .filter-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { text-align: left; color: #444; font-size: .68rem; text-transform: uppercase; padding: 6px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,.03); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    .action-badge { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .action-item_comp     { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .action-price_override { background: rgba(241,196,15,.12); color: #f1c40f; }
+    .action-discount_apply { background: rgba(116,185,255,.12); color: #74b9ff; }
+    .action-order_void    { background: rgba(231,76,60,.2); color: #ff6b7a; }
+    .action-no_sale       { background: rgba(253,203,110,.12); color: #fdcb6e; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <div class="section-header">
+    <div>
+      <h1>🔍 Void & Discount Audit Log</h1>
+      <div class="sub">All voids, comps, discounts, price overrides, and no-sale events</div>
+    </div>
+    <a href="/pos/reports" class="btn btn-ghost">← Reports</a>
+  </div>
+
+  <div class="card">
+    <form method="GET" action="/pos/reports/audit">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>From Date</label>
+          <input type="date" name="from" value="<%= fromDate %>" />
+        </div>
+        <div class="filter-group">
+          <label>To Date</label>
+          <input type="date" name="to" value="<%= toDate %>" />
+        </div>
+        <div class="filter-group">
+          <label>Cashier</label>
+          <select name="user_id">
+            <option value="">All Cashiers</option>
+            <% users.forEach(u => { %>
+            <option value="<%= u.id %>" <%= filterUser == u.id ? 'selected' : '' %>><%= u.name || u.email %></option>
+            <% }) %>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="flex-shrink:0">Filter</button>
+      </div>
+    </form>
+
+    <% if (logs.length === 0) { %>
+    <div style="text-align:center;color:#555;padding:40px">No audit events in this date range.</div>
+    <% } else { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Action</th>
+          <th>Cashier</th>
+          <th>Table</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% logs.forEach(log => { %>
+      <tr>
+        <td style="color:#666;font-size:.75rem;white-space:nowrap"><%= new Date(log.created_at).toLocaleString() %></td>
+        <td><span class="action-badge action-<%= log.action %>"><%= {item_comp:'Comp',price_override:'Price Override',discount_apply:'Discount',order_void:'Void Order',no_sale:'No Sale'}[log.action] || log.action %></span></td>
+        <td style="color:#ccc"><%= log.user_name || 'Unknown' %></td>
+        <td style="color:#888"><%= log.table_name || (log.order_id ? '#' + log.order_id : '—') %></td>
+        <td style="color:#888;font-size:.78rem">
+          <% const d = log.details || {}; %>
+          <% if (log.action === 'item_comp') { %><%= d.name %> · <%= d.reason || '—' %><% } %>
+          <% if (log.action === 'price_override') { %><%= d.name %> · <%= tenant.currency||'$' %><%= d.from %> → <%= tenant.currency||'$' %><%= d.to %><% } %>
+          <% if (log.action === 'discount_apply') { %><%= d.type %> · <%= d.value %><%= d.type === 'percent' ? '%' : '' %><% } %>
+          <% if (log.action === 'order_void') { %>Table: <%= d.table_name || '—' %><% } %>
+          <% if (log.action === 'no_sale') { %><%= d.reason || '—' %><% } %>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <div style="margin-top:12px;font-size:.78rem;color:#555"><%= logs.length %> events found</div>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>

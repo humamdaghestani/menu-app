@@ -80,6 +80,12 @@
     <% }) %>
   </div>
 
+  <% if (parseFloat(order.service_fee) > 0) { %>
+  <div style="display:flex;justify-content:space-between;font-size:.78rem;color:#888;padding:4px 0">
+    <span>Service Fee</span>
+    <span><%= tenant.currency || '$' %><%= parseFloat(order.service_fee).toFixed(2) %></span>
+  </div>
+  <% } %>
   <div class="receipt-total">
     <span>TOTAL</span>
     <span><%= tenant.currency || '$' %><%= parseFloat(order.total).toFixed(2) %></span>

@@ -90,6 +90,9 @@
     <div class="stat-row"><span class="stat-label">Tips Collected</span><span class="stat-val green"><%= tenant.currency || '$' %><%= summary.tips.toFixed(2) %></span></div>
     <% } %>
     <div class="stat-row"><span class="stat-label">Total Covers</span><span class="stat-val"><%= summary.covers %></span></div>
+    <% if (parseFloat(zStats.total_service_fees) > 0) { %>
+    <div class="stat-row"><span class="stat-label">Service Fees Collected</span><span class="stat-val" style="color:#e17055"><%= tenant.currency || '$' %><%= parseFloat(zStats.total_service_fees).toFixed(2) %></span></div>
+    <% } %>
     <% if (parseFloat(zStats.total_discounts) > 0) { %>
     <div class="stat-row"><span class="stat-label">Discounts Given (<%= zStats.discount_orders %> orders)</span><span class="stat-val" style="color:#e17055">−<%= tenant.currency || '$' %><%= parseFloat(zStats.total_discounts).toFixed(2) %></span></div>
     <% } %>

@@ -159,10 +159,9 @@
             <% if (u.role === 'admin') { %>
               <span style="color:#aaa;font-size:.82rem">Full access</span>
             <% } else { %>
-              <% ['items','edit_prices','import','orders','feedback'].forEach(p => { %>
-                <span class="perm-tag <%= perms.includes(p) ? 'active' : '' %>">
-                  <%= {items:'📊 Dashboard', edit_prices:'💰 Prices', import:'📥 Import', orders:'📋 Orders', feedback:'💬 Feedback'}[p] %>
-                </span>
+              <% const allPerms = {items:'📊 Dashboard', edit_prices:'💰 Prices', import:'📥 Import', orders:'📋 Orders', feedback:'💬 Feedback', access_pos:'🖥️ POS', pos_void:'🗑️ Void', pos_discount:'🏷️ Discount', pos_reports:'📊 Reports', pos_no_sale:'🔔 No-Sale'}; %>
+              <% Object.entries(allPerms).forEach(([p, label]) => { if (p.startsWith('pos_') && !tenant.feat_pos) return; %>
+                <span class="perm-tag <%= perms.includes(p) ? 'active' : '' %>"><%= label %></span>
               <% }) %>
             <% } %>
           </td>
@@ -238,6 +237,43 @@
               <span>View customer feedback</span>
             </div>
           </label>
+          <% if (tenant.feat_pos) { %>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="access_pos" />
+            <div class="perm-check-text">
+              <strong>🖥️ POS Access</strong>
+              <span>Use the Point of Sale system</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_void" />
+            <div class="perm-check-text">
+              <strong>🗑️ POS Void</strong>
+              <span>Void orders without a manager passkey</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_discount" />
+            <div class="perm-check-text">
+              <strong>🏷️ POS Discount</strong>
+              <span>Apply discounts without a passkey</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_reports" />
+            <div class="perm-check-text">
+              <strong>📊 POS Reports</strong>
+              <span>View historical Z-reports and audit logs</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_no_sale" />
+            <div class="perm-check-text">
+              <strong>🔔 No-Sale</strong>
+              <span>Open cash drawer without a sale</span>
+            </div>
+          </label>
+          <% } %>
         </div>
       </div>
       <div class="modal-footer">
@@ -295,6 +331,43 @@
               <span>View customer feedback</span>
             </div>
           </label>
+          <% if (tenant.feat_pos) { %>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="access_pos" id="ep_access_pos" />
+            <div class="perm-check-text">
+              <strong>🖥️ POS Access</strong>
+              <span>Use the Point of Sale system</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_void" id="ep_pos_void" />
+            <div class="perm-check-text">
+              <strong>🗑️ POS Void</strong>
+              <span>Void orders without a manager passkey</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_discount" id="ep_pos_discount" />
+            <div class="perm-check-text">
+              <strong>🏷️ POS Discount</strong>
+              <span>Apply discounts without a passkey</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_reports" id="ep_pos_reports" />
+            <div class="perm-check-text">
+              <strong>📊 POS Reports</strong>
+              <span>View historical Z-reports and audit logs</span>
+            </div>
+          </label>
+          <label class="perm-check">
+            <input type="checkbox" name="permissions" value="pos_no_sale" id="ep_pos_no_sale" />
+            <div class="perm-check-text">
+              <strong>🔔 No-Sale</strong>
+              <span>Open cash drawer without a sale</span>
+            </div>
+          </label>
+          <% } %>
         </div>
       </div>
       <div class="modal-footer">
@@ -333,8 +406,9 @@
     document.getElementById('editEmail').value = user.email;
     document.getElementById('editForm').action = '/admin/users/' + user.id + '/edit';
     const perms = JSON.parse(user.permissions || '[]');
-    ['items','edit_prices','import','orders','feedback'].forEach(p => {
-      document.getElementById('ep_' + p).checked = perms.includes(p);
+    ['items','edit_prices','import','orders','feedback','access_pos','pos_void','pos_discount','pos_reports','pos_no_sale'].forEach(p => {
+      const el = document.getElementById('ep_' + p);
+      if (el) el.checked = perms.includes(p);
     });
     document.getElementById('editOverlay').classList.add('open');
   }

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS Reports — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    .main { max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .sub { font-size: .82rem; color: #555; margin-bottom: 24px; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); padding: 22px; margin-bottom: 16px; }
+    .card h2 { font-size: .88rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 16px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .85rem; }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: #666; }
+    .stat-val { color: #fff; font-weight: 600; }
+    .stat-val.green { color: #00b894; }
+    .stat-val.purple { color: #7c5cbf; }
+    .btn { padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .z-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    .z-table th { text-align: left; color: #444; font-size: .68rem; text-transform: uppercase; padding: 5px 8px; border-bottom: 1px solid #2a2a3e; }
+    .z-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .z-table tr:last-child td { border-bottom: none; }
+    .z-bar { height: 6px; background: rgba(124,92,191,.25); border-radius: 3px; margin-top: 4px; }
+    .z-bar-fill { height: 100%; background: #7c5cbf; border-radius: 3px; }
+    .session-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; background: #13132a; border-radius: 10px; margin-bottom: 8px; border: 1px solid #2a2a3e; text-decoration: none; transition: border-color .2s; }
+    .session-row:hover { border-color: #7c5cbf; }
+    .session-id { font-size: .88rem; font-weight: 700; color: #fff; }
+    .session-meta { font-size: .72rem; color: #666; margin-top: 2px; }
+    .session-sales { font-size: 1rem; font-weight: 700; color: #00b894; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .badge-open { background: rgba(0,184,148,.15); color: #00b894; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; }
+    .badge-closed { background: rgba(255,255,255,.07); color: #666; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; }
+    .comp-pill { font-size: .68rem; background: rgba(231,76,60,.12); color: #e74c3c; padding: 2px 8px; border-radius: 10px; }
+    .hourly-bar { display: flex; align-items: flex-end; gap: 4px; height: 80px; margin-top: 8px; }
+    .h-col { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .h-bar { background: #7c5cbf; border-radius: 3px 3px 0 0; width: 100%; min-height: 2px; }
+    .h-label { font-size: .6rem; color: #555; margin-top: 3px; }
+    @media print { .no-print { display: none !important; } body { background: #fff; color: #000; } .card { border: 1px solid #ddd; background: #fff; } }
+  </style>
+</head>
+<body>
+<div class="main">
+
+<% if (view === 'list') { %>
+  <!-- ── Session List ────────────────────────────────────────────────────── -->
+  <div class="section-header">
+    <div>
+      <h1>📊 POS Z-Reports</h1>
+      <div class="sub">Browse historical sessions and view detailed Z-reports</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <a href="/pos/reports/audit" class="btn btn-ghost">🔍 Audit Log</a>
+      <a href="/pos/tables" class="btn btn-ghost">← Tables</a>
+    </div>
+  </div>
+
+  <% if (sessions.length === 0) { %>
+  <div class="card" style="text-align:center;color:#555;padding:40px">No sessions yet.</div>
+  <% } else { %>
+  <% sessions.forEach(s => { %>
+  <a href="/pos/reports/session/<%= s.id %>" class="session-row" style="display:flex">
+    <div>
+      <div class="session-id">Session #<%= s.id %>
+        <span class="<%= s.status === 'open' ? 'badge-open' : 'badge-closed' %>"><%= s.status %></span>
+      </div>
+      <div class="session-meta">
+        Opened <%= new Date(s.opened_at).toLocaleString() %>
+        <% if (s.closed_at) { %> · Closed <%= new Date(s.closed_at).toLocaleString() %><% } %>
+        · By <%= s.opened_by_name || 'Unknown' %>
+      </div>
+      <div class="session-meta"><%= s.paid_orders %> paid · <%= s.void_orders %> void</div>
+    </div>
+    <div style="text-align:right">
+      <div class="session-sales"><%= tenant.currency || '$' %><%= parseFloat(s.total_sales).toFixed(2) %></div>
+      <div style="font-size:.72rem;color:#666;margin-top:4px"><%= Math.round(parseFloat(s.cash_iqd)).toLocaleString() %> IQD cash</div>
+    </div>
+  </a>
+  <% }) %>
+  <% } %>
+
+<% } else { %>
+  <!-- ── Session Detail Z-Report ──────────────────────────────────────────── -->
+  <div class="section-header">
+    <div>
+      <h1>📊 Z-Report — Session #<%= session.id %></h1>
+      <div class="sub">Opened <%= new Date(session.opened_at).toLocaleString() %> by <%= session.opened_by_name || 'Unknown' %></div>
+    </div>
+    <div class="btns no-print" style="gap:8px">
+      <button onclick="window.print()" class="btn btn-ghost">🖨 Print</button>
+      <a href="/pos/reports" class="btn btn-ghost">← All Sessions</a>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="card">
+    <h2>📊 Summary</h2>
+    <div class="stat-row"><span class="stat-label">Orders Paid</span><span class="stat-val"><%= summary.count %></span></div>
+    <div class="stat-row"><span class="stat-label">Total Sales</span><span class="stat-val green"><%= tenant.currency || '$' %><%= summary.total.toFixed(2) %></span></div>
+    <div class="stat-row"><span class="stat-label">Cash Sales</span><span class="stat-val"><%= tenant.currency || '$' %><%= summary.cash.toFixed(2) %></span></div>
+    <div class="stat-row"><span class="stat-label">Card Sales</span><span class="stat-val"><%= tenant.currency || '$' %><%= summary.card.toFixed(2) %></span></div>
+    <% if (summary.tips > 0) { %><div class="stat-row"><span class="stat-label">Tips</span><span class="stat-val green"><%= tenant.currency || '$' %><%= summary.tips.toFixed(2) %></span></div><% } %>
+    <div class="stat-row"><span class="stat-label">Covers</span><span class="stat-val"><%= summary.covers %></span></div>
+    <% if (parseFloat(zStats.total_service_fees) > 0) { %><div class="stat-row"><span class="stat-label">Service Fees</span><span class="stat-val" style="color:#e17055"><%= tenant.currency || '$' %><%= parseFloat(zStats.total_service_fees).toFixed(2) %></span></div><% } %>
+    <% if (parseFloat(zStats.total_discounts) > 0) { %><div class="stat-row"><span class="stat-label">Discounts (<%= zStats.discount_orders %> orders)</span><span class="stat-val" style="color:#e17055">−<%= tenant.currency || '$' %><%= parseFloat(zStats.total_discounts).toFixed(2) %></span></div><% } %>
+    <% if (zStats.voids > 0) { %><div class="stat-row"><span class="stat-label">Voided Orders</span><span class="stat-val" style="color:#e74c3c"><%= zStats.voids %></span></div><% } %>
+    <div class="stat-row"><span class="stat-label">Opening Cash</span><span class="stat-val purple"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</span></div>
+    <div class="stat-row"><span class="stat-label">Cash Received (IQD)</span><span class="stat-val"><%= Math.round(summary.cashIQD).toLocaleString() %> IQD</span></div>
+    <% if (session.closing_cash != null) { %>
+    <div class="stat-row"><span class="stat-label">Closing Cash Counted</span><span class="stat-val"><%= Math.round(parseFloat(session.closing_cash)).toLocaleString() %> IQD</span></div>
+    <div class="stat-row">
+      <span class="stat-label">Variance</span>
+      <% const expected = Math.round(parseFloat(session.opening_cash) + summary.cashIQD); const actual = Math.round(parseFloat(session.closing_cash)); const variance = actual - expected; %>
+      <span class="stat-val" style="color:<%= variance === 0 ? '#00b894' : variance > 0 ? '#74b9ff' : '#e74c3c' %>">
+        <%= variance > 0 ? '+' : '' %><%= variance.toLocaleString() %> IQD
+      </span>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Hourly heatmap -->
+  <% if (hourly && hourly.length > 0) { %>
+  <div class="card">
+    <h2>⏰ Hourly Sales</h2>
+    <% const maxRev2 = Math.max(...hourly.map(h => parseFloat(h.revenue)||0), 1); %>
+    <div class="hourly-bar">
+      <% for (let hr = 0; hr <= 23; hr++) { %>
+      <% const hdata = hourly.find(h => parseInt(h.hour) === hr); %>
+      <div class="h-col">
+        <div class="h-bar" style="height:<%= hdata ? Math.max(4, Math.round(parseFloat(hdata.revenue)/maxRev2*80)) : 2 %>px<%= !hdata ? ';opacity:.15' : '' %>"></div>
+        <div class="h-label"><%= hr %></div>
+      </div>
+      <% } %>
+    </div>
+    <table class="z-table" style="margin-top:12px">
+      <thead><tr><th>Hour</th><th>Orders</th><th style="text-align:right">Revenue</th></tr></thead>
+      <tbody>
+      <% hourly.forEach(h => { %>
+      <tr>
+        <td><%= Math.floor(h.hour) %>:00</td>
+        <td style="color:#888"><%= h.cnt %></td>
+        <td style="text-align:right;color:#7c5cbf;font-weight:700"><%= tenant.currency||'$' %><%= parseFloat(h.revenue).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Top Items -->
+  <% if (topItems && topItems.length > 0) { %>
+  <% const maxRev = Math.max(...topItems.map(i => parseFloat(i.revenue)||0)); %>
+  <div class="card">
+    <h2>🔥 Top Items</h2>
+    <table class="z-table">
+      <thead><tr><th>Item</th><th>Qty</th><th style="text-align:right">Revenue</th></tr></thead>
+      <tbody>
+      <% topItems.forEach(item => { %>
+      <tr>
+        <td>
+          <%= item.name %>
+          <div class="z-bar"><div class="z-bar-fill" style="width:<%= maxRev > 0 ? Math.round(parseFloat(item.revenue)/maxRev*100) : 0 %>%"></div></div>
+        </td>
+        <td style="color:#888"><%= item.qty %></td>
+        <td style="text-align:right;font-weight:700;color:#7c5cbf"><%= tenant.currency||'$' %><%= parseFloat(item.revenue).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- By Cashier -->
+  <% if (cashierStats && cashierStats.length > 0) { %>
+  <div class="card">
+    <h2>👤 By Cashier</h2>
+    <table class="z-table">
+      <thead><tr><th>Cashier</th><th style="text-align:center">Orders</th><th style="text-align:center">Discounts</th><th style="text-align:right">Tips</th><th style="text-align:right">Sales</th></tr></thead>
+      <tbody>
+      <% cashierStats.forEach(c => { %>
+      <tr>
+        <td style="font-weight:600"><%= c.cashier_name || ('User #' + c.created_by) %></td>
+        <td style="text-align:center;color:#888"><%= c.order_count %></td>
+        <td style="text-align:center"><% if (c.discounts_given > 0) { %><span class="comp-pill"><%= c.discounts_given %> · −<%= tenant.currency||'$' %><%= parseFloat(c.total_discounts).toFixed(2) %></span><% } else { %><span style="color:#444">—</span><% } %></td>
+        <td style="text-align:right;color:#00b894"><%= parseFloat(c.tip_total) > 0 ? (tenant.currency||'$') + parseFloat(c.tip_total).toFixed(2) : '—' %></td>
+        <td style="text-align:right;font-weight:700"><%= tenant.currency||'$' %><%= parseFloat(c.total_sales).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Comp Log -->
+  <% if (compLog && compLog.length > 0) { %>
+  <div class="card">
+    <h2>🚨 Comped Items</h2>
+    <table class="z-table">
+      <thead><tr><th>Item</th><th>Reason</th><th>By</th><th>Time</th></tr></thead>
+      <tbody>
+      <% compLog.forEach(c => { %>
+      <tr>
+        <td style="color:#e74c3c;font-weight:600"><%= c.item_name || '—' %></td>
+        <td style="color:#888"><%= c.reason || '—' %></td>
+        <td style="color:#666"><%= c.cashier_name || 'Unknown' %></td>
+        <td style="color:#555;font-size:.75rem"><%= new Date(c.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- No-Sale Log -->
+  <% if (noSaleLog && noSaleLog.length > 0) { %>
+  <div class="card">
+    <h2>🔔 No-Sale Events</h2>
+    <table class="z-table">
+      <thead><tr><th>Time</th><th>By</th><th>Reason</th></tr></thead>
+      <tbody>
+      <% noSaleLog.forEach(n => { %>
+      <tr>
+        <td style="color:#888;font-size:.75rem"><%= new Date(n.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></td>
+        <td style="color:#ccc"><%= n.user_name || 'Unknown' %></td>
+        <td style="color:#888"><%= n.reason || '—' %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+<% } %>
+
+</div>
+</body>
+</html>

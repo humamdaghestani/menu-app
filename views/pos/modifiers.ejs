@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Modifier Groups — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 24px; }
+    .main { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .sub { font-size: .82rem; color: #555; margin-bottom: 24px; }
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.07); padding: 22px; margin-bottom: 16px; }
+    .card h2 { font-size: .88rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 16px; }
+    .btn { padding: 9px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 700; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-sm { padding: 5px 10px; font-size: .75rem; }
+    label { display: block; font-size: .78rem; font-weight: 600; color: #666; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; outline: none; font-family: inherit; }
+    input:focus, select:focus { border-color: #7c5cbf; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    .btns { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+    .group-card { background: #13132a; border-radius: 10px; border: 1px solid #2a2a3e; padding: 16px; margin-bottom: 12px; }
+    .group-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .group-name { font-weight: 700; color: #fff; font-size: .95rem; }
+    .group-meta { font-size: .72rem; color: #666; margin-top: 2px; }
+    .option-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 6px; background: rgba(255,255,255,.03); margin-bottom: 4px; font-size: .82rem; }
+    .option-name { color: #ccc; }
+    .option-price { color: #7c5cbf; font-weight: 700; }
+    .required-badge { font-size: .62rem; background: rgba(231,76,60,.15); color: #e74c3c; padding: 2px 7px; border-radius: 10px; margin-left: 6px; font-weight: 700; }
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.3); z-index: 999; }
+    .toast.success { border-left: 4px solid #00b894; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    select[multiple] { height: 120px; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <div class="section-header">
+    <div>
+      <h1>⚙️ Modifier Groups</h1>
+      <div class="sub">Create option groups for menu items (e.g. Size, Extras, Sauce choice)</div>
+    </div>
+    <div class="btns">
+      <a href="/pos/settings" class="btn btn-ghost">← Settings</a>
+    </div>
+  </div>
+
+  <!-- Create Group -->
+  <div class="card">
+    <h2>➕ New Modifier Group</h2>
+    <form method="POST" action="/pos/modifiers">
+      <div class="form-row">
+        <div>
+          <label>Group Name *</label>
+          <input type="text" name="name" required placeholder="e.g. Size, Extras, Sauce" />
+        </div>
+        <div>
+          <label>Min Selections</label>
+          <input type="number" name="min_select" value="0" min="0" />
+        </div>
+        <div>
+          <label>Max Selections</label>
+          <input type="number" name="max_select" value="1" min="1" />
+        </div>
+        <div style="display:flex;align-items:flex-end;padding-bottom:2px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+            <input type="checkbox" name="is_required" value="1" style="width:auto" />
+            <span>Required</span>
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">+ Create Group</button>
+    </form>
+  </div>
+
+  <!-- Existing Groups -->
+  <% if (groups.length === 0) { %>
+  <div class="card" style="text-align:center;color:#555;padding:40px">No modifier groups yet.</div>
+  <% } else { %>
+  <% groups.forEach(g => { %>
+  <div class="group-card">
+    <div class="group-header">
+      <div>
+        <span class="group-name"><%= g.name %></span>
+        <% if (g.is_required) { %><span class="required-badge">Required</span><% } %>
+        <div class="group-meta">Select <%= g.min_select %>–<%= g.max_select %> · <%= (g.options || []).length %> option<%= (g.options||[]).length !== 1 ? 's' : '' %></div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-ghost btn-sm" onclick="openEdit(<%= JSON.stringify(g) %>)">Edit</button>
+        <form method="POST" action="/pos/modifiers/<%= g.id %>/delete" style="display:inline" onsubmit="return confirm('Delete group?')">
+          <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+        </form>
+      </div>
+    </div>
+    <!-- Options list -->
+    <% (g.options || []).forEach(o => { %>
+    <div class="option-row">
+      <span class="option-name"><%= o.name %></span>
+      <div class="btns" style="gap:8px">
+        <span class="option-price"><%= o.price_adj > 0 ? '+' : '' %><%= parseFloat(o.price_adj).toFixed(2) !== '0.00' ? (tenant.currency||'$') + parseFloat(o.price_adj).toFixed(2) : 'free' %></span>
+        <form method="POST" action="/pos/modifiers/<%= g.id %>/options/<%= o.id %>/delete" style="display:inline">
+          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Remove option?')">✕</button>
+        </form>
+      </div>
+    </div>
+    <% }) %>
+    <!-- Add option -->
+    <form method="POST" action="/pos/modifiers/<%= g.id %>/options" style="display:flex;gap:8px;margin-top:10px;align-items:flex-end">
+      <div style="flex:2">
+        <label>Option Name</label>
+        <input type="text" name="name" placeholder="e.g. Large, Extra Cheese" required />
+      </div>
+      <div style="flex:1">
+        <label>Price Adj.</label>
+        <input type="number" name="price_adj" value="0" step="0.01" />
+      </div>
+      <button type="submit" class="btn btn-primary" style="flex-shrink:0">+ Add</button>
+    </form>
+  </div>
+  <% }) %>
+  <% } %>
+
+  <!-- Assign groups to items -->
+  <% if (groups.length > 0 && menuItems.length > 0) { %>
+  <div class="card">
+    <h2>🔗 Assign Groups to Menu Items</h2>
+    <form method="POST" action="/pos/modifiers/assign">
+      <div class="form-row">
+        <div>
+          <label>Menu Item *</label>
+          <select name="menu_item_id" required>
+            <option value="">— select item —</option>
+            <% menuItems.forEach(mi => { %>
+            <option value="<%= mi.id %>"><%= mi.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label>Modifier Groups (hold Ctrl/Cmd to multi-select)</label>
+          <select name="group_ids" multiple>
+            <% groups.forEach(g => { %>
+            <option value="<%= g.id %>"><%= g.name %></option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Save Assignment</button>
+    </form>
+    <% if (assignments.length > 0) { %>
+    <div style="margin-top:16px;font-size:.8rem;color:#666">
+      <div style="font-weight:700;color:#888;margin-bottom:8px">Current Assignments</div>
+      <% const byItem = {}; assignments.forEach(a => { if (!byItem[a.menu_item_id]) byItem[a.menu_item_id] = []; byItem[a.menu_item_id].push(a.group_id); }); %>
+      <% menuItems.filter(mi => byItem[mi.id]).forEach(mi => { %>
+      <div style="padding:6px 0;border-bottom:1px solid #2a2a3e">
+        <strong style="color:#ccc"><%= mi.name %></strong>:
+        <% byItem[mi.id].forEach(gid => { const g = groups.find(x => x.id === gid); %><span style="background:rgba(124,92,191,.15);color:#a08af0;padding:2px 8px;border-radius:10px;font-size:.75rem;margin-left:4px"><%= g ? g.name : gid %></span><% }) %>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+  <% } %>
+</div>
+
+<!-- Edit Modal -->
+<div id="editOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#1a1a2e;border-radius:16px;padding:28px;width:440px;max-width:calc(100% - 32px)">
+    <h3 style="font-size:1rem;font-weight:700;color:#fff;margin-bottom:20px">Edit Modifier Group</h3>
+    <form method="POST" id="editForm">
+      <div class="form-row">
+        <div>
+          <label>Group Name *</label>
+          <input type="text" name="name" id="editName" required />
+        </div>
+        <div>
+          <label>Min</label>
+          <input type="number" name="min_select" id="editMin" min="0" />
+        </div>
+        <div>
+          <label>Max</label>
+          <input type="number" name="max_select" id="editMax" min="1" />
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-bottom:16px;cursor:pointer">
+        <input type="checkbox" name="is_required" value="1" id="editRequired" style="width:auto" />
+        <span style="font-size:.85rem">Required selection</span>
+      </label>
+      <div class="btns" style="justify-content:flex-end">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openEdit(g) {
+    document.getElementById('editName').value = g.name;
+    document.getElementById('editMin').value = g.min_select;
+    document.getElementById('editMax').value = g.max_select;
+    document.getElementById('editRequired').checked = g.is_required;
+    document.getElementById('editForm').action = '/pos/modifiers/' + g.id + '/edit';
+    document.getElementById('editOverlay').style.display = 'flex';
+  }
+  function closeEdit() { document.getElementById('editOverlay').style.display = 'none'; }
+  document.getElementById('editOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeEdit(); });
+
+  const p = new URLSearchParams(location.search);
+  if (p.get('success')) {
+    const t = document.createElement('div');
+    t.className = 'toast success'; t.textContent = '✓ ' + p.get('success');
+    document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+  }
+</script>
+</body>
+</html>
