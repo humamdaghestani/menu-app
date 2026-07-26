@@ -148,6 +148,29 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
       db.query(`SELECT COUNT(*) AS cnt FROM pos_orders WHERE session_id=$1 AND status='void'`, [session.id]),
     ]);
     const zStats = zStatsRes.rows[0] || {};
+    // Per-cashier breakdown
+    const cashierRes = await db.query(`
+      SELECT u.name AS cashier_name, po.created_by,
+        COUNT(po.id)::int AS order_count,
+        COALESCE(SUM(po.total),0) AS total_sales,
+        COALESCE(SUM(po.tip_amount),0) AS tip_total,
+        COUNT(*) FILTER (WHERE po.discount_type != 'none')::int AS discounts_given,
+        COALESCE(SUM(CASE WHEN po.discount_type='fixed' THEN po.discount_value
+                         WHEN po.discount_type='percent' THEN po.total * po.discount_value / (100 - po.discount_value)
+                         ELSE 0 END), 0) AS total_discounts
+      FROM pos_orders po
+      LEFT JOIN users u ON u.id = po.created_by
+      WHERE po.session_id=$1 AND po.status='paid'
+      GROUP BY po.created_by, u.name
+      ORDER BY total_sales DESC`, [session.id]);
+    // Comp/void item audit
+    const compRes = await db.query(`
+      SELECT u.name AS cashier_name, COUNT(*)::int AS comp_count,
+        pal.details->>'name' AS item_name, pal.details->>'reason' AS reason
+      FROM pos_action_log pal
+      LEFT JOIN users u ON u.id = pal.user_id
+      WHERE pal.session_id=$1 AND pal.action='item_comp'
+      ORDER BY pal.created_at DESC LIMIT 20`, [session.id]);
     res.render('pos/session-close', {
       tenant, session,
       orders: orders.rows,
@@ -155,6 +178,8 @@ router.get('/session/close', requireAuth, requirePOS, async (req, res) => {
       summary: { ...summary, tips: parseFloat(zStats.total_tips)||0, covers: parseInt(zStats.total_covers)||0 },
       topItems: topItemsRes.rows,
       zStats: { ...zStats, voids: parseInt(voidRes.rows[0]?.cnt)||0 },
+      cashierStats: cashierRes.rows,
+      compLog: compRes.rows,
       currentUser: req.user,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -857,8 +882,19 @@ router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (r
     const oldQty = item.rows[0].quantity;
     const newQty = oldQty + delta;
     if (newQty <= 0) {
+      // Fired items require manager passkey + comp reason to remove
+      if (item.rows[0].sent_to_kitchen) {
+        const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
+        if (!pk) return res.json({ ok: false, error: 'invalid_passkey', requires_comp: true });
+        await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+          [req.user.userId, req.params.id, pk.id]);
+        await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_comp',
+          { name: item.rows[0].name, reason: req.body.comp_reason || 'No reason given', price: item.rows[0].price });
+      }
       await db.query('DELETE FROM pos_order_items WHERE id=$1', [req.params.itemId]);
-      await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_remove', { name: item.rows[0].name });
+      if (!item.rows[0].sent_to_kitchen) {
+        await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_remove', { name: item.rows[0].name });
+      }
     } else {
       await db.query('UPDATE pos_order_items SET quantity=$1 WHERE id=$2', [newQty, req.params.itemId]);
       await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_qty', { name: item.rows[0].name, from: oldQty, to: newQty });
@@ -873,12 +909,19 @@ router.post('/api/order/:id/item/:itemId/price', requireAuth, requirePOS, async 
   const price = parseFloat(req.body.price);
   try {
     if (isNaN(price) || price < 0) return res.json({ ok: false, error: 'invalid_price' });
+    // Price override always requires a manager passkey
+    const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'discount');
+    if (!pk) return res.json({ ok: false, error: 'invalid_passkey' });
+    await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+      [req.user.userId, req.params.id, pk.id]);
     const check = await db.query(
-      'SELECT poi.id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.id=$2 AND po.tenant_id=$3',
+      'SELECT poi.id, poi.name, poi.price AS old_price, po.session_id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.id=$2 AND po.tenant_id=$3',
       [req.params.itemId, req.params.id, req.user.tenantId]
     );
     if (!check.rows[0]) return res.json({ ok: false, error: 'Not found' });
     await db.query('UPDATE pos_order_items SET price=$1 WHERE id=$2', [price, req.params.itemId]);
+    await logAction(req.user.tenantId, check.rows[0].session_id, req.params.id, req.user.userId, 'price_override',
+      { name: check.rows[0].name, from: parseFloat(check.rows[0].old_price), to: price });
     const state = await orderStateJSON(req.params.id, req.user.tenantId);
     res.json({ ok: true, ...state });
   } catch (err) { console.error(err); res.json({ ok: false }); }

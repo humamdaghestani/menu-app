@@ -49,6 +49,8 @@
     .z-table tr:last-child td { border-bottom: none; }
     .z-bar { height: 6px; background: rgba(124,92,191,.25); border-radius: 3px; margin-top: 4px; }
     .z-bar-fill { height: 100%; background: #7c5cbf; border-radius: 3px; }
+    .blind-banner { background: rgba(253,203,110,.08); border: 1px solid rgba(253,203,110,.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: .82rem; color: #fdcb6e; }
+    .comp-pill { font-size: .68rem; background: rgba(231,76,60,.12); color: #e74c3c; padding: 2px 8px; border-radius: 10px; }
     @media print { .no-print { display: none !important; } body { background: #fff; color: #000; } .card { border: 1px solid #ddd; background: #fff; } }
   </style>
 </head>
@@ -96,7 +98,11 @@
     <% } %>
     <div class="stat-row"><span class="stat-label">Opening Cash</span><span class="stat-val purple"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</span></div>
     <div class="stat-row"><span class="stat-label">Cash Received (IQD)</span><span class="stat-val"><%= Math.round(summary.cashIQD).toLocaleString() %> IQD</span></div>
-    <div class="stat-row"><span class="stat-label">Expected in Drawer</span><span class="stat-val green"><%= Math.round(parseFloat(session.opening_cash) + summary.cashIQD).toLocaleString() %> IQD</span></div>
+    <!-- Expected is hidden from cashier — revealed after they submit their count -->
+    <div class="stat-row no-print" id="expectedRow" style="display:none">
+      <span class="stat-label">Expected in Drawer</span>
+      <span class="stat-val green" id="expectedAmt"><%= Math.round(parseFloat(session.opening_cash) + summary.cashIQD).toLocaleString() %> IQD</span>
+    </div>
   </div>
 
   <!-- Top Items -->
@@ -122,14 +128,71 @@
   </div>
   <% } %>
 
-  <!-- Close form -->
+  <!-- Per-Cashier Breakdown -->
+  <% if (cashierStats && cashierStats.length > 0) { %>
   <div class="card">
-    <h2>Close Session</h2>
-    <form method="POST" action="/pos/session/close">
+    <h2>👤 By Cashier</h2>
+    <table class="z-table">
+      <thead>
+        <tr>
+          <th>Cashier</th>
+          <th style="text-align:center">Orders</th>
+          <th style="text-align:center">Discounts</th>
+          <th style="text-align:right">Tips</th>
+          <th style="text-align:right">Sales</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% cashierStats.forEach(c => { %>
+      <tr>
+        <td style="font-weight:600"><%= c.cashier_name || ('User #' + c.created_by) %></td>
+        <td style="text-align:center;color:#888"><%= c.order_count %></td>
+        <td style="text-align:center">
+          <% if (c.discounts_given > 0) { %>
+          <span class="comp-pill"><%= c.discounts_given %> disc · −<%= tenant.currency || '$' %><%= parseFloat(c.total_discounts).toFixed(2) %></span>
+          <% } else { %><span style="color:#444">—</span><% } %>
+        </td>
+        <td style="text-align:right;color:#00b894"><%= parseFloat(c.tip_total) > 0 ? (tenant.currency||'$') + parseFloat(c.tip_total).toFixed(2) : '—' %></td>
+        <td style="text-align:right;font-weight:700;color:#fff"><%= tenant.currency || '$' %><%= parseFloat(c.total_sales).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Comp / Void Item Audit -->
+  <% if (compLog && compLog.length > 0) { %>
+  <div class="card">
+    <h2>🚨 Comped Items This Session</h2>
+    <table class="z-table">
+      <thead><tr><th>Item</th><th>Reason</th><th>By</th></tr></thead>
+      <tbody>
+      <% compLog.forEach(c => { %>
+      <tr>
+        <td style="color:#e74c3c;font-weight:600"><%= c.item_name || '—' %></td>
+        <td style="color:#888"><%= c.reason || '—' %></td>
+        <td style="color:#666"><%= c.cashier_name || 'Unknown' %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Close form — Blind Cash Count -->
+  <div class="card no-print">
+    <h2>🔒 Close Session</h2>
+    <div class="blind-banner">
+      🙈 <strong>Blind Count</strong> — Count your cash drawer independently before submitting. The system's expected amount is hidden until after you close.
+    </div>
+    <form method="POST" action="/pos/session/close" onsubmit="return onCloseSubmit(event)">
       <div class="form-group">
-        <label>Closing Cash — actual amount in drawer (IQD)</label>
-        <input type="number" name="closing_cash" value="<%= Math.round(parseFloat(session.opening_cash) + summary.cashIQD) %>" min="0" step="500" />
+        <label>Actual Cash in Drawer (IQD)</label>
+        <input type="number" name="closing_cash" id="closingCashInput" value="" min="0" step="500"
+          placeholder="Count your drawer and enter here..." oninput="showVariance()" />
       </div>
+      <div id="varianceBox" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.85rem;font-weight:700"></div>
       <div class="form-group">
         <label>Notes (optional)</label>
         <textarea name="notes" rows="2" placeholder="Any notes about this shift..."></textarea>
@@ -139,11 +202,42 @@
         <% if (openOrders && openOrders.length > 0) { %>
         <button type="button" class="btn btn-close" disabled style="opacity:.35;cursor:not-allowed" title="Resolve open orders first">🔒 Close Session</button>
         <% } else { %>
-        <button type="submit" class="btn btn-close" onclick="return confirm('Close this session? You will need to enter a new opening cash to continue.')">🔒 Close Session</button>
+        <button type="submit" class="btn btn-close">🔒 Close Session</button>
         <% } %>
       </div>
     </form>
   </div>
+
+  <script>
+    const EXPECTED_IQD = <%= Math.round(parseFloat(session.opening_cash) + summary.cashIQD) %>;
+    function showVariance() {
+      const actual    = parseInt(document.getElementById('closingCashInput').value) || 0;
+      const variance  = actual - EXPECTED_IQD;
+      const box       = document.getElementById('varianceBox');
+      const expRow    = document.getElementById('expectedRow');
+      if (!actual) { box.style.display = 'none'; return; }
+      expRow.style.display = '';
+      box.style.display    = '';
+      if (variance === 0) {
+        box.style.background = 'rgba(0,184,148,.1)'; box.style.color = '#00b894';
+        box.textContent = '✓ Exact match — drawer balances perfectly';
+      } else if (variance > 0) {
+        box.style.background = 'rgba(116,185,255,.1)'; box.style.color = '#74b9ff';
+        box.textContent = '↑ Over by ' + Math.abs(variance).toLocaleString() + ' IQD';
+      } else {
+        box.style.background = 'rgba(231,76,60,.1)'; box.style.color = '#e74c3c';
+        box.textContent = '↓ Short by ' + Math.abs(variance).toLocaleString() + ' IQD';
+      }
+    }
+    function onCloseSubmit(e) {
+      const val = document.getElementById('closingCashInput').value;
+      if (!val) {
+        alert('Please enter the actual cash count from your drawer.');
+        e.preventDefault(); return false;
+      }
+      return confirm('Close this session? This action cannot be undone.');
+    }
+  </script>
 </div>
 </body>
 </html>

@@ -142,7 +142,8 @@
     .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px,1fr)); gap: 8px; margin-top: 12px; max-height: 280px; overflow-y: auto; }
     .tbl-pick { padding: 12px 6px; border-radius: 10px; border: 1.5px solid #2a2a3e; background: #0f0f1a; color: #ccc; font-size: .78rem; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; }
     .tbl-pick:hover { border-color: #74b9ff; color: #74b9ff; }
-    .tbl-pick.occupied { border-color: rgba(231,76,60,.3); color: #555; opacity: .5; pointer-events: none; }
+    .tbl-pick.tbl-merge { border-color: rgba(253,203,110,.3); color: #fdcb6e; }
+    .tbl-pick.tbl-merge:hover { border-color: #fdcb6e; }
     @media (max-width: 680px) {
       .order-panel { width: 100%; position: fixed; bottom: 0; left: 0; right: 0; max-height: 75vh; z-index: 10; border-top: 2px solid #7c5cbf; border-left: none; }
       .menu-panel { padding-bottom: 75vh; }
@@ -422,19 +423,25 @@
   </div>
 </div>
 
-<!-- ── Transfer Table Modal ── -->
+<!-- ── Transfer / Merge Table Modal ── -->
 <div class="modal-overlay" id="transferModal">
-  <div class="modal-box" style="max-width:460px">
-    <h3>↕ Transfer to Table</h3>
-    <p style="font-size:.78rem;color:#555;margin-bottom:8px">Select a free table to move this order to</p>
+  <div class="modal-box" style="max-width:480px">
+    <h3>↕ Move / Merge Order</h3>
+    <div style="display:flex;gap:10px;margin-bottom:12px;font-size:.72rem">
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid #74b9ff"></span> Free — transfer here</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid #fdcb6e"></span> Occupied — merge into</span>
+    </div>
     <div class="table-grid">
       <% tables.forEach(t => { %>
-      <button type="button"
-        class="tbl-pick<%= t.current_order_id ? ' occupied' : '' %>"
-        onclick="<%= !t.current_order_id ? 'confirmTransfer(' + t.id + ')' : '' %>"
-        title="<%= t.current_order_id ? 'Occupied' : 'Free' %>">
-        <%= t.name %><% if (t.current_order_id) { %><br/><span style="font-size:.58rem;color:#e74c3c">Busy</span><% } %>
+      <% if (t.current_order_id) { %>
+      <button type="button" class="tbl-pick tbl-merge" onclick="confirmMerge(<%= t.current_order_id %>)" title="Merge into order on <%= t.name %>">
+        <%= t.name %><br/><span style="font-size:.58rem">Merge Into</span>
       </button>
+      <% } else { %>
+      <button type="button" class="tbl-pick" onclick="confirmTransfer(<%= t.id %>)" title="Move to <%= t.name %>">
+        <%= t.name %><br/><span style="font-size:.58rem;color:#74b9ff">Move Here</span>
+      </button>
+      <% } %>
       <% }) %>
       <% if (!tables.length) { %>
       <div style="color:#555;font-size:.82rem;padding:8px;grid-column:1/-1">No other tables available</div>
@@ -442,6 +449,51 @@
     </div>
     <div class="modal-footer" style="margin-top:14px">
       <button type="button" class="btn btn-modal-cancel" onclick="closeModal('transferModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Comp Modal (remove fired item) ── -->
+<div class="modal-overlay" id="compModal">
+  <div class="modal-box" style="max-width:380px">
+    <h3>⚠️ Remove Fired Item</h3>
+    <p style="font-size:.8rem;color:#888;margin-bottom:14px">This item was already sent to the kitchen. A manager must authorise the removal.</p>
+    <div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-weight:700;color:#fff" id="compItemName"></div>
+    <div class="form-group" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+      <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase">Reason</label>
+      <select id="compReason" class="modal-input" style="padding:8px 12px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-family:inherit;font-size:.85rem;outline:none">
+        <option value="Customer changed mind">Customer changed mind</option>
+        <option value="Wrong item ordered">Wrong item ordered</option>
+        <option value="Out of stock">Out of stock</option>
+        <option value="Quality complaint">Quality complaint</option>
+        <option value="Manager comp">Manager comp</option>
+        <option value="Mistake entry">Mistake entry</option>
+      </select>
+    </div>
+    <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;display:block;margin-bottom:5px">Manager Passkey</label>
+    <input type="text" class="modal-input" id="compPasskey" maxlength="6" minlength="6"
+      placeholder="6-digit code" inputmode="numeric" autocomplete="off"
+      style="font-size:1.3rem;letter-spacing:6px;text-align:center;font-weight:700;margin-bottom:4px" />
+    <div class="modal-footer">
+      <button type="button" class="btn btn-modal-cancel" onclick="closeModal('compModal')">Cancel</button>
+      <button type="button" class="btn" style="background:#e74c3c;color:#fff;padding:6px 16px" onclick="submitComp()">Remove</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Price Override Passkey Modal ── -->
+<div class="modal-overlay" id="priceOverrideModal">
+  <div class="modal-box" style="max-width:320px">
+    <h3>💲 Price Override</h3>
+    <p style="font-size:.8rem;color:#888;margin-bottom:10px">Manager passkey required</p>
+    <div style="text-align:center;font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:14px" id="priceOverrideAmt"></div>
+    <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;display:block;margin-bottom:5px">Manager Passkey</label>
+    <input type="text" class="modal-input" id="priceOverridePasskey" maxlength="6" minlength="6"
+      placeholder="6-digit code" inputmode="numeric" autocomplete="off"
+      style="font-size:1.3rem;letter-spacing:6px;text-align:center;font-weight:700;margin-bottom:4px" />
+    <div class="modal-footer">
+      <button type="button" class="btn btn-modal-cancel" onclick="closeModal('priceOverrideModal')">Cancel</button>
+      <button type="button" class="btn btn-modal-ok" onclick="applyPriceOverride()">Apply</button>
     </div>
   </div>
 </div>
@@ -467,6 +519,9 @@ let _npInput           = '';
 let _npMode            = 'qty'; // 'qty' | 'price' | 'disc-pct' | 'disc-fix'
 let _pendingDiscValue  = 0;
 let _pendingDiscType   = 'percent';
+let _pendingPriceItemId = null;
+let _pendingPrice       = 0;
+let _compItemId         = null;
 
 /* ── Helpers ── */
 function _esc(s) {
@@ -568,6 +623,12 @@ async function changeQty(itemId, delta) {
     _items[i].quantity += delta;
     if (_items[i].quantity <= 0) _items.splice(i, 1);
     _render(); return;
+  }
+  // If deletion of a fired item, require comp passkey first
+  const item = _items.find(x => x.id === itemId);
+  if (delta < 0 && item && (item.quantity + delta) <= 0 && item.sent_to_kitchen) {
+    openCompModal(itemId, item.name);
+    return;
   }
   const r = await posAction(`/pos/api/order/${ORDER_ID}/item/${itemId}/qty`, { delta }, () => {
     const i = _items.findIndex(x => x.id === itemId);
@@ -675,7 +736,15 @@ async function numpadPress(key) {
     } else if (_npMode === 'price') {
       if (!savedInput) return;
       const newPrice = parseInt(savedInput) / 100;
-      if (newPrice >= 0) await setItemPrice(savedId, newPrice);
+      if (newPrice >= 0) {
+        // Price override requires manager passkey
+        _pendingPriceItemId = savedId;
+        _pendingPrice = newPrice;
+        document.getElementById('priceOverridePasskey').value = '';
+        document.getElementById('priceOverrideAmt').textContent = CUR + newPrice.toFixed(2);
+        openModal('priceOverrideModal');
+        setTimeout(() => document.getElementById('priceOverridePasskey').focus(), 100);
+      }
     }
     return;
   } else {
@@ -686,12 +755,7 @@ async function numpadPress(key) {
   _npUpdate();
 }
 
-async function setItemPrice(itemId, price) {
-  const i = _items.findIndex(x => x.id === itemId);
-  if (i >= 0) { _items[i].price = price; _render(); }  // optimistic
-  const r = await posAction(`/pos/api/order/${ORDER_ID}/item/${itemId}/price`, { price });
-  if (r.ok && !r.offline) _render(r.data);
-}
+// setItemPrice is now handled via applyPriceOverride() with passkey modal
 
 async function applyDiscountFromNp() {
   const passkey = document.getElementById('discNpPasskey').value.trim();
@@ -849,13 +913,76 @@ function openTransfer() { openModal('transferModal'); }
 function confirmTransfer(tableId) {
   closeModal('transferModal');
   const f = document.createElement('form');
-  f.method = 'POST';
-  f.action = `/pos/order/${ORDER_ID}/transfer`;
+  f.method = 'POST'; f.action = `/pos/order/${ORDER_ID}/transfer`;
   const inp = document.createElement('input');
   inp.type = 'hidden'; inp.name = 'target_table_id'; inp.value = tableId;
-  f.appendChild(inp);
-  document.body.appendChild(f);
-  f.submit();
+  f.appendChild(inp); document.body.appendChild(f); f.submit();
+}
+
+function confirmMerge(targetOrderId) {
+  if (!confirm('Merge all items from this order into that table\'s order? This order will be closed.')) return;
+  closeModal('transferModal');
+  const f = document.createElement('form');
+  f.method = 'POST'; f.action = `/pos/order/${ORDER_ID}/merge`;
+  const inp = document.createElement('input');
+  inp.type = 'hidden'; inp.name = 'target_order_id'; inp.value = targetOrderId;
+  f.appendChild(inp); document.body.appendChild(f); f.submit();
+}
+
+/* ── Comp modal (remove fired item) ── */
+function openCompModal(itemId, itemName) {
+  _compItemId = itemId;
+  document.getElementById('compItemName').textContent = itemName;
+  document.getElementById('compPasskey').value = '';
+  document.getElementById('compReason').selectedIndex = 0;
+  openModal('compModal');
+  setTimeout(() => document.getElementById('compPasskey').focus(), 100);
+}
+
+async function submitComp() {
+  const passkey = document.getElementById('compPasskey').value.trim();
+  const reason  = document.getElementById('compReason').value;
+  if (!passkey) { _showErrorToast('Enter the manager passkey'); return; }
+  const item = _items.find(x => x.id === _compItemId);
+  if (!item) { closeModal('compModal'); return; }
+  closeModal('compModal');
+  const resp = await fetch(`/pos/api/order/${ORDER_ID}/item/${_compItemId}/qty`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ delta: -item.quantity, passkey, comp_reason: reason }),
+  });
+  const data = await resp.json();
+  if (data.ok) {
+    _render(data);
+    _showSuccessToast('Item comped — ' + reason);
+  } else if (data.error === 'invalid_passkey') {
+    _showErrorToast('Invalid or expired passkey');
+    setTimeout(() => openCompModal(_compItemId, item.name), 150);
+  }
+}
+
+/* ── Price override ── */
+async function applyPriceOverride() {
+  const passkey = document.getElementById('priceOverridePasskey').value.trim();
+  if (!passkey) { _showErrorToast('Enter the manager passkey'); return; }
+  closeModal('priceOverrideModal');
+  const resp = await fetch(`/pos/api/order/${ORDER_ID}/item/${_pendingPriceItemId}/price`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ price: _pendingPrice, passkey }),
+  });
+  const data = await resp.json();
+  if (data.ok) {
+    _render(data);
+    _showSuccessToast('Price overridden to ' + CUR + _pendingPrice.toFixed(2));
+  } else if (data.error === 'invalid_passkey') {
+    _showErrorToast('Invalid or expired passkey');
+    setTimeout(() => {
+      document.getElementById('priceOverridePasskey').value = '';
+      openModal('priceOverrideModal');
+      setTimeout(() => document.getElementById('priceOverridePasskey').focus(), 80);
+    }, 150);
+  }
 }
 
 /* ── Split ── */
@@ -866,13 +993,20 @@ function calcSplit() {
   document.getElementById('splitPer').textContent = CUR + (total / n).toFixed(2);
 }
 
-/* ── Error toast ── */
+/* ── Toasts ── */
 function _showErrorToast(msg) {
   const t = document.createElement('div');
   t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:10px 22px;border-radius:8px;font-size:.85rem;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.35)';
   t.textContent = '✗ ' + msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 4000);
+}
+function _showSuccessToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:10px 22px;border-radius:8px;font-size:.85rem;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.35)';
+  t.textContent = '✓ ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
 <% if (errorParam === 'passkey') { %>
