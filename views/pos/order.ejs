@@ -1126,7 +1126,7 @@ document.addEventListener('keydown', e => {
       ? `<tr><td>${L('discount')}</td><td style="text-align:right">&minus;${CUR}${discount.toFixed(2)}</td></tr>` : '';
     const svcFeeRow = svcFee > 0
       ? `<tr><td>${L('svcfee')} (${SERVICE_FEE_PCT}%)</td><td style="text-align:right">${CUR}${svcFee.toFixed(2)}</td></tr>` : '';
-    const iqdRow = (showIQD && EXRATE > 1)
+    const iqdRow = (showIQD && EXRATE > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
       ? `<tr style="font-size:${parseInt(fontSize)-2}px;color:#444"><td>${L('total')} (IQD)</td><td style="text-align:right">${Math.round(grandTotal * EXRATE).toLocaleString()} IQD</td></tr>` : '';
     const noteRow = order.note ? `<div style="font-size:${parseInt(fontSize)-2}px;color:#555;margin:4px 0">📝 ${order.note}</div>` : '';
     const headerRow = customHdr ? `<div style="text-align:center;margin:4px 0;font-size:${parseInt(fontSize)-1}px">${customHdr}</div>` : '';
