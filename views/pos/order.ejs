@@ -89,10 +89,11 @@
     .np-mode-btn:hover:not(.active) { color: #777; background: rgba(255,255,255,.04); }
 
     /* ── Action buttons (below numpad) ── */
-    .order-actions { display: flex; gap: 1px; background: rgba(255,255,255,.04); flex-shrink: 0; }
-    .action-btn { flex: 1; padding: 9px 4px; border: none; background: #13132a; color: #666; font-size: .7rem; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .order-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: rgba(255,255,255,.04); flex-shrink: 0; }
+    .action-btn { padding: 11px 4px; border: none; background: #13132a; color: #777; font-size: 1.15rem; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .action-btn:hover { color: #c4b5fd; background: rgba(124,92,191,.08); }
-    .action-btn span { font-size: .65rem; }
+    .action-btn:active { background: rgba(124,92,191,.18); }
+    .action-btn span { font-size: .72rem; color: #888; font-weight: 700; }
 
     .order-footer { padding: 10px 12px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
     .totals { margin-bottom: 12px; }
@@ -131,11 +132,15 @@
     .oi-unfired { font-size: .6rem; color: #444; margin-left: 3px; }
     .course-pill { font-size: .58rem; color: #a78bdf; background: rgba(124,92,191,.15); padding: 1px 5px; border-radius: 6px; margin-left: 4px; text-transform: uppercase; letter-spacing: .3px; }
     .action-btn.btn-fire     { color: #fd7e14; }
-    .action-btn.btn-fire:hover { background: rgba(253,126,20,.12); color: #fd7e14; }
+    .action-btn.btn-fire span { color: #fd7e14; }
+    .action-btn.btn-fire:hover { background: rgba(253,126,20,.12); }
     .action-btn.btn-hold     { color: #fdcb6e; }
-    .action-btn.btn-hold:hover { background: rgba(253,203,110,.12); color: #fdcb6e; }
+    .action-btn.btn-hold span { color: #fdcb6e; }
+    .action-btn.btn-hold:hover { background: rgba(253,203,110,.12); }
     .action-btn.btn-transfer { color: #74b9ff; }
-    .action-btn.btn-transfer:hover { background: rgba(116,185,255,.1); color: #74b9ff; }
+    .action-btn.btn-transfer span { color: #74b9ff; }
+    .action-btn.btn-transfer:hover { background: rgba(116,185,255,.1); }
+    #svcFeeBtn span { color: #e17055; }
     .note-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
     .note-preset { padding: 4px 10px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #777; font-size: .72rem; cursor: pointer; font-family: inherit; }
     .note-preset:hover { border-color: #7c5cbf; color: #c4b5fd; }
