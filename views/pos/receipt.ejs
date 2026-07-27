@@ -1,4 +1,12 @@
-<!DOCTYPE html>
+<%
+function fmtN(n) {
+  n = parseFloat(n) || 0;
+  if (n % 1 === 0) return Math.round(n).toLocaleString('en-US');
+  const p = n.toFixed(2).split('.');
+  p[0] = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return p.join('.');
+}
+%><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -73,7 +81,7 @@
       <div class="receipt-item">
         <span class="ri-name"><%= oi.name %></span>
         <span class="ri-qty">×<%= oi.quantity %></span>
-        <span class="ri-price"><%= tenant.currency || '$' %><%= (oi.price * oi.quantity).toFixed(2) %></span>
+        <span class="ri-price"><%= tenant.currency || '$' %><%= fmtN(oi.price * oi.quantity) %></span>
       </div>
       <% if (oi.notes) { %><div class="ri-note">↳ <%= oi.notes %></div><% } %>
     </div>
@@ -83,20 +91,20 @@
   <% if (parseFloat(order.service_fee) > 0) { %>
   <div style="display:flex;justify-content:space-between;font-size:.78rem;color:#888;padding:4px 0">
     <span>Service Fee</span>
-    <span><%= tenant.currency || '$' %><%= parseFloat(order.service_fee).toFixed(2) %></span>
+    <span><%= tenant.currency || '$' %><%= fmtN(order.service_fee) %></span>
   </div>
   <% } %>
   <div class="receipt-total">
     <span>TOTAL</span>
-    <span><%= tenant.currency || '$' %><%= parseFloat(order.total).toFixed(2) %></span>
+    <span><%= tenant.currency || '$' %><%= fmtN(order.total) %></span>
   </div>
 
   <div class="receipt-payment">
     <div><span>Payment</span><span style="text-transform:capitalize"><%= order.method || 'cash' %></span></div>
     <% if (order.amount_paid) { %>
-    <div><span>Received</span><span><%= tenant.currency || '$' %><%= parseFloat(order.amount_paid).toFixed(2) %></span></div>
+    <div><span>Received</span><span><%= tenant.currency || '$' %><%= fmtN(order.amount_paid) %></span></div>
     <% if (order.change_given > 0) { %>
-    <div><span>Change</span><span><%= tenant.currency || '$' %><%= parseFloat(order.change_given).toFixed(2) %></span></div>
+    <div><span>Change</span><span><%= tenant.currency || '$' %><%= fmtN(order.change_given) %></span></div>
     <% } %>
     <% } %>
   </div>
