@@ -1075,17 +1075,16 @@ document.addEventListener('keydown', e => {
 <script>
   // ── Bill labels per language ──────────────────────────────────────────────
   const BILL_LABELS = {
-    en: { bill:'BILL',    table:'Table',    order:'Order #',        date:'Date',    subtotal:'Subtotal',      discount:'Discount',    total:'TOTAL',        thanks:'Thank you!' },
-    ar: { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب',       date:'التاريخ', subtotal:'المجموع الجزئي', discount:'خصم',        total:'المجموع',      thanks:'شكراً لكم!' },
-    ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'کۆی لایەنی',     discount:'داشکاندن',   total:'کۆی گشتی',    thanks:'سوپاس!' },
+    en: { bill:'BILL',    table:'Table',    order:'Order #',        date:'Date',    subtotal:'Subtotal',       discount:'Discount',    svcfee:'Service Fee',  total:'TOTAL',        thanks:'Thank you!' },
+    ar: { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب',       date:'التاريخ', subtotal:'المجموع الجزئي', discount:'خصم',        svcfee:'رسوم الخدمة', total:'المجموع',      thanks:'شكراً لكم!' },
+    ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'کۆی لایەنی',     discount:'داشکاندن',   svcfee:'موچەی خزمەت', total:'کۆی گشتی',    thanks:'سوپاس!' },
   };
 
   function printBill() {
     const orderItems  = <%- JSON.stringify(orderItems) %>;
     const order       = <%- JSON.stringify(order) %>;
-    const subtotal    = <%= subtotal.toFixed(2) %>;
-    const discount    = <%= discount.toFixed(2) %>;
-    const total       = <%= total.toFixed(2) %>;
+    // Use live totals so service fee toggle is reflected
+    const { subtotal, total, discount, svcFee, grandTotal } = _totals();
     const CUR         = '<%= (tenant.currency || "$").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
     const EXRATE      = <%= exchangeRate %>;
     const tenantName  = '<%- tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
@@ -1125,8 +1124,10 @@ document.addEventListener('keydown', e => {
 
     const discountRow = discount > 0
       ? `<tr><td>${L('discount')}</td><td style="text-align:right">&minus;${CUR}${discount.toFixed(2)}</td></tr>` : '';
+    const svcFeeRow = svcFee > 0
+      ? `<tr><td>${L('svcfee')} (${SERVICE_FEE_PCT}%)</td><td style="text-align:right">${CUR}${svcFee.toFixed(2)}</td></tr>` : '';
     const iqdRow = (showIQD && EXRATE > 1)
-      ? `<tr style="font-size:${parseInt(fontSize)-2}px;color:#444"><td>${L('total')} (IQD)</td><td style="text-align:right">${Math.round(total * EXRATE).toLocaleString()} IQD</td></tr>` : '';
+      ? `<tr style="font-size:${parseInt(fontSize)-2}px;color:#444"><td>${L('total')} (IQD)</td><td style="text-align:right">${Math.round(grandTotal * EXRATE).toLocaleString()} IQD</td></tr>` : '';
     const noteRow = order.note ? `<div style="font-size:${parseInt(fontSize)-2}px;color:#555;margin:4px 0">📝 ${order.note}</div>` : '';
     const headerRow = customHdr ? `<div style="text-align:center;margin:4px 0;font-size:${parseInt(fontSize)-1}px">${customHdr}</div>` : '';
     const footerText = customFtr || L('thanks');
@@ -1165,7 +1166,8 @@ document.addEventListener('keydown', e => {
   <table>
     <tr><td>${L('subtotal')}</td><td style="text-align:right">${CUR}${subtotal.toFixed(2)}</td></tr>
     ${discountRow}
-    <tr class="total-row"><td>${L('total')}</td><td style="text-align:right">${CUR}${total.toFixed(2)}</td></tr>
+    ${svcFeeRow}
+    <tr class="total-row"><td>${L('total')}</td><td style="text-align:right">${CUR}${grandTotal.toFixed(2)}</td></tr>
     ${iqdRow}
   </table>
   ${noteRow}
