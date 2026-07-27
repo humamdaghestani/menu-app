@@ -141,6 +141,8 @@
     .action-btn.btn-transfer span { color: #74b9ff; }
     .action-btn.btn-transfer:hover { background: rgba(116,185,255,.1); }
     #svcFeeBtn span { color: #e17055; }
+    #svcFeeBtn.svc-fee-active { background: rgba(225,112,85,.18); color: #e17055; }
+    #svcFeeBtn.svc-fee-active span { color: #e17055; }
     .note-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
     .note-preset { padding: 4px 10px; border-radius: 20px; border: 1.5px solid #2a2a3e; background: none; color: #777; font-size: .72rem; cursor: pointer; font-family: inherit; }
     .note-preset:hover { border-color: #7c5cbf; color: #c4b5fd; }
@@ -274,12 +276,12 @@
       <button class="action-btn" onclick="openOrderNote()">📝<span>Note</span></button>
       <button class="action-btn" onclick="printBill()">🖨️<span>Print</span></button>
       <% if (serviceFeePct > 0) { %>
-      <button class="action-btn" id="svcFeeBtn" onclick="showSvcFee()" style="color:#e17055">💰<span>Svc Fee</span></button>
+      <button class="action-btn" id="svcFeeBtn" onclick="toggleSvcFee()" style="color:#e17055">💰<span>Svc Fee</span></button>
       <% } %>
     </div>
 
     <div class="order-footer">
-      <% const svcFeeAmt = serviceFeePct > 0 ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0; %>
+      <% const svcFeeAmt = (serviceFeePct > 0 && order.apply_service_fee) ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0; %>
       <% const grandTotalAmt = total + svcFeeAmt; %>
       <div class="totals" id="totalsArea">
         <div class="total-row"><span>Subtotal</span><span><%= tenant.currency || '$' %><%= subtotal.toFixed(2) %></span></div>
@@ -469,20 +471,6 @@
   </div>
 </div>
 
-<!-- ── Service Fee Info Modal ── -->
-<% if (serviceFeePct > 0) { %>
-<div class="modal-overlay" id="svcFeeModal">
-  <div class="modal-box" style="max-width:300px;text-align:center">
-    <h3>💰 Service Fee</h3>
-    <div style="font-size:2rem;font-weight:700;color:#e17055;margin:16px 0" id="svcFeeModalAmt">—</div>
-    <div style="font-size:.8rem;color:#666;margin-bottom:18px"><%= serviceFeePct %>% applied to order total</div>
-    <div class="modal-footer" style="justify-content:center">
-      <button type="button" class="btn btn-ghost" onclick="closeModal('svcFeeModal')">Close</button>
-    </div>
-  </div>
-</div>
-<% } %>
-
 <!-- ── Comp Modal (remove fired item) ── -->
 <div class="modal-overlay" id="compModal">
   <div class="modal-box" style="max-width:380px">
@@ -538,11 +526,12 @@ const menuCache = <%- JSON.stringify(menuItems.map(m => ({ id: m.id, name: m.nam
 
 let _items = <%- JSON.stringify(orderItems.map(i => ({ id: i.id, menu_item_id: i.menu_item_id, name: i.name, price: parseFloat(i.price) || 0, quantity: i.quantity, notes: i.notes || null, sent_to_kitchen: !!i.sent_to_kitchen, course: i.course || 'main' }))) %>;
 let _order = {
-  discount_type:  <%- JSON.stringify(order.discount_type  || 'none') %>,
-  discount_value: <%= parseFloat(order.discount_value || 0) %>,
-  note:           <%- JSON.stringify(order.note || null) %>,
-  cover_count:    <%= order.cover_count || 1 %>,
-  is_held:        <%= order.is_held ? 'true' : 'false' %>,
+  discount_type:     <%- JSON.stringify(order.discount_type  || 'none') %>,
+  discount_value:    <%= parseFloat(order.discount_value || 0) %>,
+  note:              <%- JSON.stringify(order.note || null) %>,
+  cover_count:       <%= order.cover_count || 1 %>,
+  is_held:           <%= order.is_held ? 'true' : 'false' %>,
+  apply_service_fee: <%= order.apply_service_fee ? 'true' : 'false' %>,
 };
 let _currentItemNoteId = null;
 let _selectedItemId    = null;
@@ -564,7 +553,7 @@ function _totals() {
   const dv = _order.discount_value;
   if (_order.discount_type === 'percent' && dv) tot = Math.max(0, sub - sub * dv / 100);
   else if (_order.discount_type === 'fixed' && dv) tot = Math.max(0, sub - dv);
-  const svcFee = SERVICE_FEE_PCT > 0 ? parseFloat((tot * SERVICE_FEE_PCT / 100).toFixed(2)) : 0;
+  const svcFee = (SERVICE_FEE_PCT > 0 && _order.apply_service_fee) ? parseFloat((tot * SERVICE_FEE_PCT / 100).toFixed(2)) : 0;
   return { subtotal: sub, total: tot, discount: sub - tot, svcFee, grandTotal: tot + svcFee };
 }
 
@@ -572,7 +561,7 @@ function _totals() {
 function _render(srv) {
   if (srv) {
     _items = srv.items.map(i => ({ ...i, price: parseFloat(i.price) || 0, sent_to_kitchen: !!i.sent_to_kitchen, course: i.course || 'main' }));
-    _order = srv.order;
+    _order = { ...srv.order, apply_service_fee: !!srv.order.apply_service_fee };
   }
   // Sync cover badge
   const cb = document.getElementById('coverBadgeNum');
@@ -624,6 +613,10 @@ function _render(srv) {
   document.getElementById('payArea').innerHTML = _items.length
     ? `<a href="/pos/order/${ORDER_ID}/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay ${CUR}${grandTotal.toFixed(2)}</a>`
     : `<button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay</button>`;
+
+  // Sync service fee button active state
+  const sfBtn = document.getElementById('svcFeeBtn');
+  if (sfBtn) sfBtn.classList.toggle('svc-fee-active', !!_order.apply_service_fee);
 
   // Keep split modal in sync
   document.getElementById('splitPer').textContent = CUR + (total / (parseInt(document.getElementById('splitCount').value)||2)).toFixed(2);
@@ -1019,11 +1012,11 @@ async function applyPriceOverride() {
 }
 
 /* ── Service Fee ── */
-function showSvcFee() {
-  const { svcFee } = _totals();
-  const el = document.getElementById('svcFeeModalAmt');
-  if (el) el.textContent = CUR + svcFee.toFixed(2);
-  openModal('svcFeeModal');
+async function toggleSvcFee() {
+  _order.apply_service_fee = !_order.apply_service_fee;
+  _render();
+  const r = await posAction(`/pos/api/order/${ORDER_ID}/service-fee`, {}, () => {});
+  if (r.ok && !r.offline) _render(r.data);
 }
 
 /* ── Split ── */

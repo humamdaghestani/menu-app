@@ -410,8 +410,7 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
       const sesRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
       exchangeRate = parseFloat(sesRes.rows[0]?.exchange_rate) || 1;
     }
-    const sfEnabled = tenant.pos_service_fee_enabled && parseFloat(tenant.pos_service_fee_pct) > 0;
-    const serviceFeePct = sfEnabled ? parseFloat(tenant.pos_service_fee_pct) : 0;
+    const serviceFeePct = parseFloat(tenant.pos_service_fee_pct) || 0;
     res.render('pos/order', {
       tenant, order: o,
       orderItems: itemsRes.rows,
@@ -546,9 +545,9 @@ router.get('/order/:orderId/pay', requireAuth, requirePOS, async (req, res) => {
     const sessionRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
     const exchangeRate = parseFloat(sessionRes.rows[0]?.exchange_rate) || 1;
     const loyaltyProgram = loyaltyProgRes.rows[0] || null;
-    const serviceFeeEnabled = tenant.pos_service_fee_enabled && parseFloat(tenant.pos_service_fee_pct) > 0;
-    const serviceFeePct = serviceFeeEnabled ? parseFloat(tenant.pos_service_fee_pct) : 0;
-    const serviceFee    = serviceFeeEnabled ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0;
+    const tenantFeePct  = parseFloat(tenant.pos_service_fee_pct) || 0;
+    const serviceFeePct = (o.apply_service_fee && tenantFeePct > 0) ? tenantFeePct : 0;
+    const serviceFee    = serviceFeePct > 0 ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0;
     const grandTotal    = total + serviceFee;
     res.render('pos/payment', { tenant, order: o, orderItems: itemsRes.rows, subtotal, total, discount, customers: customersRes.rows, exchangeRate, loyaltyProgram, serviceFeePct, serviceFee, grandTotal, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -943,6 +942,19 @@ router.get('/api/order/:id', requireAuth, requirePOS, async (req, res) => {
   try {
     const state = await orderStateJSON(req.params.id, req.user.tenantId);
     if (!state) return res.json({ ok: false, error: 'Not found' });
+    res.json({ ok: true, ...state });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
+// POST /pos/api/order/:id/service-fee  — toggle service fee on/off for this order
+router.post('/api/order/:id/service-fee', requireAuth, requirePOS, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE pos_orders SET apply_service_fee = NOT apply_service_fee WHERE id=$1 AND tenant_id=$2',
+      [req.params.id, req.user.tenantId]
+    );
+    const state = await orderStateJSON(req.params.id, req.user.tenantId);
+    if (!state) return res.json({ ok: false });
     res.json({ ok: true, ...state });
   } catch (err) { console.error(err); res.json({ ok: false }); }
 });
