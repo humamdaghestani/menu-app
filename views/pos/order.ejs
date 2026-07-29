@@ -98,8 +98,39 @@
     .action-btn:hover { color: #c4b5fd; background: rgba(124,92,191,.08); }
     .action-btn:active { background: rgba(124,92,191,.18); }
     .action-btn span { font-size: .72rem; color: #888; font-weight: 700; }
-    /* ── Small screen: tighter buttons ── */
-    @media (max-height: 680px) {
+    /* ── Responsive: tablet portrait (481–860px wide) ── */
+    @media (max-width: 860px) {
+      .items-grid { grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); }
+      .order-panel { width: 280px; }
+    }
+    @media (max-width: 700px) {
+      body { height: 100vh; overflow: hidden; }
+      .layout { display: block; position: relative; height: calc(100vh - 52px); }
+      .menu-panel { position: absolute; top: 0; left: 0; right: 0; bottom: 46vh; display: flex; flex-direction: column; overflow: hidden; }
+      .order-panel { position: absolute; bottom: 0; left: 0; right: 0; width: 100%; height: 46vh; border-left: none; border-top: 2px solid rgba(124,92,191,.5); z-index: 10; }
+      .items-grid { grid-template-columns: repeat(auto-fill, minmax(95px,1fr)); gap: 6px; padding: 8px; }
+      .np-btn { padding: 8px 0; font-size: .88rem; }
+      .np-mode-btn { padding: 5px 0; }
+      .np-display { padding: 5px 12px; }
+      .action-btn { padding: 8px 4px; font-size: 1rem; }
+    }
+    /* ── Responsive: phone (≤ 480px wide) — tab switcher ── */
+    @media (max-width: 480px) {
+      .layout { bottom: 48px; }
+      .menu-panel { bottom: 0; position: absolute; top: 0; left: 0; right: 0; display: flex; flex-direction: column; }
+      .order-panel { position: fixed; inset: 52px 0 48px; width: 100%; height: auto; border-top: 2px solid rgba(124,92,191,.5); z-index: 20; display: none; }
+      .order-panel.mob-visible { display: flex; }
+      .menu-panel.mob-hidden { display: none; }
+      .mobile-tabs { display: flex; }
+      .order-panel { height: auto; max-height: none; }
+    }
+    /* ── Mobile tab bar ── */
+    .mobile-tabs { display: none; position: fixed; bottom: 0; left: 0; right: 0; height: 48px; background: #1a1a2e; border-top: 1px solid rgba(255,255,255,.07); z-index: 30; }
+    .mob-tab { flex: 1; border: none; background: transparent; color: #555; font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 5px; border-top: 2px solid transparent; }
+    .mob-tab.active { color: #c4b5fd; border-top-color: #7c5cbf; }
+    .mob-tab-badge { background: #7c5cbf; color: #fff; font-size: .65rem; font-weight: 900; border-radius: 10px; padding: 1px 6px; min-width: 18px; text-align: center; }
+    /* ── Small height: tighter buttons ── */
+    @media (max-height: 680px) and (min-width: 701px) {
       .np-btn { padding: 8px 0; font-size: .88rem; }
       .np-mode-btn { padding: 5px 0; }
       .np-display { padding: 5px 12px; }
@@ -329,6 +360,12 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- ── Mobile tab bar (phones ≤ 480px) ── -->
+<div class="mobile-tabs" id="mobileTabs">
+  <button class="mob-tab active" id="tabMenu" onclick="switchMobTab('menu')">📋 Menu</button>
+  <button class="mob-tab" id="tabOrder" onclick="switchMobTab('order')">🛒 Order <span class="mob-tab-badge" id="mobOrderBadge">0</span></button>
 </div>
 
 <!-- ── Void Passkey Modal ── -->
@@ -1085,10 +1122,11 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 _render();
 
 // ── Numpad collapse ──────────────────────────────────────────────────────────
-let _npOpen = window.innerHeight > 640;
+let _npOpen = window.innerHeight > 640 && window.innerWidth > 480;
 function _applyNumpadState(animate) {
   const el  = document.getElementById('npCollapsible');
   const arr = document.getElementById('npToggleArrow');
+  if (!el) return;
   if (_npOpen) {
     el.style.maxHeight = el.scrollHeight + 'px';
     arr.style.transform = 'rotate(0deg)';
@@ -1101,6 +1139,26 @@ function _applyNumpadState(animate) {
 }
 function toggleNumpad() { _npOpen = !_npOpen; _applyNumpadState(true); }
 _applyNumpadState(false);
+
+// ── Mobile tab switcher (phones ≤ 480px) ────────────────────────────────────
+let _mobTab = 'menu';
+function switchMobTab(tab) {
+  _mobTab = tab;
+  document.querySelector('.menu-panel').classList.toggle('mob-hidden', tab !== 'menu');
+  document.querySelector('.order-panel').classList.toggle('mob-visible', tab === 'order');
+  document.getElementById('tabMenu').classList.toggle('active', tab === 'menu');
+  document.getElementById('tabOrder').classList.toggle('active', tab === 'order');
+}
+// Update order badge count whenever items change
+const _origRender = typeof _render === 'function' ? _render : null;
+function _updateMobBadge() {
+  const b = document.getElementById('mobOrderBadge');
+  if (b) b.textContent = _items.reduce((s,i) => s + i.quantity, 0);
+}
+// Patch _render to also update badge
+const __renderOrig = _render;
+_render = function(srv) { __renderOrig(srv); _updateMobBadge(); };
+_updateMobBadge();
 
 // Physical keyboard → numpad
 document.addEventListener('keydown', e => {
