@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>POS â€” <%= tenant.name %></title>
+  <title>POS — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -86,10 +86,10 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <div class="topbar-brand">ðŸ–¥ï¸ POS â€” <%= tenant.name %></div>
+    <a href="/pos/tables" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div class="topbar-brand">🖥️ POS — <%= tenant.name %></div>
   </div>
-  <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+  <button onclick="history.back()" class="btn btn-ghost">← Back</button>
 </div>
 
 <div class="main">
@@ -120,23 +120,23 @@
             <% if (parseFloat(session.exchange_rate) > 1) { %>
               1 <%= tenant.currency || '$' %> = <%= parseFloat(session.exchange_rate).toFixed(0) %> IQD
             <% } else { %>
-              â€”
+              —
             <% } %>
           </div>
         </div>
       </div>
-      <button class="btn-rate" onclick="openRateModal(<%= parseFloat(session.exchange_rate) || 1 %>)" style="margin-top:10px">âœï¸ Edit Rate</button>
+      <button class="btn-rate" onclick="openRateModal(<%= parseFloat(session.exchange_rate) || 1 %>)" style="margin-top:10px">✏️ Edit Rate</button>
     </div>
     <div class="session-actions">
-      <a href="/pos/tables" class="btn btn-continue">Go to Tables â†’</a>
-      <a href="/pos/session/close" class="btn btn-close-session">ðŸ”’ Close</a>
+      <a href="/pos/tables" class="btn btn-continue">Go to Tables →</a>
+      <a href="/pos/session/close" class="btn btn-close-session">🔒 Close</a>
     </div>
   </div>
 
   <!-- Exchange Rate Modal -->
   <div class="modal-bg" id="rateBg" onclick="if(event.target===this)closeRateModal()">
     <div class="rate-modal">
-      <h3>âœï¸ Update Exchange Rate</h3>
+      <h3>✏️ Update Exchange Rate</h3>
       <p>Change the IQD rate for this session's remaining payments.</p>
       <input type="number" class="rate-input" id="rateModalInput" min="1" step="1" placeholder="e.g. 1480" oninput="updateRateModalHint()" />
       <div class="rate-hint" id="rateModalHint"></div>
@@ -154,7 +154,7 @@
       <p>Open a session to start taking orders</p>
     </div>
     <div class="session-actions">
-      <a href="/pos/session/open" class="btn btn-open-session">Open Session â†’</a>
+      <a href="/pos/session/open" class="btn btn-open-session">Open Session →</a>
     </div>
   </div>
   <% } %>
@@ -162,7 +162,7 @@
   <!-- Passkey Generator (admin only) -->
   <% if (currentUser.role === 'admin') { %>
   <div class="passkey-section">
-    <h2>ðŸ”‘ Manager Passkeys</h2>
+    <h2>🔑 Manager Passkeys</h2>
     <p>Generate a one-time code for a cashier to void an order or apply a discount. Code expires in 15 minutes.</p>
     <div class="passkey-btns">
       <button class="btn btn-gen-void"     onclick="generatePasskey('void')">Generate Void Code</button>
@@ -179,37 +179,37 @@
   <!-- Navigation Grid -->
   <div class="grid">
     <a href="<%= session ? '/pos/tables' : '/pos/session/open' %>" class="nav-card">
-      <div class="nav-icon">ðŸ—ºï¸</div>
+      <div class="nav-icon">🗺️</div>
       <div class="nav-title">Table Map</div>
       <div class="nav-desc"><%= session ? 'View and manage tables' : 'Open a session first' %></div>
     </a>
 
     <a href="<%= session ? '/pos/orders' : '#' %>" class="nav-card <%= session ? '' : 'disabled' %>">
-      <div class="nav-icon">ðŸ“‹</div>
+      <div class="nav-icon">📋</div>
       <div class="nav-title">Orders</div>
       <div class="nav-desc">Current session orders</div>
     </a>
 
     <a href="/pos/sessions" class="nav-card">
-      <div class="nav-icon">ðŸ“…</div>
+      <div class="nav-icon">📅</div>
       <div class="nav-title">Sessions</div>
       <div class="nav-desc">History of all shifts</div>
     </a>
 
     <a href="/pos/customers" class="nav-card">
-      <div class="nav-icon">ðŸ‘¥</div>
+      <div class="nav-icon">👥</div>
       <div class="nav-title">Customers</div>
       <div class="nav-desc">Manage customer accounts</div>
     </a>
 
     <a href="/pos/settings" class="nav-card">
-      <div class="nav-icon">âš™ï¸</div>
+      <div class="nav-icon">⚙️</div>
       <div class="nav-title">Settings</div>
       <div class="nav-desc">Tables & permissions</div>
     </a>
 
     <a href="/pos/kitchen" class="nav-card">
-      <div class="nav-icon">ðŸ³</div>
+      <div class="nav-icon">🍳</div>
       <div class="nav-title">Kitchen Display</div>
       <div class="nav-desc">Live order queue</div>
     </a>
@@ -234,7 +234,7 @@
   async function saveRate() {
     const r = parseFloat(document.getElementById('rateModalInput').value) || 1;
     const btn = document.querySelector('.btn-rate-save');
-    btn.textContent = 'Savingâ€¦'; btn.disabled = true;
+    btn.textContent = 'Saving…'; btn.disabled = true;
     try {
       const res = await fetch('/pos/session/exchange-rate', {
         method: 'POST',
@@ -244,7 +244,7 @@
       const data = await res.json();
       if (data.ok) {
         const disp = document.getElementById('rateDisplay');
-        if (disp) disp.textContent = r > 1 ? '1 ' + CUR_SYM + ' = ' + r.toFixed(0) + ' IQD' : 'â€”';
+        if (disp) disp.textContent = r > 1 ? '1 ' + CUR_SYM + ' = ' + r.toFixed(0) + ' IQD' : '—';
         closeRateModal();
       } else { alert('Failed to save: ' + (data.error || 'unknown error')); }
     } catch (e) { alert('Network error'); }
@@ -271,7 +271,7 @@
       const codeEl = document.getElementById('passkeyCode');
       const countdown = document.getElementById('passkeyCountdown');
 
-      typeLabel.textContent = actionType === 'void' ? 'ðŸ—‘ï¸ VOID PASSKEY' : 'ðŸ’¸ DISCOUNT PASSKEY';
+      typeLabel.textContent = actionType === 'void' ? '🗑️ VOID PASSKEY' : '💸 DISCOUNT PASSKEY';
       typeLabel.style.color = actionType === 'void' ? '#e74c3c' : '#00b894';
       codeEl.textContent = data.code;
       display.style.display = 'block';

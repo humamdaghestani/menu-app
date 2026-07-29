@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Assets â€” <%= tenant.name %></title>
+  <title>Assets — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -46,15 +46,15 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <a href="/assets" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
     <div>
-      <div class="topbar-brand">ðŸ—ï¸ Asset Management</div>
+      <div class="topbar-brand">🏗️ Asset Management</div>
       <div class="topbar-sub"><%= tenant.name %></div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
     <button onclick="document.getElementById('addAssetOverlay').classList.add('open')" class="btn btn-primary">+ Add Asset</button>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
@@ -67,7 +67,7 @@
   </div>
 
   <div class="section">
-    <div class="section-header"><h3>ðŸ—ï¸ Asset Register</h3></div>
+    <div class="section-header"><h3>🏗️ Asset Register</h3></div>
     <div style="overflow-x:auto">
     <table>
       <thead><tr><th>Name</th><th>Category</th><th>Purchase Date</th><th>Purchase Price</th><th>Current Value</th><th>Dep. %</th><th>Location</th><th>Next Service</th><th>Status</th><th>Actions</th></tr></thead>
@@ -78,21 +78,21 @@
           <div style="color:#fff;font-weight:600"><%= a.name %></div>
           <% if (a.serial_no) { %><div style="font-size:.72rem;color:#555">S/N: <%= a.serial_no %></div><% } %>
         </td>
-        <td><%= a.category || 'â€”' %></td>
-        <td><%= a.purchase_date ? a.purchase_date.toISOString().slice(0,10) : 'â€”' %></td>
+        <td><%= a.category || '—' %></td>
+        <td><%= a.purchase_date ? a.purchase_date.toISOString().slice(0,10) : '—' %></td>
         <td>$<%= parseFloat(a.purchase_price).toFixed(2) %></td>
         <td>$<%= parseFloat(a.current_value).toFixed(2) %></td>
         <td><%= parseFloat(a.depreciation_pct).toFixed(1) %>%</td>
-        <td><%= a.location || 'â€”' %></td>
+        <td><%= a.location || '—' %></td>
         <td style="<%= a.next_service && new Date(a.next_service) <= new Date() ? 'color:#e74c3c' : '' %>">
-          <%= a.next_service ? a.next_service.toISOString().slice(0,10) : 'â€”' %>
+          <%= a.next_service ? a.next_service.toISOString().slice(0,10) : '—' %>
         </td>
         <td><span class="badge badge-<%= a.status %>"><%= a.status %></span></td>
         <td style="display:flex;gap:5px">
-          <a href="/assets/<%= a.id %>/maintenance" class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px">ðŸ”§</a>
+          <a href="/assets/<%= a.id %>/maintenance" class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px">🔧</a>
           <button class="btn btn-ghost" style="font-size:.72rem;padding:3px 8px" onclick="openEdit(<%= JSON.stringify(a) %>)">Edit</button>
           <form method="POST" action="/assets/<%= a.id %>/delete" onsubmit="return confirm('Delete?')">
-            <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">âœ•</button>
+            <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">✕</button>
           </form>
         </td>
       </tr>
@@ -107,7 +107,7 @@
 <!-- Add Asset Modal -->
 <div class="overlay" id="addAssetOverlay">
   <div class="modal">
-    <h3>âž• Add Asset</h3>
+    <h3>➕ Add Asset</h3>
     <form method="POST" action="/assets">
       <div class="form-group"><label>Asset Name *</label><input type="text" name="name" required /></div>
       <div class="form-row">
@@ -140,7 +140,7 @@
 <!-- Edit Asset Modal -->
 <div class="overlay" id="editAssetOverlay">
   <div class="modal">
-    <h3>âœï¸ Edit Asset</h3>
+    <h3>✏️ Edit Asset</h3>
     <form method="POST" id="editAssetForm">
       <div class="form-group"><label>Name *</label><input type="text" name="name" id="ea_name" required /></div>
       <div class="form-row">

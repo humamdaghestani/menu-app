@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Adjustments â€” <%= tenant.name %></title>
+  <title>Adjustments — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -35,16 +35,16 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
     <div>
-      <div class="topbar-brand">ðŸ“ Stock Adjustments</div>
+      <div class="topbar-brand">📝 Stock Adjustments</div>
       <div class="topbar-sub"><%= tenant.name %></div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/inventory" class="btn btn-ghost">ðŸ“¦ Inventory</a>
-    <a href="/inventory/items" class="btn btn-ghost">ðŸ—ƒ Items</a>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <a href="/inventory" class="btn btn-ghost">📦 Inventory</a>
+    <a href="/inventory/items" class="btn btn-ghost">🗃 Items</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
@@ -53,19 +53,19 @@
 
   <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
     <div class="section">
-      <h3>ðŸ“‹ Adjustment Log</h3>
+      <h3>📋 Adjustment Log</h3>
       <table>
         <thead><tr><th>Item</th><th>Type</th><th>Qty Change</th><th>Cost Impact</th><th>Reason</th><th>Date</th></tr></thead>
         <tbody>
         <% adjustments.forEach(a => { %>
         <tr>
-          <td style="color:#fff;font-weight:600"><%= a.item_name || 'â€”' %></td>
+          <td style="color:#fff;font-weight:600"><%= a.item_name || '—' %></td>
           <td><span class="badge badge-<%= a.type %>"><%= a.type %></span></td>
           <td style="color:<%= parseFloat(a.qty_change) >= 0 ? '#00b894' : '#e74c3c' %>;font-weight:700">
             <%= parseFloat(a.qty_change) >= 0 ? '+' : '' %><%= parseFloat(a.qty_change).toFixed(3) %>
           </td>
           <td style="color:#e74c3c">$<%= parseFloat(a.cost_impact).toFixed(2) %></td>
-          <td style="font-size:.78rem;color:#aaa"><%= a.reason || 'â€”' %></td>
+          <td style="font-size:.78rem;color:#aaa"><%= a.reason || '—' %></td>
           <td style="font-size:.78rem;color:#555"><%= a.created_at.toISOString().slice(0,10) %></td>
         </tr>
         <% }) %>
@@ -75,7 +75,7 @@
     </div>
 
     <div class="section">
-      <h3>âž• New Adjustment</h3>
+      <h3>➕ New Adjustment</h3>
       <form method="POST" action="/inventory/adjustments">
         <div class="form-group">
           <label>Item *</label>
@@ -89,8 +89,8 @@
           <select name="type" required>
             <option value="write-off">Write-off (remove)</option>
             <option value="spoilage">Spoilage (remove)</option>
-            <option value="correction-out">Correction â€” Out (remove)</option>
-            <option value="correction-in">Correction â€” In (add)</option>
+            <option value="correction-out">Correction — Out (remove)</option>
+            <option value="correction-in">Correction — In (add)</option>
           </select>
         </div>
         <div class="form-group">

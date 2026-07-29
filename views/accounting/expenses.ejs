@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Expenses â€” <%= tenant.name %></title>
+  <title>Expenses — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -57,12 +57,12 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <span style="font-weight:700;color:#fff">ðŸ’¸ Expenses</span>
+    <a href="/accounting" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <span style="font-weight:700;color:#fff">💸 Expenses</span>
   </div>
   <div style="display:flex;gap:8px">
-    <button class="btn btn-ghost" onclick="document.getElementById('catOverlay').classList.add('open')">ðŸ·ï¸ Categories</button>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('catOverlay').classList.add('open')">🏷️ Categories</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
@@ -114,7 +114,7 @@
       <div class="date-bar">
         <span style="color:#555;font-size:.82rem">Period:</span>
         <input type="date" name="from" value="<%= dateFrom %>" onchange="this.form.submit()" />
-        <span style="color:#444">â†’</span>
+        <span style="color:#444">→</span>
         <input type="date" name="to" value="<%= dateTo %>" onchange="this.form.submit()" />
       </div>
     </form>
@@ -142,9 +142,9 @@
         <td>
           <% if (e.cat_name) { %>
             <span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:8px;background:<%= e.cat_color %>22;color:<%= e.cat_color %>"><%= e.cat_name %></span>
-          <% } else { %><span style="color:#333">â€”</span><% } %>
+          <% } else { %><span style="color:#333">—</span><% } %>
         </td>
-        <td style="color:#444;font-size:.8rem"><%= e.notes || 'â€”' %></td>
+        <td style="color:#444;font-size:.8rem"><%= e.notes || '—' %></td>
         <td style="text-align:right;color:#e74c3c;font-weight:700;white-space:nowrap">
           <%= parseFloat(e.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
         </td>
@@ -152,7 +152,7 @@
           <div style="display:flex;gap:5px">
             <button type="button" class="btn btn-ghost btn-sm" onclick='openEdit(<%- JSON.stringify(e) %>)'>Edit</button>
             <form method="POST" action="/accounting/expenses/<%= e.id %>/delete" onsubmit="return confirm('Delete this expense?')" style="display:inline">
-              <button type="submit" class="btn btn-danger btn-sm">âœ•</button>
+              <button type="submit" class="btn btn-danger btn-sm">✕</button>
             </form>
           </div>
         </td>
@@ -168,7 +168,7 @@
 <!-- Category Manager Modal -->
 <div class="overlay" id="catOverlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal">
-    <div class="modal-title">ðŸ·ï¸ Expense Categories</div>
+    <div class="modal-title">🏷️ Expense Categories</div>
     <form method="POST" action="/accounting/categories" style="margin-bottom:20px">
       <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end">
         <div class="form-group" style="margin-bottom:0">
@@ -191,7 +191,7 @@
           <span style="width:12px;height:12px;border-radius:50%;background:<%= c.color %>;flex-shrink:0"></span>
           <span style="flex:1;color:#ddd;font-size:.88rem;font-weight:600"><%= c.name %></span>
           <form method="POST" action="/accounting/categories/<%= c.id %>/delete" onsubmit="return confirm('Delete category?')">
-            <button type="submit" class="btn btn-danger btn-sm">âœ•</button>
+            <button type="submit" class="btn btn-danger btn-sm">✕</button>
           </form>
         </div>
         <% }) %>
@@ -206,7 +206,7 @@
 <!-- Edit Expense Modal -->
 <div class="overlay" id="editOverlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal edit-modal">
-    <div class="modal-title">âœï¸ Edit Expense</div>
+    <div class="modal-title">✏️ Edit Expense</div>
     <form method="POST" id="editForm">
       <div class="edit-row">
         <div class="form-group">

@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= supplier.name %> â€” Ledger</title>
+  <title><%= supplier.name %> — Ledger</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -57,13 +57,13 @@
 <body>
 <div class="topbar no-print">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">ðŸ </a>
-    <span style="font-weight:700;color:#fff"><%= supplier.name %> â€” Statement</span>
+    <a href="/accounting" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">🏠</a>
+    <span style="font-weight:700;color:#fff"><%= supplier.name %> — Statement</span>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/accounting/suppliers" class="btn btn-ghost">â† Suppliers</a>
-    <button onclick="document.getElementById('payOverlay').classList.add('open')" class="btn btn-success">ðŸ’³ Record Payment</button>
-    <button onclick="window.print()" class="btn btn-print">ðŸ–¨ Print</button>
+    <a href="/accounting/suppliers" class="btn btn-ghost">← Suppliers</a>
+    <button onclick="document.getElementById('payOverlay').classList.add('open')" class="btn btn-success">💳 Record Payment</button>
+    <button onclick="window.print()" class="btn btn-print">🖨 Print</button>
   </div>
 </div>
 
@@ -73,8 +73,8 @@
     <div class="info-card">
       <div class="info-label">Supplier</div>
       <div class="info-val"><%= supplier.name %></div>
-      <% if (supplier.phone) { %><div class="supp-meta">ðŸ“ž <%= supplier.phone %></div><% } %>
-      <% if (supplier.email) { %><div class="supp-meta">âœ‰ï¸ <%= supplier.email %></div><% } %>
+      <% if (supplier.phone) { %><div class="supp-meta">📞 <%= supplier.phone %></div><% } %>
+      <% if (supplier.email) { %><div class="supp-meta">✉️ <%= supplier.email %></div><% } %>
     </div>
     <div class="info-card">
       <div class="info-label">Total Purchased</div>
@@ -92,7 +92,7 @@
 
   <!-- Ledger table -->
   <div class="card">
-    <div class="card-title">ðŸ“‹ Account Statement</div>
+    <div class="card-title">📋 Account Statement</div>
     <table>
       <thead>
         <tr>
@@ -107,9 +107,9 @@
       <tbody>
       <% if (supplier.opening_balance && parseFloat(supplier.opening_balance) !== 0) { %>
       <tr>
-        <td style="color:#555;font-size:.78rem">â€”</td>
+        <td style="color:#555;font-size:.78rem">—</td>
         <td style="color:#888">Opening Balance</td>
-        <td>â€”</td>
+        <td>—</td>
         <td style="text-align:right"></td>
         <td style="text-align:right"></td>
         <td class="running-bal <%= parseFloat(supplier.opening_balance) > 0 ? 'running-pos' : 'running-zero' %>">$<%= parseFloat(supplier.opening_balance).toFixed(2) %></td>
@@ -147,7 +147,7 @@
 <!-- Payment Modal -->
 <div class="overlay no-print" id="payOverlay">
   <div class="modal">
-    <h3>ðŸ’³ Record Payment â€” <%= supplier.name %></h3>
+    <h3>💳 Record Payment — <%= supplier.name %></h3>
     <form method="POST" action="/accounting/suppliers/pay">
       <input type="hidden" name="supplier_name" value="<%= supplier.name %>" />
       <input type="hidden" name="supplier_id" value="<%= supplier.id %>" />

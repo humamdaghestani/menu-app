@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventory â€” <%= tenant.name %></title>
+  <title>Inventory — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -51,19 +51,19 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <div class="topbar-brand">ðŸ“¦ Inventory â€” <%= tenant.name %></div>
+    <a href="/inventory" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div class="topbar-brand">📦 Inventory — <%= tenant.name %></div>
   </div>
   <div class="nav-links">
-    <a href="/inventory/items" class="btn btn-ghost">ðŸ“‹ Items</a>
-    <a href="/inventory/purchases" class="btn btn-ghost">ðŸ§¾ Purchases</a>
-    <a href="/inventory/adjustments" class="btn btn-ghost">ðŸ“ Adjustments</a>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <a href="/inventory/items" class="btn btn-ghost">📋 Items</a>
+    <a href="/inventory/purchases" class="btn btn-ghost">🧾 Purchases</a>
+    <a href="/inventory/adjustments" class="btn btn-ghost">📝 Adjustments</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
 <div class="main">
-  <div class="page-title">ðŸ“¦ Inventory Dashboard</div>
+  <div class="page-title">📦 Inventory Dashboard</div>
 
   <div class="stats-row">
     <div class="stat-card">
@@ -90,7 +90,7 @@
 
   <% if (lowStock.length > 0) { %>
   <div class="section">
-    <div class="section-title">ðŸ”´ Low Stock Alerts</div>
+    <div class="section-title">🔴 Low Stock Alerts</div>
     <div class="alert-list">
       <% lowStock.forEach(item => { %>
       <div class="alert-row">
@@ -106,9 +106,9 @@
   <% } %>
 
   <div class="section">
-    <div class="section-title">ðŸ§¾ Recent Purchases</div>
+    <div class="section-title">🧾 Recent Purchases</div>
     <% if (recentPurchases.length === 0) { %>
-    <div style="color:#444;font-size:.85rem;padding:20px 0">No purchase receipts yet. <a href="/inventory/purchases/new" style="color:#7c5cbf">Add first purchase â†’</a></div>
+    <div style="color:#444;font-size:.85rem;padding:20px 0">No purchase receipts yet. <a href="/inventory/purchases/new" style="color:#7c5cbf">Add first purchase →</a></div>
     <% } else { %>
     <div class="table-wrap">
       <table>
@@ -117,10 +117,10 @@
         <% recentPurchases.forEach(r => { %>
         <tr onclick="window.location.href='/inventory/purchases/<%= r.id %>'" style="cursor:pointer">
           <td><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
-          <td><%= r.supplier_name || 'â€”' %></td>
-          <td style="color:#666"><%= r.invoice_no || 'â€”' %></td>
+          <td><%= r.supplier_name || '—' %></td>
+          <td style="color:#666"><%= r.invoice_no || '—' %></td>
           <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
-          <td style="color:#666"><%= r.created_by_name || 'â€”' %></td>
+          <td style="color:#666"><%= r.created_by_name || '—' %></td>
         </tr>
         <% }) %>
         </tbody>
@@ -130,7 +130,7 @@
   </div>
 
   <div class="section">
-    <div class="section-title">ðŸ”„ Recent Stock Movements</div>
+    <div class="section-title">🔄 Recent Stock Movements</div>
     <% if (recentTx.length === 0) { %>
     <div style="color:#444;font-size:.85rem;padding:20px 0">No transactions yet.</div>
     <% } else { %>
@@ -146,7 +146,7 @@
           <td style="color:<%= parseFloat(tx.qty_change) >= 0 ? '#00b894' : '#e74c3c' %>;font-weight:700">
             <%= parseFloat(tx.qty_change) >= 0 ? '+' : '' %><%= parseFloat(tx.qty_change).toFixed(4) %> <%= tx.unit %>
           </td>
-          <td style="color:#555"><%= tx.notes || 'â€”' %></td>
+          <td style="color:#555"><%= tx.notes || '—' %></td>
         </tr>
         <% }) %>
         </tbody>

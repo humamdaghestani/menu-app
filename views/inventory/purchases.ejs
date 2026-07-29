@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Purchase Receipts â€” <%= tenant.name %></title>
+  <title>Purchase Receipts — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -29,9 +29,9 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
-    <span style="font-weight:700;color:#fff">ðŸ§¾ Purchase Receipts</span>
+    <a href="/inventory" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <span style="font-weight:700;color:#fff">🧾 Purchase Receipts</span>
   </div>
   <a href="/inventory/purchases/new" class="btn btn-primary">+ New Receipt</a>
 </div>
@@ -39,7 +39,7 @@
 <div class="main">
   <% if (receipts.length === 0) { %>
   <div class="empty-state">
-    <div style="font-size:3rem">ðŸ§¾</div>
+    <div style="font-size:3rem">🧾</div>
     <div style="margin-top:12px;font-size:.9rem">No purchase receipts yet.</div>
     <a href="/inventory/purchases/new" class="btn btn-primary" style="margin-top:16px">Add first receipt</a>
   </div>
@@ -53,11 +53,11 @@
       <% receipts.forEach(r => { %>
       <tr onclick="window.location.href='/inventory/purchases/<%= r.id %>'">
         <td><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
-        <td style="color:#fff;font-weight:600"><%= r.supplier_name || 'â€”' %></td>
-        <td style="color:#555"><%= r.invoice_no || 'â€”' %></td>
+        <td style="color:#fff;font-weight:600"><%= r.supplier_name || '—' %></td>
+        <td style="color:#555"><%= r.invoice_no || '—' %></td>
         <td style="color:#666"><%= r.line_count %> item<%= r.line_count != 1 ? 's' : '' %></td>
         <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
-        <td style="color:#555"><%= r.created_by_name || 'â€”' %></td>
+        <td style="color:#555"><%= r.created_by_name || '—' %></td>
       </tr>
       <% }) %>
       </tbody>

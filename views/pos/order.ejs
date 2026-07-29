@@ -1,14 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Order â€” <%= order.table_name %></title>
+  <title>Order — <%= order.table_name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* â”€â”€ Topbar â”€â”€ */
+    /* ── Topbar ── */
     .topbar { background: #1a1a2e; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0; gap: 12px; }
     .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
     .table-chip { background: rgba(124,92,191,.2); color: #a78bdf; font-weight: 700; font-size: .82rem; padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
@@ -22,10 +22,10 @@
     .btn-pay:hover { opacity: .88; }
     .btn-pay:disabled { opacity: .35; cursor: not-allowed; }
 
-    /* â”€â”€ Main layout â”€â”€ */
+    /* ── Main layout ── */
     .layout { display: flex; flex: 1; overflow: hidden; }
 
-    /* â”€â”€ Menu Panel â”€â”€ */
+    /* ── Menu Panel ── */
     .menu-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
     .search-bar { padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); flex-shrink: 0; }
@@ -51,7 +51,7 @@
     .item-card-price { font-size: .8rem; color: #7c5cbf; font-weight: 700; }
     .item-card.hidden { display: none; }
 
-    /* â”€â”€ Order Panel â”€â”€ */
+    /* ── Order Panel ── */
     .order-panel { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; background: #13132a; border-left: 1px solid rgba(255,255,255,.06); }
 
     .order-list { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; }
@@ -71,7 +71,7 @@
     .qty-num { font-size: .8rem; color: #fff; font-weight: 700; width: 18px; text-align: center; }
     .oi-price { font-size: .8rem; color: #7c5cbf; font-weight: 700; white-space: nowrap; min-width: 48px; text-align: right; }
 
-    /* â”€â”€ Numpad â”€â”€ */
+    /* ── Numpad ── */
     .numpad-area { flex-shrink: 0; border-top: 1px solid rgba(255,255,255,.06); }
     .np-display { padding: 7px 12px; background: #0f0f1a; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .np-display-label { font-size: .7rem; color: #444; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
@@ -88,7 +88,7 @@
     .np-mode-btn.active { background: rgba(124,92,191,.18); color: #c4b5fd; }
     .np-mode-btn:hover:not(.active) { color: #777; background: rgba(255,255,255,.04); }
 
-    /* â”€â”€ Action buttons (below numpad) â”€â”€ */
+    /* ── Action buttons (below numpad) ── */
     .order-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: rgba(255,255,255,.04); flex-shrink: 0; }
     .action-btn { padding: 11px 4px; border: none; background: #13132a; color: #777; font-size: 1.15rem; font-weight: 600; cursor: pointer; font-family: inherit; text-align: center; transition: all .15s; display: flex; flex-direction: column; align-items: center; gap: 4px; }
     .action-btn:hover { color: #c4b5fd; background: rgba(124,92,191,.08); }
@@ -101,7 +101,7 @@
     .total-row.discount { color: #00b894; }
     .total-row.grand { font-size: 1rem; font-weight: 700; color: #fff; padding-top: 8px; border-top: 1px solid #2a2a3e; margin-top: 6px; }
 
-    /* â”€â”€ Modals â”€â”€ */
+    /* ── Modals ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
     .modal-overlay.open { display: flex; }
     .modal-box { background: #1a1a2e; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); padding: 24px; width: 100%; max-width: 360px; }
@@ -119,13 +119,13 @@
     .split-per { font-size: 1.3rem; font-weight: 700; color: #fff; }
     .split-sub { font-size: .75rem; color: #555; margin-top: 4px; }
 
-    /* â”€â”€ POS Pro additions â”€â”€ */
+    /* ── POS Pro additions ── */
     .cover-badge { background: rgba(116,185,255,.18); color: #74b9ff; font-size: .7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
     .cover-badge:hover { background: rgba(116,185,255,.28); }
     .held-badge { background: rgba(253,203,110,.2); color: #fdcb6e; font-size: .68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; animation: pulse .9s ease-in-out infinite alternate; }
     @keyframes pulse { from { opacity:.7 } to { opacity:1 } }
     .item-card.oos { opacity: .38; }
-    .item-card.oos .item-card-price::after { content: ' Â· 86\'d'; color: #e74c3c; font-size: .65rem; font-weight: 700; }
+    .item-card.oos .item-card-price::after { content: ' · 86\'d'; color: #e74c3c; font-size: .65rem; font-weight: 700; }
     .item-card.oos::after { content: 'OUT'; position: absolute; top: 4px; right: 4px; background: #e74c3c; color: #fff; font-size: .58rem; font-weight: 900; padding: 2px 6px; border-radius: 4px; }
     .item-card { position: relative; }
     .oi-fired   { font-size: .6rem; color: #00b894; font-weight: 700; margin-left: 3px; }
@@ -163,26 +163,26 @@
 
 <div class="topbar">
   <div class="topbar-left">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <span class="table-chip">ðŸª‘ <%= order.table_name %></span>
+    <a href="/pos/tables" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <span class="table-chip">🪑 <%= order.table_name %></span>
     <span class="order-num">#<%= order.id %></span>
-    <span class="cover-badge" onclick="openCoverModal()" title="Covers">ðŸª‘ <span id="coverBadgeNum"><%= order.cover_count || 1 %></span></span>
-    <span class="held-badge" id="heldBadge" style="<%= order.is_held ? '' : 'display:none' %>">â¸ HELD</span>
+    <span class="cover-badge" onclick="openCoverModal()" title="Covers">🪑 <span id="coverBadgeNum"><%= order.cover_count || 1 %></span></span>
+    <span class="held-badge" id="heldBadge" style="<%= order.is_held ? '' : 'display:none' %>">⏸ HELD</span>
   </div>
   <div class="topbar-right">
-    <button class="btn btn-ghost" onclick="printBill()" title="Print bill">ðŸ–¨ï¸</button>
-    <button class="btn btn-danger" onclick="openVoid()">ðŸ—‘ï¸ Void</button>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <button class="btn btn-ghost" onclick="printBill()" title="Print bill">🖨️</button>
+    <button class="btn btn-danger" onclick="openVoid()">🗑️ Void</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
 <div class="layout">
 
-  <!-- â”€â”€ Menu Panel â”€â”€ -->
+  <!-- ── Menu Panel ── -->
   <div class="menu-panel">
     <div class="search-bar">
       <div class="search-wrap">
-        <span class="search-icon">ðŸ”</span>
+        <span class="search-icon">🔍</span>
         <input type="text" class="search-input" id="searchInput" placeholder="Search items..." oninput="filterItems()" />
       </div>
     </div>
@@ -198,7 +198,7 @@
         <% if (item.image_url) { %>
         <img class="item-card-img" src="<%= item.image_url %>" alt="<%= item.name %>" loading="lazy" />
         <% } else { %>
-        <div class="item-card-img-placeholder">ðŸ½ï¸</div>
+        <div class="item-card-img-placeholder">🍽️</div>
         <% } %>
         <div class="item-card-body">
           <div class="item-card-name"><%= item.name %></div>
@@ -209,7 +209,7 @@
     </div>
   </div>
 
-  <!-- â”€â”€ Order Panel â”€â”€ -->
+  <!-- ── Order Panel ── -->
   <div class="order-panel">
 
     <div class="order-list" id="orderList">
@@ -219,16 +219,16 @@
       <% orderItems.forEach(oi => { %>
       <div class="order-item">
         <div class="oi-info">
-          <div class="oi-name"><%= oi.name %><% if (oi.sent_to_kitchen) { %><span class="oi-fired" title="Fired to kitchen">ðŸ”¥</span><% } else { %><span class="oi-unfired" title="Not yet sent">â—</span><% } %><% if (oi.course && oi.course !== 'main') { %><span class="course-pill"><%= oi.course %></span><% } %></div>
+          <div class="oi-name"><%= oi.name %><% if (oi.sent_to_kitchen) { %><span class="oi-fired" title="Fired to kitchen">🔥</span><% } else { %><span class="oi-unfired" title="Not yet sent">●</span><% } %><% if (oi.course && oi.course !== 'main') { %><span class="course-pill"><%= oi.course %></span><% } %></div>
           <div class="oi-note">
-            <% if (oi.notes) { %><span>ðŸ“ <%= oi.notes %></span><% } %>
+            <% if (oi.notes) { %><span>📝 <%= oi.notes %></span><% } %>
             <button class="oi-note-edit" onclick="openItemNote(<%= oi.id %>, <%- JSON.stringify(oi.notes||'') %>)">
               <%= oi.notes ? 'edit note' : '+ note' %>
             </button>
           </div>
         </div>
         <div class="qty-ctrl">
-          <button type="button" class="qty-btn" onclick="changeQty(<%= oi.id %>, -1)">âˆ’</button>
+          <button type="button" class="qty-btn" onclick="changeQty(<%= oi.id %>, -1)">−</button>
           <span class="qty-num"><%= oi.quantity %></span>
           <button type="button" class="qty-btn" onclick="changeQty(<%= oi.id %>, 1)">+</button>
         </div>
@@ -238,7 +238,7 @@
       <% } %>
     </div>
 
-    <!-- â”€â”€ Numpad â”€â”€ -->
+    <!-- ── Numpad ── -->
     <div class="numpad-area">
       <div class="np-modes">
         <button class="np-mode-btn active" id="modeQty"     onclick="setNpMode('qty')">QTY</button>
@@ -248,7 +248,7 @@
       </div>
       <div class="np-display">
         <div class="np-display-label" id="npLabel">Tap an item</div>
-        <div class="np-display-val" id="npVal">â€”</div>
+        <div class="np-display-val" id="npVal">—</div>
       </div>
       <div class="np-grid">
         <button class="np-btn" onclick="numpadPress('7')">7</button>
@@ -260,23 +260,23 @@
         <button class="np-btn" onclick="numpadPress('1')">1</button>
         <button class="np-btn" onclick="numpadPress('2')">2</button>
         <button class="np-btn" onclick="numpadPress('3')">3</button>
-        <button class="np-btn np-back" onclick="numpadPress('back')">âŒ«</button>
+        <button class="np-btn np-back" onclick="numpadPress('back')">⌫</button>
         <button class="np-btn" onclick="numpadPress('0')">0</button>
-        <button class="np-btn np-ok" onclick="numpadPress('ok')">âœ“</button>
+        <button class="np-btn np-ok" onclick="numpadPress('ok')">✓</button>
       </div>
     </div>
 
-    <!-- â”€â”€ Action buttons â”€â”€ -->
+    <!-- ── Action buttons ── -->
     <div class="order-actions">
-      <button class="action-btn" onclick="openDiscount()">ðŸ·ï¸<span>Disc</span></button>
-      <button class="action-btn btn-fire" onclick="fireKitchen()">ðŸ”¥<span>Fire</span></button>
-      <button class="action-btn btn-hold" id="btnHold" onclick="holdOrder()"><span id="holdIcon"><%= order.is_held ? 'â–¶' : 'â¸' %></span><span id="holdLabel"><%= order.is_held ? 'Unhold' : 'Hold' %></span></button>
-      <button class="action-btn btn-transfer" onclick="openTransfer()">â†•<span>Move</span></button>
-      <button class="action-btn" onclick="openSplit()">âœ‚ï¸<span>Split</span></button>
-      <button class="action-btn" onclick="openOrderNote()">ðŸ“<span>Note</span></button>
-      <button class="action-btn" onclick="printBill()">ðŸ–¨ï¸<span>Print</span></button>
+      <button class="action-btn" onclick="openDiscount()">🏷️<span>Disc</span></button>
+      <button class="action-btn btn-fire" onclick="fireKitchen()">🔥<span>Fire</span></button>
+      <button class="action-btn btn-hold" id="btnHold" onclick="holdOrder()"><span id="holdIcon"><%= order.is_held ? '▶' : '⏸' %></span><span id="holdLabel"><%= order.is_held ? 'Unhold' : 'Hold' %></span></button>
+      <button class="action-btn btn-transfer" onclick="openTransfer()">↕<span>Move</span></button>
+      <button class="action-btn" onclick="openSplit()">✂️<span>Split</span></button>
+      <button class="action-btn" onclick="openOrderNote()">📝<span>Note</span></button>
+      <button class="action-btn" onclick="printBill()">🖨️<span>Print</span></button>
       <% if (serviceFeePct > 0) { %>
-      <button class="action-btn" id="svcFeeBtn" onclick="toggleSvcFee()" style="color:#e17055">ðŸ’°<span>Svc Fee</span></button>
+      <button class="action-btn" id="svcFeeBtn" onclick="toggleSvcFee()" style="color:#e17055">💰<span>Svc Fee</span></button>
       <% } %>
     </div>
 
@@ -288,7 +288,7 @@
         <% if (discount > 0) { %>
         <div class="total-row discount">
           <span>Discount (<%= order.discount_type === 'percent' ? order.discount_value + '%' : (tenant.currency||'$') + parseFloat(order.discount_value).toFixed(2) %>)</span>
-          <span>âˆ’<%= tenant.currency || '$' %><%= discount.toFixed(2) %></span>
+          <span>−<%= tenant.currency || '$' %><%= discount.toFixed(2) %></span>
         </div>
         <% } %>
         <% if (svcFeeAmt > 0) { %>
@@ -297,26 +297,26 @@
           <span>+<%= tenant.currency || '$' %><%= svcFeeAmt.toFixed(2) %></span>
         </div>
         <% } %>
-        <% if (order.note) { %><div class="total-row"><span style="color:#f39c12">ðŸ“ <%= order.note %></span></div><% } %>
+        <% if (order.note) { %><div class="total-row"><span style="color:#f39c12">📝 <%= order.note %></span></div><% } %>
         <div class="total-row grand"><span>Total</span><span><%= tenant.currency || '$' %><%= grandTotalAmt.toFixed(2) %></span></div>
       </div>
       <div id="payArea">
         <% if (orderItems.length > 0) { %>
         <a href="/pos/order/<%= order.id %>/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">
-          ðŸ’³ Pay <%= tenant.currency || '$' %><%= grandTotalAmt.toFixed(2) %>
+          💳 Pay <%= tenant.currency || '$' %><%= grandTotalAmt.toFixed(2) %>
         </a>
         <% } else { %>
-        <button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">ðŸ’³ Pay</button>
+        <button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay</button>
         <% } %>
       </div>
     </div>
   </div>
 </div>
 
-<!-- â”€â”€ Void Passkey Modal â”€â”€ -->
+<!-- ── Void Passkey Modal ── -->
 <div class="modal-overlay" id="voidModal">
   <div class="modal-box">
-    <h3>ðŸ—‘ï¸ Cancel Order</h3>
+    <h3>🗑️ Cancel Order</h3>
     <p style="font-size:.8rem;color:#666;margin-bottom:14px">Ask your manager to generate a <strong>Void</strong> passkey, then enter it below.</p>
     <form id="voidForm">
       <label style="font-size:.7rem;color:#555;font-weight:700;display:block;margin-bottom:5px;text-transform:uppercase">Manager Passkey</label>
@@ -331,10 +331,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Discount Numpad Passkey Modal â”€â”€ -->
+<!-- ── Discount Numpad Passkey Modal ── -->
 <div class="modal-overlay" id="discNpModal">
   <div class="modal-box" style="max-width:300px">
-    <h3>ðŸ·ï¸ Manager Passkey</h3>
+    <h3>🏷️ Manager Passkey</h3>
     <p style="font-size:.78rem;color:#555;margin-bottom:12px" id="discNpDesc"></p>
     <input type="text" class="modal-input" id="discNpPasskey" maxlength="20"
       placeholder="Manager passcode" inputmode="numeric" autocomplete="off"
@@ -346,15 +346,15 @@
   </div>
 </div>
 
-<!-- â”€â”€ Discount Modal â”€â”€ -->
+<!-- ── Discount Modal ── -->
 <div class="modal-overlay" id="discountModal">
   <div class="modal-box">
-    <h3>ðŸ·ï¸ Apply Discount</h3>
+    <h3>🏷️ Apply Discount</h3>
     <form id="discountForm">
       <div class="type-toggle">
         <button type="button" class="type-btn active" id="btnPct" onclick="setDiscType('percent')">% Percent</button>
         <button type="button" class="type-btn" id="btnFixed" onclick="setDiscType('fixed')">$ Fixed</button>
-        <button type="button" class="type-btn" id="btnNone" onclick="setDiscType('none')">âœ• Remove</button>
+        <button type="button" class="type-btn" id="btnNone" onclick="setDiscType('none')">✕ Remove</button>
       </div>
       <input type="hidden" name="discount_type" id="discTypeInput" value="percent" />
       <input type="number" class="modal-input" name="discount_value" id="discValueInput"
@@ -373,10 +373,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Split Modal â”€â”€ -->
+<!-- ── Split Modal ── -->
 <div class="modal-overlay" id="splitModal">
   <div class="modal-box">
-    <h3>âœ‚ï¸ Split Bill</h3>
+    <h3>✂️ Split Bill</h3>
     <label style="font-size:.78rem;color:#666;margin-bottom:6px;display:block">Number of people</label>
     <input type="number" class="modal-input" id="splitCount" value="2" min="2" max="20" oninput="calcSplit()" />
     <div class="split-result">
@@ -389,10 +389,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Order Note Modal â”€â”€ -->
+<!-- ── Order Note Modal ── -->
 <div class="modal-overlay" id="noteModal">
   <div class="modal-box">
-    <h3>ðŸ“ Order Note</h3>
+    <h3>📝 Order Note</h3>
     <form id="noteForm">
       <textarea class="modal-input" name="note" id="noteText" rows="3" placeholder="e.g. allergy info, special requests..."
         style="resize:vertical"><%= order.note || '' %></textarea>
@@ -404,10 +404,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Item Note Modal â”€â”€ -->
+<!-- ── Item Note Modal ── -->
 <div class="modal-overlay" id="itemNoteModal">
   <div class="modal-box">
-    <h3>ðŸ“ Item Note</h3>
+    <h3>📝 Item Note</h3>
     <form id="itemNoteForm">
       <div class="note-presets">
         <button type="button" class="note-preset" onclick="appendPreset('No Onion')">No Onion</button>
@@ -428,10 +428,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Cover Count Modal â”€â”€ -->
+<!-- ── Cover Count Modal ── -->
 <div class="modal-overlay" id="coverModal">
   <div class="modal-box" style="max-width:280px">
-    <h3>ðŸª‘ Cover Count</h3>
+    <h3>🪑 Cover Count</h3>
     <label style="font-size:.78rem;color:#666;margin-bottom:6px;display:block">How many guests?</label>
     <input type="number" class="modal-input" id="coverInput" value="<%= order.cover_count || 1 %>" min="1" max="50" />
     <div class="modal-footer">
@@ -441,13 +441,13 @@
   </div>
 </div>
 
-<!-- â”€â”€ Transfer / Merge Table Modal â”€â”€ -->
+<!-- ── Transfer / Merge Table Modal ── -->
 <div class="modal-overlay" id="transferModal">
   <div class="modal-box" style="max-width:480px">
-    <h3>â†• Move / Merge Order</h3>
+    <h3>↕ Move / Merge Order</h3>
     <div style="display:flex;gap:10px;margin-bottom:12px;font-size:.72rem">
-      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid #74b9ff"></span> Free â€” transfer here</span>
-      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid #fdcb6e"></span> Occupied â€” merge into</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid #74b9ff"></span> Free — transfer here</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1.5px solid #fdcb6e"></span> Occupied — merge into</span>
     </div>
     <div class="table-grid">
       <% tables.forEach(t => { %>
@@ -471,10 +471,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Comp Modal (remove item) â”€â”€ -->
+<!-- ── Comp Modal (remove item) ── -->
 <div class="modal-overlay" id="compModal">
   <div class="modal-box" style="max-width:380px">
-    <h3>âš ï¸ Remove Item</h3>
+    <h3>⚠️ Remove Item</h3>
     <p style="font-size:.8rem;color:#888;margin-bottom:14px">A manager passcode is required to remove items from an order.</p>
     <div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-weight:700;color:#fff" id="compItemName"></div>
     <div class="form-group" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
@@ -499,10 +499,10 @@
   </div>
 </div>
 
-<!-- â”€â”€ Price Override Passkey Modal â”€â”€ -->
+<!-- ── Price Override Passkey Modal ── -->
 <div class="modal-overlay" id="priceOverrideModal">
   <div class="modal-box" style="max-width:320px">
-    <h3>ðŸ’² Price Override</h3>
+    <h3>💲 Price Override</h3>
     <p style="font-size:.8rem;color:#888;margin-bottom:10px">Manager passkey required</p>
     <div style="text-align:center;font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:14px" id="priceOverrideAmt"></div>
     <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;display:block;margin-bottom:5px">Manager Passkey</label>
@@ -518,7 +518,7 @@
 
 <script src="/pos-offline.js"></script>
 <script>
-/* â”€â”€ Seed state from server â”€â”€ */
+/* ── Seed state from server ── */
 const CUR             = <%- JSON.stringify(tenant.currency || '$') %>;
 const ORDER_ID        = <%= order.id %>;
 const SERVICE_FEE_PCT = <%= serviceFeePct || 0 %>;
@@ -549,7 +549,7 @@ let _pendingPriceItemId = null;
 let _pendingPrice       = 0;
 let _compItemId         = null;
 
-/* â”€â”€ Helpers â”€â”€ */
+/* ── Helpers ── */
 function _esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -563,7 +563,7 @@ function _totals() {
   return { subtotal: sub, total: tot, discount: sub - tot, svcFee, grandTotal: tot + svcFee };
 }
 
-/* â”€â”€ Render order panel from _items / _order â”€â”€ */
+/* ── Render order panel from _items / _order ── */
 function _render(srv) {
   if (srv) {
     _items = srv.items.map(i => ({ ...i, price: parseFloat(i.price) || 0, sent_to_kitchen: !!i.sent_to_kitchen, course: i.course || 'main' }));
@@ -577,7 +577,7 @@ function _render(srv) {
   const hi = document.getElementById('holdIcon');
   const heldBadge = document.getElementById('heldBadge');
   if (hl) hl.textContent = _order.is_held ? 'Unhold' : 'Hold';
-  if (hi) hi.textContent = _order.is_held ? 'â–¶' : 'â¸';
+  if (hi) hi.textContent = _order.is_held ? '▶' : '⏸';
   if (heldBadge) heldBadge.style.display = _order.is_held ? '' : 'none';
   const { subtotal, total, discount, svcFee, grandTotal } = srv || _totals();
 
@@ -589,16 +589,16 @@ function _render(srv) {
     list.innerHTML = _items.map(oi => `
       <div class="order-item${oi.id === _selectedItemId ? ' selected' : ''}" onclick="selectItem(${oi.id}, event)">
         <div class="oi-info">
-          <div class="oi-name">${_esc(oi.name)}${oi.sent_to_kitchen ? '<span class="oi-fired" title="Fired">ðŸ”¥</span>' : '<span class="oi-unfired" title="Not fired">â—</span>'}${oi.course !== 'main' ? `<span class="course-pill">${oi.course}</span>` : ''}</div>
+          <div class="oi-name">${_esc(oi.name)}${oi.sent_to_kitchen ? '<span class="oi-fired" title="Fired">🔥</span>' : '<span class="oi-unfired" title="Not fired">●</span>'}${oi.course !== 'main' ? `<span class="course-pill">${oi.course}</span>` : ''}</div>
           <div class="oi-note">
-            ${oi.notes ? `<span>ðŸ“ ${_esc(oi.notes)}</span>` : ''}
+            ${oi.notes ? `<span>📝 ${_esc(oi.notes)}</span>` : ''}
             <button class="oi-note-edit" onclick="event.stopPropagation();openItemNote(${oi.id}, ${JSON.stringify(oi.notes||'')})">
               ${oi.notes ? 'edit note' : '+ note'}
             </button>
           </div>
         </div>
         <div class="qty-ctrl">
-          <button type="button" class="qty-btn" ${oi.sent_to_kitchen ? 'disabled style="opacity:.25;cursor:not-allowed"' : `onclick="event.stopPropagation();changeQty(${oi.id}, -1)"`}>âˆ’</button>
+          <button type="button" class="qty-btn" ${oi.sent_to_kitchen ? 'disabled style="opacity:.25;cursor:not-allowed"' : `onclick="event.stopPropagation();changeQty(${oi.id}, -1)"`}>−</button>
           <span class="qty-num">${oi.quantity}</span>
           <button type="button" class="qty-btn" onclick="event.stopPropagation();changeQty(${oi.id}, 1)">+</button>
         </div>
@@ -610,15 +610,15 @@ function _render(srv) {
   const dv = parseFloat(_order.discount_value) || 0;
   document.getElementById('totalsArea').innerHTML = `
     <div class="total-row"><span>Subtotal</span><span>${CUR}${fmt(subtotal)}</span></div>
-    ${discount > 0 ? `<div class="total-row discount"><span>Discount (${_order.discount_type === 'percent' ? dv + '%' : CUR + fmt(dv)})</span><span>âˆ’${CUR}${fmt(discount)}</span></div>` : ''}
+    ${discount > 0 ? `<div class="total-row discount"><span>Discount (${_order.discount_type === 'percent' ? dv + '%' : CUR + fmt(dv)})</span><span>−${CUR}${fmt(discount)}</span></div>` : ''}
     ${svcFee > 0 ? `<div class="total-row" style="color:#e17055"><span>Service Fee (${SERVICE_FEE_PCT}%)</span><span>+${CUR}${fmt(svcFee)}</span></div>` : ''}
-    ${_order.note ? `<div class="total-row"><span style="color:#f39c12">ðŸ“ ${_esc(_order.note)}</span></div>` : ''}
+    ${_order.note ? `<div class="total-row"><span style="color:#f39c12">📝 ${_esc(_order.note)}</span></div>` : ''}
     <div class="total-row grand"><span>Total</span><span>${CUR}${fmt(grandTotal)}</span></div>`;
 
   // Pay button
   document.getElementById('payArea').innerHTML = _items.length
-    ? `<a href="/pos/order/${ORDER_ID}/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">ðŸ’³ Pay ${CUR}${fmt(grandTotal)}</a>`
-    : `<button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">ðŸ’³ Pay</button>`;
+    ? `<a href="/pos/order/${ORDER_ID}/pay" class="btn btn-pay" style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay ${CUR}${fmt(grandTotal)}</a>`
+    : `<button class="btn btn-pay" disabled style="width:100%;justify-content:center;font-size:.9rem;padding:11px">💳 Pay</button>`;
 
   // Sync service fee button active state
   const sfBtn = document.getElementById('svcFeeBtn');
@@ -629,7 +629,7 @@ function _render(srv) {
   _npUpdate();
 }
 
-/* â”€â”€ Item actions â”€â”€ */
+/* ── Item actions ── */
 async function addItem(menuItemId) {
   const r = await posAction(`/pos/api/order/${ORDER_ID}/add-item`, { menu_item_id: menuItemId }, () => {
     const mi = menuCache.find(m => m.id == menuItemId);
@@ -656,7 +656,7 @@ async function changeQty(itemId, delta) {
     _render(); return;
   }
   const item = _items.find(x => x.id === itemId);
-  // Block decreasing a fired item â€” partial reductions not allowed
+  // Block decreasing a fired item — partial reductions not allowed
   if (delta < 0 && item && item.sent_to_kitchen) {
     _showErrorToast('Cannot decrease a fired item');
     return;
@@ -680,7 +680,7 @@ async function changeQty(itemId, delta) {
   if (r.ok && !r.offline) _render(r.data);
 }
 
-/* â”€â”€ Numpad â”€â”€ */
+/* ── Numpad ── */
 function _npUpdate() {
   const item = _selectedItemId !== null ? _items.find(x => x.id === _selectedItemId) : null;
   let label, val;
@@ -693,7 +693,7 @@ function _npUpdate() {
     val = _npMode === 'price' ? CUR + (parseInt(_npInput) / 100).toFixed(2) : _npInput;
   } else if (_npMode === 'qty' && item)   val = String(item.quantity);
   else if (_npMode === 'price' && item)   val = CUR + item.price.toFixed(2);
-  else                                    val = 'â€”';
+  else                                    val = '—';
 
   document.getElementById('npLabel').textContent = label;
   document.getElementById('npVal').textContent   = val;
@@ -721,7 +721,7 @@ function selectItem(id, e) {
 }
 
 async function numpadPress(key) {
-  // â”€â”€ Discount modes (no item needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Discount modes (no item needed) ──────────────────────────────────
   if (_npMode.startsWith('disc')) {
     if (key === 'back') {
       _npInput = _npInput.slice(0, -1);
@@ -750,7 +750,7 @@ async function numpadPress(key) {
     return;
   }
 
-  // â”€â”€ QTY / PRICE modes (item must be selected) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── QTY / PRICE modes (item must be selected) ─────────────────────────
   if (_selectedItemId === null) return;
   const item = _items.find(x => x.id === _selectedItemId);
   if (!item) return;
@@ -766,7 +766,7 @@ async function numpadPress(key) {
     _render(); _npUpdate();
 
     if (_npMode === 'qty') {
-      if (!savedInput) return; // empty â†’ just deselected, nothing else
+      if (!savedInput) return; // empty → just deselected, nothing else
       const newQty = parseInt(savedInput) || 0;
       if (newQty === 0) {
         await changeQty(savedId, -item.quantity);
@@ -807,7 +807,7 @@ async function applyDiscountFromNp() {
   });
   if (r.ok && !r.offline) _render(r.data);
   else if (!r.ok && r.error === 'invalid_passkey') {
-    _showErrorToast('Invalid or expired passkey â€” ask manager for a new code');
+    _showErrorToast('Invalid or expired passkey — ask manager for a new code');
     setTimeout(() => {
       document.getElementById('discNpPasskey').value = '';
       openModal('discNpModal');
@@ -815,7 +815,7 @@ async function applyDiscountFromNp() {
   }
 }
 
-/* â”€â”€ Category & search filter â”€â”€ */
+/* ── Category & search filter ── */
 let _activeCat = 'all';
 function filterCat(cat, btn) {
   _activeCat = cat;
@@ -833,14 +833,14 @@ function applyFilter() {
   });
 }
 
-/* â”€â”€ Modals â”€â”€ */
+/* ── Modals ── */
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
 });
 
-/* â”€â”€ Void â”€â”€ */
+/* ── Void ── */
 function openVoid() { openModal('voidModal'); }
 document.getElementById('voidForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -850,12 +850,12 @@ document.getElementById('voidForm').addEventListener('submit', async e => {
   if (r.ok && r.data && r.data.redirect) {
     window.location.href = r.data.redirect;
   } else if (!r.ok) {
-    _showErrorToast('Invalid or expired passkey â€” ask manager for a new code');
+    _showErrorToast('Invalid or expired passkey — ask manager for a new code');
     setTimeout(() => openVoid(), 150);
   }
 });
 
-/* â”€â”€ Discount â”€â”€ */
+/* ── Discount ── */
 function openDiscount() { openModal('discountModal'); }
 function setDiscType(t) {
   document.getElementById('discTypeInput').value = t;
@@ -877,12 +877,12 @@ document.getElementById('discountForm').addEventListener('submit', async e => {
   });
   if (r.ok && !r.offline) _render(r.data);
   else if (!r.ok && r.error === 'invalid_passkey') {
-    _showErrorToast('Invalid or expired passkey â€” ask manager for a new code');
+    _showErrorToast('Invalid or expired passkey — ask manager for a new code');
     setTimeout(() => openDiscount(), 150);
   }
 });
 
-/* â”€â”€ Order Note â”€â”€ */
+/* ── Order Note ── */
 function openOrderNote() { document.getElementById('noteText').value = _order.note || ''; openModal('noteModal'); }
 document.getElementById('noteForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -893,7 +893,7 @@ document.getElementById('noteForm').addEventListener('submit', async e => {
   posAction(`/pos/api/order/${ORDER_ID}/note`, { note });
 });
 
-/* â”€â”€ Item Note â”€â”€ */
+/* ── Item Note ── */
 function openItemNote(itemId, currentNote) {
   _currentItemNoteId = itemId;
   document.getElementById('itemNoteText').value = currentNote;
@@ -911,14 +911,14 @@ document.getElementById('itemNoteForm').addEventListener('submit', async e => {
   }
 });
 
-/* â”€â”€ Note presets â”€â”€ */
+/* ── Note presets ── */
 function appendPreset(text) {
   const ta = document.getElementById('itemNoteText');
   ta.value = ta.value ? ta.value + ', ' + text : text;
   ta.focus();
 }
 
-/* â”€â”€ Cover count â”€â”€ */
+/* ── Cover count ── */
 function openCoverModal() { openModal('coverModal'); }
 async function saveCovers() {
   const count = parseInt(document.getElementById('coverInput').value) || 1;
@@ -929,7 +929,7 @@ async function saveCovers() {
   posAction(`/pos/api/order/${ORDER_ID}/cover`, { cover_count: count });
 }
 
-/* â”€â”€ Fire to kitchen â”€â”€ */
+/* ── Fire to kitchen ── */
 async function fireKitchen() {
   const unfired = _items.filter(i => !i.sent_to_kitchen);
   if (!unfired.length) { _showErrorToast('All items already fired to kitchen'); return; }
@@ -940,7 +940,7 @@ async function fireKitchen() {
   else if (!r.ok && r.error === 'nothing_to_fire') _showErrorToast('Nothing new to fire');
 }
 
-/* â”€â”€ Hold / Unhold â”€â”€ */
+/* ── Hold / Unhold ── */
 async function holdOrder() {
   _order.is_held = !_order.is_held;
   _render();
@@ -948,7 +948,7 @@ async function holdOrder() {
   if (r.ok && !r.offline) _render(r.data);
 }
 
-/* â”€â”€ Transfer table â”€â”€ */
+/* ── Transfer table ── */
 function openTransfer() { openModal('transferModal'); }
 function confirmTransfer(tableId) {
   closeModal('transferModal');
@@ -969,7 +969,7 @@ function confirmMerge(targetOrderId) {
   f.appendChild(inp); document.body.appendChild(f); f.submit();
 }
 
-/* â”€â”€ Comp modal (remove fired item) â”€â”€ */
+/* ── Comp modal (remove fired item) ── */
 function openCompModal(itemId, itemName) {
   _compItemId = itemId;
   document.getElementById('compItemName').textContent = itemName;
@@ -994,14 +994,14 @@ async function submitComp() {
   const data = await resp.json();
   if (data.ok) {
     _render(data);
-    _showSuccessToast('Item comped â€” ' + reason);
+    _showSuccessToast('Item comped — ' + reason);
   } else if (data.error === 'invalid_passkey') {
     _showErrorToast('Invalid or expired passkey');
     setTimeout(() => openCompModal(_compItemId, item.name), 150);
   }
 }
 
-/* â”€â”€ Price override â”€â”€ */
+/* ── Price override ── */
 async function applyPriceOverride() {
   const passkey = document.getElementById('priceOverridePasskey').value.trim();
   if (!passkey) { _showErrorToast('Enter the manager passkey'); return; }
@@ -1025,7 +1025,7 @@ async function applyPriceOverride() {
   }
 }
 
-/* â”€â”€ Service Fee â”€â”€ */
+/* ── Service Fee ── */
 async function toggleSvcFee() {
   _order.apply_service_fee = !_order.apply_service_fee;
   _render();
@@ -1033,7 +1033,7 @@ async function toggleSvcFee() {
   if (r.ok && !r.offline) _render(r.data);
 }
 
-/* â”€â”€ Split â”€â”€ */
+/* ── Split ── */
 function openSplit() { openModal('splitModal'); calcSplit(); }
 function calcSplit() {
   const { total } = _totals();
@@ -1041,24 +1041,24 @@ function calcSplit() {
   document.getElementById('splitPer').textContent = CUR + (total / n).toFixed(2);
 }
 
-/* â”€â”€ Toasts â”€â”€ */
+/* ── Toasts ── */
 function _showErrorToast(msg) {
   const t = document.createElement('div');
   t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:10px 22px;border-radius:8px;font-size:.85rem;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.35)';
-  t.textContent = 'âœ— ' + msg;
+  t.textContent = '✗ ' + msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 4000);
 }
 function _showSuccessToast(msg) {
   const t = document.createElement('div');
   t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:10px 22px;border-radius:8px;font-size:.85rem;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.35)';
-  t.textContent = 'âœ“ ' + msg;
+  t.textContent = '✓ ' + msg;
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
 
 <% if (errorParam === 'passkey') { %>
-_showErrorToast('Invalid or expired passkey â€” ask manager for a new code');
+_showErrorToast('Invalid or expired passkey — ask manager for a new code');
 <% if (modalParam === 'discount') { %>setTimeout(() => openDiscount(), 150);<% } %>
 <% if (modalParam === 'void') { %>setTimeout(() => openVoid(), 150);<% } %>
 <% } %>
@@ -1066,7 +1066,7 @@ _showErrorToast('Invalid or expired passkey â€” ask manager for a new code'
 // Fix initial render: re-render from JS state so all items have onclick handlers
 _render();
 
-// Physical keyboard â†’ numpad
+// Physical keyboard → numpad
 document.addEventListener('keydown', e => {
   if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
   if (document.querySelector('.modal-overlay.open')) return;
@@ -1087,11 +1087,11 @@ document.addEventListener('keydown', e => {
 </script>
 
 <script>
-  // â”€â”€ Bill labels per language â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Bill labels per language ──────────────────────────────────────────────
   const BILL_LABELS = {
     en: { bill:'BILL',    table:'Table',    order:'Order #',        date:'Date',    subtotal:'Sub Total',      discount:'Discount',    svcfee:'Service',      total:'Net Total',    thanks:'Thank you!',   item:'Item',    qty:'QTY',      price:'Price',   total_col:'Total',   served_by:'Served by',                   dine_in:'Dine-in',      takeaway:'Takeaway' },
-    ar: { bill:'ÙØ§ØªÙˆØ±Ø©', table:'Ø§Ù„Ø·Ø§ÙˆÙ„Ø©', order:'Ø±Ù‚Ù… Ø§Ù„Ø·Ù„Ø¨',       date:'Ø§Ù„ØªØ§Ø±ÙŠØ®', subtotal:'Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹',        discount:'Ø®ØµÙ…',         svcfee:'Ø±Ø³ÙˆÙ… Ø§Ù„Ø®Ø¯Ù…Ø©', total:'Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„ÙƒÙ„ÙŠ',thanks:'Ø´ÙƒØ±Ø§Ù‹ Ù„ÙƒÙ…!', item:'Ø§Ù„ØµÙ†Ù',   qty:'Ø§Ù„ÙƒÙ…ÙŠØ©',  price:'Ø§Ù„Ø³Ø¹Ø±',   total_col:'Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹', served_by:'Ø®Ø¯Ù…Ùƒ',                        dine_in:'Ø·Ù„Ø¨ Ø¯Ø§Ø®Ù„ÙŠ',    takeaway:'ØªÙŠÙƒ Ø£ÙˆØ§ÙŠ' },
-    ku: { bill:'Ù¾Ø³ÙˆÙˆÚµÛ•', table:'Ù…ÛŽØ²',     order:'Ú˜Ù…Ø§Ø±Û•ÛŒ Ø¯Ø§ÙˆØ§Ú©Ø§Ø±ÛŒ', date:'Ø¨Û•Ø±ÙˆØ§Ø±',  subtotal:'Ú¯Ø´ØªÛŒ',           discount:'Ø¯Ø´Ú©Ø§Ù†Ø¯Û•Ù†',    svcfee:'Ø³ÛŽØ±Ú¤Ø³',       total:'Ú©Û†ÛŒ Ú¯Ø´ØªÛŒ',    thanks:'Ø³ÙˆÙ¾Ø§Ø³!',      item:'Ø¨Ø§Ù¾Ù‡Øª',  qty:'Ø¨Ø±',       price:'Ù†Ø±Ø®',     total_col:'Ú¯Ø´ØªÛŒ',    served_by:'ØªÙˆ Ø®Ø²Ù…Û•Øª Ú©Ø±Ø¯Ù† Ù„Û•Ù„Ø§ÛŒØ§Ù†',      dine_in:'Ø·Ù„Ø¨ Ø¯Ø§Ø®Ù„ÙŠ',    takeaway:'ØªÛŒÚ© Ø¦Û•ÙˆÛŒ' },
+    ar: { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب',       date:'التاريخ', subtotal:'المجموع',        discount:'خصم',         svcfee:'رسوم الخدمة', total:'المجموع الكلي',thanks:'شكراً لكم!', item:'الصنف',   qty:'الكمية',  price:'السعر',   total_col:'المجموع', served_by:'خدمك',                        dine_in:'طلب داخلي',    takeaway:'تيك أواي' },
+    ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'گشتی',           discount:'دشکاندەن',    svcfee:'سێرڤس',       total:'کۆی گشتی',    thanks:'سوپاس!',      item:'باپهت',  qty:'بر',       price:'نرخ',     total_col:'گشتی',    served_by:'تو خزمەت کردن لەلایان',      dine_in:'طلب داخلي',    takeaway:'تیک ئەوی' },
   };
 
   function printBill() {
@@ -1112,12 +1112,12 @@ document.addEventListener('keydown', e => {
     // Resolve multilingual labels
     const langs     = billLang.split('_');
     const labelsAll = langs.map(l => BILL_LABELS[l] || BILL_LABELS.en);
-    // L('key') â†’ custom label if set, else "Kurdish - English" or single language
+    // L('key') → custom label if set, else "Kurdish - English" or single language
     function L(key) {
       if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
       return labelsAll.map(ll => ll[key] || '').filter((v,i,a) => a.indexOf(v) === i && v).join(' - ');
     }
-    // BH('key') â†’ custom label (single line) if set, else two-line column header
+    // BH('key') → custom label (single line) if set, else two-line column header
     function BH(key) {
       if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
       const parts = labelsAll.map(ll => ll[key] || '').filter((v,i,a) => a.indexOf(v) === i && v);
@@ -1145,7 +1145,7 @@ document.addEventListener('keydown', e => {
     const itemRows = orderItems.map(oi => {
       const unitP = fmt(parseFloat(oi.price));
       const lineT = fmt(parseFloat(oi.price) * oi.quantity);
-      const note  = oi.notes ? `<tr><td colspan="4" style="padding:2px 5px;font-size:10px;border-top:none;color:#222">ðŸ“ ${oi.notes}</td></tr>` : '';
+      const note  = oi.notes ? `<tr><td colspan="4" style="padding:2px 5px;font-size:10px;border-top:none;color:#222">📝 ${oi.notes}</td></tr>` : '';
       return `<tr>
         <td style="text-align:left;padding:5px">${oi.name}</td>
         <td style="text-align:center;padding:5px">${oi.quantity}</td>
@@ -1156,13 +1156,13 @@ document.addEventListener('keydown', e => {
 
     // Note box OR empty signature box
     const noteBox = order.note
-      ? `<div style="border:1.5px solid #000;padding:5px;margin:5px 0;font-size:11px;font-weight:700">ðŸ“ ${order.note}</div>`
+      ? `<div style="border:1.5px solid #000;padding:5px;margin:5px 0;font-size:11px;font-weight:700">📝 ${order.note}</div>`
       : `<div style="border:1.5px solid #000;height:28px;margin:5px 0"></div>`;
 
     const hdrBlock = customHdr
       ? `<div style="text-align:center;font-size:11px;font-weight:700;line-height:1.6;margin-bottom:3px">${customHdr.replace(/\n/g,'<br>')}</div>` : '';
 
-    const iqdLine = (showIQD && EXRATE > 1 && CUR !== 'IQD' && CUR !== 'Ø¯.Ø¹')
+    const iqdLine = (showIQD && EXRATE > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
       ? `<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding:2px 0"><span>IQD</span><span>${Math.round(grandTotal * EXRATE).toLocaleString()}</span></div>` : '';
 
     const footerText = customFtr || L('thanks');
@@ -1197,10 +1197,10 @@ document.addEventListener('keydown', e => {
   <div class="ls"></div>
 
   <div class="ir">
-    <span>${orderTypeLbl} &nbsp; Ø².ÙˆØµÙ„ Bill # ${order.id}</span>
+    <span>${orderTypeLbl} &nbsp; ز.وصل Bill # ${order.id}</span>
   </div>
   <div class="ir">
-    <span>${order.table_name || 'â€”'}</span>
+    <span>${order.table_name || '—'}</span>
     <span>${now}</span>
   </div>
 
@@ -1235,7 +1235,7 @@ document.addEventListener('keydown', e => {
     const agentPrinter = '<%= (tenant.pos_print_agent_printer || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
 
     if (agentPort && agentPrinter) {
-      // Send to local print agent â€” no browser dialog
+      // Send to local print agent — no browser dialog
       fetch(`http://127.0.0.1:${agentPort}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1243,7 +1243,7 @@ document.addEventListener('keydown', e => {
       }).then(r => r.json()).then(r => {
         if (!r.ok) { alert('Print agent error: ' + (r.error || 'unknown')); }
       }).catch(() => {
-        // Agent not running â€” fall back to browser dialog
+        // Agent not running — fall back to browser dialog
         _fallbackPrint(html);
       });
     } else {

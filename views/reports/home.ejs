@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reports â€” <%= tenant.name %></title>
+  <title>Reports — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -43,14 +43,14 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <a href="/reports" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
     <div>
-      <div class="topbar-brand">ðŸ“Š Advanced Reports</div>
+      <div class="topbar-brand">📊 Advanced Reports</div>
       <div class="topbar-sub"><%= tenant.name %></div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
@@ -59,7 +59,7 @@
   <form method="GET" action="/reports">
     <div class="filter-row">
       <input type="date" name="from" value="<%= start %>" />
-      <span style="color:#555">â†’</span>
+      <span style="color:#555">→</span>
       <input type="date" name="to" value="<%= end %>" />
       <button type="submit" class="btn btn-primary">Apply</button>
       <button type="button" class="pill" onclick="setRange('today')">Today</button>
@@ -81,7 +81,7 @@
 
   <!-- Sales by Hour -->
   <div class="section">
-    <h3>â° Sales by Hour</h3>
+    <h3>⏰ Sales by Hour</h3>
     <% const maxRev = Math.max(...hourly.map(h => parseFloat(h.revenue)||0), 1); %>
     <div class="hour-grid">
       <% for (let h = 0; h < 24; h++) {
@@ -103,7 +103,7 @@
   <!-- Top Items & Categories -->
   <div class="two-col">
     <div class="section">
-      <h3>ðŸ½ï¸ Top Items by Revenue</h3>
+      <h3>🍽️ Top Items by Revenue</h3>
       <% const maxItem = Math.max(...topItems.map(i => parseFloat(i.revenue)||0), 1); %>
       <% topItems.forEach(item => { %>
       <div class="bar-row">
@@ -116,7 +116,7 @@
     </div>
 
     <div class="section">
-      <h3>ðŸ“ Top Categories by Revenue</h3>
+      <h3>📁 Top Categories by Revenue</h3>
       <% const maxCat = Math.max(...topCats.map(c => parseFloat(c.revenue)||0), 1); %>
       <% topCats.forEach(cat => { %>
       <div class="bar-row">
@@ -131,13 +131,13 @@
 
   <!-- Daily Trend -->
   <div class="section">
-    <h3>ðŸ“ˆ Daily Revenue Trend</h3>
+    <h3>📈 Daily Revenue Trend</h3>
     <% if (daily.length) {
       const maxDay = Math.max(...daily.map(d => parseFloat(d.revenue)||0), 1);
     %>
     <div style="display:flex;align-items:flex-end;gap:4px;height:80px;overflow-x:auto;padding-bottom:20px;position:relative">
       <% daily.forEach(d => { const pct = (parseFloat(d.revenue)/maxDay*100).toFixed(1); %>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:28px" title="<%= d.day %> â€” $<%= parseFloat(d.revenue).toFixed(2) %>">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:28px" title="<%= d.day %> — $<%= parseFloat(d.revenue).toFixed(2) %>">
         <div style="width:100%;border-radius:3px 3px 0 0;background:#f39c12;height:<%= pct %>%;min-height:2px"></div>
         <div style="font-size:.6rem;color:#555;white-space:nowrap;transform:rotate(-45deg);transform-origin:top left;margin-top:8px"><%= d.day.slice(5) %></div>
       </div>

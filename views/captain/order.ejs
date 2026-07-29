@@ -1,14 +1,14 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title><%= order.table_name %> â€” Captain</title>
+  <title><%= order.table_name %> — Captain</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* â”€â”€ Topbar â”€â”€ */
+    /* ── Topbar ── */
     .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0; gap: 10px; }
     .table-chip { background: rgba(124,92,191,.2); color: #a78bdf; font-weight: 700; font-size: .9rem; padding: 5px 14px; border-radius: 20px; }
     .order-num  { font-size: .75rem; color: #444; }
@@ -16,10 +16,10 @@
     .btn-ghost  { background: rgba(255,255,255,.07); color: #999; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
 
-    /* â”€â”€ Layout â”€â”€ */
+    /* ── Layout ── */
     .layout { display: flex; flex: 1; overflow: hidden; }
 
-    /* â”€â”€ Menu panel â”€â”€ */
+    /* ── Menu panel ── */
     .menu-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .search-bar { padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); flex-shrink: 0; }
     .search-wrap { position: relative; }
@@ -44,7 +44,7 @@
     .item-name  { font-size: .85rem; font-weight: 600; color: #ddd; line-height: 1.3; margin-bottom: 4px; }
     .item-price { font-size: .88rem; color: #7c5cbf; font-weight: 700; }
 
-    /* â”€â”€ Order panel â”€â”€ */
+    /* ── Order panel ── */
     .order-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: #13132a; border-left: 1px solid rgba(255,255,255,.06); }
 
     .order-list { flex: 1; overflow-y: auto; padding: 8px; min-height: 0; }
@@ -59,12 +59,12 @@
     .qty-num  { font-size: .9rem; color: #fff; font-weight: 700; width: 22px; text-align: center; }
     .oi-price { font-size: .85rem; color: #7c5cbf; font-weight: 700; min-width: 56px; text-align: right; }
 
-    /* â”€â”€ Total bar â”€â”€ */
+    /* ── Total bar ── */
     .total-bar { padding: 10px 14px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
     .total-row { display: flex; justify-content: space-between; font-size: .82rem; color: #666; padding: 2px 0; }
     .total-row.grand { font-size: 1.05rem; font-weight: 700; color: #fff; padding-top: 8px; border-top: 1px solid #2a2a3e; margin-top: 6px; }
 
-    /* â”€â”€ Action buttons â”€â”€ */
+    /* ── Action buttons ── */
     .action-row { display: flex; gap: 8px; padding: 10px 12px 14px; flex-shrink: 0; }
     .btn-fire { flex: 1; padding: 14px 8px; border: none; border-radius: 12px; background: #e17055; color: #fff; font-size: .88rem; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .btn-fire:hover { background: #c0392b; }
@@ -75,10 +75,10 @@
     .btn-bill:active { transform: scale(.97); }
     .btn-bill .big { font-size: 1.3rem; }
 
-    /* â”€â”€ Sent toast â”€â”€ */
+    /* ── Sent toast ── */
     .sent-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); background: #00b894; color: #fff; padding: 10px 28px; border-radius: 10px; font-size: .88rem; font-weight: 700; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
 
-    /* â”€â”€ Kitchen status chip â”€â”€ */
+    /* ── Kitchen status chip ── */
     .kitchen-chip { margin: 6px 12px 0; padding: 6px 12px; border-radius: 8px; font-size: .75rem; font-weight: 600; text-align: center; }
     .kitchen-chip.sent { background: rgba(0,184,148,.1); color: #00b894; }
     .kitchen-chip.unsent { background: rgba(231,76,60,.1); color: #e74c3c; }
@@ -95,14 +95,14 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:10px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
-    <span class="table-chip">ðŸª‘ <%= order.table_name %></span>
+    <a href="/captain" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <span class="table-chip">🪑 <%= order.table_name %></span>
     <span class="order-num">#<%= order.id %></span>
   </div>
   <div style="display:flex;gap:6px">
     <% if (order.kitchen_sent_at) { %>
-    <span style="font-size:.72rem;color:#00b894;background:rgba(0,184,148,.1);padding:4px 10px;border-radius:8px;font-weight:600">âœ“ Sent to kitchen</span>
+    <span style="font-size:.72rem;color:#00b894;background:rgba(0,184,148,.1);padding:4px 10px;border-radius:8px;font-weight:600">✓ Sent to kitchen</span>
     <% } %>
   </div>
 </div>
@@ -113,7 +113,7 @@
   <div class="menu-panel">
     <div class="search-bar">
       <div class="search-wrap">
-        <span class="search-icon">ðŸ”</span>
+        <span class="search-icon">🔍</span>
         <input type="text" class="search-input" id="searchInput" placeholder="Search menu..." oninput="filterItems()" />
       </div>
     </div>
@@ -131,7 +131,7 @@
           <% if (item.image_url) { %>
           <img class="item-img" src="<%= item.image_url %>" alt="<%= item.name %>" loading="lazy" />
           <% } else { %>
-          <div class="item-placeholder">ðŸ½ï¸</div>
+          <div class="item-placeholder">🍽️</div>
           <% } %>
           <div class="item-body">
             <div class="item-name"><%= item.name %></div>
@@ -155,7 +155,7 @@
         <div class="qty-ctrl">
           <form method="POST" action="/captain/order/<%= order.id %>/item/<%= oi.id %>/qty" style="display:contents">
             <input type="hidden" name="delta" value="-1" />
-            <button type="submit" class="qty-btn">âˆ’</button>
+            <button type="submit" class="qty-btn">−</button>
           </form>
           <span class="qty-num"><%= oi.quantity %></span>
           <form method="POST" action="/captain/order/<%= order.id %>/item/<%= oi.id %>/qty" style="display:contents">
@@ -179,13 +179,13 @@
     <div class="action-row">
       <form method="POST" action="/captain/order/<%= order.id %>/send-kitchen" style="flex:1">
         <button type="submit" class="btn-fire" style="width:100%" <%= orderItems.length === 0 ? 'disabled' : '' %>>
-          <span class="big">ðŸ”¥</span>
+          <span class="big">🔥</span>
           Fire to Kitchen
         </button>
       </form>
       <form method="POST" action="/captain/order/<%= order.id %>/request-bill" style="flex:1">
         <button type="submit" class="btn-bill" style="width:100%" <%= orderItems.length === 0 ? 'disabled' : '' %>>
-          <span class="big">ðŸ§¾</span>
+          <span class="big">🧾</span>
           Request Bill
         </button>
       </form>
@@ -194,7 +194,7 @@
 </div>
 
 <% if (sent) { %>
-<div class="sent-toast" id="sentToast">âœ“ Order fired to kitchen!</div>
+<div class="sent-toast" id="sentToast">✓ Order fired to kitchen!</div>
 <script>setTimeout(() => { const t = document.getElementById('sentToast'); if(t) t.remove(); }, 3000);</script>
 <% } %>
 

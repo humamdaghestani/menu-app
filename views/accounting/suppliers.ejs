@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Suppliers â€” <%= tenant.name %></title>
+  <title>Suppliers — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -53,16 +53,16 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
-    <div class="topbar-brand">ðŸ­ Suppliers</div>
+    <a href="/accounting" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <div class="topbar-brand">🏭 Suppliers</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/accounting" class="btn btn-ghost">ðŸ“’ Dashboard</a>
-    <a href="/accounting/aging" class="btn btn-ghost">ðŸ“… Aging</a>
-    <a href="/accounting/cheques" class="btn btn-ghost">ðŸ§¾ Cheques</a>
+    <a href="/accounting" class="btn btn-ghost">📒 Dashboard</a>
+    <a href="/accounting/aging" class="btn btn-ghost">📅 Aging</a>
+    <a href="/accounting/cheques" class="btn btn-ghost">🧾 Cheques</a>
     <button onclick="document.getElementById('addSuppOverlay').classList.add('open')" class="btn btn-primary">+ Add Supplier</button>
-    <button onclick="document.getElementById('payOverlay').classList.add('open')" class="btn btn-success">ðŸ’³ Record Payment</button>
-    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <button onclick="document.getElementById('payOverlay').classList.add('open')" class="btn btn-success">💳 Record Payment</button>
+    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>
 
@@ -71,7 +71,7 @@
 
   <!-- Supplier Entities -->
   <div class="card">
-    <div class="card-title">ðŸ‘¤ Supplier Accounts</div>
+    <div class="card-title">👤 Supplier Accounts</div>
     <table>
       <thead><tr><th>Supplier</th><th>Phone</th><th>Tax No.</th><th>Total Purchased</th><th>Total Paid</th><th>Balance</th><th>Actions</th></tr></thead>
       <tbody>
@@ -81,8 +81,8 @@
           <a href="/accounting/suppliers/<%= s.id %>/ledger" style="color:#7c5cbf;font-weight:700;text-decoration:none"><%= s.name %></a>
           <% if (s.email) { %><div style="font-size:.72rem;color:#555"><%= s.email %></div><% } %>
         </td>
-        <td><%= s.phone || 'â€”' %></td>
-        <td><%= s.tax_no || 'â€”' %></td>
+        <td><%= s.phone || '—' %></td>
+        <td><%= s.tax_no || '—' %></td>
         <td>$<%= s.total_purchased.toFixed(2) %></td>
         <td style="color:#00b894">$<%= s.total_paid.toFixed(2) %></td>
         <td>
@@ -93,12 +93,12 @@
         <td style="display:flex;gap:6px">
           <button class="btn btn-ghost" style="font-size:.72rem;padding:3px 10px" data-suppidx="<%= suppliers.indexOf(s) %>" onclick="openEditSuppIdx(this.dataset.suppidx)">Edit</button>
           <form method="POST" action="/accounting/suppliers/<%= s.id %>/delete" onsubmit="return confirm('Delete supplier?')">
-            <button class="btn btn-red" style="font-size:.72rem;padding:3px 10px">âœ•</button>
+            <button class="btn btn-red" style="font-size:.72rem;padding:3px 10px">✕</button>
           </form>
         </td>
       </tr>
       <% }) %>
-      <% if (!suppliers.length) { %><tr><td colspan="7" style="color:#555;text-align:center;padding:20px">No suppliers added yet â€” click "+ Add Supplier"</td></tr><% } %>
+      <% if (!suppliers.length) { %><tr><td colspan="7" style="color:#555;text-align:center;padding:20px">No suppliers added yet — click "+ Add Supplier"</td></tr><% } %>
       </tbody>
     </table>
   </div>
@@ -106,7 +106,7 @@
   <!-- Name-only suppliers (from purchase receipts without entity) -->
   <% if (nameOnlyLedger.length) { %>
   <div class="card">
-    <div class="card-title" style="font-size:.82rem;color:#555">Legacy â€” suppliers by name only (from purchase receipts without a supplier record)</div>
+    <div class="card-title" style="font-size:.82rem;color:#555">Legacy — suppliers by name only (from purchase receipts without a supplier record)</div>
     <table>
       <thead><tr><th>Supplier Name</th><th>Total Purchased</th><th>Total Paid</th><th>Balance</th></tr></thead>
       <tbody>
@@ -125,7 +125,7 @@
 
   <!-- Recent Payments -->
   <div class="card">
-    <div class="card-title">ðŸ’³ Recent Payments</div>
+    <div class="card-title">💳 Recent Payments</div>
     <table>
       <thead><tr><th>Date</th><th>Supplier</th><th>Amount</th><th>Method</th><th>Notes</th><th></th></tr></thead>
       <tbody>
@@ -138,7 +138,7 @@
         <td style="font-size:.78rem;color:#555"><%= p.notes || '' %></td>
         <td>
           <form method="POST" action="/accounting/suppliers/pay/<%= p.id %>/delete" onsubmit="return confirm('Delete payment?')">
-            <button class="btn btn-red" style="font-size:.72rem;padding:2px 8px">âœ•</button>
+            <button class="btn btn-red" style="font-size:.72rem;padding:2px 8px">✕</button>
           </form>
         </td>
       </tr>
@@ -152,7 +152,7 @@
 <!-- Add Supplier Modal -->
 <div class="overlay" id="addSuppOverlay">
   <div class="modal">
-    <h3>âž• Add Supplier</h3>
+    <h3>➕ Add Supplier</h3>
     <form method="POST" action="/accounting/suppliers/add">
       <div class="form-group"><label>Name *</label><input type="text" name="name" required /></div>
       <div class="form-row">
@@ -176,7 +176,7 @@
 <!-- Edit Supplier Modal -->
 <div class="overlay" id="editSuppOverlay">
   <div class="modal">
-    <h3>âœï¸ Edit Supplier</h3>
+    <h3>✏️ Edit Supplier</h3>
     <form method="POST" id="editSuppForm">
       <div class="form-group"><label>Name *</label><input type="text" name="name" id="es_name" required /></div>
       <div class="form-row">
@@ -200,7 +200,7 @@
 <!-- Record Payment Modal -->
 <div class="overlay" id="payOverlay">
   <div class="modal">
-    <h3>ðŸ’³ Record Supplier Payment</h3>
+    <h3>💳 Record Supplier Payment</h3>
     <form method="POST" action="/accounting/suppliers/pay">
       <div class="form-group">
         <label>Supplier *</label>
