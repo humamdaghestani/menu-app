@@ -1095,7 +1095,8 @@ document.addEventListener('keydown', e => {
     ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'گشتی',           discount:'دشکاندەن',    svcfee:'سێرڤس',       total:'کۆی گشتی',    thanks:'سوپاس!',      item:'باپهت',  qty:'بر',       price:'نرخ',     total_col:'گشتی',    served_by:'تو خزمەت کردن لەلایان',      dine_in:'طلب داخلي',    takeaway:'تیک ئەوی' },
   };
 
-  function printBill() {
+  function printBill() { try { _printBillInner(); } catch(e) { alert('Print error: ' + e.message); console.error(e); } }
+  function _printBillInner() {
     const orderItems  = <%- JSON.stringify(orderItems) %>;
     const order       = <%- JSON.stringify(order) %>;
     const { subtotal, total, discount, svcFee, grandTotal } = _totals();
@@ -1253,13 +1254,11 @@ document.addEventListener('keydown', e => {
   }
 
   function _fallbackPrint(html) {
-    const frame = document.createElement('iframe');
-    frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
-    document.body.appendChild(frame);
-    const fdoc = frame.contentDocument || frame.contentWindow.document;
-    fdoc.open(); fdoc.write(html); fdoc.close();
-    frame.contentWindow.focus();
-    setTimeout(() => { frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); }, 300);
+    const w = window.open('', '_blank', 'width=400,height=600');
+    if (!w) { alert('Pop-up blocked — please allow pop-ups for this site and try again.'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); setTimeout(() => w.close(), 1000); }, 300);
   }
 </script>
 </body>
