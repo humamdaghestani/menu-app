@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>Captain — <%= tenant.name %></title>
+  <title>Captain â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -56,15 +56,15 @@
 
 <div class="topbar">
   <div class="topbar-left">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
     <div>
-      <div class="topbar-title">🍽️ Captain — <%= tenant.name %></div>
+      <div class="topbar-title">ðŸ½ï¸ Captain â€” <%= tenant.name %></div>
       <div class="topbar-sub">Waiter order system</div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/pos" class="btn btn-ghost">💳 POS</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/pos" class="btn btn-ghost">ðŸ’³ POS</a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -83,8 +83,8 @@
 <div class="grid">
   <% tables.forEach(t => {
     const state = t.bill_requested ? 'bill' : t.order_id ? 'occupied' : 'empty';
-    const label = state === 'bill' ? '🔔 Bill Requested' : state === 'occupied' ? '🟣 Order Open' : 'Available';
-    const btnLabel = state === 'empty' ? '+ Open Order' : state === 'bill' ? '🔔 View Order' : '📋 View Order';
+    const label = state === 'bill' ? 'ðŸ”” Bill Requested' : state === 'occupied' ? 'ðŸŸ£ Order Open' : 'Available';
+    const btnLabel = state === 'empty' ? '+ Open Order' : state === 'bill' ? 'ðŸ”” View Order' : 'ðŸ“‹ View Order';
   %>
   <div class="table-card <%= state %>">
     <% if (t.bill_requested) { %><span class="bill-badge">BILL</span><% } %>

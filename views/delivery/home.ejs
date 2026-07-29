@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Delivery — <%= tenant.name %></title>
+  <title>Delivery â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -54,15 +54,15 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
     <div>
-      <div class="topbar-brand">🛵 Delivery Orders</div>
+      <div class="topbar-brand">ðŸ›µ Delivery Orders</div>
       <div class="topbar-sub"><%= tenant.name %></div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
     <button onclick="document.getElementById('newDelivOverlay').classList.add('open')" class="btn btn-primary">+ New Delivery</button>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -84,17 +84,17 @@
   </div>
 
   <div class="section">
-    <h3>📦 Deliveries</h3>
+    <h3>ðŸ“¦ Deliveries</h3>
     <% deliveries.forEach(d => { %>
     <div class="delivery-card status-<%= d.status %>">
       <div class="d-header">
         <div>
-          <div class="d-name"><%= d.customer_name || 'Unknown' %><% if (d.phone) { %> <span style="font-weight:400;color:#555;font-size:.82rem">• <%= d.phone %></span><% } %></div>
+          <div class="d-name"><%= d.customer_name || 'Unknown' %><% if (d.phone) { %> <span style="font-weight:400;color:#555;font-size:.82rem">â€¢ <%= d.phone %></span><% } %></div>
           <div class="d-details">
-            <% if (d.address) { %>📍 <%= d.address %><% if (d.zone) { %> (<%= d.zone %>)<% } %><br><% } %>
-            <% if (d.rider_name) { %>🛵 <%= d.rider_name %><br><% } %>
-            ⏱ Est. <%= d.estimated_mins %> min &bull; Fee: $<%= parseFloat(d.delivery_fee).toFixed(2) %>
-            <% if (d.notes) { %><br>📝 <%= d.notes %><% } %>
+            <% if (d.address) { %>ðŸ“ <%= d.address %><% if (d.zone) { %> (<%= d.zone %>)<% } %><br><% } %>
+            <% if (d.rider_name) { %>ðŸ›µ <%= d.rider_name %><br><% } %>
+            â± Est. <%= d.estimated_mins %> min &bull; Fee: $<%= parseFloat(d.delivery_fee).toFixed(2) %>
+            <% if (d.notes) { %><br>ðŸ“ <%= d.notes %><% } %>
           </div>
         </div>
         <div style="text-align:right">
@@ -104,15 +104,15 @@
       </div>
       <div class="d-actions">
         <% if (d.status === 'pending') { %>
-        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="dispatched" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">🛵 Dispatch</button></form>
+        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="dispatched" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">ðŸ›µ Dispatch</button></form>
         <% } %>
         <% if (d.status === 'dispatched') { %>
-        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="delivered" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px;color:#00b894">✓ Delivered</button></form>
+        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="delivered" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px;color:#00b894">âœ“ Delivered</button></form>
         <% } %>
         <% if (d.status !== 'cancelled' && d.status !== 'delivered') { %>
-        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="cancelled" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px;color:#e74c3c">✕ Cancel</button></form>
+        <form method="POST" action="/delivery/<%= d.id %>/status"><input type="hidden" name="status" value="cancelled" /><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px;color:#e74c3c">âœ• Cancel</button></form>
         <% } %>
-        <form method="POST" action="/delivery/<%= d.id %>/delete" onsubmit="return confirm('Delete?')"><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">🗑</button></form>
+        <form method="POST" action="/delivery/<%= d.id %>/delete" onsubmit="return confirm('Delete?')"><button class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">ðŸ—‘</button></form>
       </div>
     </div>
     <% }) %>
@@ -123,7 +123,7 @@
 <!-- New Delivery Modal -->
 <div class="overlay" id="newDelivOverlay">
   <div class="modal">
-    <h3>🛵 New Delivery Order</h3>
+    <h3>ðŸ›µ New Delivery Order</h3>
     <form method="POST" action="/delivery">
       <div class="form-row">
         <div class="form-group"><label>Customer Name</label><input type="text" name="customer_name" required /></div>

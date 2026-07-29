@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -65,14 +65,14 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">🏠</a>
-    <span style="font-weight:700;color:#fff">🧾 Cheques & Bank Accounts</span>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">ðŸ </a>
+    <span style="font-weight:700;color:#fff">ðŸ§¾ Cheques & Bank Accounts</span>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/accounting" class="btn btn-ghost">📒 Dashboard</a>
+    <a href="/accounting" class="btn btn-ghost">ðŸ“’ Dashboard</a>
     <button onclick="document.getElementById('addChequeOverlay').classList.add('open')" class="btn btn-primary">+ Add Cheque</button>
-    <button onclick="document.getElementById('addBankOverlay').classList.add('open')" class="btn btn-success">🏦 Add Bank</button>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <button onclick="document.getElementById('addBankOverlay').classList.add('open')" class="btn btn-success">ðŸ¦ Add Bank</button>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -86,7 +86,7 @@
 
   <!-- Bank Accounts -->
   <div class="card">
-    <div class="card-title">🏦 Bank Accounts</div>
+    <div class="card-title">ðŸ¦ Bank Accounts</div>
     <div class="bank-grid">
     <% bankAccounts.forEach(b => { %>
       <div class="bank-card">
@@ -97,15 +97,15 @@
       </div>
     <% }) %>
     <% if (!bankAccounts.length) { %>
-      <div style="color:#555;font-size:.85rem;padding:10px">No bank accounts yet — click "Add Bank"</div>
+      <div style="color:#555;font-size:.85rem;padding:10px">No bank accounts yet â€” click "Add Bank"</div>
     <% } %>
     </div>
   </div>
 
   <!-- Cheques Tabs -->
   <div class="tabs">
-    <button class="tab active" id="tab-btn-issued" onclick="switchTab('issued')">📤 Issued (<%= issuedCheques.length %>)</button>
-    <button class="tab" id="tab-btn-received" onclick="switchTab('received')">📥 Received (<%= receivedCheques.length %>)</button>
+    <button class="tab active" id="tab-btn-issued" onclick="switchTab('issued')">ðŸ“¤ Issued (<%= issuedCheques.length %>)</button>
+    <button class="tab" id="tab-btn-received" onclick="switchTab('received')">ðŸ“¥ Received (<%= receivedCheques.length %>)</button>
   </div>
 
   <!-- Issued -->
@@ -121,11 +121,11 @@
         <tbody>
         <% issuedCheques.forEach(c => { %>
         <tr>
-          <td style="font-family:monospace;color:#a29bfe"><%= c.cheque_no || '—' %></td>
-          <td style="color:#888;font-size:.8rem"><%= c.issue_date ? String(c.issue_date).slice(0,10) : '—' %></td>
-          <td style="color:#888;font-size:.8rem"><%= c.due_date ? String(c.due_date).slice(0,10) : '—' %></td>
-          <td style="font-weight:600"><%= c.party_name || '—' %></td>
-          <td style="color:#666;font-size:.8rem"><%= c.bank_name || '—' %></td>
+          <td style="font-family:monospace;color:#a29bfe"><%= c.cheque_no || 'â€”' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.issue_date ? String(c.issue_date).slice(0,10) : 'â€”' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.due_date ? String(c.due_date).slice(0,10) : 'â€”' %></td>
+          <td style="font-weight:600"><%= c.party_name || 'â€”' %></td>
+          <td style="color:#666;font-size:.8rem"><%= c.bank_name || 'â€”' %></td>
           <td style="font-weight:700;color:#e74c3c">$<%= parseFloat(c.amount).toFixed(2) %></td>
           <td><span class="status-pill s-<%= c.status %>"><%= c.status %></span></td>
           <td>
@@ -133,15 +133,15 @@
             <% if (c.status === 'pending') { %>
             <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
               <input type="hidden" name="status" value="cleared" />
-              <button class="btn btn-success" style="font-size:.7rem;padding:3px 8px">✓ Clear</button>
+              <button class="btn btn-success" style="font-size:.7rem;padding:3px 8px">âœ“ Clear</button>
             </form>
             <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
               <input type="hidden" name="status" value="bounced" />
-              <button class="btn btn-red" style="font-size:.7rem;padding:3px 8px">✗ Bounce</button>
+              <button class="btn btn-red" style="font-size:.7rem;padding:3px 8px">âœ— Bounce</button>
             </form>
             <% } %>
             <form method="POST" action="/accounting/cheques/<%= c.id %>/delete" onsubmit="return confirm('Delete cheque?')">
-              <button class="btn btn-ghost" style="font-size:.7rem;padding:3px 8px">🗑</button>
+              <button class="btn btn-ghost" style="font-size:.7rem;padding:3px 8px">ðŸ—‘</button>
             </form>
             </div>
           </td>
@@ -166,11 +166,11 @@
         <tbody>
         <% receivedCheques.forEach(c => { %>
         <tr>
-          <td style="font-family:monospace;color:#a29bfe"><%= c.cheque_no || '—' %></td>
-          <td style="color:#888;font-size:.8rem"><%= c.issue_date ? String(c.issue_date).slice(0,10) : '—' %></td>
-          <td style="color:#888;font-size:.8rem"><%= c.due_date ? String(c.due_date).slice(0,10) : '—' %></td>
-          <td style="font-weight:600"><%= c.party_name || '—' %></td>
-          <td style="color:#666;font-size:.8rem"><%= c.bank_name || '—' %></td>
+          <td style="font-family:monospace;color:#a29bfe"><%= c.cheque_no || 'â€”' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.issue_date ? String(c.issue_date).slice(0,10) : 'â€”' %></td>
+          <td style="color:#888;font-size:.8rem"><%= c.due_date ? String(c.due_date).slice(0,10) : 'â€”' %></td>
+          <td style="font-weight:600"><%= c.party_name || 'â€”' %></td>
+          <td style="color:#666;font-size:.8rem"><%= c.bank_name || 'â€”' %></td>
           <td style="font-weight:700;color:#00b894">$<%= parseFloat(c.amount).toFixed(2) %></td>
           <td><span class="status-pill s-<%= c.status %>"><%= c.status %></span></td>
           <td>
@@ -178,15 +178,15 @@
             <% if (c.status === 'pending') { %>
             <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
               <input type="hidden" name="status" value="cleared" />
-              <button class="btn btn-success" style="font-size:.7rem;padding:3px 8px">✓ Clear</button>
+              <button class="btn btn-success" style="font-size:.7rem;padding:3px 8px">âœ“ Clear</button>
             </form>
             <form method="POST" action="/accounting/cheques/<%= c.id %>/status">
               <input type="hidden" name="status" value="bounced" />
-              <button class="btn btn-red" style="font-size:.7rem;padding:3px 8px">✗ Bounce</button>
+              <button class="btn btn-red" style="font-size:.7rem;padding:3px 8px">âœ— Bounce</button>
             </form>
             <% } %>
             <form method="POST" action="/accounting/cheques/<%= c.id %>/delete" onsubmit="return confirm('Delete cheque?')">
-              <button class="btn btn-ghost" style="font-size:.7rem;padding:3px 8px">🗑</button>
+              <button class="btn btn-ghost" style="font-size:.7rem;padding:3px 8px">ðŸ—‘</button>
             </form>
             </div>
           </td>
@@ -222,7 +222,7 @@
         <div class="form-group"><label>Due / Clearing Date</label><input type="date" name="due_date" /></div>
         <div class="form-group"><label>Bank Account</label>
           <select name="bank_account_id">
-            <option value="">— None —</option>
+            <option value="">â€” None â€”</option>
             <% bankAccounts.forEach(b => { %><option value="<%= b.id %>"><%= b.name %></option><% }) %>
           </select>
         </div>
@@ -239,7 +239,7 @@
 <!-- Add Bank Account Modal -->
 <div class="overlay" id="addBankOverlay">
   <div class="modal">
-    <h3>🏦 Add Bank Account</h3>
+    <h3>ðŸ¦ Add Bank Account</h3>
     <form method="POST" action="/accounting/bank-accounts">
       <div class="form-group"><label>Account Name *</label><input type="text" name="name" required placeholder="e.g. Main Checking" /></div>
       <div class="form-row">

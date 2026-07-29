@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kitchen Display — <%= tenant.name %></title>
+  <title>Kitchen Display â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; }
@@ -54,20 +54,20 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
     <div class="topbar-brand">
       <div class="live-dot"></div>
-      🍳 Kitchen Display — <%= tenant.name %>
+      ðŸ³ Kitchen Display â€” <%= tenant.name %>
     </div>
   </div>
-  <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
 </div>
 
 <% if (tenant.feat_kitchen_routing && stations && stations.length > 1) { %>
 <div style="background:#111;border-bottom:1px solid #222;padding:0 20px;display:flex;gap:4px;overflow-x:auto">
   <a href="/pos/kitchen" class="<%= !station ? 'station-tab active' : 'station-tab' %>" style="padding:10px 16px;text-decoration:none;font-size:.82rem;font-weight:700;color:<%=!station?'#fff':'#555'%>;border-bottom:2px solid <%=!station?'#7c5cbf':'transparent'%>;white-space:nowrap">All Stations</a>
   <% stations.forEach(s => { %>
-  <a href="/pos/kitchen?station=<%= encodeURIComponent(s) %>" style="padding:10px 16px;text-decoration:none;font-size:.82rem;font-weight:700;color:<%=station===s?'#fff':'#555'%>;border-bottom:2px solid <%=station===s?'#7c5cbf':'transparent'%>;white-space:nowrap">🍳 <%= s %></a>
+  <a href="/pos/kitchen?station=<%= encodeURIComponent(s) %>" style="padding:10px 16px;text-decoration:none;font-size:.82rem;font-weight:700;color:<%=station===s?'#fff':'#555'%>;border-bottom:2px solid <%=station===s?'#7c5cbf':'transparent'%>;white-space:nowrap">ðŸ³ <%= s %></a>
   <% }) %>
 </div>
 <% } %>
@@ -76,8 +76,8 @@
   <div class="orders-grid" id="ordersGrid">
     <% if (orders.length === 0) { %>
     <div class="empty" style="grid-column:1/-1">
-      <div class="empty-icon">✅</div>
-      <p>All clear — no open orders</p>
+      <div class="empty-icon">âœ…</div>
+      <p>All clear â€” no open orders</p>
     </div>
     <% } %>
     <% orders.forEach(o => { %>
@@ -88,8 +88,8 @@
     <div class="order-ticket<%= hasNew ? ' has-new' : '' %>" id="ticket_<%= o.id %>">
       <div class="ticket-header">
         <div>
-          <div class="ticket-table">🪑 <%= o.table_name %> <% if (o.cover_count > 1) { %><span class="cover-chip">×<%= o.cover_count %></span><% } %></div>
-          <div class="ticket-order">Order #<%= o.id %><% if (hasNew) { %> <span style="color:#fdcb6e;font-size:.68rem;font-weight:700">● NEW</span><% } %></div>
+          <div class="ticket-table">ðŸª‘ <%= o.table_name %> <% if (o.cover_count > 1) { %><span class="cover-chip">Ã—<%= o.cover_count %></span><% } %></div>
+          <div class="ticket-order">Order #<%= o.id %><% if (hasNew) { %> <span style="color:#fdcb6e;font-size:.68rem;font-weight:700">â— NEW</span><% } %></div>
         </div>
         <span class="elapsed <%= mins < 10 ? 'elapsed-ok' : mins < 20 ? 'elapsed-warn' : 'elapsed-late' %>">
           <%= mins %>m
@@ -98,29 +98,29 @@
       <div class="ticket-items">
         <% courseOrder.forEach(course => { if (!grouped[course]) return; %>
         <% if (Object.keys(grouped).length > 1) { %>
-        <div class="course-header"><%= course === 'main' ? '🍽 Main' : course === 'starter' ? '🥗 Starter' : course === 'dessert' ? '🍮 Dessert' : '🥤 Drink' %></div>
+        <div class="course-header"><%= course === 'main' ? 'ðŸ½ Main' : course === 'starter' ? 'ðŸ¥— Starter' : course === 'dessert' ? 'ðŸ® Dessert' : 'ðŸ¥¤ Drink' %></div>
         <% } %>
         <% grouped[course].forEach(item => { %>
         <div class="ticket-item<%= !item.sent_to_kitchen ? ' new-item' : '' %>">
           <div>
             <div class="ti-name"><%= item.name %><% if (!item.sent_to_kitchen) { %><span class="new-badge">NEW</span><% } %></div>
-            <% if (item.notes) { %><div class="ti-note">📝 <%= item.notes %></div><% } %>
+            <% if (item.notes) { %><div class="ti-note">ðŸ“ <%= item.notes %></div><% } %>
           </div>
-          <div class="ti-qty">×<%= item.quantity %></div>
+          <div class="ti-qty">Ã—<%= item.quantity %></div>
         </div>
         <% }) %>
         <% }) %>
       </div>
       <% if (o.note) { %>
-      <div class="ticket-note">📋 <%= o.note %></div>
+      <div class="ticket-note">ðŸ“‹ <%= o.note %></div>
       <% } %>
       <% if (o.kitchen_done_at) { %>
       <div style="padding:8px 16px;font-size:.72rem;color:#00b894;background:rgba(0,184,148,.05);border-top:1px solid #2a2a3e">
-        ✓ Kitchen done <%= Math.floor((new Date(o.kitchen_done_at) - new Date(o.kitchen_sent_at || o.created_at)) / 60000) %>m prep time
+        âœ“ Kitchen done <%= Math.floor((new Date(o.kitchen_done_at) - new Date(o.kitchen_sent_at || o.created_at)) / 60000) %>m prep time
       </div>
       <% } %>
       <div class="ticket-footer">
-        <button class="btn-done" onclick="markDone(<%= o.id %>)">✓ Done — Close Order</button>
+        <button class="btn-done" onclick="markDone(<%= o.id %>)">âœ“ Done â€” Close Order</button>
         <a href="/pos/order/<%= o.id %>" class="btn-view">View</a>
       </div>
     </div>
@@ -146,7 +146,7 @@
     const grouped = {};
     (o.items||[]).forEach(i => { const c = i.course||'main'; if (!grouped[c]) grouped[c]=[]; grouped[c].push(i); });
     const multiCourse = Object.keys(grouped).length > 1;
-    const courseLabels = { starter:'🥗 Starter', main:'🍽 Main', dessert:'🍮 Dessert', drink:'🥤 Drink' };
+    const courseLabels = { starter:'ðŸ¥— Starter', main:'ðŸ½ Main', dessert:'ðŸ® Dessert', drink:'ðŸ¥¤ Drink' };
     let itemsHtml = '';
     COURSE_ORDER.forEach(c => {
       if (!grouped[c]) return;
@@ -154,21 +154,21 @@
       grouped[c].forEach(item => {
         const isNew = !item.sent_to_kitchen;
         itemsHtml += `<div class="ticket-item${isNew?' new-item':''}">
-          <div><div class="ti-name">${item.name}${isNew?'<span class="new-badge">NEW</span>':''}</div>${item.notes?`<div class="ti-note">📝 ${item.notes}</div>`:''}</div>
-          <div class="ti-qty">×${item.quantity}</div></div>`;
+          <div><div class="ti-name">${item.name}${isNew?'<span class="new-badge">NEW</span>':''}</div>${item.notes?`<div class="ti-note">ðŸ“ ${item.notes}</div>`:''}</div>
+          <div class="ti-qty">Ã—${item.quantity}</div></div>`;
       });
     });
-    const coverChip = o.cover_count > 1 ? `<span class="cover-chip">×${o.cover_count}</span>` : '';
-    const newLabel  = hasNew ? ' <span style="color:#fdcb6e;font-size:.68rem;font-weight:700">● NEW</span>' : '';
+    const coverChip = o.cover_count > 1 ? `<span class="cover-chip">Ã—${o.cover_count}</span>` : '';
+    const newLabel  = hasNew ? ' <span style="color:#fdcb6e;font-size:.68rem;font-weight:700">â— NEW</span>' : '';
     return `<div class="order-ticket${hasNew?' has-new':''}" id="ticket_${o.id}">
       <div class="ticket-header">
-        <div><div class="ticket-table">🪑 ${o.table_name} ${coverChip}</div><div class="ticket-order">Order #${o.id}${newLabel}</div></div>
+        <div><div class="ticket-table">ðŸª‘ ${o.table_name} ${coverChip}</div><div class="ticket-order">Order #${o.id}${newLabel}</div></div>
         <span class="elapsed ${cls}">${mins}m</span>
       </div>
       <div class="ticket-items">${itemsHtml}</div>
-      ${o.note?`<div class="ticket-note">📋 ${o.note}</div>`:''}
+      ${o.note?`<div class="ticket-note">ðŸ“‹ ${o.note}</div>`:''}
       <div class="ticket-footer">
-        <button class="btn-done" onclick="markDone(${o.id})">✓ Done</button>
+        <button class="btn-done" onclick="markDone(${o.id})">âœ“ Done</button>
         <a href="/pos/order/${o.id}" class="btn-view">View</a>
       </div></div>`;
   }
@@ -179,7 +179,7 @@
       const r = await fetch('/pos/api/kitchen');
       const data = await r.json();
       if (data.orders.length === 0) {
-        document.getElementById('ordersGrid').innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✅</div><p>All clear — no open orders</p></div>';
+        document.getElementById('ordersGrid').innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">âœ…</div><p>All clear â€” no open orders</p></div>';
         return;
       }
       const now = Date.now();

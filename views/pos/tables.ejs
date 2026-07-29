@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>POS — <%= tenant.name %></title>
+  <title>POS â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -25,7 +25,7 @@
 
     .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
 
-    /* ── Floor Plan view ── */
+    /* â”€â”€ Floor Plan view â”€â”€ */
     .floor-wrap { overflow-x: auto; overflow-y: auto; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: #0d0d1f; max-height: 70vh; }
     .floor-canvas-ro {
       position: relative; width: 1400px; height: 900px; flex-shrink: 0;
@@ -100,15 +100,15 @@
 
 <div class="topbar">
   <div class="topbar-left">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-brand">🖥️ POS — <%= tenant.name %></div>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <div class="topbar-brand">ðŸ–¥ï¸ POS â€” <%= tenant.name %></div>
   </div>
   <div class="topbar-right">
-    <a href="/pos/kitchen" class="btn btn-ghost">🍳 Kitchen</a>
-    <a href="/pos/orders" class="btn btn-ghost">📋 Orders</a>
-    <a href="/pos/reports" class="btn btn-ghost">📊 Reports</a>
-    <a href="/pos/settings" class="btn btn-ghost">⚙️ Tables</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/pos/kitchen" class="btn btn-ghost">ðŸ³ Kitchen</a>
+    <a href="/pos/orders" class="btn btn-ghost">ðŸ“‹ Orders</a>
+    <a href="/pos/reports" class="btn btn-ghost">ðŸ“Š Reports</a>
+    <a href="/pos/settings" class="btn btn-ghost">âš™ï¸ Tables</a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -116,7 +116,7 @@
 <div class="session-bar">
   <div class="session-stat">
     <span class="session-stat-label">Session</span>
-    <span class="session-stat-val">#<%= session.id %> · Opened <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %></span>
+    <span class="session-stat-val">#<%= session.id %> Â· Opened <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %></span>
   </div>
   <div class="session-stat">
     <span class="session-stat-label">Opening Cash</span>
@@ -132,9 +132,9 @@
   </div>
   <div class="session-actions">
     <% if (tenant.feat_no_sale) { %>
-    <button class="btn btn-ghost" onclick="noSale()" style="color:#fdcb6e" title="Open cash drawer">🔔 No Sale</button>
+    <button class="btn btn-ghost" onclick="noSale()" style="color:#fdcb6e" title="Open cash drawer">ðŸ”” No Sale</button>
     <% } %>
-    <a href="/pos/session/close" class="btn btn-danger">🔒 Close Session</a>
+    <a href="/pos/session/close" class="btn btn-danger">ðŸ”’ Close Session</a>
   </div>
 </div>
 
@@ -142,7 +142,7 @@
 
   <!-- Takeaway Section -->
   <div class="section-header">
-    <div class="section-title">🥡 Takeaway <span class="count"><%= takeawayOrders.length %> active</span></div>
+    <div class="section-title">ðŸ¥¡ Takeaway <span class="count"><%= takeawayOrders.length %> active</span></div>
     <form method="POST" action="/pos/takeaway/open" style="display:inline">
       <button type="submit" class="btn-new-takeaway">+ New Takeaway</button>
     </form>
@@ -164,9 +164,9 @@
   <% const hasFloorPlan = tables.some(t => t.floor_x != null); %>
   <div class="section-header">
     <div class="section-title">
-      🪑 Tables
+      ðŸª‘ Tables
       <% if (hasFloorPlan) { %>
-      <button onclick="toggleView()" id="viewToggleBtn" class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:4px 10px;margin-left:6px">☰ Grid</button>
+      <button onclick="toggleView()" id="viewToggleBtn" class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:4px 10px;margin-left:6px">â˜° Grid</button>
       <% } %>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -174,13 +174,13 @@
         <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> Free</div>
         <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Occupied</div>
       </div>
-      <a href="/pos/floor-plan" class="btn btn-ghost" style="font-size:.75rem;padding:5px 12px">🗺️ Edit Floor Plan</a>
+      <a href="/pos/floor-plan" class="btn btn-ghost" style="font-size:.75rem;padding:5px 12px">ðŸ—ºï¸ Edit Floor Plan</a>
     </div>
   </div>
 
   <% if (tables.length === 0) { %>
   <div class="empty-state">
-    <div style="font-size:3rem">🪑</div>
+    <div style="font-size:3rem">ðŸª‘</div>
     <p>No tables configured yet.</p>
     <a href="/pos/settings" class="btn btn-primary" style="margin-top:16px">Set Up Tables</a>
   </div>
@@ -202,9 +202,9 @@
         <div class="fp-table <%= cls %>"
           style="left:<%= x %>px;top:<%= y %>px;width:<%= w %>px;height:<%= h %>px;border-radius:<%= radius %>"
           onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')"
-          title="<%= t.name %> · Capacity: <%= t.capacity %>">
-          <% if (t.bill_requested) { %><span class="fp-badge">🔔</span><% } %>
-          <% if (t.is_held && !t.bill_requested) { %><span class="fp-badge" style="background:#fdcb6e">⏸</span><% } %>
+          title="<%= t.name %> Â· Capacity: <%= t.capacity %>">
+          <% if (t.bill_requested) { %><span class="fp-badge">ðŸ””</span><% } %>
+          <% if (t.is_held && !t.bill_requested) { %><span class="fp-badge" style="background:#fdcb6e">â¸</span><% } %>
           <span class="fp-name"><%= t.name %></span>
           <span class="fp-status" style="color:<%= t.bill_requested ? '#f39c12' : t.is_held ? '#fdcb6e' : occupied ? '#e74c3c' : '#00b894' %>">
             <%= t.bill_requested ? 'BILL' : t.is_held ? 'HELD' : occupied ? 'BUSY' : 'FREE' %>
@@ -223,10 +223,10 @@
     <% tables.forEach(t => { %>
     <% const occupied = !!t.order_id; %>
     <div class="table-card <%= t.bill_requested ? 'bill-req' : t.is_held ? 'held-table' : occupied ? 'occupied' : 'free' %>" onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')">
-      <% if (t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#f39c12;color:#000;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:10px">🔔 BILL</span><% } %>
-      <% if (t.is_held && !t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#fdcb6e;color:#0a0a0f;font-size:.6rem;font-weight:900;padding:3px 8px;border-radius:10px">⏸ HELD</span><% } %>
-      <div class="table-icon"><%= t.bill_requested ? '🔔' : t.is_held ? '⏸' : occupied ? '🔴' : '🟢' %></div>
-      <div class="table-name"><%= t.name %><% if (occupied && t.cover_count > 1) { %><span class="cover-chip">🪑×<%= t.cover_count %></span><% } %></div>
+      <% if (t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#f39c12;color:#000;font-size:.62rem;font-weight:800;padding:3px 8px;border-radius:10px">ðŸ”” BILL</span><% } %>
+      <% if (t.is_held && !t.bill_requested) { %><span style="position:absolute;top:-7px;right:-7px;background:#fdcb6e;color:#0a0a0f;font-size:.6rem;font-weight:900;padding:3px 8px;border-radius:10px">â¸ HELD</span><% } %>
+      <div class="table-icon"><%= t.bill_requested ? 'ðŸ””' : t.is_held ? 'â¸' : occupied ? 'ðŸ”´' : 'ðŸŸ¢' %></div>
+      <div class="table-name"><%= t.name %><% if (occupied && t.cover_count > 1) { %><span class="cover-chip">ðŸª‘Ã—<%= t.cover_count %></span><% } %></div>
       <div class="table-cap">Capacity: <%= t.capacity %></div>
       <span class="table-status <%= t.bill_requested ? 'status-bill' : occupied ? 'status-occupied' : 'status-free' %>">
         <%= t.bill_requested ? 'Bill Requested' : t.is_held ? 'On Hold' : occupied ? 'Occupied' : 'Free' %>
@@ -258,7 +258,7 @@
     const btn   = document.getElementById('viewToggleBtn');
     if (floor) floor.style.display = _floorView ? '' : 'none';
     if (grid)  grid.style.display  = _floorView ? 'none' : '';
-    if (btn)   btn.textContent = _floorView ? '☰ Grid' : '🗺️ Floor Plan';
+    if (btn)   btn.textContent = _floorView ? 'â˜° Grid' : 'ðŸ—ºï¸ Floor Plan';
   }
 
   function openTable(tableId, orderId) {
@@ -284,7 +284,7 @@
       if (d.ok) {
         const t = document.createElement('div');
         t.style = 'position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fdcb6e;padding:12px 20px;border-radius:10px;font-weight:700;z-index:999;border-left:4px solid #fdcb6e';
-        t.textContent = '🔔 Cash drawer opened — logged';
+        t.textContent = 'ðŸ”” Cash drawer opened â€” logged';
         document.body.appendChild(t);
         setTimeout(() => t.remove(), 3000);
       }

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shifts — <%= tenant.name %></title>
+  <title>Shifts â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -33,16 +33,16 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
     <div>
-      <div class="topbar-brand">📅 Shift Log</div>
+      <div class="topbar-brand">ðŸ“… Shift Log</div>
       <div class="topbar-sub"><%= tenant.name %></div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/hr" class="btn btn-ghost">👥 Employees</a>
-    <a href="/hr/payroll" class="btn btn-ghost">💰 Payroll</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/hr" class="btn btn-ghost">ðŸ‘¥ Employees</a>
+    <a href="/hr/payroll" class="btn btn-ghost">ðŸ’° Payroll</a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -56,21 +56,21 @@
 
   <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
     <div class="section">
-      <h3>📋 Shifts</h3>
+      <h3>ðŸ“‹ Shifts</h3>
       <table>
         <thead><tr><th>Employee</th><th>Date</th><th>Start</th><th>End</th><th>Hours</th><th>Notes</th><th></th></tr></thead>
         <tbody>
         <% shifts.forEach(s => { %>
         <tr>
           <td style="color:#fff;font-weight:600"><%= s.employee_name %></td>
-          <td><%= s.shift_date ? s.shift_date.toISOString().slice(0,10) : '—' %></td>
-          <td><%= s.start_time || '—' %></td>
-          <td><%= s.end_time || '—' %></td>
-          <td><%= s.hours_worked || '—' %></td>
+          <td><%= s.shift_date ? s.shift_date.toISOString().slice(0,10) : 'â€”' %></td>
+          <td><%= s.start_time || 'â€”' %></td>
+          <td><%= s.end_time || 'â€”' %></td>
+          <td><%= s.hours_worked || 'â€”' %></td>
           <td style="font-size:.78rem;color:#555"><%= s.notes || '' %></td>
           <td>
             <form method="POST" action="/hr/shifts/<%= s.id %>/delete" onsubmit="return confirm('Delete shift?')">
-              <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">✕</button>
+              <button class="btn btn-danger" style="font-size:.72rem;padding:3px 8px">âœ•</button>
             </form>
           </td>
         </tr>
@@ -81,7 +81,7 @@
     </div>
 
     <div class="section">
-      <h3>➕ Log Shift</h3>
+      <h3>âž• Log Shift</h3>
       <form method="POST" action="/hr/shifts">
         <div class="form-group">
           <label>Employee *</label>

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Session #<%= session.id %> — <%= tenant.name %></title>
+  <title>Session #<%= session.id %> â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -80,10 +80,10 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-title">📋 Session #<%= session.id %></div>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <div class="topbar-title">ðŸ“‹ Session #<%= session.id %></div>
   </div>
-  <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+  <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
 </div>
 
 <div class="main">
@@ -94,14 +94,14 @@
       <div class="sh-title">Session #<%= session.id %> &nbsp; <span class="badge badge-<%= session.status %>"><%= session.status %></span></div>
       <div class="sh-sub" style="margin-top:6px">
         Opened by <strong style="color:#ccc"><%= session.opened_by_name || session.opened_by_email || 'Unknown' %></strong>
-        &nbsp;·&nbsp;
+        &nbsp;Â·&nbsp;
         <%= new Date(session.opened_at).toLocaleString() %>
         <% if (session.closed_at) { %>
-          &nbsp;→&nbsp;<%= new Date(session.closed_at).toLocaleString() %>
+          &nbsp;â†’&nbsp;<%= new Date(session.closed_at).toLocaleString() %>
         <% } %>
       </div>
       <% if (session.notes) { %>
-      <div class="sh-sub" style="margin-top:4px;color:#666">📝 <%= session.notes %></div>
+      <div class="sh-sub" style="margin-top:4px;color:#666">ðŸ“ <%= session.notes %></div>
       <% } %>
     </div>
   </div>
@@ -109,7 +109,7 @@
   <!-- Stats -->
   <div class="stat-row">
     <div class="stat"><div class="stat-label">Opening Cash</div><div class="stat-val"><%= Math.round(parseFloat(session.opening_cash)).toLocaleString() %> IQD</div></div>
-    <div class="stat"><div class="stat-label">Closing Cash</div><div class="stat-val"><%= session.closing_cash != null ? Math.round(parseFloat(session.closing_cash)).toLocaleString() + ' IQD' : '—' %></div></div>
+    <div class="stat"><div class="stat-label">Closing Cash</div><div class="stat-val"><%= session.closing_cash != null ? Math.round(parseFloat(session.closing_cash)).toLocaleString() + ' IQD' : 'â€”' %></div></div>
     <div class="stat"><div class="stat-label">Paid Orders</div><div class="stat-val green"><%= stats.paid %></div></div>
     <div class="stat"><div class="stat-label">Voided</div><div class="stat-val red"><%= stats.voided %></div></div>
     <div class="stat"><div class="stat-label">Open</div><div class="stat-val"><%= stats.open %></div></div>
@@ -118,8 +118,8 @@
 
   <!-- Tabs -->
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('orders',this)">📋 Orders (<%= orders.length %>)</div>
-    <div class="tab" onclick="switchTab('log',this)">📜 Activity Log (<%= logs.length %>)</div>
+    <div class="tab active" onclick="switchTab('orders',this)">ðŸ“‹ Orders (<%= orders.length %>)</div>
+    <div class="tab" onclick="switchTab('log',this)">ðŸ“œ Activity Log (<%= logs.length %>)</div>
   </div>
 
   <!-- Orders Tab -->
@@ -151,10 +151,10 @@
             <td style="color:#3498db;font-size:.75rem">
               <% if (o.discount_type && o.discount_type !== 'none') { %>
                 <%= o.discount_type === 'percent' ? o.discount_value + '%' : (tenant.currency||'$') + parseFloat(o.discount_value).toFixed(2) %>
-              <% } else { %>—<% } %>
+              <% } else { %>â€”<% } %>
             </td>
             <td><strong style="color:#00b894"><%= tenant.currency || '$' %><%= parseFloat(o.total || 0).toFixed(2) %></strong></td>
-            <td style="text-transform:capitalize"><%= o.pay_method || '—' %></td>
+            <td style="text-transform:capitalize"><%= o.pay_method || 'â€”' %></td>
             <td style="color:#444;font-size:.75rem"><%= new Date(o.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) %></td>
             <td>
               <% if (o.status === 'paid') { %><span class="badge badge-paid">paid</span>
@@ -188,28 +188,28 @@
         orders.forEach(o => { orderMap[o.id] = o; });
 
         const iconMap = {
-          order_open: { cls: 'open', icon: '📝' },
-          item_add:   { cls: 'add',  icon: '➕' },
-          item_remove:{ cls: 'remove', icon: '🗑️' },
-          item_qty:   { cls: 'qty',  icon: '✏️' },
-          discount_apply:  { cls: 'discount', icon: '🏷️' },
-          discount_remove: { cls: 'discount', icon: '✕' },
-          order_void: { cls: 'void', icon: '🗑️' },
-          order_paid: { cls: 'paid', icon: '✅' },
-          order_note: { cls: 'note', icon: '📝' },
+          order_open: { cls: 'open', icon: 'ðŸ“' },
+          item_add:   { cls: 'add',  icon: 'âž•' },
+          item_remove:{ cls: 'remove', icon: 'ðŸ—‘ï¸' },
+          item_qty:   { cls: 'qty',  icon: 'âœï¸' },
+          discount_apply:  { cls: 'discount', icon: 'ðŸ·ï¸' },
+          discount_remove: { cls: 'discount', icon: 'âœ•' },
+          order_void: { cls: 'void', icon: 'ðŸ—‘ï¸' },
+          order_paid: { cls: 'paid', icon: 'âœ…' },
+          order_note: { cls: 'note', icon: 'ðŸ“' },
         };
 
         function actionLabel(log) {
           const d = log.details || {};
           switch (log.action) {
-            case 'order_open':    return `Order opened — ${d.table_name || ''}`;
+            case 'order_open':    return `Order opened â€” ${d.table_name || ''}`;
             case 'item_add':      return `Added: ${d.name || ''}`;
             case 'item_remove':   return `Removed: ${d.name || ''}`;
-            case 'item_qty':      return `Qty changed: ${d.name || ''} (${d.from} → ${d.to})`;
+            case 'item_qty':      return `Qty changed: ${d.name || ''} (${d.from} â†’ ${d.to})`;
             case 'discount_apply':return `Discount applied: ${d.type === 'percent' ? d.value + '%' : '$' + d.value}`;
             case 'discount_remove': return 'Discount removed';
             case 'order_void':    return 'Order voided';
-            case 'order_paid':    return `Order paid — ${d.method || ''} / ${d.total ? '$'+parseFloat(d.total).toFixed(2) : ''}`;
+            case 'order_paid':    return `Order paid â€” ${d.method || ''} / ${d.total ? '$'+parseFloat(d.total).toFixed(2) : ''}`;
             case 'order_note':    return `Note: "${d.note || ''}"`;
             default:              return log.action;
           }
@@ -218,12 +218,12 @@
       <div class="log-list">
         <% Object.entries(groups).forEach(([orderId, entries]) => {
           const order = orderMap[orderId];
-          const headerLabel = order ? `Order #${orderId} — ${order.table_name}` : 'Session';
+          const headerLabel = order ? `Order #${orderId} â€” ${order.table_name}` : 'Session';
         %>
         <div class="log-group">
           <div class="log-group-header"><%= headerLabel %></div>
           <% entries.forEach(log => {
-            const ic = iconMap[log.action] || { cls: 'note', icon: '•' };
+            const ic = iconMap[log.action] || { cls: 'note', icon: 'â€¢' };
             const isVoid = log.action === 'order_void';
             const isPaid = log.action === 'order_paid';
             const isDisc = log.action.startsWith('discount');

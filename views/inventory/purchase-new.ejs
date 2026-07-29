@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>New Purchase Receipt — <%= tenant.name %></title>
+  <title>New Purchase Receipt â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -73,15 +73,15 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
-    <span style="font-weight:700;color:#fff">🧾 New Purchase Receipt</span>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <span style="font-weight:700;color:#fff">ðŸ§¾ New Purchase Receipt</span>
   </div>
 </div>
 
 <div class="main">
   <% if (locals.error) { %>
-  <div class="error-banner">⚠ Error: <%= error %></div>
+  <div class="error-banner">âš  Error: <%= error %></div>
   <% } %>
 
   <form method="POST" action="/inventory/purchases">
@@ -92,7 +92,7 @@
         <div class="form-group">
           <label class="form-label">Supplier Name</label>
           <div class="supp-wrap">
-            <input type="text" name="supplier_name" id="supplierInput" class="form-input" placeholder="Search or type new supplier…" autocomplete="off"
+            <input type="text" name="supplier_name" id="supplierInput" class="form-input" placeholder="Search or type new supplierâ€¦" autocomplete="off"
               oninput="suppFilter(this.value)" onfocus="suppFilter(this.value)" />
             <div class="supp-drop" id="suppDrop"></div>
           </div>
@@ -114,7 +114,7 @@
 
     <div class="card">
       <div class="card-title">
-        <span>📦 Items Purchased</span>
+        <span>ðŸ“¦ Items Purchased</span>
         <button type="button" class="btn btn-primary" onclick="addLine()">+ Add Row</button>
       </div>
 
@@ -140,7 +140,7 @@
 
     <div style="display:flex;justify-content:flex-end;gap:12px">
       <a href="/inventory/purchases" class="btn btn-ghost">Cancel</a>
-      <button type="submit" class="btn btn-success">✓ Save Receipt</button>
+      <button type="submit" class="btn btn-success">âœ“ Save Receipt</button>
     </div>
   </form>
 </div>
@@ -151,7 +151,7 @@ const INV_ITEMS = <%- JSON.stringify(invItems) %>;
 const SUPPLIERS = <%- JSON.stringify(suppliers) %>;
 let idx = 0;
 
-// ── Supplier autocomplete ──────────────────────────────────────────
+// â”€â”€ Supplier autocomplete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function suppFilter(q) {
   const drop = document.getElementById('suppDrop');
   const matches = SUPPLIERS.filter(s => s.toLowerCase().includes((q||'').toLowerCase()));
@@ -179,7 +179,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape') drop.classList.remove('open');
 });
 
-// ── Searchable picker ──────────────────────────────────────────────
+// â”€â”€ Searchable picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function createPicker(i) {
   const wrap = document.createElement('div');
   wrap.className = 'item-picker';
@@ -195,13 +195,13 @@ function createPicker(i) {
   const search = document.createElement('input');
   search.type = 'text';
   search.className = 'item-search';
-  search.placeholder = 'Search item…';
+  search.placeholder = 'Search itemâ€¦';
   search.autocomplete = 'off';
   search.id = 'search_' + i;
 
   const arrow = document.createElement('span');
   arrow.className = 'picker-arrow';
-  arrow.textContent = '▾';
+  arrow.textContent = 'â–¾';
 
   // Dropdown
   const drop = document.createElement('div');
@@ -228,10 +228,10 @@ function renderDrop(i, q) {
   q = (q || '').toLowerCase().trim();
 
   const filtered = INV_ITEMS.filter(it => it.name.toLowerCase().includes(q));
-  let html = `<div class="picker-opt create" onclick="selectNew(${i})">➕ Create new item${q ? ': <b>' + escH(q) + '</b>' : '…'}</div>`;
+  let html = `<div class="picker-opt create" onclick="selectNew(${i})">âž• Create new item${q ? ': <b>' + escH(q) + '</b>' : 'â€¦'}</div>`;
 
   if (filtered.length === 0 && q) {
-    html += `<div class="picker-empty">No match — will create "${escH(q)}"</div>`;
+    html += `<div class="picker-empty">No match â€” will create "${escH(q)}"</div>`;
   } else {
     filtered.forEach(it => {
       html += `<div class="picker-opt" onclick="selectItem(${i},${it.id},'${escJ(it.name)}','${escJ(it.unit)}')">${escH(it.name)}<span class="unit-tag">${escH(it.unit)}</span></div>`;
@@ -260,7 +260,7 @@ function handleKey(e, i) {
     e.preventDefault();
     if (cur) cur.click();
     else {
-      // Enter with no selection → treat typed text as "create new"
+      // Enter with no selection â†’ treat typed text as "create new"
       selectNew(i);
     }
   } else if (e.key === 'Escape') {
@@ -290,14 +290,14 @@ function selectNew(i) {
   // Pre-fill new item name with whatever was typed
   const nameInput = document.getElementById('newName_' + i);
   if (search.value && !nameInput.value) nameInput.value = search.value;
-  search.value = '➕ Create new item';
+  search.value = 'âž• Create new item';
   nameInput.focus();
 }
 
 function escH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escJ(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
-// ── Row management ─────────────────────────────────────────────────
+// â”€â”€ Row management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function mkTd(html) { const td = document.createElement('td'); td.innerHTML = html; return td; }
 
 function addLine() {
@@ -312,7 +312,7 @@ function addLine() {
   const newRow = document.createElement('div');
   newRow.className = 'new-item-row';
   newRow.id = 'newRow_' + i;
-  newRow.innerHTML = `<div class="new-item-hint">✦ New item name:</div><input type="text" name="new_item_name" class="line-input" placeholder="Item name" id="newName_${i}" />`;
+  newRow.innerHTML = `<div class="new-item-hint">âœ¦ New item name:</div><input type="text" name="new_item_name" class="line-input" placeholder="Item name" id="newName_${i}" />`;
   tdItem.appendChild(newRow);
 
   // Remaining cells
@@ -320,7 +320,7 @@ function addLine() {
   const tdQty   = mkTd(`<input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" required />`);
   const tdPrice = mkTd(`<input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" required />`);
   const tdTotal = mkTd(`<span class="line-total" id="lt_${i}">${CUR} 0.00</span>`);
-  const tdDel   = mkTd(`<button type="button" class="btn-remove">✕</button>`);
+  const tdDel   = mkTd(`<button type="button" class="btn-remove">âœ•</button>`);
   tdDel.querySelector('button').onclick = () => removeLine(i);
   tdQty.querySelector('input').oninput   = () => recalc(i);
   tdPrice.querySelector('input').oninput = () => recalc(i);

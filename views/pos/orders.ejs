@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Order History — <%= tenant.name %></title>
+  <title>Order History â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; padding: 20px; }
@@ -47,11 +47,11 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" style="padding:6px 10px;font-size:1.1rem;text-decoration:none;color:#ccc;background:rgba(255,255,255,.1);border-radius:8px;flex-shrink:0" title="All Modules">🏠</a>
-    <button onclick="history.back()" style="padding:6px 14px;border:none;background:rgba(255,255,255,.1);color:#ccc;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600">← Back</button>
+    <a href="C:\Users\ASUS" style="padding:6px 10px;font-size:1.1rem;text-decoration:none;color:#ccc;background:rgba(255,255,255,.1);border-radius:8px;flex-shrink:0" title="All Modules">ðŸ </a>
+    <button onclick="history.back()" style="padding:6px 14px;border:none;background:rgba(255,255,255,.1);color:#ccc;border-radius:8px;cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600">â† Back</button>
   </div>
   <h1>Session Orders</h1>
-  <span class="session-pill">Session #<%= session.id %> · Since <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
+  <span class="session-pill">Session #<%= session.id %> Â· Since <%= new Date(session.opened_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) %></span>
 </div>
 
 <!-- Stats -->
@@ -86,7 +86,7 @@
 <div class="card">
   <% if (orders.length === 0) { %>
   <div class="empty">
-    <div class="empty-icon">📋</div>
+    <div class="empty-icon">ðŸ“‹</div>
     <div>No orders this session yet</div>
   </div>
   <% } else { %>
@@ -110,7 +110,7 @@
         <td><%= o.table_name %></td>
         <td><%= o.item_count %></td>
         <td><strong><%= tenant.currency || '$' %><%= parseFloat(o.total || o.subtotal || 0).toFixed(2) %></strong></td>
-        <td style="text-transform:capitalize;color:#666"><%= o.pay_method || '—' %></td>
+        <td style="text-transform:capitalize;color:#666"><%= o.pay_method || 'â€”' %></td>
         <td><span class="badge badge-<%= o.status %>"><%= o.status %></span></td>
         <td style="color:#444;font-size:.72rem"><%= new Date(o.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) %></td>
         <td>

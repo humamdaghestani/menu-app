@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Customer Credits — <%= tenant.name %></title>
+  <title>Customer Credits â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -60,12 +60,12 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-brand">🤝 Customer Credits</div>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <div class="topbar-brand">ðŸ¤ Customer Credits</div>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/accounting" class="btn btn-ghost">← Accounting</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/accounting" class="btn btn-ghost">â† Accounting</a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -105,7 +105,7 @@
           <tr>
             <td>
               <div style="font-weight:600;color:#ddd"><%= c.customer_name %></div>
-              <div style="font-size:.72rem;color:#444"><%= String(c.credit_date).slice(0,10) %><% if (c.due_date) { %> · due <%= String(c.due_date).slice(0,10) %><% } %></div>
+              <div style="font-size:.72rem;color:#444"><%= String(c.credit_date).slice(0,10) %><% if (c.due_date) { %> Â· due <%= String(c.due_date).slice(0,10) %><% } %></div>
               <div class="progress-bar" style="max-width:80px"><div class="progress-fill" style="width:<%= pct %>%"></div></div>
             </td>
             <td style="text-align:right;color:#f39c12;white-space:nowrap"><%= c.amount.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
@@ -114,13 +114,13 @@
             <td><span class="status-badge status-<%= c.status %>"><%= c.status %></span></td>
             <td style="white-space:nowrap">
               <% if (c.customer_id) { %>
-              <a href="/accounting/customers/<%= c.customer_id %>/ledger" class="btn btn-ghost" style="padding:4px 8px;font-size:.72rem">📋 Ledger</a>
+              <a href="/accounting/customers/<%= c.customer_id %>/ledger" class="btn btn-ghost" style="padding:4px 8px;font-size:.72rem">ðŸ“‹ Ledger</a>
               <% } %>
               <% if (c.status !== 'paid') { %>
               <button class="btn btn-green" style="padding:4px 8px;font-size:.72rem" onclick='openPay(<%= c.id %>, "<%= c.customer_name.replace(/"/g, "&quot;") %>", <%= c.balance %>)'>Pay</button>
               <% } %>
               <form method="POST" action="/accounting/customers/credit/<%= c.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this credit account?')">
-                <button type="submit" class="btn btn-red" style="padding:4px 8px;font-size:.7rem">✕</button>
+                <button type="submit" class="btn btn-red" style="padding:4px 8px;font-size:.7rem">âœ•</button>
               </form>
             </td>
           </tr>
@@ -159,7 +159,7 @@
               <input type="text" name="notes" placeholder="Optional note" />
             </div>
             <div class="form-group full">
-              <button type="submit" class="btn btn-primary">➕ Add Credit</button>
+              <button type="submit" class="btn btn-primary">âž• Add Credit</button>
             </div>
           </div>
         </form>
@@ -187,7 +187,7 @@
           <input type="text" name="notes" placeholder="Optional" />
         </div>
         <div class="form-group full" style="display:flex;gap:10px;margin-top:6px">
-          <button type="submit" class="btn btn-primary" style="flex:1">✅ Record</button>
+          <button type="submit" class="btn btn-primary" style="flex:1">âœ… Record</button>
           <button type="button" class="btn btn-ghost" onclick="closePay()">Cancel</button>
         </div>
       </div>

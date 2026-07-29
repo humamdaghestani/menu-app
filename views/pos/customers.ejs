@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Customers — <%= tenant.name %></title>
+  <title>Customers â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -57,11 +57,11 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-title">👥 Customers</div>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <div class="topbar-title">ðŸ‘¥ Customers</div>
   </div>
   <div style="display:flex;gap:8px">
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
     <button class="btn btn-primary" onclick="openCreate()">+ Add Customer</button>
   </div>
 </div>
@@ -69,17 +69,17 @@
 <div class="main">
   <% const qs = new URLSearchParams ? '' : ''; %>
   <% if (typeof query !== 'undefined' && query.success) { %>
-  <div class="alert alert-success">✓ Customer saved.</div>
+  <div class="alert alert-success">âœ“ Customer saved.</div>
   <% } %>
 
   <div class="filter-bar">
-    <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search name or phone..." oninput="filterCards()" />
+    <input type="text" class="search-input" id="searchInput" placeholder="ðŸ” Search name or phone..." oninput="filterCards()" />
     <span id="countLabel" style="font-size:.78rem;color:#444"></span>
   </div>
 
   <% if (customers.length === 0) { %>
   <div class="empty-state">
-    <div style="font-size:3rem">👥</div>
+    <div style="font-size:3rem">ðŸ‘¥</div>
     <div style="margin-top:12px">No customers yet.</div>
     <button class="btn btn-primary btn-sm" onclick="openCreate()" style="margin-top:12px">Add first customer</button>
   </div>
@@ -90,8 +90,8 @@
       <div class="cust-avatar"><%= c.name.charAt(0).toUpperCase() %></div>
       <div class="cust-body">
         <div class="cust-name"><%= c.name %></div>
-        <% if (c.phone) { %><div class="cust-phone">📞 <%= c.phone %></div><% } %>
-        <% if (c.email) { %><div class="cust-phone">✉️ <%= c.email %></div><% } %>
+        <% if (c.phone) { %><div class="cust-phone">ðŸ“ž <%= c.phone %></div><% } %>
+        <% if (c.email) { %><div class="cust-phone">âœ‰ï¸ <%= c.email %></div><% } %>
         <div class="cust-stats">
           <div class="cust-stat">
             <div class="cust-stat-label">Visits</div>
@@ -118,7 +118,7 @@
 <!-- Create Modal -->
 <div class="overlay" id="createOverlay" onclick="if(event.target===this)closeCreate()">
   <div class="modal">
-    <div class="modal-title">➕ New Customer</div>
+    <div class="modal-title">âž• New Customer</div>
     <form method="POST" action="/pos/customers">
       <div class="form-group">
         <label class="form-label">Full Name *</label>
@@ -147,7 +147,7 @@
 <!-- Edit Modal -->
 <div class="overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
   <div class="modal">
-    <div class="modal-title">✏️ Edit Customer</div>
+    <div class="modal-title">âœï¸ Edit Customer</div>
     <form method="POST" id="editForm">
       <div class="form-group">
         <label class="form-label">Full Name *</label>
@@ -204,7 +204,7 @@ const _p = new URLSearchParams(location.search);
 if (_p.get('success')) {
   const d = document.createElement('div');
   d.className = 'alert alert-success';
-  d.textContent = '✓ Customer saved.';
+  d.textContent = 'âœ“ Customer saved.';
   document.querySelector('.main').prepend(d);
   setTimeout(() => d.remove(), 3000);
 }

@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Loyalty Program — <%= tenant.name %></title>
+  <title>Loyalty Program â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -43,23 +43,23 @@
 <body>
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
     <div>
-      <div class="topbar-brand">⭐ Loyalty Program</div>
+      <div class="topbar-brand">â­ Loyalty Program</div>
       <div class="topbar-sub"><%= tenant.name %></div>
     </div>
   </div>
   <div style="display:flex;gap:8px">
     <button onclick="document.getElementById('addPtsOverlay').classList.add('open')" class="btn btn-primary">+ Add Points</button>
     <button onclick="document.getElementById('redeemOverlay').classList.add('open')" class="btn btn-success">Redeem</button>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
 <div class="main">
   <!-- Program Settings -->
   <div class="section">
-    <div class="section-header"><h3>⚙️ Program Settings</h3></div>
+    <div class="section-header"><h3>âš™ï¸ Program Settings</h3></div>
     <form method="POST" action="/loyalty/program">
       <div class="form-row">
         <div class="form-group"><label>Program Name</label><input type="text" name="name" value="<%= program ? program.name : 'Loyalty Rewards' %>" required /></div>
@@ -81,7 +81,7 @@
   <div class="two-col">
     <!-- Top Customers -->
     <div class="section">
-      <h3>🏆 Top Customers by Points</h3>
+      <h3>ðŸ† Top Customers by Points</h3>
       <table>
         <thead><tr><th>#</th><th>Customer</th><th>Points</th></tr></thead>
         <tbody>
@@ -89,7 +89,7 @@
         <tr>
           <td style="color:#555"><%= i+1 %></td>
           <td><div style="color:#fff;font-weight:600"><%= c.name %></div><% if (c.phone) { %><div style="font-size:.72rem;color:#555"><%= c.phone %></div><% } %></td>
-          <td><span class="points-badge">⭐ <%= c.loyalty_points %></span></td>
+          <td><span class="points-badge">â­ <%= c.loyalty_points %></span></td>
         </tr>
         <% }) %>
         <% if (!topCustomers.length) { %><tr><td colspan="3" style="color:#555;text-align:center;padding:24px">No loyalty customers yet</td></tr><% } %>
@@ -99,7 +99,7 @@
 
     <!-- Recent Transactions -->
     <div class="section">
-      <h3>📋 Recent Transactions</h3>
+      <h3>ðŸ“‹ Recent Transactions</h3>
       <table>
         <thead><tr><th>Customer</th><th>Type</th><th>Points</th><th>Date</th></tr></thead>
         <tbody>
@@ -121,7 +121,7 @@
 <!-- Add Points Modal -->
 <div class="overlay" id="addPtsOverlay">
   <div class="modal">
-    <h3>⭐ Add Points</h3>
+    <h3>â­ Add Points</h3>
     <form method="POST" action="/loyalty/points/add">
       <div class="form-group"><label>Customer ID</label><input type="number" name="customer_id" required placeholder="Customer ID" /></div>
       <div class="form-group"><label>Points to Add</label><input type="number" name="points" required placeholder="100" /></div>
@@ -137,7 +137,7 @@
 <!-- Redeem Modal -->
 <div class="overlay" id="redeemOverlay">
   <div class="modal">
-    <h3>🎁 Redeem Points</h3>
+    <h3>ðŸŽ Redeem Points</h3>
     <form method="POST" action="/loyalty/points/redeem">
       <div class="form-group"><label>Customer ID</label><input type="number" name="customer_id" required placeholder="Customer ID" /></div>
       <div class="form-group"><label>Points to Redeem</label><input type="number" name="points" required placeholder="100" /></div>

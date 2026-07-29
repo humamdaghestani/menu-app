@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Accounting — <%= tenant.name %></title>
+  <title>Accounting â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -76,19 +76,19 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-brand">📒 Accounting</div>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <div class="topbar-brand">ðŸ“’ Accounting</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/accounting/expenses" class="btn btn-ghost">💸 Expenses</a>
-    <a href="/accounting/suppliers" class="btn btn-ghost">🏭 Suppliers</a>
-    <a href="/accounting/customers" class="btn btn-ghost">🤝 Credits</a>
-    <a href="/accounting/cashflow" class="btn btn-ghost">💵 Cash Flow</a>
-    <a href="/accounting/budgets" class="btn btn-ghost">📊 Budgets</a>
-    <a href="/accounting/tax" class="btn btn-ghost">🧾 Tax Rates</a>
-    <a href="/accounting/aging" class="btn btn-ghost">📅 Aging</a>
-    <a href="/accounting/cheques" class="btn btn-ghost">🧾 Cheques</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/accounting/expenses" class="btn btn-ghost">ðŸ’¸ Expenses</a>
+    <a href="/accounting/suppliers" class="btn btn-ghost">ðŸ­ Suppliers</a>
+    <a href="/accounting/customers" class="btn btn-ghost">ðŸ¤ Credits</a>
+    <a href="/accounting/cashflow" class="btn btn-ghost">ðŸ’µ Cash Flow</a>
+    <a href="/accounting/budgets" class="btn btn-ghost">ðŸ“Š Budgets</a>
+    <a href="/accounting/tax" class="btn btn-ghost">ðŸ§¾ Tax Rates</a>
+    <a href="/accounting/aging" class="btn btn-ghost">ðŸ“… Aging</a>
+    <a href="/accounting/cheques" class="btn btn-ghost">ðŸ§¾ Cheques</a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
   </div>
 </div>
 
@@ -102,7 +102,7 @@
       <button type="button" class="period-btn active" onclick="setPeriod('month')">This Month</button>
       <button type="button" class="period-btn" onclick="setPeriod('year')">This Year</button>
       <input type="date" name="from" id="fromDate" value="<%= dateFrom %>" onchange="this.form.submit()" />
-      <span style="color:#444">→</span>
+      <span style="color:#444">â†’</span>
       <input type="date" name="to" id="toDate" value="<%= dateTo %>" onchange="this.form.submit()" />
     </div>
   </form>
@@ -132,7 +132,7 @@
     <div class="kpi" style="border-color:<%= net >= 0 ? '#00b894' : '#e74c3c' %>44">
       <div class="kpi-label">Net Profit</div>
       <div class="kpi-value <%= net >= 0 ? 'green' : 'red' %>" style="font-size:1.8rem">
-        <%= net >= 0 ? '' : '−' %><%= Math.abs(net).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %>
+        <%= net >= 0 ? '' : 'âˆ’' %><%= Math.abs(net).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %>
       </div>
       <div class="kpi-sub"><%= tenant.currency || 'IQD' %></div>
     </div>
@@ -143,12 +143,12 @@
     <div class="kpi" style="border-color:#e74c3c44">
       <div class="kpi-label">Supplier Payable</div>
       <div class="kpi-value red"><%= totalPayable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
-      <div class="kpi-sub"><a href="/accounting/suppliers" style="color:#e74c3c;text-decoration:none;font-size:.72rem">View ledger →</a></div>
+      <div class="kpi-sub"><a href="/accounting/suppliers" style="color:#e74c3c;text-decoration:none;font-size:.72rem">View ledger â†’</a></div>
     </div>
     <div class="kpi" style="border-color:#00b89444">
       <div class="kpi-label">Customer Receivable</div>
       <div class="kpi-value green"><%= totalReceivable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
-      <div class="kpi-sub"><a href="/accounting/customers" style="color:#00b894;text-decoration:none;font-size:.72rem">View credits →</a></div>
+      <div class="kpi-sub"><a href="/accounting/customers" style="color:#00b894;text-decoration:none;font-size:.72rem">View credits â†’</a></div>
     </div>
     <div class="kpi" style="border-color:#00b89444">
       <div class="kpi-label">Cash In (Period)</div>
@@ -158,21 +158,21 @@
     <div class="kpi" style="border-color:#e74c3c44">
       <div class="kpi-label">Cash Out (Period)</div>
       <div class="kpi-value red"><%= cashOut.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
-      <div class="kpi-sub"><a href="/accounting/cashflow" style="color:#e74c3c;text-decoration:none;font-size:.72rem">Cash flow →</a></div>
+      <div class="kpi-sub"><a href="/accounting/cashflow" style="color:#e74c3c;text-decoration:none;font-size:.72rem">Cash flow â†’</a></div>
     </div>
   </div>
 
   <div class="two-col">
     <!-- P&L Summary -->
     <div class="card">
-      <div class="card-title">📊 P&L Summary</div>
+      <div class="card-title">ðŸ“Š P&L Summary</div>
       <div class="pl-row">
         <span class="pl-label">Revenue (Sales)</span>
         <span class="green">+ <%= revenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
       </div>
       <div class="pl-row">
         <span class="pl-label indent">Cost of Goods Sold</span>
-        <span class="yellow">− <%= cogs.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+        <span class="yellow">âˆ’ <%= cogs.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
       </div>
       <div class="pl-row">
         <span class="pl-label" style="font-weight:600;color:#ccc">Gross Profit</span>
@@ -181,13 +181,13 @@
       <% expByCat.forEach(cat => { %>
       <div class="pl-row">
         <span class="pl-label indent"><%= cat.name || 'Uncategorised' %></span>
-        <span class="red">− <%= parseFloat(cat.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+        <span class="red">âˆ’ <%= parseFloat(cat.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
       </div>
       <% }) %>
       <% if (expenses > 0 && expByCat.length === 0) { %>
       <div class="pl-row">
         <span class="pl-label indent">Other Expenses</span>
-        <span class="red">− <%= expenses.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+        <span class="red">âˆ’ <%= expenses.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
       </div>
       <% } %>
       <div class="pl-row total">
@@ -199,7 +199,7 @@
     <!-- Expenses by category -->
     <div class="card">
       <div class="card-title">
-        💸 Expenses by Category
+        ðŸ’¸ Expenses by Category
         <a href="/accounting/expenses" class="btn btn-ghost" style="font-size:.75rem;padding:4px 10px">Manage</a>
       </div>
       <% if (expByCat.length === 0) { %>
@@ -223,7 +223,7 @@
   <!-- Revenue by day chart -->
   <% if (revByDay.length > 0) { %>
   <div class="card" style="margin-bottom:16px">
-    <div class="card-title">📈 Revenue by Day</div>
+    <div class="card-title">ðŸ“ˆ Revenue by Day</div>
     <% const maxRev = Math.max(...revByDay.map(r => parseFloat(r.total))); %>
     <div class="bar-chart">
       <% revByDay.forEach(r => { const pct = maxRev > 0 ? Math.round(parseFloat(r.total)/maxRev*100) : 0; %>
@@ -254,7 +254,7 @@
         <td>
           <% if (e.cat_name) { %>
             <span style="font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:8px;background:<%= e.cat_color %>22;color:<%= e.cat_color %>"><%= e.cat_name %></span>
-          <% } else { %><span style="color:#333">—</span><% } %>
+          <% } else { %><span style="color:#333">â€”</span><% } %>
         </td>
         <td style="text-align:right;color:#e74c3c;font-weight:700"><%= parseFloat(e.amount).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
       </tr>

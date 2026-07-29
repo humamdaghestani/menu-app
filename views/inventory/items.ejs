@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventory Items — <%= tenant.name %></title>
+  <title>Inventory Items â€” <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
@@ -74,24 +74,24 @@
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <div class="topbar-brand">📦 Inventory Items</div>
+    <a href="C:\Users\ASUS" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">ðŸ </a>
+    <div class="topbar-brand">ðŸ“¦ Inventory Items</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a href="/inventory/adjustments" class="btn btn-ghost">📝 Adjustments</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
-    <button class="btn btn-ghost" onclick="openCatMgr()">🏷️ Categories</button>
+    <a href="/inventory/adjustments" class="btn btn-ghost">ðŸ“ Adjustments</a>
+    <button onclick="history.back()" class="btn btn-ghost">â† Back</button>
+    <button class="btn btn-ghost" onclick="openCatMgr()">ðŸ·ï¸ Categories</button>
     <button class="btn btn-primary" onclick="openCreate()">+ Add Item</button>
   </div>
 </div>
 
 <div class="main">
   <div class="filter-bar">
-    <input type="text" class="search-input" placeholder="🔍 Search items..." id="searchInput" oninput="filterRows()" />
+    <input type="text" class="search-input" placeholder="ðŸ” Search items..." id="searchInput" oninput="filterRows()" />
     <button class="type-btn active" id="filterAll" onclick="setFilter('all','',this)">All</button>
-    <button class="type-btn" onclick="setFilter('type','rm',this)">🔵 Raw Material</button>
-    <button class="type-btn" onclick="setFilter('type','sf',this)">🟣 Semi-Finished</button>
-    <button class="type-btn" onclick="setFilter('type','sold',this)">🟢 Can Be Sold</button>
+    <button class="type-btn" onclick="setFilter('type','rm',this)">ðŸ”µ Raw Material</button>
+    <button class="type-btn" onclick="setFilter('type','sf',this)">ðŸŸ£ Semi-Finished</button>
+    <button class="type-btn" onclick="setFilter('type','sold',this)">ðŸŸ¢ Can Be Sold</button>
     <% invCategories.forEach(ic => { %>
     <button class="type-btn" onclick="setFilter('cat','<%= ic.id %>',this)" style="border-color:<%= ic.color %>">
       <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<%= ic.color %>;margin-right:4px"></span><%= ic.name %>
@@ -101,7 +101,7 @@
 
   <% if (items.length === 0) { %>
   <div class="empty-state">
-    <div style="font-size:3rem">📦</div>
+    <div style="font-size:3rem">ðŸ“¦</div>
     <div style="margin-top:12px">No items yet.</div>
     <button class="btn btn-primary btn-sm" onclick="openCreate()" style="margin-top:12px">Add first item</button>
   </div>
@@ -140,14 +140,14 @@
             <span style="display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:8px;background:<%= item.inv_category_color %>22;color:<%= item.inv_category_color %>">
               <span style="width:6px;height:6px;border-radius:50%;background:<%= item.inv_category_color %>"></span><%= item.inv_category_name %>
             </span>
-          <% } else { %><span style="color:#333;font-size:.75rem">—</span><% } %>
+          <% } else { %><span style="color:#333;font-size:.75rem">â€”</span><% } %>
         </td>
         <td>
           <div class="flags">
             <% if (item.is_raw_material)  { %><span class="flag flag-rm">Raw Material</span><% } %>
             <% if (item.is_semi_finished) { %><span class="flag flag-sf">Semi-Finished</span><% } %>
             <% if (item.can_be_sold)      { %><span class="flag flag-sold">Can Be Sold</span><% } %>
-            <% if (!item.is_raw_material && !item.is_semi_finished && !item.can_be_sold) { %><span style="color:#333;font-size:.75rem">—</span><% } %>
+            <% if (!item.is_raw_material && !item.is_semi_finished && !item.can_be_sold) { %><span style="color:#333;font-size:.75rem">â€”</span><% } %>
           </div>
         </td>
         <td style="color:#666"><%= item.unit %></td>
@@ -164,17 +164,17 @@
           <% if (parseInt(item.recipe_lines) > 0) { %>
           <span style="color:#00b894;font-weight:600"><%= tenant.currency || '$' %><%= parseFloat(item.recipe_cost).toFixed(4) %></span>
           <% } else { %>
-          <span style="color:#333">—</span>
+          <span style="color:#333">â€”</span>
           <% } %>
         </td>
-        <td style="color:#666"><%= item.menu_item_name || '—' %></td>
+        <td style="color:#666"><%= item.menu_item_name || 'â€”' %></td>
         <td>
           <div class="action-btns">
-            <a href="/inventory/items/<%= item.id %>/recipe" class="btn btn-ghost btn-sm">📝 Recipe</a>
+            <a href="/inventory/items/<%= item.id %>/recipe" class="btn btn-ghost btn-sm">ðŸ“ Recipe</a>
             <button class="btn btn-ghost btn-sm" onclick='openEdit(<%= JSON.stringify(item) %>)'>Edit</button>
-            <button class="btn btn-ghost btn-sm" onclick='openAdjust(<%= item.id %>, "<%= item.name.replace(/"/g,"") %>", "<%= item.unit %>")'>±Stock</button>
+            <button class="btn btn-ghost btn-sm" onclick='openAdjust(<%= item.id %>, "<%= item.name.replace(/"/g,"") %>", "<%= item.unit %>")'>Â±Stock</button>
             <form method="POST" action="/inventory/items/<%= item.id %>/delete" style="display:inline" onsubmit="return confirm('Archive this item?')">
-              <button type="submit" class="btn btn-danger btn-sm">✕</button>
+              <button type="submit" class="btn btn-danger btn-sm">âœ•</button>
             </form>
           </div>
         </td>
@@ -190,7 +190,7 @@
 <!-- Create Modal -->
 <div class="overlay" id="createOverlay" onclick="if(event.target===this)closeCreate()">
   <div class="modal">
-    <div class="modal-title">➕ Add Inventory Item</div>
+    <div class="modal-title">âž• Add Inventory Item</div>
     <form method="POST" action="/inventory/items">
       <div class="form-row">
         <div class="form-group">
@@ -209,22 +209,22 @@
           <label class="check-item" id="c_rm_wrap">
             <input type="checkbox" name="is_raw_material" value="1" onchange="syncCheck('c_rm_wrap',this)" />
             <div>
-              <div class="check-item-label">🔵 Raw Material</div>
+              <div class="check-item-label">ðŸ”µ Raw Material</div>
               <div class="check-item-desc">Purchased ingredient used in recipes</div>
             </div>
           </label>
           <label class="check-item" id="c_sf_wrap">
             <input type="checkbox" name="is_semi_finished" value="1" onchange="syncCheck('c_sf_wrap',this)" />
             <div>
-              <div class="check-item-label">🟣 Semi-Finished</div>
+              <div class="check-item-label">ðŸŸ£ Semi-Finished</div>
               <div class="check-item-desc">Made from raw materials, used in other recipes</div>
             </div>
           </label>
           <label class="check-item" id="c_sold_wrap" onchange="syncCheck('c_sold_wrap',this)">
             <input type="checkbox" name="can_be_sold" value="1" onchange="toggleCreateMenuLink(this)" />
             <div>
-              <div class="check-item-label">🟢 Can Be Sold</div>
-              <div class="check-item-desc">Appears as a POS product — link to a menu item</div>
+              <div class="check-item-label">ðŸŸ¢ Can Be Sold</div>
+              <div class="check-item-desc">Appears as a POS product â€” link to a menu item</div>
             </div>
           </label>
         </div>
@@ -256,7 +256,7 @@
 
       <div id="c_menuLinkGroup" style="display:none;margin-top:4px">
         <div style="background:#1e2a1e;border:1.5px solid #2d4a2d;border-radius:10px;padding:16px;margin-bottom:0">
-          <p style="font-size:.8rem;color:#6fcf97;margin-bottom:14px;font-weight:600">🛒 Add this item to the menu so it appears in the POS?</p>
+          <p style="font-size:.8rem;color:#6fcf97;margin-bottom:14px;font-weight:600">ðŸ›’ Add this item to the menu so it appears in the POS?</p>
           <div style="display:flex;gap:10px;margin-bottom:14px">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1;background:#162616;border:1.5px solid #2d4a2d;border-radius:8px;padding:10px 14px" id="c_addMenuYes">
               <input type="radio" name="add_to_menu" value="yes" onchange="toggleAddToMenu(true)" style="accent-color:#6fcf97;width:16px;height:16px" />
@@ -290,7 +290,7 @@
                 <% if (subs.length > 0) { %>
                   <optgroup label="<%= cat.name %>">
                     <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
-                    <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                    <% subs.forEach(sub => { %><option value="<%= sub.id %>">â†³ <%= sub.name %></option><% }) %>
                   </optgroup>
                 <% } else { %>
                   <option value="<%= cat.id %>"><%= cat.name %></option>
@@ -313,7 +313,7 @@
 <!-- Edit Modal -->
 <div class="overlay" id="editOverlay" onclick="if(event.target===this)closeEdit()">
   <div class="modal">
-    <div class="modal-title">✏️ Edit Item</div>
+    <div class="modal-title">âœï¸ Edit Item</div>
     <form method="POST" id="editForm">
       <div class="form-row">
         <div class="form-group">
@@ -332,22 +332,22 @@
           <label class="check-item" id="e_rm_wrap">
             <input type="checkbox" name="is_raw_material" value="1" id="e_rm" onchange="syncCheck('e_rm_wrap',this)" />
             <div>
-              <div class="check-item-label">🔵 Raw Material</div>
+              <div class="check-item-label">ðŸ”µ Raw Material</div>
               <div class="check-item-desc">Purchased ingredient used in recipes</div>
             </div>
           </label>
           <label class="check-item" id="e_sf_wrap">
             <input type="checkbox" name="is_semi_finished" value="1" id="e_sf" onchange="syncCheck('e_sf_wrap',this)" />
             <div>
-              <div class="check-item-label">🟣 Semi-Finished</div>
+              <div class="check-item-label">ðŸŸ£ Semi-Finished</div>
               <div class="check-item-desc">Made from raw materials, used in other recipes</div>
             </div>
           </label>
           <label class="check-item" id="e_sold_wrap">
             <input type="checkbox" name="can_be_sold" value="1" id="e_sold" onchange="syncCheck('e_sold_wrap',this);toggleEditMenuLink(this)" />
             <div>
-              <div class="check-item-label">🟢 Can Be Sold</div>
-              <div class="check-item-desc">Appears as a POS product — link to a menu item</div>
+              <div class="check-item-label">ðŸŸ¢ Can Be Sold</div>
+              <div class="check-item-desc">Appears as a POS product â€” link to a menu item</div>
             </div>
           </label>
         </div>
@@ -380,7 +380,7 @@
       <div class="form-group" id="e_menuLinkGroup" style="display:none">
         <label class="form-label">Link to Menu Item (POS)</label>
         <select name="menu_item_id" id="editMenuLink" class="form-input">
-          <option value="">— Not linked —</option>
+          <option value="">â€” Not linked â€”</option>
           <% menuItems.forEach(m => { %>
           <option value="<%= m.id %>"><%= m.name %></option>
           <% }) %>
@@ -398,11 +398,11 @@
 <!-- Adjust Stock Modal -->
 <div class="overlay" id="adjustOverlay" onclick="if(event.target===this)closeAdjust()">
   <div class="modal">
-    <div class="modal-title">± Adjust Stock</div>
+    <div class="modal-title">Â± Adjust Stock</div>
     <div style="font-size:.85rem;color:#666;margin-bottom:16px" id="adjustItemName"></div>
     <form method="POST" id="adjustForm">
       <div class="form-group">
-        <label class="form-label">Quantity Change (use − to reduce)</label>
+        <label class="form-label">Quantity Change (use âˆ’ to reduce)</label>
         <input type="number" name="qty_change" id="adjustQty" class="form-input" step="0.001" placeholder="e.g. 5 or -2" required />
       </div>
       <div class="form-group">
@@ -503,7 +503,7 @@ function closeCatMgr() { document.getElementById('catMgrOverlay').classList.remo
 <!-- Category Manager Modal -->
 <div class="overlay" id="catMgrOverlay" onclick="if(event.target===this)closeCatMgr()">
   <div class="modal" style="max-width:400px">
-    <div class="modal-title">🏷️ Inventory Categories</div>
+    <div class="modal-title">ðŸ·ï¸ Inventory Categories</div>
 
     <!-- Add category form -->
     <form method="POST" action="/inventory/categories" style="margin-bottom:20px">
@@ -530,7 +530,7 @@ function closeCatMgr() { document.getElementById('catMgrOverlay').classList.remo
           <span style="width:12px;height:12px;border-radius:50%;background:<%= ic.color %>;flex-shrink:0"></span>
           <span style="flex:1;color:#ddd;font-size:.88rem;font-weight:600"><%= ic.name %></span>
           <form method="POST" action="/inventory/categories/<%= ic.id %>/delete" onsubmit="return confirm('Delete category? Items will be uncategorised.')">
-            <button type="submit" class="btn btn-danger btn-sm">✕</button>
+            <button type="submit" class="btn btn-danger btn-sm">âœ•</button>
           </form>
         </div>
         <% }) %>
