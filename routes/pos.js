@@ -986,13 +986,13 @@ router.post('/api/order/:id/add-item', requireAuth, requirePOS, async (req, res)
     const item = await db.query('SELECT * FROM menu_items WHERE id=$1 AND tenant_id=$2', [menu_item_id, req.user.tenantId]);
     if (!item.rows[0]) return res.json({ ok: false, error: 'Item not found' });
     const price = parseFloat(String(item.rows[0].price).replace(/[^0-9.]/g, '')) || 0;
-    // Only merge into an unfired row; if the existing row is already fired, create a new unfired row
     const existing = await db.query(
-      'SELECT * FROM pos_order_items WHERE order_id=$1 AND menu_item_id=$2 AND notes IS NULL AND sent_to_kitchen=false',
+      'SELECT * FROM pos_order_items WHERE order_id=$1 AND menu_item_id=$2 AND notes IS NULL',
       [req.params.id, menu_item_id]
     );
     if (existing.rows[0]) {
-      await db.query('UPDATE pos_order_items SET quantity=quantity+1 WHERE id=$1', [existing.rows[0].id]);
+      // Increment quantity and unfire so the updated total can be re-fired to kitchen
+      await db.query('UPDATE pos_order_items SET quantity=quantity+1, sent_to_kitchen=false WHERE id=$1', [existing.rows[0].id]);
     } else {
       await db.query(
         'INSERT INTO pos_order_items (order_id, menu_item_id, name, price, quantity, notes) VALUES ($1,$2,$3,$4,1,NULL)',
