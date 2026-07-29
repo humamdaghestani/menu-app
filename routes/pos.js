@@ -652,6 +652,41 @@ router.post('/order/:orderId/void', requireAuth, requirePOS, async (req, res) =>
   } catch (err) { console.error(err); res.redirect('/pos/tables'); }
 });
 
+// ── Print Bill (during order) ─────────────────────────────────────────────────
+router.get('/order/:orderId/bill', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const [orderRes, itemsRes] = await Promise.all([
+      db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]),
+      db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.orderId]),
+    ]);
+    if (!orderRes.rows[0]) return res.status(404).send('Order not found');
+    const o = orderRes.rows[0];
+    let exchangeRate = 1;
+    if (o.session_id) {
+      const sesRes = await db.query('SELECT exchange_rate FROM pos_sessions WHERE id=$1', [o.session_id]);
+      exchangeRate = parseFloat(sesRes.rows[0]?.exchange_rate) || 1;
+    }
+    const serviceFeePct = parseFloat(tenant.pos_service_fee_pct) || 0;
+    const subtotal = itemsRes.rows.reduce((s, i) => s + parseFloat(i.price) * i.quantity, 0);
+    let total = subtotal;
+    const dv = parseFloat(o.discount_value || 0);
+    if (o.discount_type === 'percent' && dv) total = Math.max(0, subtotal - subtotal * dv / 100);
+    else if (o.discount_type === 'fixed'   && dv) total = Math.max(0, subtotal - dv);
+    const discount   = subtotal - total;
+    const svcFee     = (serviceFeePct > 0 && o.apply_service_fee) ? parseFloat((total * serviceFeePct / 100).toFixed(2)) : 0;
+    const grandTotal = total + svcFee;
+    let customLabels = {};
+    try { customLabels = JSON.parse(tenant.bill_custom_labels || '{}'); } catch (_) {}
+    res.render('pos/bill', {
+      tenant, order: o, orderItems: itemsRes.rows,
+      subtotal, discount, svcFee, grandTotal,
+      exchangeRate, serviceFeePct, customLabels,
+      currentUser: req.user,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 // ── Receipt ───────────────────────────────────────────────────────────────────
 router.get('/receipt/:orderId', requireAuth, requirePOS, async (req, res) => {
   try {
