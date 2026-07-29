@@ -74,6 +74,10 @@
     .btn-bill:hover { background: rgba(243,156,18,.25); }
     .btn-bill:active { transform: scale(.97); }
     .btn-bill .big { font-size: 1.3rem; }
+    .btn-order { flex: 1; padding: 14px 8px; border: none; border-radius: 12px; background: rgba(0,184,148,.15); color: #00b894; border: 1.5px solid #00b894; font-size: .88rem; font-weight: 700; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; text-decoration: none; }
+    .btn-order:hover { background: rgba(0,184,148,.25); }
+    .btn-order:active { transform: scale(.97); }
+    .btn-order .big { font-size: 1.3rem; }
 
     /* ── Sent toast ── */
     .sent-toast { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); background: #00b894; color: #fff; padding: 10px 28px; border-radius: 10px; font-size: .88rem; font-weight: 700; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,.4); }
@@ -184,6 +188,10 @@
           Fire to Kitchen
         </button>
       </form>
+      <a href="/captain/order/<%= order.id %>/print" target="_blank" class="btn-order" style="<%= orderItems.length === 0 ? 'pointer-events:none;opacity:.4' : '' %>">
+        <span class="big">🖨️</span>
+        Order
+      </a>
       <form method="POST" action="/captain/order/<%= order.id %>/request-bill" style="flex:1">
         <button type="submit" class="btn-bill" style="width:100%" <%= orderItems.length === 0 ? 'disabled' : '' %>>
           <span class="big">🧾</span>

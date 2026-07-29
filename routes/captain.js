@@ -125,6 +125,17 @@ router.get('/order/:id', requireAuth, requireCaptain, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Error'); }
 });
 
+// GET /captain/order/:id/print  — printable kitchen order ticket
+router.get('/order/:id/print', requireAuth, requireCaptain, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const oRes   = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    if (!oRes.rows[0]) return res.status(404).send('Order not found');
+    const items  = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.id]);
+    res.render('captain/order-ticket', { tenant, order: oRes.rows[0], orderItems: items.rows, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Error'); }
+});
+
 // POST /captain/order/:id/add-item
 router.post('/order/:id/add-item', requireAuth, requireCaptain, async (req, res) => {
   const { menu_item_id } = req.body;
