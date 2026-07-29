@@ -125,15 +125,25 @@ router.get('/order/:id', requireAuth, requireCaptain, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Error'); }
 });
 
-// GET /captain/order/:id/print  — printable kitchen order ticket
-router.get('/order/:id/print', requireAuth, requireCaptain, async (req, res) => {
+// POST /captain/order/:id/print-ticket — direct ESC/POS print, no dialog
+router.post('/order/:id/print-ticket', requireAuth, requireCaptain, async (req, res) => {
   try {
-    const tenant = await getTenant(req.user.tenantId);
-    const oRes   = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-    if (!oRes.rows[0]) return res.status(404).send('Order not found');
-    const items  = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.id]);
-    res.render('captain/order-ticket', { tenant, order: oRes.rows[0], orderItems: items.rows, currentUser: req.user });
-  } catch (err) { console.error(err); res.status(500).send('Error'); }
+    const oRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    const iRes = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.id]);
+    if (!oRes.rows[0] || !iRes.rows.length) return res.json({ ok: false, error: 'No items' });
+    const printers = await db.query(
+      "SELECT * FROM pos_printers WHERE tenant_id=$1 AND is_active=true AND connection_type='network' AND ip_address IS NOT NULL",
+      [req.user.tenantId]
+    );
+    if (!printers.rows.length) return res.json({ ok: false, error: 'No network printer configured. Add one in POS Settings → Printers.' });
+    const ticket = buildKitchenTicket(oRes.rows[0], iRes.rows);
+    let printed = 0;
+    for (const p of printers.rows) {
+      try { await printToKitchen(p, ticket); printed++; } catch (e) { console.error('Print fail:', e.message); }
+    }
+    if (printed === 0) return res.json({ ok: false, error: 'Printer unreachable — check IP and connection.' });
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false, error: 'Server error' }); }
 });
 
 // POST /captain/order/:id/add-item

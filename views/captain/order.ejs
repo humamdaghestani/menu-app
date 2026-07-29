@@ -188,10 +188,10 @@
           Fire to Kitchen
         </button>
       </form>
-      <a href="/captain/order/<%= order.id %>/print" target="_blank" class="btn-order" style="<%= orderItems.length === 0 ? 'pointer-events:none;opacity:.4' : '' %>">
+      <button class="btn-order" id="btnPrintOrder" onclick="printOrderTicket()" <%= orderItems.length === 0 ? 'disabled' : '' %>>
         <span class="big">🖨️</span>
         Order
-      </a>
+      </button>
       <form method="POST" action="/captain/order/<%= order.id %>/request-bill" style="flex:1">
         <button type="submit" class="btn-bill" style="width:100%" <%= orderItems.length === 0 ? 'disabled' : '' %>>
           <span class="big">🧾</span>
@@ -223,6 +223,32 @@ function applyFilter() {
     const matchName = !q || card.dataset.name.includes(q);
     card.classList.toggle('hidden', !(matchCat && matchName));
   });
+}
+
+function printOrderTicket() {
+  const btn = document.getElementById('btnPrintOrder');
+  btn.disabled = true;
+  btn.querySelector('.big').textContent = '⏳';
+  fetch('/captain/order/<%= order.id %>/print-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    .then(r => r.json())
+    .then(r => {
+      btn.disabled = false;
+      btn.querySelector('.big').textContent = '🖨️';
+      if (r.ok) {
+        const t = document.createElement('div');
+        t.className = 'sent-toast';
+        t.textContent = '✓ Printed!';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 2500);
+      } else {
+        alert(r.error || 'Print failed');
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.querySelector('.big').textContent = '🖨️';
+      alert('Could not reach server');
+    });
 }
 </script>
 </body>
