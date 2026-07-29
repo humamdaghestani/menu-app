@@ -1089,104 +1089,142 @@ document.addEventListener('keydown', e => {
 <script>
   // ── Bill labels per language ──────────────────────────────────────────────
   const BILL_LABELS = {
-    en: { bill:'BILL',    table:'Table',    order:'Order #',        date:'Date',    subtotal:'Subtotal',       discount:'Discount',    svcfee:'Service Fee',  total:'TOTAL',        thanks:'Thank you!' },
-    ar: { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب',       date:'التاريخ', subtotal:'المجموع الجزئي', discount:'خصم',        svcfee:'رسوم الخدمة', total:'المجموع',      thanks:'شكراً لكم!' },
-    ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'کۆی لایەنی',     discount:'داشکاندن',   svcfee:'موچەی خزمەت', total:'کۆی گشتی',    thanks:'سوپاس!' },
+    en: { bill:'BILL',    table:'Table',    order:'Order #',        date:'Date',    subtotal:'Sub Total',      discount:'Discount',    svcfee:'Service',      total:'Net Total',    thanks:'Thank you!',   item:'Item',    qty:'QTY',      price:'Price',   total_col:'Total',   served_by:'Served by',                   dine_in:'Dine-in',      takeaway:'Takeaway' },
+    ar: { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب',       date:'التاريخ', subtotal:'المجموع',        discount:'خصم',         svcfee:'رسوم الخدمة', total:'المجموع الكلي',thanks:'شكراً لكم!', item:'الصنف',   qty:'الكمية',  price:'السعر',   total_col:'المجموع', served_by:'خدمك',                        dine_in:'طلب داخلي',    takeaway:'تيك أواي' },
+    ku: { bill:'پسووڵە', table:'مێز',     order:'ژمارەی داواکاری', date:'بەروار',  subtotal:'گشتی',           discount:'دشکاندەن',    svcfee:'سێرڤس',       total:'کۆی گشتی',    thanks:'سوپاس!',      item:'باپهت',  qty:'بر',       price:'نرخ',     total_col:'گشتی',    served_by:'تو خزمەت کردن لەلایان',      dine_in:'طلب داخلي',    takeaway:'تیک ئەوی' },
   };
 
   function printBill() {
     const orderItems  = <%- JSON.stringify(orderItems) %>;
     const order       = <%- JSON.stringify(order) %>;
-    // Use live totals so service fee toggle is reflected
     const { subtotal, total, discount, svcFee, grandTotal } = _totals();
-    const CUR         = '<%= (tenant.currency || "$").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const CUR         = '<%= (tenant.currency || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
     const EXRATE      = <%= exchangeRate %>;
     const tenantName  = '<%- tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
-
-    // Bill settings from tenant
-    const billLang    = '<%= tenant.bill_language || "en" %>';
-    const billFontSz  = '<%= tenant.bill_font_size || "normal" %>';
-    const billWidth   = '<%= tenant.bill_paper_width || "80mm" %>';
-    const showIQD     = <%= tenant.bill_show_iqd !== false ? 'true' : 'false' %>;
     const customHdr   = '<%- (tenant.bill_custom_header || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
     const customFtr   = '<%- (tenant.bill_custom_footer || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const billLang    = '<%= tenant.bill_language || "en" %>';
+    const billWidth   = '<%= tenant.bill_paper_width || "80mm" %>';
+    const showIQD     = <%= tenant.bill_show_iqd !== false ? 'true' : 'false' %>;
+    const cashierName = '<%- (currentUser.name || currentUser.username || "Cashier").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
 
-    const fsMap  = { small:'11px', normal:'13px', large:'15px' };
-    const fontSize = fsMap[billFontSz] || '13px';
-    const fsBig    = (parseInt(fontSize) + 4) + 'px';
-
-    // Resolve labels (supports composite: 'en_ar', 'en_ar_ku')
-    const langs    = billLang.split('_');
+    // Resolve multilingual labels
+    const langs     = billLang.split('_');
     const labelsAll = langs.map(l => BILL_LABELS[l] || BILL_LABELS.en);
+    // L('key') → "Kurdish - English" or just single language
     function L(key) {
-      return labelsAll.map(ll => ll[key]).filter((v,i,a) => a.indexOf(v)===i).join(' / ');
+      return labelsAll.map(ll => ll[key] || '').filter((v,i,a) => a.indexOf(v) === i && v).join(' - ');
     }
-    // RTL direction for purely Arabic/Kurdish bills
-    const isRTL = langs.every(l => l === 'ar' || l === 'ku');
-    const dir   = isRTL ? ' dir="rtl"' : '';
+    // BH('key') → two-line column header (non-EN on top, EN below in smaller text)
+    function BH(key) {
+      const parts = labelsAll.map(ll => ll[key] || '').filter((v,i,a) => a.indexOf(v) === i && v);
+      if (parts.length === 1) return parts[0];
+      return `${parts[0]}<br><small style="font-size:9px">${parts[parts.length-1]}</small>`;
+    }
 
-    const now = new Date().toLocaleString();
+    // Date: DD/MM/YYYY AM/PM H:MM:SS
+    const now = (() => {
+      const d  = new Date();
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const h24 = d.getHours();
+      const ampm = h24 >= 12 ? 'PM' : 'AM';
+      const h12 = h24 % 12 || 12;
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      const ss = String(d.getSeconds()).padStart(2,'0');
+      return `${dd}/${mm}/${d.getFullYear()} ${ampm} ${h12}:${mi}:${ss}`;
+    })();
 
+    const pw = billWidth === '58mm' ? '195px' : '290px';
+    const orderTypeLbl = L(order.order_type === 'takeaway' ? 'takeaway' : 'dine_in') || 'Dine-in';
+
+    // 4-column item rows: Name | QTY | Unit Price | Line Total
     const itemRows = orderItems.map(oi => {
-      const lineTotal = fmt(parseFloat(oi.price) * oi.quantity);
-      const noteHtml  = oi.notes ? `<tr><td colspan="2" style="padding-left:14px;font-size:${parseInt(fontSize)-2}px;color:#555">📝 ${oi.notes}</td></tr>` : '';
+      const unitP = fmt(parseFloat(oi.price));
+      const lineT = fmt(parseFloat(oi.price) * oi.quantity);
+      const note  = oi.notes ? `<tr><td colspan="4" style="padding:2px 5px;font-size:10px;border-top:none;color:#222">📝 ${oi.notes}</td></tr>` : '';
       return `<tr>
-        <td style="padding:3px 0">${oi.quantity}&times; ${oi.name}</td>
-        <td style="text-align:right;white-space:nowrap;padding:3px 0">${CUR}${lineTotal}</td>
-      </tr>${noteHtml}`;
+        <td style="text-align:left;padding:5px">${oi.name}</td>
+        <td style="text-align:center;padding:5px">${oi.quantity}</td>
+        <td style="text-align:right;padding:5px;white-space:nowrap">${unitP}</td>
+        <td style="text-align:right;padding:5px;white-space:nowrap">${lineT}</td>
+      </tr>${note}`;
     }).join('');
 
-    const discountRow = discount > 0
-      ? `<tr><td>${L('discount')}</td><td style="text-align:right">&minus;${CUR}${fmt(discount)}</td></tr>` : '';
-    const svcFeeRow = svcFee > 0
-      ? `<tr><td>${L('svcfee')} (${SERVICE_FEE_PCT}%)</td><td style="text-align:right">${CUR}${fmt(svcFee)}</td></tr>` : '';
-    const iqdRow = (showIQD && EXRATE > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
-      ? `<tr style="font-size:${parseInt(fontSize)-2}px;color:#444"><td>${L('total')} (IQD)</td><td style="text-align:right">${Math.round(grandTotal * EXRATE).toLocaleString()} IQD</td></tr>` : '';
-    const noteRow = order.note ? `<div style="font-size:${parseInt(fontSize)-2}px;color:#555;margin:4px 0">📝 ${order.note}</div>` : '';
-    const headerRow = customHdr ? `<div style="text-align:center;margin:4px 0;font-size:${parseInt(fontSize)-1}px">${customHdr}</div>` : '';
+    // Note box OR empty signature box
+    const noteBox = order.note
+      ? `<div style="border:1.5px solid #000;padding:5px;margin:5px 0;font-size:11px;font-weight:700">📝 ${order.note}</div>`
+      : `<div style="border:1.5px solid #000;height:28px;margin:5px 0"></div>`;
+
+    const hdrBlock = customHdr
+      ? `<div style="text-align:center;font-size:11px;font-weight:700;line-height:1.6;margin-bottom:3px">${customHdr.replace(/\n/g,'<br>')}</div>` : '';
+
+    const iqdLine = (showIQD && EXRATE > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
+      ? `<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;padding:2px 0"><span>IQD</span><span>${Math.round(grandTotal * EXRATE).toLocaleString()}</span></div>` : '';
+
     const footerText = customFtr || L('thanks');
 
     const html = `<!DOCTYPE html>
-<html${dir}>
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>${L('bill')} #${order.id}</title>
+  <title>Bill #${order.id}</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Courier New',Courier,monospace; font-size:${fontSize}; width:${billWidth === '58mm' ? '200px' : '280px'}; margin:0 auto; padding:10px 8px; }
-    hr  { border:none; border-top:1px dashed #000; margin:7px 0; }
-    table { width:100%; border-collapse:collapse; }
-    .center { text-align:center; }
-    .total-row { font-weight:bold; font-size:${fsBig}; border-top:2px solid #000; margin-top:4px; }
-    .footer { text-align:center; font-size:${parseInt(fontSize)-2}px; margin-top:10px; color:#555; }
-    @media print { @page { margin:3mm; size:${billWidth} auto; } }
+    *    { margin:0;padding:0;box-sizing:border-box; }
+    body { font-family:Arial,'Segoe UI',sans-serif;font-size:13px;font-weight:700;color:#000;width:${pw};margin:0 auto;padding:8px 6px;-webkit-print-color-adjust:exact;print-color-adjust:exact; }
+    .ctr { text-align:center; }
+    .ls  { border-top:2px solid #000;margin:6px 0; }
+    .ld  { border-top:1px dashed #000;margin:5px 0; }
+    .ir  { display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin:3px 0; }
+    table.it { width:100%;border-collapse:collapse;margin:4px 0; }
+    table.it th { border:1.5px solid #000;padding:5px 4px;font-size:11px;text-align:center;font-weight:900;line-height:1.4;background:#fff; }
+    table.it td { border:1.5px solid #000;font-size:12px;font-weight:700;vertical-align:middle; }
+    .tr  { display:flex;justify-content:space-between;padding:4px 0;font-size:12px;font-weight:700; }
+    .trg { display:flex;justify-content:space-between;padding:5px 0;font-size:15px;font-weight:900;border-top:2px solid #000;margin-top:4px; }
+    .ftr { text-align:center;font-size:11px;font-weight:700;margin-top:6px; }
+    @media print { @page { margin:2mm;size:${billWidth} auto; } body { padding:2px; } }
   </style>
 </head>
 <body>
-  <div class="center">
-    <div style="font-size:${fsBig};font-weight:bold">${tenantName}</div>
-    <div style="letter-spacing:2px;margin:3px 0;font-size:${parseInt(fontSize)-1}px">— ${L('bill')} —</div>
+  <div class="ctr">
+    <div style="font-size:19px;font-weight:900;letter-spacing:.3px;margin-bottom:2px">${tenantName}</div>
+    ${hdrBlock}
   </div>
-  <hr>
-  ${headerRow}
-  <table>
-    <tr><td>${L('table')}</td><td style="text-align:right">${order.table_name || '—'}</td></tr>
-    <tr><td>${L('order')}</td><td style="text-align:right">${order.id}</td></tr>
-    <tr><td>${L('date')}</td><td style="text-align:right">${now}</td></tr>
+
+  <div class="ls"></div>
+
+  <div class="ir">
+    <span>${orderTypeLbl} &nbsp; ز.وصل Bill # ${order.id}</span>
+  </div>
+  <div class="ir">
+    <span>${order.table_name || '—'}</span>
+    <span>${now}</span>
+  </div>
+
+  ${noteBox}
+
+  <table class="it">
+    <thead><tr>
+      <th style="text-align:left;width:44%">${BH('item')}</th>
+      <th style="width:12%">${BH('qty')}</th>
+      <th style="width:20%">${BH('price')}</th>
+      <th style="width:24%">${BH('total_col')}</th>
+    </tr></thead>
+    <tbody>${itemRows}</tbody>
   </table>
-  <hr>
-  <table><tbody>${itemRows}</tbody></table>
-  <hr>
-  <table>
-    <tr><td>${L('subtotal')}</td><td style="text-align:right">${CUR}${fmt(subtotal)}</td></tr>
-    ${discountRow}
-    ${svcFeeRow}
-    <tr class="total-row"><td>${L('total')}</td><td style="text-align:right">${CUR}${fmt(grandTotal)}</td></tr>
-    ${iqdRow}
-  </table>
-  ${noteRow}
-  <hr>
-  <div class="footer">${footerText}</div>
+
+  <div class="ld"></div>
+
+  <div class="tr"><span>${L('subtotal')}</span><span>${CUR}${fmt(subtotal)}</span></div>
+  <div class="tr"><span>${L('svcfee')}${SERVICE_FEE_PCT > 0 && svcFee > 0 ? ' ('+SERVICE_FEE_PCT+'%)' : ''}</span><span>${svcFee > 0 ? CUR+fmt(svcFee) : ''}</span></div>
+  <div class="tr"><span>${L('discount')}</span><span>${discount > 0 ? '&minus;'+CUR+fmt(discount) : ''}</span></div>
+  <div class="trg"><span>${L('total')}</span><span>${CUR}${fmt(grandTotal)}</span></div>
+  ${iqdLine}
+
+  <div class="ls"></div>
+
+  <div class="ftr">${L('served_by')} : ${cashierName}</div>
+  <div class="ftr" style="margin-top:3px">${footerText}</div>
 </body>
 </html>`;
 
@@ -1196,10 +1234,7 @@ document.addEventListener('keydown', e => {
     const fdoc = frame.contentDocument || frame.contentWindow.document;
     fdoc.open(); fdoc.write(html); fdoc.close();
     frame.contentWindow.focus();
-    setTimeout(() => {
-      frame.contentWindow.print();
-      setTimeout(() => frame.remove(), 1000);
-    }, 300);
+    setTimeout(() => { frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); }, 300);
   }
 </script>
 </body>
