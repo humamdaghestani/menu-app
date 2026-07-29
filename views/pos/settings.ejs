@@ -224,6 +224,30 @@
     </div>
 
     <div class="card">
+      <h2>🔐 Permanent Passcodes</h2>
+      <p class="card-desc">Set a permanent manager passcode that can be reused (instead of a one-time generated code). Leave blank to clear / disable.</p>
+      <form method="POST" action="/pos/settings/perm-passcode">
+        <div class="form-row" style="display:flex;flex-direction:column;gap:14px;padding:8px 0">
+          <div>
+            <label style="display:block;font-size:.8rem;color:#aaa;margin-bottom:6px">Void / Delete Passcode</label>
+            <input type="text" name="perm_void_code" value="<%= tenant.pos_perm_void_code || '' %>"
+              placeholder="e.g. 1234 (leave blank to disable)"
+              style="width:100%;max-width:320px;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#e0e0e0;font-size:.95rem" />
+          </div>
+          <div>
+            <label style="display:block;font-size:.8rem;color:#aaa;margin-bottom:6px">Discount Passcode</label>
+            <input type="text" name="perm_discount_code" value="<%= tenant.pos_perm_discount_code || '' %>"
+              placeholder="e.g. 5678 (leave blank to disable)"
+              style="width:100%;max-width:320px;background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#e0e0e0;font-size:.95rem" />
+          </div>
+        </div>
+        <div class="save-row">
+          <button type="submit" class="btn btn-primary">Save Passcodes</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
       <h2>Display Settings</h2>
       <p class="card-desc">Control what appears on the POS screen for cashiers.</p>
       <form method="POST" action="/pos/settings/display">

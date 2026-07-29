@@ -39,9 +39,17 @@ async function requireSession(req, res, next) {
 
 async function validatePasskey(tenantId, code, actionType) {
   if (!code || !code.trim()) return null;
+  code = code.trim();
+  // Check permanent code first
+  const field = actionType === 'void' ? 'pos_perm_void_code' : 'pos_perm_discount_code';
+  const tRes = await db.query(`SELECT ${field} AS perm FROM tenants WHERE id=$1`, [tenantId]);
+  if (tRes.rows[0]?.perm && tRes.rows[0].perm === code) {
+    return { id: null, permanent: true };
+  }
+  // Fall back to one-time passkey
   const r = await db.query(
     "SELECT * FROM pos_passkeys WHERE tenant_id=$1 AND code=$2 AND action_type=$3 AND used=false AND expires_at > NOW()",
-    [tenantId, code.trim(), actionType]
+    [tenantId, code, actionType]
   );
   return r.rows[0] || null;
 }
@@ -514,7 +522,7 @@ router.post('/order/:orderId/discount', requireAuth, requirePOS, async (req, res
     if (discount_type !== 'none') {
       const pk = await validatePasskey(req.user.tenantId, passkey, 'discount');
       if (!pk) return res.redirect(back + '?error=passkey&modal=discount');
-      await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+      if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
         [req.user.userId, req.params.orderId, pk.id]);
     }
     const dr = await db.query(
@@ -635,7 +643,7 @@ router.post('/order/:orderId/void', requireAuth, requirePOS, async (req, res) =>
     const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
     if (!pk) return res.redirect('/pos/order/' + req.params.orderId + '?error=passkey');
     const vr = await db.query('UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3 RETURNING session_id, table_name', ['void', req.params.orderId, req.user.tenantId]);
-    await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+    if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
       [req.user.userId, req.params.orderId, pk.id]);
     await logAction(req.user.tenantId, vr.rows[0]?.session_id, req.params.orderId, req.user.userId, 'order_void', { table_name: vr.rows[0]?.table_name });
     res.redirect('/pos/tables');
@@ -810,6 +818,18 @@ router.post('/settings/service-fee', requireAuth, requirePOS, async (req, res) =
     );
     res.redirect('/pos/settings?tab=fees');
   } catch (err) { console.error(err); res.redirect('/pos/settings?tab=fees'); }
+});
+
+router.post('/settings/perm-passcode', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const voidCode     = (req.body.perm_void_code     || '').trim().slice(0, 20) || null;
+    const discountCode = (req.body.perm_discount_code || '').trim().slice(0, 20) || null;
+    await db.query(
+      'UPDATE tenants SET pos_perm_void_code=$1, pos_perm_discount_code=$2 WHERE id=$3',
+      [voidCode, discountCode, req.user.tenantId]
+    );
+    res.redirect('/pos/settings?tab=permissions');
+  } catch (err) { console.error(err); res.redirect('/pos/settings?tab=permissions'); }
 });
 
 router.post('/settings/bill', requireAuth, requirePOS, async (req, res) => {
@@ -1001,7 +1021,7 @@ router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (r
       if (item.rows[0].sent_to_kitchen) {
         const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
         if (!pk) return res.json({ ok: false, error: 'invalid_passkey', requires_comp: true });
-        await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+        if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
           [req.user.userId, req.params.id, pk.id]);
         await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_comp',
           { name: item.rows[0].name, reason: req.body.comp_reason || 'No reason given', price: item.rows[0].price });
@@ -1027,7 +1047,7 @@ router.post('/api/order/:id/item/:itemId/price', requireAuth, requirePOS, async 
     // Price override always requires a manager passkey
     const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'discount');
     if (!pk) return res.json({ ok: false, error: 'invalid_passkey' });
-    await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+    if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
       [req.user.userId, req.params.id, pk.id]);
     const check = await db.query(
       'SELECT poi.id, poi.name, poi.price AS old_price, po.session_id FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE poi.id=$1 AND po.id=$2 AND po.tenant_id=$3',
@@ -1074,7 +1094,7 @@ router.post('/api/order/:id/discount', requireAuth, requirePOS, async (req, res)
     if (discount_type !== 'none') {
       const pk = await validatePasskey(req.user.tenantId, passkey, 'discount');
       if (!pk) return res.json({ ok: false, error: 'invalid_passkey' });
-      await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+      if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
         [req.user.userId, req.params.id, pk.id]);
     }
     const dr = await db.query(
@@ -1097,7 +1117,7 @@ router.post('/api/order/:id/void', requireAuth, requirePOS, async (req, res) => 
       'UPDATE pos_orders SET status=$1 WHERE id=$2 AND tenant_id=$3 RETURNING session_id, table_name',
       ['void', req.params.id, req.user.tenantId]
     );
-    await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+    if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
       [req.user.userId, req.params.id, pk.id]);
     await logAction(req.user.tenantId, vr.rows[0]?.session_id, req.params.id, req.user.userId, 'order_void', { table_name: vr.rows[0]?.table_name });
     res.json({ ok: true, redirect: '/pos/tables' });

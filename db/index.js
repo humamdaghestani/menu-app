@@ -570,6 +570,9 @@ const pool = new Pool({
       is_active      BOOLEAN DEFAULT true,
       created_at     TIMESTAMP DEFAULT NOW()
     )`,
+    // Permanent manager passcodes for void / discount
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_perm_void_code     VARCHAR(20)`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_perm_discount_code VARCHAR(20)`,
     // Service fee
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_service_fee_enabled BOOLEAN DEFAULT false`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_service_fee_pct     NUMERIC(5,2) DEFAULT 0`,
