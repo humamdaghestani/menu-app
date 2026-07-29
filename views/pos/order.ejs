@@ -1231,6 +1231,27 @@ document.addEventListener('keydown', e => {
 </body>
 </html>`;
 
+    const agentPort    = '<%= tenant.pos_print_agent_port || "" %>';
+    const agentPrinter = '<%= (tenant.pos_print_agent_printer || "").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+
+    if (agentPort && agentPrinter) {
+      // Send to local print agent — no browser dialog
+      fetch(`http://127.0.0.1:${agentPort}/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html, printer: agentPrinter }),
+      }).then(r => r.json()).then(r => {
+        if (!r.ok) { alert('Print agent error: ' + (r.error || 'unknown')); }
+      }).catch(() => {
+        // Agent not running — fall back to browser dialog
+        _fallbackPrint(html);
+      });
+    } else {
+      _fallbackPrint(html);
+    }
+  }
+
+  function _fallbackPrint(html) {
     const frame = document.createElement('iframe');
     frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
     document.body.appendChild(frame);

@@ -580,6 +580,9 @@ const pool = new Pool({
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS apply_service_fee    BOOLEAN DEFAULT false`,
     // Custom bill label overrides (JSON blob)
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS bill_custom_labels TEXT DEFAULT NULL`,
+    // Local print agent settings
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_port    VARCHAR(10) DEFAULT NULL`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_printer VARCHAR(200) DEFAULT NULL`,
     // Floor plan layout per table
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_x       INTEGER DEFAULT NULL`,
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_y       INTEGER DEFAULT NULL`,

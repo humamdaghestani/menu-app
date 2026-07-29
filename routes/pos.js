@@ -771,6 +771,74 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
+// ── Print Agent download ───────────────────────────────────────────────────────
+router.get('/print-agent-download', requireAuth, requirePOS, (req, res) => {
+  const port = 9191;
+  const script = `// POS Print Agent — run once on the POS computer: node pos-print-agent.js
+// Requires: npm install -g pdf-to-printer   (first time only)
+const http = require('http');
+const { exec } = require('child_process');
+const fs   = require('fs');
+const path = require('path');
+const os   = require('os');
+const PORT = ${port};
+
+// Try to load pdf-to-printer; fall back to PowerShell print verb
+let ptp;
+try { ptp = require('pdf-to-printer'); } catch(_) {}
+
+http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  if (req.method !== 'POST' || req.url !== '/print') { res.writeHead(404); res.end(); return; }
+
+  let body = '';
+  req.on('data', d => body += d.toString());
+  req.on('end', async () => {
+    try {
+      const { html, printer } = JSON.parse(body);
+      const tmp = path.join(os.tmpdir(), 'pos-receipt-' + Date.now() + '.html');
+      fs.writeFileSync(tmp, html, 'utf8');
+
+      // Locate Chrome
+      const chromeCandidates = [
+        'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+        'C:\\\\Program Files (x86)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+        process.env['LOCALAPPDATA'] + '\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+      ];
+      const chrome = chromeCandidates.find(p => fs.existsSync(p));
+      if (!chrome) { cleanup(tmp); res.end(JSON.stringify({ ok:false, error:'Chrome not found' })); return; }
+
+      const pdfPath = tmp.replace('.html', '.pdf');
+      exec(\`"\${chrome}" --headless=new --disable-gpu --print-to-pdf="\${pdfPath}" --print-to-pdf-no-header "file:///\${tmp.replace(/\\\\/g,'/')}" 2>nul\`, { timeout: 15000 }, (err) => {
+        if (err || !fs.existsSync(pdfPath)) { cleanup(tmp); res.end(JSON.stringify({ ok:false, error:'PDF generation failed' })); return; }
+
+        if (ptp) {
+          ptp.print(pdfPath, { printer }).then(() => {
+            cleanup(tmp, pdfPath);
+            res.end(JSON.stringify({ ok: true }));
+          }).catch(e => { cleanup(tmp,pdfPath); res.end(JSON.stringify({ok:false,error:e.message})); });
+        } else {
+          // Fallback: PowerShell print verb (uses default registered PDF viewer)
+          exec(\`powershell -command "Start-Process -FilePath '\${pdfPath}' -Verb PrintTo -ArgumentList '\${printer}' -Wait"\`, { timeout: 30000 }, (e2) => {
+            setTimeout(() => cleanup(tmp, pdfPath), 5000);
+            res.end(JSON.stringify({ ok: !e2, error: e2 ? e2.message : null }));
+          });
+        }
+      });
+    } catch(e) { res.end(JSON.stringify({ ok:false, error:e.message })); }
+  });
+}).listen(PORT, '127.0.0.1', () => console.log('POS Print Agent listening on http://127.0.0.1:' + PORT));
+
+function cleanup(...files) { files.forEach(f => { try { fs.unlinkSync(f); } catch(_){} }); }
+`;
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Content-Disposition', 'attachment; filename="pos-print-agent.js"');
+  res.send(script);
+});
+
 // ── Floor Plan Editor ─────────────────────────────────────────────────────────
 router.get('/floor-plan', requireAuth, requirePOS, async (req, res) => {
   try {
@@ -860,16 +928,20 @@ router.post('/settings/perm-passcode', requireAuth, requirePOS, async (req, res)
 
 router.post('/settings/bill', requireAuth, requirePOS, async (req, res) => {
   try {
-    const { bill_language, bill_show_iqd, bill_font_size, bill_paper_width, bill_custom_header, bill_custom_footer } = req.body;
+    const { bill_language, bill_show_iqd, bill_font_size, bill_paper_width, bill_custom_header, bill_custom_footer,
+            pos_print_agent_port, pos_print_agent_printer } = req.body;
     // Collect individual label overrides
     const LABEL_KEYS = ['item','qty','price','total_col','subtotal','svcfee','discount','total','served_by','dine_in','takeaway','thanks','table','bill'];
     const labels = {};
     LABEL_KEYS.forEach(k => { const v = (req.body['lbl_' + k] || '').trim(); if (v) labels[k] = v; });
     const labelsJson = Object.keys(labels).length ? JSON.stringify(labels) : null;
+    const agentPort    = (pos_print_agent_port    || '').trim().replace(/\D/g,'') || null;
+    const agentPrinter = (pos_print_agent_printer || '').trim() || null;
     await db.query(
-      `UPDATE tenants SET bill_language=$1, bill_show_iqd=$2, bill_font_size=$3, bill_paper_width=$4, bill_custom_header=$5, bill_custom_footer=$6, bill_custom_labels=$7 WHERE id=$8`,
+      `UPDATE tenants SET bill_language=$1, bill_show_iqd=$2, bill_font_size=$3, bill_paper_width=$4, bill_custom_header=$5, bill_custom_footer=$6, bill_custom_labels=$7,
+       pos_print_agent_port=$8, pos_print_agent_printer=$9 WHERE id=$10`,
       [bill_language || 'en', bill_show_iqd === '1', bill_font_size || 'normal', bill_paper_width || '80mm',
-       bill_custom_header || null, bill_custom_footer || null, labelsJson, req.user.tenantId]
+       bill_custom_header || null, bill_custom_footer || null, labelsJson, agentPort, agentPrinter, req.user.tenantId]
     );
     res.redirect('/pos/settings?tab=bill');
   } catch (err) { console.error(err); res.redirect('/pos/settings?tab=bill'); }

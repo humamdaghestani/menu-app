@@ -660,14 +660,37 @@
           <!-- Silent Printing -->
           <div class="card">
             <h2>Silent Printing (No Dialog)</h2>
-            <p class="card-desc">By default the browser shows a print dialog every time. To skip it and print directly to your receipt printer, launch the POS in Chrome with the <code style="background:#1a1a2e;padding:2px 6px;border-radius:4px;font-size:.82rem">--kiosk-printing</code> flag.</p>
-            <div style="background:#1a1a2e;border-radius:8px;padding:12px 14px;margin:12px 0;font-size:.82rem;color:#aaa;line-height:1.7">
-              <strong style="color:#c9b8ff">Windows steps:</strong><br>
-              1. Set your receipt printer as the <strong>default printer</strong> in Windows Settings.<br>
-              2. Download the shortcut below and double-click it to open the POS.<br>
-              3. From that window, printing will go directly to the printer — no dialog.
+            <p class="card-desc">Configure a local print agent to send bills directly to a named printer — no browser dialog, one click to print.</p>
+
+            <div style="background:#1a1a2e;border-radius:8px;padding:12px 14px;margin:0 0 14px;font-size:.82rem;color:#aaa;line-height:1.8">
+              <strong style="color:#c9b8ff">One-time setup on the POS computer:</strong><br>
+              1. Install Node.js if not already installed.<br>
+              2. Click <strong>Download Agent</strong> below and save the file.<br>
+              3. Open a terminal in that folder and run: <code style="background:#111;padding:1px 6px;border-radius:4px">node pos-print-agent.js</code><br>
+              4. Enter your printer name and port below, then save.
             </div>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="downloadShortcut()">⬇ Download Windows Shortcut (.bat)</button>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+              <div>
+                <label>Printer Name <span style="color:#666;font-weight:400">(exact Windows name)</span></label>
+                <input type="text" name="pos_print_agent_printer"
+                  value="<%= tenant.pos_print_agent_printer || '' %>"
+                  placeholder="e.g. EPSON TM-T20III" />
+                <div style="font-size:.72rem;color:#555;margin-top:4px">Find it in Windows → Settings → Bluetooth &amp; devices → Printers</div>
+              </div>
+              <div>
+                <label>Agent Port <span style="color:#666;font-weight:400">(default 9191)</span></label>
+                <input type="text" name="pos_print_agent_port"
+                  value="<%= tenant.pos_print_agent_port || '' %>"
+                  placeholder="9191" maxlength="5" style="width:110px" />
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <a href="/pos/print-agent-download" class="btn btn-ghost btn-sm" download>⬇ Download Agent (pos-print-agent.js)</a>
+              <button type="button" class="btn btn-ghost btn-sm" id="agentTestBtn" onclick="testAgent()">🔌 Test Connection</button>
+              <span id="agentTestResult" style="font-size:.8rem"></span>
+            </div>
           </div>
 
           <div class="save-row">
@@ -701,16 +724,25 @@ function toggleEdit(id) {
 function toggleSFInput(cb) {
   document.getElementById('sfPctRow').style.display = cb.checked ? '' : 'none';
 }
-function downloadShortcut() {
-  const url   = window.location.origin + '/pos/tables';
-  const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const bat   = `@echo off\r\nstart "" "${chrome}" --kiosk-printing "${url}"\r\n`;
-  const blob  = new Blob([bat], { type: 'text/plain' });
-  const a     = document.createElement('a');
-  a.href      = URL.createObjectURL(blob);
-  a.download  = 'POS-Silent-Print.bat';
-  a.click();
-  URL.revokeObjectURL(a.href);
+function testAgent() {
+  const port = (document.querySelector('[name=pos_print_agent_port]').value || '').trim() || '9191';
+  const btn  = document.getElementById('agentTestBtn');
+  const out  = document.getElementById('agentTestResult');
+  btn.disabled = true;
+  out.style.color = '#aaa';
+  out.textContent = 'Connecting…';
+  fetch(`http://127.0.0.1:${port}/print`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ html: '<p>test</p>', printer: '__test__' }),
+    signal: AbortSignal.timeout(4000),
+  }).then(r => r.json()).then(r => {
+    out.style.color = '#2ecc71';
+    out.textContent = 'Agent is running';
+  }).catch(() => {
+    out.style.color = '#e74c3c';
+    out.textContent = 'Not reachable — is pos-print-agent.js running?';
+  }).finally(() => { btn.disabled = false; });
 }
 
 async function testPrinter(id) {
