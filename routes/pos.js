@@ -986,8 +986,9 @@ router.post('/api/order/:id/add-item', requireAuth, requirePOS, async (req, res)
     const item = await db.query('SELECT * FROM menu_items WHERE id=$1 AND tenant_id=$2', [menu_item_id, req.user.tenantId]);
     if (!item.rows[0]) return res.json({ ok: false, error: 'Item not found' });
     const price = parseFloat(String(item.rows[0].price).replace(/[^0-9.]/g, '')) || 0;
+    // Only merge into an unfired row; if the existing row is already fired, create a new unfired row
     const existing = await db.query(
-      'SELECT * FROM pos_order_items WHERE order_id=$1 AND menu_item_id=$2 AND notes IS NULL',
+      'SELECT * FROM pos_order_items WHERE order_id=$1 AND menu_item_id=$2 AND notes IS NULL AND sent_to_kitchen=false',
       [req.params.id, menu_item_id]
     );
     if (existing.rows[0]) {
@@ -1016,6 +1017,11 @@ router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (r
     if (!item.rows[0]) return res.json({ ok: false, error: 'Not found' });
     const oldQty = item.rows[0].quantity;
     const newQty = oldQty + delta;
+    const fired  = item.rows[0].sent_to_kitchen;
+    // Block decreasing a fired item's quantity (partial reduction not allowed)
+    if (delta < 0 && fired && newQty > 0) {
+      return res.json({ ok: false, error: 'cannot_decrease_fired' });
+    }
     if (newQty <= 0) {
       // All item removals require a manager passkey
       const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
@@ -1023,11 +1029,16 @@ router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (r
       if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
         [req.user.userId, req.params.id, pk.id]);
       await db.query('DELETE FROM pos_order_items WHERE id=$1', [req.params.itemId]);
-      const logAction_ = item.rows[0].sent_to_kitchen ? 'item_comp' : 'item_remove';
+      const logAction_ = fired ? 'item_comp' : 'item_remove';
       await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, logAction_,
         { name: item.rows[0].name, reason: req.body.comp_reason || 'No reason given', price: item.rows[0].price });
     } else {
-      await db.query('UPDATE pos_order_items SET quantity=$1 WHERE id=$2', [newQty, req.params.itemId]);
+      // Increasing qty on a fired item unsets the fired flag so it can be re-fired
+      if (delta > 0 && fired) {
+        await db.query('UPDATE pos_order_items SET quantity=$1, sent_to_kitchen=false WHERE id=$2', [newQty, req.params.itemId]);
+      } else {
+        await db.query('UPDATE pos_order_items SET quantity=$1 WHERE id=$2', [newQty, req.params.itemId]);
+      }
       await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_qty', { name: item.rows[0].name, from: oldQty, to: newQty });
     }
     const state = await orderStateJSON(req.params.id, req.user.tenantId);
