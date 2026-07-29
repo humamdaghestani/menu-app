@@ -25,6 +25,30 @@
 
     .tables-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
 
+    /* ── Floor Plan view ── */
+    .floor-wrap { overflow-x: auto; overflow-y: auto; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; background: #0d0d1f; max-height: 70vh; }
+    .floor-canvas-ro {
+      position: relative; width: 1400px; height: 900px; flex-shrink: 0;
+      background-color: #0d0d1f;
+      background-image: radial-gradient(circle, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .fp-table {
+      position: absolute; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border: 2px solid; border-radius: 10px; cursor: pointer;
+      transition: transform .12s, box-shadow .12s; overflow: hidden;
+    }
+    .fp-table:hover { transform: scale(1.04); }
+    .fp-table.fp-free    { background: rgba(0,184,148,.1);  border-color: rgba(0,184,148,.5); }
+    .fp-table.fp-occupied{ background: rgba(231,76,60,.1);  border-color: rgba(231,76,60,.5); }
+    .fp-table.fp-bill    { background: rgba(243,156,18,.1); border-color: #f39c12; }
+    .fp-table.fp-held    { background: rgba(253,203,110,.07); border-color: rgba(253,203,110,.4); }
+    .fp-name { font-size: .72rem; font-weight: 700; color: #fff; text-align: center; line-height: 1.1; padding: 0 4px; }
+    .fp-status { font-size: .58rem; font-weight: 700; margin-top: 2px; }
+    .fp-total { font-size: .68rem; color: #fff; margin-top: 2px; font-weight: 700; }
+    .fp-badge { position: absolute; top: -6px; right: -6px; background: #f39c12; color: #000; font-size: .5rem; font-weight: 900; padding: 2px 5px; border-radius: 8px; line-height: 1.3; }
+
     .table-card { background: #1a1a2e; border-radius: 14px; border: 2px solid #2a2a3e; padding: 20px; cursor: pointer; transition: all .2s; position: relative; }
     .table-card:hover { transform: translateY(-2px); border-color: #7c5cbf; }
     .table-card.occupied { border-color: rgba(231,76,60,.5); background: rgba(231,76,60,.06); }
@@ -137,11 +161,20 @@
   <% } %>
 
   <!-- Tables Section -->
+  <% const hasFloorPlan = tables.some(t => t.floor_x != null); %>
   <div class="section-header">
-    <div class="section-title">🪑 Tables</div>
-    <div class="legend" style="margin:0">
-      <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> Free</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Occupied</div>
+    <div class="section-title">
+      🪑 Tables
+      <% if (hasFloorPlan) { %>
+      <button onclick="toggleView()" id="viewToggleBtn" class="btn btn-ghost btn-sm" style="font-size:.72rem;padding:4px 10px;margin-left:6px">☰ Grid</button>
+      <% } %>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="legend" style="margin:0">
+        <div class="legend-item"><div class="legend-dot" style="background:#00b894"></div> Free</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div> Occupied</div>
+      </div>
+      <a href="/pos/floor-plan" class="btn btn-ghost" style="font-size:.75rem;padding:5px 12px">🗺️ Edit Floor Plan</a>
     </div>
   </div>
 
@@ -152,6 +185,40 @@
     <a href="/pos/settings" class="btn btn-primary" style="margin-top:16px">Set Up Tables</a>
   </div>
   <% } else { %>
+
+  <!-- Floor Plan View (shown by default if layout exists) -->
+  <% if (hasFloorPlan) { %>
+  <div id="viewFloor">
+    <div class="floor-wrap">
+      <div class="floor-canvas-ro" id="floorRo">
+        <% tables.forEach(t => { %>
+        <% const occupied = !!t.order_id;
+           const cls = t.bill_requested ? 'fp-bill' : t.is_held ? 'fp-held' : occupied ? 'fp-occupied' : 'fp-free';
+           const w = t.floor_w || 80, h = t.floor_h || 80;
+           const shape = t.floor_shape || 'square';
+           const radius = shape === 'round' ? '50%' : '10px';
+           const x = t.floor_x || 0, y = t.floor_y || 0;
+        %>
+        <div class="fp-table <%= cls %>"
+          style="left:<%= x %>px;top:<%= y %>px;width:<%= w %>px;height:<%= h %>px;border-radius:<%= radius %>"
+          onclick="openTable('<%= t.id %>', '<%= t.order_id || '' %>')"
+          title="<%= t.name %> · Capacity: <%= t.capacity %>">
+          <% if (t.bill_requested) { %><span class="fp-badge">🔔</span><% } %>
+          <% if (t.is_held && !t.bill_requested) { %><span class="fp-badge" style="background:#fdcb6e">⏸</span><% } %>
+          <span class="fp-name"><%= t.name %></span>
+          <span class="fp-status" style="color:<%= t.bill_requested ? '#f39c12' : t.is_held ? '#fdcb6e' : occupied ? '#e74c3c' : '#00b894' %>">
+            <%= t.bill_requested ? 'BILL' : t.is_held ? 'HELD' : occupied ? 'BUSY' : 'FREE' %>
+          </span>
+          <% if (occupied) { %><span class="fp-total"><%= tenant.currency || '$' %><%= parseFloat(t.order_total || 0).toFixed(2) %></span><% } %>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Grid View -->
+  <div id="viewGrid" <% if (hasFloorPlan) { %>style="display:none"<% } %>>
   <div class="tables-grid">
     <% tables.forEach(t => { %>
     <% const occupied = !!t.order_id; %>
@@ -173,6 +240,8 @@
     </div>
     <% }) %>
   </div>
+  </div>
+
   <% } %>
 </div>
 
@@ -181,6 +250,17 @@
 </form>
 
 <script>
+  let _floorView = true;
+  function toggleView() {
+    _floorView = !_floorView;
+    const floor = document.getElementById('viewFloor');
+    const grid  = document.getElementById('viewGrid');
+    const btn   = document.getElementById('viewToggleBtn');
+    if (floor) floor.style.display = _floorView ? '' : 'none';
+    if (grid)  grid.style.display  = _floorView ? 'none' : '';
+    if (btn)   btn.textContent = _floorView ? '☰ Grid' : '🗺️ Floor Plan';
+  }
+
   function openTable(tableId, orderId) {
     if (orderId) {
       window.location.href = '/pos/order/' + orderId;

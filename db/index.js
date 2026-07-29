@@ -578,6 +578,12 @@ const pool = new Pool({
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_service_fee_pct     NUMERIC(5,2) DEFAULT 0`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS service_fee          NUMERIC(10,2) DEFAULT 0`,
     `ALTER TABLE pos_orders ADD COLUMN IF NOT EXISTS apply_service_fee    BOOLEAN DEFAULT false`,
+    // Floor plan layout per table
+    `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_x       INTEGER DEFAULT NULL`,
+    `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_y       INTEGER DEFAULT NULL`,
+    `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_shape   VARCHAR(20) DEFAULT 'square'`,
+    `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_w       INTEGER DEFAULT 80`,
+    `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_h       INTEGER DEFAULT 80`,
     // No-sale cash drawer log
     `CREATE TABLE IF NOT EXISTS pos_no_sale_log (
       id         SERIAL PRIMARY KEY,

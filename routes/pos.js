@@ -771,6 +771,32 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
+// ── Floor Plan Editor ─────────────────────────────────────────────────────────
+router.get('/floor-plan', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.user.tenantId);
+    const tables = await db.query(
+      'SELECT * FROM restaurant_tables WHERE tenant_id=$1 ORDER BY sort_order, name',
+      [req.user.tenantId]
+    );
+    res.render('pos/floor-plan', { tenant, tables: tables.rows, currentUser: req.user });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/floor-plan/save', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const tables = req.body.tables;
+    if (!Array.isArray(tables)) return res.json({ ok: false });
+    await Promise.all(tables.map(t =>
+      db.query(
+        'UPDATE restaurant_tables SET floor_x=$1, floor_y=$2, floor_shape=$3, floor_w=$4, floor_h=$5 WHERE id=$6 AND tenant_id=$7',
+        [parseInt(t.x), parseInt(t.y), t.shape || 'square', parseInt(t.w) || 80, parseInt(t.h) || 80, parseInt(t.id), req.user.tenantId]
+      )
+    ));
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false }); }
+});
+
 // ── POS Settings ─────────────────────────────────────────────────────────────
 router.get('/settings', requireAuth, requirePOS, async (req, res) => {
   try {
