@@ -1017,19 +1017,15 @@ router.post('/api/order/:id/item/:itemId/qty', requireAuth, requirePOS, async (r
     const oldQty = item.rows[0].quantity;
     const newQty = oldQty + delta;
     if (newQty <= 0) {
-      // Fired items require manager passkey + comp reason to remove
-      if (item.rows[0].sent_to_kitchen) {
-        const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
-        if (!pk) return res.json({ ok: false, error: 'invalid_passkey', requires_comp: true });
-        if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
-          [req.user.userId, req.params.id, pk.id]);
-        await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_comp',
-          { name: item.rows[0].name, reason: req.body.comp_reason || 'No reason given', price: item.rows[0].price });
-      }
+      // All item removals require a manager passkey
+      const pk = await validatePasskey(req.user.tenantId, req.body.passkey, 'void');
+      if (!pk) return res.json({ ok: false, error: 'invalid_passkey', requires_comp: true });
+      if (!pk.permanent) await db.query('UPDATE pos_passkeys SET used=true, used_by=$1, order_id=$2, used_at=NOW() WHERE id=$3',
+        [req.user.userId, req.params.id, pk.id]);
       await db.query('DELETE FROM pos_order_items WHERE id=$1', [req.params.itemId]);
-      if (!item.rows[0].sent_to_kitchen) {
-        await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_remove', { name: item.rows[0].name });
-      }
+      const logAction_ = item.rows[0].sent_to_kitchen ? 'item_comp' : 'item_remove';
+      await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, logAction_,
+        { name: item.rows[0].name, reason: req.body.comp_reason || 'No reason given', price: item.rows[0].price });
     } else {
       await db.query('UPDATE pos_order_items SET quantity=$1 WHERE id=$2', [newQty, req.params.itemId]);
       await logAction(req.user.tenantId, item.rows[0].session_id, req.params.id, req.user.userId, 'item_qty', { name: item.rows[0].name, from: oldQty, to: newQty });

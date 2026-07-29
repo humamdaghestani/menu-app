@@ -320,9 +320,9 @@
     <p style="font-size:.8rem;color:#666;margin-bottom:14px">Ask your manager to generate a <strong>Void</strong> passkey, then enter it below.</p>
     <form id="voidForm">
       <label style="font-size:.7rem;color:#555;font-weight:700;display:block;margin-bottom:5px;text-transform:uppercase">Manager Passkey</label>
-      <input type="text" class="modal-input" name="passkey" maxlength="6" minlength="6"
-        placeholder="6-digit code" inputmode="numeric" autocomplete="off"
-        style="font-size:1.4rem;letter-spacing:6px;text-align:center;font-weight:700" />
+      <input type="text" class="modal-input" name="passkey" maxlength="20"
+        placeholder="Manager passcode" inputmode="numeric" autocomplete="off"
+        style="font-size:1.4rem;letter-spacing:4px;text-align:center;font-weight:700" />
       <div class="modal-footer">
         <button type="button" class="btn btn-modal-cancel" onclick="closeModal('voidModal')">Cancel</button>
         <button type="submit" class="btn" style="background:#e74c3c;color:#fff;padding:6px 16px">Cancel Order</button>
@@ -336,9 +336,9 @@
   <div class="modal-box" style="max-width:300px">
     <h3>🏷️ Manager Passkey</h3>
     <p style="font-size:.78rem;color:#555;margin-bottom:12px" id="discNpDesc"></p>
-    <input type="text" class="modal-input" id="discNpPasskey" maxlength="6" minlength="6"
-      placeholder="6-digit code" inputmode="numeric" autocomplete="off"
-      style="font-size:1.4rem;letter-spacing:6px;text-align:center;font-weight:700" />
+    <input type="text" class="modal-input" id="discNpPasskey" maxlength="20"
+      placeholder="Manager passcode" inputmode="numeric" autocomplete="off"
+      style="font-size:1.4rem;letter-spacing:4px;text-align:center;font-weight:700" />
     <div class="modal-footer">
       <button type="button" class="btn btn-modal-cancel" onclick="closeModal('discNpModal')">Cancel</button>
       <button type="button" class="btn btn-modal-ok" onclick="applyDiscountFromNp()">Apply</button>
@@ -361,9 +361,9 @@
         min="0" step="0.01" placeholder="Enter amount..." />
       <div id="passkeyField">
         <label style="font-size:.7rem;color:#555;font-weight:700;display:block;margin-bottom:5px;text-transform:uppercase">Manager Passkey</label>
-        <input type="text" class="modal-input" name="passkey" id="discPasskey" maxlength="6" minlength="6"
-          placeholder="6-digit code" inputmode="numeric" autocomplete="off"
-          style="font-size:1.3rem;letter-spacing:6px;text-align:center;font-weight:700" />
+        <input type="text" class="modal-input" name="passkey" id="discPasskey" maxlength="20"
+          placeholder="Manager passcode" inputmode="numeric" autocomplete="off"
+          style="font-size:1.3rem;letter-spacing:4px;text-align:center;font-weight:700" />
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-modal-cancel" onclick="closeModal('discountModal')">Cancel</button>
@@ -471,11 +471,11 @@
   </div>
 </div>
 
-<!-- ── Comp Modal (remove fired item) ── -->
+<!-- ── Comp Modal (remove item) ── -->
 <div class="modal-overlay" id="compModal">
   <div class="modal-box" style="max-width:380px">
-    <h3>⚠️ Remove Fired Item</h3>
-    <p style="font-size:.8rem;color:#888;margin-bottom:14px">This item was already sent to the kitchen. A manager must authorise the removal.</p>
+    <h3>⚠️ Remove Item</h3>
+    <p style="font-size:.8rem;color:#888;margin-bottom:14px">A manager passcode is required to remove items from an order.</p>
     <div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-weight:700;color:#fff" id="compItemName"></div>
     <div class="form-group" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
       <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase">Reason</label>
@@ -489,9 +489,9 @@
       </select>
     </div>
     <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;display:block;margin-bottom:5px">Manager Passkey</label>
-    <input type="text" class="modal-input" id="compPasskey" maxlength="6" minlength="6"
-      placeholder="6-digit code" inputmode="numeric" autocomplete="off"
-      style="font-size:1.3rem;letter-spacing:6px;text-align:center;font-weight:700;margin-bottom:4px" />
+    <input type="text" class="modal-input" id="compPasskey" maxlength="20"
+      placeholder="Manager passcode" inputmode="numeric" autocomplete="off"
+      style="font-size:1.3rem;letter-spacing:4px;text-align:center;font-weight:700;margin-bottom:4px" />
     <div class="modal-footer">
       <button type="button" class="btn btn-modal-cancel" onclick="closeModal('compModal')">Cancel</button>
       <button type="button" class="btn" style="background:#e74c3c;color:#fff;padding:6px 16px" onclick="submitComp()">Remove</button>
@@ -506,9 +506,9 @@
     <p style="font-size:.8rem;color:#888;margin-bottom:10px">Manager passkey required</p>
     <div style="text-align:center;font-size:1.4rem;font-weight:700;color:#fff;margin-bottom:14px" id="priceOverrideAmt"></div>
     <label style="font-size:.7rem;font-weight:700;color:#555;text-transform:uppercase;display:block;margin-bottom:5px">Manager Passkey</label>
-    <input type="text" class="modal-input" id="priceOverridePasskey" maxlength="6" minlength="6"
-      placeholder="6-digit code" inputmode="numeric" autocomplete="off"
-      style="font-size:1.3rem;letter-spacing:6px;text-align:center;font-weight:700;margin-bottom:4px" />
+    <input type="text" class="modal-input" id="priceOverridePasskey" maxlength="20"
+      placeholder="Manager passcode" inputmode="numeric" autocomplete="off"
+      style="font-size:1.3rem;letter-spacing:4px;text-align:center;font-weight:700;margin-bottom:4px" />
     <div class="modal-footer">
       <button type="button" class="btn btn-modal-cancel" onclick="closeModal('priceOverrideModal')">Cancel</button>
       <button type="button" class="btn btn-modal-ok" onclick="applyPriceOverride()">Apply</button>
@@ -656,9 +656,9 @@ async function changeQty(itemId, delta) {
     if (_items[i].quantity <= 0) _items.splice(i, 1);
     _render(); return;
   }
-  // If deletion of a fired item, require comp passkey first
+  // Any item removal requires manager passkey
   const item = _items.find(x => x.id === itemId);
-  if (delta < 0 && item && (item.quantity + delta) <= 0 && item.sent_to_kitchen) {
+  if (delta < 0 && item && (item.quantity + delta) <= 0) {
     openCompModal(itemId, item.name);
     return;
   }
