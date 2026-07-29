@@ -657,6 +657,19 @@
             </div>
           </div>
 
+          <!-- Silent Printing -->
+          <div class="card">
+            <h2>Silent Printing (No Dialog)</h2>
+            <p class="card-desc">By default the browser shows a print dialog every time. To skip it and print directly to your receipt printer, launch the POS in Chrome with the <code style="background:#1a1a2e;padding:2px 6px;border-radius:4px;font-size:.82rem">--kiosk-printing</code> flag.</p>
+            <div style="background:#1a1a2e;border-radius:8px;padding:12px 14px;margin:12px 0;font-size:.82rem;color:#aaa;line-height:1.7">
+              <strong style="color:#c9b8ff">Windows steps:</strong><br>
+              1. Set your receipt printer as the <strong>default printer</strong> in Windows Settings.<br>
+              2. Download the shortcut below and double-click it to open the POS.<br>
+              3. From that window, printing will go directly to the printer — no dialog.
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="downloadShortcut()">⬇ Download Windows Shortcut (.bat)</button>
+          </div>
+
           <div class="save-row">
             <button type="submit" class="btn btn-primary">💾 Save Bill Settings</button>
           </div>
@@ -687,6 +700,17 @@ function toggleEdit(id) {
 }
 function toggleSFInput(cb) {
   document.getElementById('sfPctRow').style.display = cb.checked ? '' : 'none';
+}
+function downloadShortcut() {
+  const url   = window.location.origin + '/pos/tables';
+  const chrome = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  const bat   = `@echo off\r\nstart "" "${chrome}" --kiosk-printing "${url}"\r\n`;
+  const blob  = new Blob([bat], { type: 'text/plain' });
+  const a     = document.createElement('a');
+  a.href      = URL.createObjectURL(blob);
+  a.download  = 'POS-Silent-Print.bat';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 async function testPrinter(id) {
