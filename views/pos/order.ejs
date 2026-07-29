@@ -73,6 +73,10 @@
 
     /* ── Numpad ── */
     .numpad-area { flex-shrink: 0; border-top: 1px solid rgba(255,255,255,.06); }
+    .np-toggle { width:100%;padding:5px 0;border:none;background:#13132a;color:#444;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;font-weight:700;letter-spacing:.4px;border-bottom:1px solid rgba(255,255,255,.04); }
+    .np-toggle:hover { color:#888;background:#1a1a2e; }
+    .np-toggle .np-tog-arrow { display:inline-block;transition:transform .2s; }
+    .np-collapsible { overflow:hidden;transition:max-height .25s ease; }
     .np-display { padding: 7px 12px; background: #0f0f1a; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .np-display-label { font-size: .7rem; color: #444; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
     .np-display-val { font-size: 1.1rem; font-weight: 700; color: #fff; min-width: 40px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -94,6 +98,13 @@
     .action-btn:hover { color: #c4b5fd; background: rgba(124,92,191,.08); }
     .action-btn:active { background: rgba(124,92,191,.18); }
     .action-btn span { font-size: .72rem; color: #888; font-weight: 700; }
+    /* ── Small screen: tighter buttons ── */
+    @media (max-height: 680px) {
+      .np-btn { padding: 8px 0; font-size: .88rem; }
+      .np-mode-btn { padding: 5px 0; }
+      .np-display { padding: 5px 12px; }
+      .action-btn { padding: 8px 4px; font-size: 1rem; }
+    }
 
     .order-footer { padding: 10px 12px; border-top: 1px solid rgba(255,255,255,.06); flex-shrink: 0; }
     .totals { margin-bottom: 12px; }
@@ -241,29 +252,35 @@
 
     <!-- ── Numpad ── -->
     <div class="numpad-area">
-      <div class="np-modes">
-        <button class="np-mode-btn active" id="modeQty"     onclick="setNpMode('qty')">QTY</button>
-        <button class="np-mode-btn"        id="modePrc"     onclick="setNpMode('price')">PRICE</button>
-        <button class="np-mode-btn"        id="modeDiscPct" onclick="setNpMode('disc-pct')">DISC%</button>
-        <button class="np-mode-btn"        id="modeDiscFix" onclick="setNpMode('disc-fix')">DISC$</button>
-      </div>
-      <div class="np-display">
-        <div class="np-display-label" id="npLabel">Tap an item</div>
-        <div class="np-display-val" id="npVal">—</div>
-      </div>
-      <div class="np-grid">
-        <button class="np-btn" onclick="numpadPress('7')">7</button>
-        <button class="np-btn" onclick="numpadPress('8')">8</button>
-        <button class="np-btn" onclick="numpadPress('9')">9</button>
-        <button class="np-btn" onclick="numpadPress('4')">4</button>
-        <button class="np-btn" onclick="numpadPress('5')">5</button>
-        <button class="np-btn" onclick="numpadPress('6')">6</button>
-        <button class="np-btn" onclick="numpadPress('1')">1</button>
-        <button class="np-btn" onclick="numpadPress('2')">2</button>
-        <button class="np-btn" onclick="numpadPress('3')">3</button>
-        <button class="np-btn np-back" onclick="numpadPress('back')">⌫</button>
-        <button class="np-btn" onclick="numpadPress('0')">0</button>
-        <button class="np-btn np-ok" onclick="numpadPress('ok')">✓</button>
+      <button class="np-toggle" id="npToggleBtn" onclick="toggleNumpad()">
+        <span id="npToggleLabel">NUMPAD</span>
+        <span class="np-tog-arrow" id="npToggleArrow">▲</span>
+      </button>
+      <div class="np-collapsible" id="npCollapsible">
+        <div class="np-modes">
+          <button class="np-mode-btn active" id="modeQty"     onclick="setNpMode('qty')">QTY</button>
+          <button class="np-mode-btn"        id="modePrc"     onclick="setNpMode('price')">PRICE</button>
+          <button class="np-mode-btn"        id="modeDiscPct" onclick="setNpMode('disc-pct')">DISC%</button>
+          <button class="np-mode-btn"        id="modeDiscFix" onclick="setNpMode('disc-fix')">DISC$</button>
+        </div>
+        <div class="np-display">
+          <div class="np-display-label" id="npLabel">Tap an item</div>
+          <div class="np-display-val" id="npVal">—</div>
+        </div>
+        <div class="np-grid">
+          <button class="np-btn" onclick="numpadPress('7')">7</button>
+          <button class="np-btn" onclick="numpadPress('8')">8</button>
+          <button class="np-btn" onclick="numpadPress('9')">9</button>
+          <button class="np-btn" onclick="numpadPress('4')">4</button>
+          <button class="np-btn" onclick="numpadPress('5')">5</button>
+          <button class="np-btn" onclick="numpadPress('6')">6</button>
+          <button class="np-btn" onclick="numpadPress('1')">1</button>
+          <button class="np-btn" onclick="numpadPress('2')">2</button>
+          <button class="np-btn" onclick="numpadPress('3')">3</button>
+          <button class="np-btn np-back" onclick="numpadPress('back')">⌫</button>
+          <button class="np-btn" onclick="numpadPress('0')">0</button>
+          <button class="np-btn np-ok" onclick="numpadPress('ok')">✓</button>
+        </div>
       </div>
     </div>
 
@@ -1066,6 +1083,24 @@ _showErrorToast('Invalid or expired passkey — ask manager for a new code');
 
 // Fix initial render: re-render from JS state so all items have onclick handlers
 _render();
+
+// ── Numpad collapse ──────────────────────────────────────────────────────────
+let _npOpen = window.innerHeight > 640;
+function _applyNumpadState(animate) {
+  const el  = document.getElementById('npCollapsible');
+  const arr = document.getElementById('npToggleArrow');
+  if (_npOpen) {
+    el.style.maxHeight = el.scrollHeight + 'px';
+    arr.style.transform = 'rotate(0deg)';
+  } else {
+    if (!animate) el.style.transition = 'none';
+    el.style.maxHeight = '0';
+    arr.style.transform = 'rotate(180deg)';
+    if (!animate) requestAnimationFrame(() => { el.style.transition = ''; });
+  }
+}
+function toggleNumpad() { _npOpen = !_npOpen; _applyNumpadState(true); }
+_applyNumpadState(false);
 
 // Physical keyboard → numpad
 document.addEventListener('keydown', e => {
