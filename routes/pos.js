@@ -248,6 +248,8 @@ router.get('/orders', requireAuth, requirePOS, requireSession, async (req, res) 
 });
 
 // ── POS Home ─────────────────────────────────────────────────────────────────
+router.get('/home', requireAuth, requirePOS, async (req, res) => res.redirect('/pos'));
+
 router.get('/', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant  = await getTenant(req.user.tenantId);
