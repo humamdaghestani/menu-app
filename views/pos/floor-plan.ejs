@@ -8,193 +8,159 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-    /* ── Topbar ── */
-    .topbar { background: #1a1a2e; height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid rgba(255,255,255,.07); z-index: 10; }
+    .topbar { background: #1a1a2e; height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
     .topbar-title { font-weight: 700; font-size: .95rem; color: #fff; flex: 1; }
     .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: opacity .15s; }
     .btn:hover { opacity: .85; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
-    .btn-primary { background: #7c5cbf; color: #fff; }
     .btn-success { background: #00b894; color: #fff; }
     .btn-sm { padding: 5px 10px; font-size: .76rem; }
 
-    /* ── Layout ── */
     .workspace { display: flex; flex: 1; overflow: hidden; }
 
-    /* ── Canvas wrapper ── */
     .canvas-wrap { flex: 1; overflow: auto; position: relative; background: #0a0a14; }
     .floor-canvas {
-      position: relative;
-      width: 1400px; height: 900px;
+      position: relative; width: 1400px; height: 900px;
       background-color: #0d0d1f;
       background-image: radial-gradient(circle, rgba(255,255,255,.07) 1px, transparent 1px);
       background-size: 40px 40px;
-      flex-shrink: 0;
     }
 
-    /* ── Table elements ── */
+    /* ── Table ── */
     .tbl {
       position: absolute;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       background: linear-gradient(135deg, #1e1e3a, #252545);
-      border: 2px solid #7c5cbf;
-      border-radius: 10px;
-      cursor: grab;
-      user-select: none;
-      touch-action: none;
-      transition: border-color .15s, box-shadow .15s;
-      overflow: hidden;
+      border: 2px solid #7c5cbf; border-radius: 10px;
+      cursor: grab; user-select: none; touch-action: none;
+      transition: border-color .12s;
     }
-    .tbl:hover { border-color: #a57bff; box-shadow: 0 0 0 3px rgba(124,92,191,.2); }
-    .tbl.selected { border-color: #00b894; box-shadow: 0 0 0 4px rgba(0,184,148,.25); }
-    .tbl.dragging { opacity: .85; cursor: grabbing; z-index: 100; }
-    .tbl-name { font-size: .75rem; font-weight: 700; color: #fff; text-align: center; line-height: 1.1; padding: 0 4px; }
-    .tbl-cap  { font-size: .62rem; color: #888; margin-top: 2px; }
+    .tbl:hover { border-color: #a57bff; }
+    .tbl.selected { border-color: #00b894; box-shadow: 0 0 0 3px rgba(0,184,148,.2); }
+    .tbl.dragging { opacity: .8; cursor: grabbing; z-index: 50; }
+    .tbl-name { font-size: .73rem; font-weight: 700; color: #fff; text-align: center; line-height: 1.2; padding: 0 4px; pointer-events: none; }
+    .tbl-cap  { font-size: .6rem; color: #888; margin-top: 2px; pointer-events: none; }
+
+    /* ── Resize handles ── */
+    .rh {
+      position: absolute; width: 12px; height: 12px;
+      background: #00b894; border: 2px solid #0d0d1f;
+      border-radius: 3px; z-index: 100; touch-action: none;
+    }
 
     /* ── Sidebar ── */
-    .sidebar {
-      width: 240px; flex-shrink: 0; background: #13132a;
-      border-left: 1px solid rgba(255,255,255,.07);
-      display: flex; flex-direction: column;
-      overflow-y: auto;
-    }
-    .sb-section { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.06); }
-    .sb-title { font-size: .7rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
+    .sidebar { width: 230px; flex-shrink: 0; background: #13132a; border-left: 1px solid rgba(255,255,255,.07); display: flex; flex-direction: column; overflow-y: auto; }
+    .sb-sect { padding: 14px 14px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .sb-title { font-size: .68rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; }
     .sb-hint { font-size: .75rem; color: #555; line-height: 1.5; }
 
-    .shape-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-    .shape-btn {
-      background: rgba(255,255,255,.05); border: 2px solid transparent;
-      border-radius: 8px; padding: 10px 6px; cursor: pointer; display: flex;
-      flex-direction: column; align-items: center; gap: 5px; font-size: .7rem; color: #888;
-      transition: all .15s; font-family: inherit;
-    }
+    .shape-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .shape-btn { background: rgba(255,255,255,.05); border: 2px solid transparent; border-radius: 8px; padding: 9px 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: .68rem; color: #888; font-family: inherit; transition: all .12s; }
     .shape-btn:hover { border-color: rgba(124,92,191,.4); color: #ccc; }
     .shape-btn.active { border-color: #7c5cbf; background: rgba(124,92,191,.15); color: #fff; }
-    .shape-icon { display: flex; align-items: center; justify-content: center; }
 
-    .size-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .size-label { font-size: .72rem; color: #666; width: 16px; }
-    .size-input { flex: 1; background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; color: #fff; padding: 6px 8px; font-size: .82rem; font-family: inherit; width: 100%; }
-    .size-input:focus { outline: none; border-color: #7c5cbf; }
+    .dim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: .78rem; }
+    .dim-label { color: #666; width: 14px; }
+    .dim-input { flex: 1; background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 6px; color: #fff; padding: 5px 8px; font-size: .8rem; font-family: inherit; }
+    .dim-input:focus { outline: none; border-color: #7c5cbf; }
 
-    .tbl-list-item {
-      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-      border-radius: 8px; cursor: pointer; font-size: .8rem; margin-bottom: 2px;
-      transition: background .12s;
-    }
+    .tbl-list-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; cursor: pointer; font-size: .78rem; margin-bottom: 1px; }
     .tbl-list-item:hover { background: rgba(255,255,255,.05); }
     .tbl-list-item.active { background: rgba(124,92,191,.2); color: #fff; }
-    .tbl-list-dot { width: 8px; height: 8px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; }
+    .tbl-list-dot { width: 7px; height: 7px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; }
 
-    .snap-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-    .toggle-wrap { position: relative; display: inline-block; width: 36px; height: 20px; }
+    .snap-row { display: flex; align-items: center; justify-content: space-between; }
+    .toggle-wrap { position: relative; display: inline-block; width: 34px; height: 18px; }
     .toggle-wrap input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider { position: absolute; inset: 0; background: #2a2a4a; border-radius: 20px; transition: .2s; cursor: pointer; }
-    .toggle-slider::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: .2s; }
-    input:checked + .toggle-slider { background: #7c5cbf; }
-    input:checked + .toggle-slider::before { transform: translateX(16px); background: #fff; }
+    .tg-sl { position: absolute; inset: 0; background: #2a2a4a; border-radius: 20px; transition: .2s; cursor: pointer; }
+    .tg-sl::before { content: ''; position: absolute; width: 12px; height: 12px; left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: .2s; }
+    input:checked + .tg-sl { background: #7c5cbf; }
+    input:checked + .tg-sl::before { transform: translateX(16px); background: #fff; }
 
-    /* ── Toast ── */
-    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; padding: 11px 22px; border-radius: 10px; font-size: .85rem; font-weight: 600; z-index: 999; border-left: 4px solid #00b894; opacity: 0; transition: opacity .3s; pointer-events: none; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #fff; padding: 10px 22px; border-radius: 10px; font-size: .84rem; font-weight: 600; z-index: 999; border-left: 4px solid #00b894; opacity: 0; transition: opacity .3s; pointer-events: none; }
     .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
 
-<!-- Topbar -->
 <div class="topbar">
   <a href="/pos/tables" class="btn btn-ghost btn-sm">← Tables</a>
   <div class="topbar-title">🗺️ Floor Plan Editor — <%= tenant.name %></div>
-  <button class="btn btn-ghost btn-sm" onclick="resetAll()" title="Reset all table positions">↺ Reset</button>
+  <button class="btn btn-ghost btn-sm" onclick="resetAll()">↺ Reset</button>
   <button class="btn btn-success" onclick="save()" id="saveBtn">💾 Save Layout</button>
 </div>
 
 <div class="workspace">
-
-  <!-- Canvas -->
   <div class="canvas-wrap" id="canvasWrap">
     <div class="floor-canvas" id="floorCanvas"></div>
   </div>
 
-  <!-- Sidebar -->
   <div class="sidebar">
-
-    <div class="sb-section">
+    <div class="sb-sect">
       <div class="sb-title">Selected Table</div>
-      <div id="sbSelected" class="sb-hint">Tap a table to select it</div>
-
+      <div id="sbInfo" class="sb-hint">Tap a table to select it.<br><br>Drag to move. Drag the green handles to resize.</div>
       <div id="sbControls" style="display:none">
         <div class="sb-title" style="margin-top:12px">Shape</div>
         <div class="shape-grid">
           <button class="shape-btn" data-shape="square" onclick="setShape('square')">
-            <div class="shape-icon"><svg width="32" height="32"><rect x="4" y="4" width="24" height="24" rx="4" fill="none" stroke="#7c5cbf" stroke-width="2.5"/></svg></div>
+            <svg width="28" height="28"><rect x="3" y="3" width="22" height="22" rx="4" fill="none" stroke="#7c5cbf" stroke-width="2"/></svg>
             Square
           </button>
           <button class="shape-btn" data-shape="round" onclick="setShape('round')">
-            <div class="shape-icon"><svg width="32" height="32"><circle cx="16" cy="16" r="12" fill="none" stroke="#7c5cbf" stroke-width="2.5"/></svg></div>
+            <svg width="28" height="28"><circle cx="14" cy="14" r="11" fill="none" stroke="#7c5cbf" stroke-width="2"/></svg>
             Round
           </button>
           <button class="shape-btn" data-shape="rect-h" onclick="setShape('rect-h')">
-            <div class="shape-icon"><svg width="32" height="32"><rect x="2" y="8" width="28" height="16" rx="4" fill="none" stroke="#7c5cbf" stroke-width="2.5"/></svg></div>
+            <svg width="28" height="28"><rect x="1" y="7" width="26" height="14" rx="4" fill="none" stroke="#7c5cbf" stroke-width="2"/></svg>
             Wide
           </button>
           <button class="shape-btn" data-shape="rect-v" onclick="setShape('rect-v')">
-            <div class="shape-icon"><svg width="32" height="32"><rect x="8" y="2" width="16" height="28" rx="4" fill="none" stroke="#7c5cbf" stroke-width="2.5"/></svg></div>
+            <svg width="28" height="28"><rect x="7" y="1" width="14" height="26" rx="4" fill="none" stroke="#7c5cbf" stroke-width="2"/></svg>
             Tall
           </button>
         </div>
 
-        <div class="sb-title" style="margin-top:14px">Size (px)</div>
-        <div class="size-row">
-          <span class="size-label">W</span>
-          <input type="number" class="size-input" id="inputW" min="40" max="300" oninput="applySize()">
-        </div>
-        <div class="size-row">
-          <span class="size-label">H</span>
-          <input type="number" class="size-input" id="inputH" min="40" max="300" oninput="applySize()">
-        </div>
+        <div class="sb-title" style="margin-top:14px">Size</div>
+        <div class="dim-row"><span class="dim-label">W</span><input type="number" class="dim-input" id="inputW" min="40" max="400" oninput="applySizeInput()"></div>
+        <div class="dim-row"><span class="dim-label">H</span><input type="number" class="dim-input" id="inputH" min="40" max="400" oninput="applySizeInput()"></div>
       </div>
     </div>
 
-    <div class="sb-section">
+    <div class="sb-sect">
       <div class="snap-row">
-        <span class="sb-title" style="margin:0">Snap to Grid (40px)</span>
-        <label class="toggle-wrap">
-          <input type="checkbox" id="snapToggle" checked />
-          <span class="toggle-slider"></span>
-        </label>
+        <span class="sb-title" style="margin:0">Snap to grid</span>
+        <label class="toggle-wrap"><input type="checkbox" id="snapToggle" checked /><span class="tg-sl"></span></label>
       </div>
     </div>
 
-    <div class="sb-section" style="flex:1">
+    <div class="sb-sect" style="flex:1">
       <div class="sb-title">All Tables</div>
       <div id="tblList"></div>
     </div>
-
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const CANVAS_W = 1400, CANVAS_H = 900, SNAP = 40;
+const CANVAS_W = 1400, CANVAS_H = 900, SNAP = 40, HSIZE = 12;
 
 let _tables = <%- JSON.stringify(tables.map(t => ({
-  id: t.id,
-  name: t.name,
-  capacity: t.capacity,
-  floor_x: t.floor_x,
-  floor_y: t.floor_y,
+  id:          t.id,
+  name:        t.name,
+  capacity:    t.capacity,
+  floor_x:     t.floor_x,
+  floor_y:     t.floor_y,
   floor_shape: t.floor_shape || 'square',
-  floor_w: t.floor_w || 80,
-  floor_h: t.floor_h || 80,
+  floor_w:     t.floor_w || 80,
+  floor_h:     t.floor_h || 80,
 }))) %>;
 
-let _sel = null;
-let _drag = null; // { id, ox, oy, mx0, my0 }
+let _sel      = null;  // selected table id
+let _drag     = null;  // { id, ox, oy, mx0, my0 }
+let _resize   = null;  // { id, handle, ox, oy, ow, oh, mx0, my0 }
 
-/* ── Init: assign default positions for tables with no floor_x ── */
+/* ────────────────── Init ────────────────── */
 function init() {
   const COLS = 5, GAP = 120, START = 60;
   _tables = _tables.map((t, i) => ({
@@ -206,188 +172,232 @@ function init() {
   renderList();
 }
 
-/* ── Render canvas ── */
+/* ────────────────── Render ────────────────── */
 function renderCanvas() {
   const canvas = document.getElementById('floorCanvas');
-  canvas.querySelectorAll('.tbl').forEach(e => e.remove());
+  canvas.innerHTML = '';
   _tables.forEach(t => {
     const el = document.createElement('div');
     el.className = 'tbl' + (_sel === t.id ? ' selected' : '');
     el.id = 'tbl-' + t.id;
-    el.style.cssText = `left:${t.floor_x}px;top:${t.floor_y}px;width:${t.floor_w}px;height:${t.floor_h}px;border-radius:${borderRadius(t.floor_shape)}`;
+    applyTableStyle(el, t);
     el.innerHTML = `<span class="tbl-name">${esc(t.name)}</span><span class="tbl-cap">${t.capacity}🪑</span>`;
-    el.addEventListener('mousedown', e => beginDrag(e, t.id));
-    el.addEventListener('touchstart', e => beginDragTouch(e, t.id), { passive: false });
+    el.addEventListener('mousedown', e => { if (e.button === 0 && !e.target.classList.contains('rh')) beginDrag(e, t.id); });
+    el.addEventListener('touchstart', e => { if (!e.target.classList.contains('rh')) beginDragTouch(e, t.id); }, { passive: false });
     el.addEventListener('click', e => { e.stopPropagation(); selectTable(t.id); });
     canvas.appendChild(el);
   });
+  if (_sel !== null) renderHandles();
+  renderList();
 }
 
-function borderRadius(shape) {
-  return shape === 'round' ? '50%' : '10px';
+function applyTableStyle(el, t) {
+  el.style.left         = t.floor_x + 'px';
+  el.style.top          = t.floor_y + 'px';
+  el.style.width        = t.floor_w + 'px';
+  el.style.height       = t.floor_h + 'px';
+  el.style.borderRadius = t.floor_shape === 'round' ? '50%' : '10px';
 }
 
-/* ── List ── */
-function renderList() {
-  const list = document.getElementById('tblList');
-  list.innerHTML = _tables.map(t => `
-    <div class="tbl-list-item${_sel === t.id ? ' active' : ''}" onclick="selectTable(${t.id})">
-      <div class="tbl-list-dot"></div>
-      <span>${esc(t.name)}</span>
-      <span style="margin-left:auto;font-size:.7rem;color:#555">${t.capacity}🪑</span>
-    </div>`).join('');
+/* ── Resize handles ── */
+function handlePoints(t) {
+  const { floor_x: x, floor_y: y, floor_w: w, floor_h: h } = t;
+  return [
+    { id: 'nw', cx: x,       cy: y,       cursor: 'nw-resize' },
+    { id: 'n',  cx: x+w/2,   cy: y,       cursor: 'n-resize'  },
+    { id: 'ne', cx: x+w,     cy: y,       cursor: 'ne-resize' },
+    { id: 'e',  cx: x+w,     cy: y+h/2,   cursor: 'e-resize'  },
+    { id: 'se', cx: x+w,     cy: y+h,     cursor: 'se-resize' },
+    { id: 's',  cx: x+w/2,   cy: y+h,     cursor: 's-resize'  },
+    { id: 'sw', cx: x,       cy: y+h,     cursor: 'sw-resize' },
+    { id: 'w',  cx: x,       cy: y+h/2,   cursor: 'w-resize'  },
+  ];
 }
 
-/* ── Select ── */
+function renderHandles() {
+  document.querySelectorAll('.rh').forEach(e => e.remove());
+  const t = _tables.find(x => x.id === _sel);
+  if (!t) return;
+  const canvas = document.getElementById('floorCanvas');
+  handlePoints(t).forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'rh';
+    div.style.left   = (h.cx - HSIZE/2) + 'px';
+    div.style.top    = (h.cy - HSIZE/2) + 'px';
+    div.style.cursor = h.cursor;
+    div.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); beginResize(e, h.id); });
+    div.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); beginResizeTouch(e, h.id); }, { passive: false });
+    canvas.appendChild(div);
+  });
+}
+
+/* ────────────────── Selection ────────────────── */
 function selectTable(id) {
   _sel = (_sel === id) ? null : id;
   renderCanvas();
-  renderList();
   updateSidebar();
+}
+
+function renderList() {
+  document.getElementById('tblList').innerHTML = _tables.map(t =>
+    `<div class="tbl-list-item${_sel === t.id ? ' active' : ''}" onclick="selectTable(${t.id})">
+       <div class="tbl-list-dot"></div>
+       <span>${esc(t.name)}</span>
+       <span style="margin-left:auto;font-size:.67rem;color:#555">${t.capacity}🪑</span>
+     </div>`).join('');
 }
 
 function updateSidebar() {
   const t = _tables.find(x => x.id === _sel);
-  const sbSelected = document.getElementById('sbSelected');
-  const sbControls = document.getElementById('sbControls');
-  if (!t) {
-    sbSelected.textContent = 'Tap a table to select it';
-    sbControls.style.display = 'none';
-    return;
-  }
-  sbSelected.textContent = t.name + ' · ' + t.capacity + ' seats';
-  sbControls.style.display = '';
+  document.getElementById('sbInfo').style.display     = t ? 'none' : '';
+  document.getElementById('sbControls').style.display = t ? '' : 'none';
+  if (!t) return;
   document.getElementById('inputW').value = t.floor_w;
   document.getElementById('inputH').value = t.floor_h;
-  document.querySelectorAll('.shape-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.shape === t.floor_shape);
-  });
+  document.querySelectorAll('.shape-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.shape === t.floor_shape));
 }
 
-/* ── Shape / size controls ── */
+/* ────────────────── Shape / size controls ────────────────── */
 function setShape(shape) {
   const t = _tables.find(x => x.id === _sel);
   if (!t) return;
   t.floor_shape = shape;
-  // Apply preset sizes
   if (shape === 'rect-h') { t.floor_w = 130; t.floor_h = 70; }
   else if (shape === 'rect-v') { t.floor_w = 70; t.floor_h = 130; }
-  else if (shape === 'round' || shape === 'square') { t.floor_w = Math.max(t.floor_w, t.floor_h); t.floor_h = t.floor_w; }
+  else { const s = Math.max(t.floor_w, t.floor_h); t.floor_w = s; t.floor_h = s; }
   renderCanvas();
   updateSidebar();
 }
 
-function applySize() {
+function applySizeInput() {
   const t = _tables.find(x => x.id === _sel);
   if (!t) return;
-  const w = parseInt(document.getElementById('inputW').value) || t.floor_w;
-  const h = parseInt(document.getElementById('inputH').value) || t.floor_h;
-  t.floor_w = Math.max(40, Math.min(300, w));
-  t.floor_h = Math.max(40, Math.min(300, h));
+  const w = parseInt(document.getElementById('inputW').value);
+  const h = parseInt(document.getElementById('inputH').value);
+  if (w >= 40) t.floor_w = Math.min(400, w);
+  if (h >= 40) t.floor_h = Math.min(400, h);
   const el = document.getElementById('tbl-' + t.id);
-  if (el) { el.style.width = t.floor_w + 'px'; el.style.height = t.floor_h + 'px'; }
+  if (el) applyTableStyle(el, t);
+  renderHandles();
 }
 
-/* ── Drag (mouse) ── */
+/* ────────────────── Drag (move) ────────────────── */
 function beginDrag(e, id) {
-  if (e.button !== 0) return;
-  e.preventDefault();
-  e.stopPropagation();
-  const t = _tables.find(x => x.id === id);
-  if (!t) return;
+  e.preventDefault(); e.stopPropagation();
   _sel = id;
+  const t = _tables.find(x => x.id === id);
   _drag = { id, ox: t.floor_x, oy: t.floor_y, mx0: e.clientX, my0: e.clientY };
-  const el = document.getElementById('tbl-' + id);
-  if (el) el.classList.add('dragging');
-  renderCanvas();
-  updateSidebar();
-  renderList();
+  document.getElementById('tbl-' + id)?.classList.add('dragging');
+  renderCanvas(); updateSidebar();
 }
-
-document.addEventListener('mousemove', e => {
-  if (!_drag) return;
-  moveDrag(e.clientX - _drag.mx0, e.clientY - _drag.my0);
-});
-document.addEventListener('mouseup', () => {
-  if (!_drag) return;
-  const el = document.getElementById('tbl-' + _drag.id);
-  if (el) el.classList.remove('dragging');
-  _drag = null;
-});
-
-/* ── Drag (touch) ── */
 function beginDragTouch(e, id) {
   e.preventDefault();
-  const touch = e.touches[0];
-  const t = _tables.find(x => x.id === id);
-  if (!t) return;
+  const tc = e.touches[0];
   _sel = id;
-  _drag = { id, ox: t.floor_x, oy: t.floor_y, mx0: touch.clientX, my0: touch.clientY };
-  const el = document.getElementById('tbl-' + id);
-  if (el) el.classList.add('dragging');
-  renderCanvas(); updateSidebar(); renderList();
+  const t = _tables.find(x => x.id === id);
+  _drag = { id, ox: t.floor_x, oy: t.floor_y, mx0: tc.clientX, my0: tc.clientY };
+  document.getElementById('tbl-' + id)?.classList.add('dragging');
+  renderCanvas(); updateSidebar();
 }
 
-document.addEventListener('touchmove', e => {
-  if (!_drag) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  moveDrag(touch.clientX - _drag.mx0, touch.clientY - _drag.my0);
-}, { passive: false });
-
-document.addEventListener('touchend', () => {
-  if (!_drag) return;
-  const el = document.getElementById('tbl-' + _drag.id);
-  if (el) el.classList.remove('dragging');
-  _drag = null;
-});
-
-/* ── Common move logic ── */
-function moveDrag(dx, dy) {
-  const t = _tables.find(x => x.id === _drag.id);
+/* ────────────────── Resize ────────────────── */
+function beginResize(e, handle) {
+  e.preventDefault(); e.stopPropagation();
+  const t = _tables.find(x => x.id === _sel);
   if (!t) return;
-  const snap = document.getElementById('snapToggle').checked;
-  let nx = _drag.ox + dx;
-  let ny = _drag.oy + dy;
-  if (snap) { nx = Math.round(nx / SNAP) * SNAP; ny = Math.round(ny / SNAP) * SNAP; }
-  t.floor_x = Math.max(0, Math.min(CANVAS_W - t.floor_w, nx));
-  t.floor_y = Math.max(0, Math.min(CANVAS_H - t.floor_h, ny));
-  const el = document.getElementById('tbl-' + _drag.id);
-  if (el) { el.style.left = t.floor_x + 'px'; el.style.top = t.floor_y + 'px'; }
+  _resize = { id: t.id, handle, ox: t.floor_x, oy: t.floor_y, ow: t.floor_w, oh: t.floor_h, mx0: e.clientX, my0: e.clientY };
+}
+function beginResizeTouch(e, handle) {
+  e.preventDefault(); e.stopPropagation();
+  const t = _tables.find(x => x.id === _sel);
+  if (!t) return;
+  const tc = e.touches[0];
+  _resize = { id: t.id, handle, ox: t.floor_x, oy: t.floor_y, ow: t.floor_w, oh: t.floor_h, mx0: tc.clientX, my0: tc.clientY };
 }
 
-/* ── Deselect on canvas click ── */
+/* ────────────────── Mouse/touch move ────────────────── */
+function doMove(clientX, clientY) {
+  const snap = document.getElementById('snapToggle').checked;
+  if (_drag) {
+    const t = _tables.find(x => x.id === _drag.id);
+    if (!t) return;
+    let nx = _drag.ox + (clientX - _drag.mx0);
+    let ny = _drag.oy + (clientY - _drag.my0);
+    if (snap) { nx = Math.round(nx / SNAP) * SNAP; ny = Math.round(ny / SNAP) * SNAP; }
+    t.floor_x = Math.max(0, Math.min(CANVAS_W - t.floor_w, nx));
+    t.floor_y = Math.max(0, Math.min(CANVAS_H - t.floor_h, ny));
+    const el = document.getElementById('tbl-' + t.id);
+    if (el) applyTableStyle(el, t);
+    renderHandles();
+  }
+  if (_resize) {
+    const { handle, ox, oy, ow, oh } = _resize;
+    const t = _tables.find(x => x.id === _resize.id);
+    if (!t) return;
+    const dx = clientX - _resize.mx0;
+    const dy = clientY - _resize.my0;
+    let nx = ox, ny = oy, nw = ow, nh = oh;
+    if (handle.includes('e'))  nw = ow + dx;
+    if (handle.includes('s'))  nh = oh + dy;
+    if (handle.includes('w')) { nx = ox + dx; nw = ow - dx; }
+    if (handle.includes('n')) { ny = oy + dy; nh = oh - dy; }
+    nw = Math.max(40, Math.min(400, snap ? Math.round(nw/SNAP)*SNAP : nw));
+    nh = Math.max(40, Math.min(400, snap ? Math.round(nh/SNAP)*SNAP : nh));
+    // Recalculate position based on clamped size (so west/north handles stay coherent)
+    if (handle.includes('w')) nx = ox + ow - nw;
+    if (handle.includes('n')) ny = oy + oh - nh;
+    t.floor_x = Math.max(0, nx);
+    t.floor_y = Math.max(0, ny);
+    t.floor_w = nw;
+    t.floor_h = nh;
+    const el = document.getElementById('tbl-' + t.id);
+    if (el) applyTableStyle(el, t);
+    renderHandles();
+    // Sync sidebar inputs
+    const iw = document.getElementById('inputW'); if (iw) iw.value = nw;
+    const ih = document.getElementById('inputH'); if (ih) ih.value = nh;
+  }
+}
+
+function doEnd() {
+  if (_drag) { document.getElementById('tbl-' + _drag.id)?.classList.remove('dragging'); _drag = null; }
+  if (_resize) _resize = null;
+}
+
+document.addEventListener('mousemove', e => doMove(e.clientX, e.clientY));
+document.addEventListener('mouseup',   doEnd);
+document.addEventListener('touchmove', e => { if (_drag || _resize) { e.preventDefault(); doMove(e.touches[0].clientX, e.touches[0].clientY); } }, { passive: false });
+document.addEventListener('touchend',  doEnd);
+
+/* ── Deselect on canvas background click ── */
 document.getElementById('floorCanvas').addEventListener('click', e => {
-  if (e.target === e.currentTarget) { _sel = null; renderCanvas(); renderList(); updateSidebar(); }
+  if (e.target.id === 'floorCanvas') { _sel = null; renderCanvas(); updateSidebar(); }
 });
 
-/* ── Reset ── */
+/* ────────────────── Reset / Save ────────────────── */
 function resetAll() {
   if (!confirm('Reset all table positions to defaults?')) return;
   const COLS = 5, GAP = 120, START = 60;
-  _tables = _tables.map((t, i) => ({ ...t, floor_x: START + (i % COLS) * GAP, floor_y: START + Math.floor(i / COLS) * GAP }));
-  renderCanvas(); renderList();
+  _tables = _tables.map((t, i) => ({ ...t, floor_x: START+(i%COLS)*GAP, floor_y: START+Math.floor(i/COLS)*GAP }));
+  renderCanvas(); updateSidebar();
 }
 
-/* ── Save ── */
 async function save() {
   const btn = document.getElementById('saveBtn');
   btn.textContent = '⏳ Saving…'; btn.disabled = true;
   try {
-    const payload = _tables.map(t => ({ id: t.id, x: t.floor_x, y: t.floor_y, shape: t.floor_shape, w: t.floor_w, h: t.floor_h }));
     const r = await fetch('/pos/floor-plan/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tables: payload })
+      body: JSON.stringify({ tables: _tables.map(t => ({ id: t.id, x: t.floor_x, y: t.floor_y, shape: t.floor_shape, w: t.floor_w, h: t.floor_h })) })
     });
     const d = await r.json();
-    if (d.ok) showToast('✓ Floor plan saved!');
-    else showToast('Error saving — try again');
+    showToast(d.ok ? '✓ Floor plan saved!' : 'Error saving — try again');
   } catch { showToast('Network error'); }
   finally { btn.textContent = '💾 Save Layout'; btn.disabled = false; }
 }
 
-/* ── Toast ── */
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
