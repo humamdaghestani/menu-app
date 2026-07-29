@@ -588,12 +588,72 @@
             <h2>Content</h2>
             <p class="card-desc">Custom text printed above and below the order items.</p>
             <div style="margin-bottom:14px">
-              <label>Header Message (printed above items)</label>
-              <input type="text" name="bill_custom_header" value="<%= tenant.bill_custom_header || '' %>" placeholder="e.g. Welcome to <%= tenant.name %>!" maxlength="120" />
+              <label>Header (address, phone — shown under restaurant name)</label>
+              <textarea name="bill_custom_header" rows="3" placeholder="e.g. Erbil, Pearl&#10;07744333300" style="width:100%;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:8px;padding:8px 12px;color:#e0e0e0;font-size:.88rem;resize:vertical"><%= tenant.bill_custom_header || '' %></textarea>
             </div>
             <div>
-              <label>Footer Message (printed at the bottom)</label>
-              <input type="text" name="bill_custom_footer" value="<%= tenant.bill_custom_footer || '' %>" placeholder="e.g. Thank you! Come again soon." maxlength="120" />
+              <label>Footer (thank you message)</label>
+              <input type="text" name="bill_custom_footer" value="<%= tenant.bill_custom_footer || '' %>" placeholder="e.g. Thank you! Come again soon." maxlength="160" />
+            </div>
+          </div>
+
+          <!-- Custom Labels -->
+          <% const savedLabels = (() => { try { return JSON.parse(tenant.bill_custom_labels || '{}'); } catch(e) { return {}; } })(); %>
+          <div class="card">
+            <h2>Customize Labels</h2>
+            <p class="card-desc">Override every text label on the bill. Quick Fill loads a language preset into the fields — then edit freely.</p>
+
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="quickFill('en')">🇬🇧 English</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="quickFill('ku')">🏴 Kurdish</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="quickFill('ar')">🇸🇦 Arabic</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="quickFill('en_ku')">🇬🇧+🏴 EN+KU</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="quickFill('en_ar')">🇬🇧+🇸🇦 EN+AR</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="clearLabels()" style="color:#e74c3c">✕ Clear all</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+              <div style="font-size:.65rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.05em;padding:6px 0;border-bottom:1px solid #1a1a2e;grid-column:1/-1">Column Headers</div>
+              <% [
+                ['lbl_item',      'Item column',   savedLabels.item],
+                ['lbl_qty',       'QTY column',    savedLabels.qty],
+                ['lbl_price',     'Price column',  savedLabels.price],
+                ['lbl_total_col', 'Total column',  savedLabels.total_col],
+              ].forEach(([name, label, val]) => { %>
+              <div style="padding:6px 10px 6px 0">
+                <label style="font-size:.72rem;color:#666;display:block;margin-bottom:3px"><%= label %></label>
+                <input type="text" name="<%= name %>" id="<%= name %>" value="<%= val || '' %>" placeholder="default" maxlength="60"
+                  style="width:100%;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:6px 10px;color:#fff;font-size:.83rem;font-family:inherit" oninput="updatePreview()" />
+              </div>
+              <% }) %>
+
+              <div style="font-size:.65rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-bottom:1px solid #1a1a2e;grid-column:1/-1">Totals Section</div>
+              <% [
+                ['lbl_subtotal',  'Sub Total',   savedLabels.subtotal],
+                ['lbl_svcfee',    'Service',     savedLabels.svcfee],
+                ['lbl_discount',  'Discount',    savedLabels.discount],
+                ['lbl_total',     'Net Total',   savedLabels.total],
+              ].forEach(([name, label, val]) => { %>
+              <div style="padding:6px 10px 6px 0">
+                <label style="font-size:.72rem;color:#666;display:block;margin-bottom:3px"><%= label %></label>
+                <input type="text" name="<%= name %>" id="<%= name %>" value="<%= val || '' %>" placeholder="default" maxlength="60"
+                  style="width:100%;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:6px 10px;color:#fff;font-size:.83rem;font-family:inherit" oninput="updatePreview()" />
+              </div>
+              <% }) %>
+
+              <div style="font-size:.65rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.05em;padding:10px 0 6px;border-bottom:1px solid #1a1a2e;grid-column:1/-1">Other Labels</div>
+              <% [
+                ['lbl_served_by', 'Served by',   savedLabels.served_by],
+                ['lbl_dine_in',   'Dine-in type',savedLabels.dine_in],
+                ['lbl_thanks',    'Thank you',   savedLabels.thanks],
+                ['lbl_takeaway',  'Takeaway type',savedLabels.takeaway],
+              ].forEach(([name, label, val]) => { %>
+              <div style="padding:6px 10px 6px 0">
+                <label style="font-size:.72rem;color:#666;display:block;margin-bottom:3px"><%= label %></label>
+                <input type="text" name="<%= name %>" id="<%= name %>" value="<%= val || '' %>" placeholder="default" maxlength="80"
+                  style="width:100%;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:6px;padding:6px 10px;color:#fff;font-size:.83rem;font-family:inherit" oninput="updatePreview()" />
+              </div>
+              <% }) %>
             </div>
           </div>
 
@@ -653,77 +713,108 @@ if (urlTab) {
   if (tabEl) switchTab(urlTab, tabEl);
 }
 
-// ── Bill preview ──────────────────────────────────────────────────────────────
-const BILL_LABELS = {
-  en:       { bill:'BILL', table:'Table', order:'Order #', date:'Date', subtotal:'Subtotal', discount:'Discount', total:'TOTAL', thanks:'Thank you!' },
-  ar:       { bill:'فاتورة', table:'الطاولة', order:'رقم الطلب', date:'التاريخ', subtotal:'المجموع الجزئي', discount:'خصم', total:'المجموع', thanks:'شكراً لكم!' },
-  ku:       { bill:'پسووڵە', table:'مێز', order:'ژمارەی داواکاری', date:'بەروار', subtotal:'کۆی لایەنی', discount:'داشکاندن', total:'کۆی گشتی', thanks:'سوپاس!' },
-  en_ar:    null,
-  en_ku:    null,
-  en_ar_ku: null,
+// ── Bill label presets ────────────────────────────────────────────────────────
+const PRESETS = {
+  en: { item:'Item', qty:'QTY', price:'Price', total_col:'Total', subtotal:'Sub Total', svcfee:'Service', discount:'Discount', total:'Net Total', served_by:'Served by', dine_in:'Dine-in', takeaway:'Takeaway', thanks:'Thank you!' },
+  ar: { item:'الصنف', qty:'الكمية', price:'السعر', total_col:'المجموع', subtotal:'المجموع', svcfee:'رسوم الخدمة', discount:'خصم', total:'المجموع الكلي', served_by:'خدمك', dine_in:'طلب داخلي', takeaway:'تيك أواي', thanks:'شكراً لكم!' },
+  ku: { item:'باپهت', qty:'بر', price:'نرخ', total_col:'گشتی', subtotal:'گشتی', svcfee:'سێرڤس', discount:'دشکاندەن', total:'کۆی گشتی', served_by:'تو خزمەت کردن لەلایان', dine_in:'طلب داخلي', takeaway:'تیک ئەوی', thanks:'سوپاس!' },
 };
 
-function getBillLang() {
-  return (document.querySelector('[name=bill_language]:checked') || {}).value || 'en';
-}
-function getFontSize() {
-  return (document.querySelector('[name=bill_font_size]') || {}).value || 'normal';
-}
-function getHeader() { return (document.querySelector('[name=bill_custom_header]') || {}).value || ''; }
-function getFooter() { return (document.querySelector('[name=bill_custom_footer]') || {}).value || ''; }
-function getShowIQD() { return document.querySelector('[name=bill_show_iqd]')?.checked; }
+const LABEL_KEYS = ['item','qty','price','total_col','subtotal','svcfee','discount','total','served_by','dine_in','takeaway','thanks'];
 
-function getLabelSet(lang) {
-  if (BILL_LABELS[lang]) return BILL_LABELS[lang];
-  // composite
-  const parts = lang.split('_');
-  return BILL_LABELS[parts[0]]; // use first as primary for preview
+function getCustomLabels() {
+  const cl = {};
+  LABEL_KEYS.forEach(k => {
+    const el = document.getElementById('lbl_' + k);
+    if (el && el.value.trim()) cl[k] = el.value.trim();
+  });
+  return cl;
+}
+
+function resolveLabel(key, customLabels, langs) {
+  if (customLabels[key]) return customLabels[key];
+  // Build from language presets
+  const parts = langs.map(l => (PRESETS[l] || PRESETS.en)[key] || '').filter((v,i,a) => a.indexOf(v)===i && v);
+  return parts.join(' - ');
+}
+
+function quickFill(preset) {
+  const langs = preset.split('_');
+  LABEL_KEYS.forEach(k => {
+    const el = document.getElementById('lbl_' + k);
+    if (!el) return;
+    const parts = langs.map(l => (PRESETS[l] || PRESETS.en)[k] || '').filter((v,i,a) => a.indexOf(v)===i && v);
+    el.value = parts.join(' - ');
+  });
+  updatePreview();
+}
+
+function clearLabels() {
+  LABEL_KEYS.forEach(k => { const el = document.getElementById('lbl_' + k); if (el) el.value = ''; });
+  updatePreview();
 }
 
 function buildPreviewHTML() {
-  const lang   = getBillLang();
-  const L      = getLabelSet(lang);
-  const fs     = getFontSize();
-  const hdr    = getHeader();
-  const ftr    = getFooter();
-  const showIQD = getShowIQD();
-  const fsMap  = { small: '10px', normal: '12px', large: '14px' };
-  const fontSize = fsMap[fs] || '12px';
+  const lang     = (document.querySelector('[name=bill_language]:checked') || {}).value || 'en';
+  const langs    = lang.split('_');
+  const hdr      = (document.querySelector('[name=bill_custom_header]') || {}).value || '';
+  const ftr      = (document.querySelector('[name=bill_custom_footer]') || {}).value || '';
+  const showIQD  = document.querySelector('[name=bill_show_iqd]')?.checked;
   const tenantName = '<%= tenant.name.replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+  const cl       = getCustomLabels();
+  const L        = k => resolveLabel(k, cl, langs);
 
-  const isMulti = lang.includes('_');
-  const langs   = lang.split('_');
-  const labelsAll = langs.map(l => BILL_LABELS[l] || BILL_LABELS.en);
+  const now = (() => {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2,'0'), mm = String(d.getMonth()+1).padStart(2,'0');
+    const h24 = d.getHours(), ampm = h24>=12?'PM':'AM', h12 = h24%12||12;
+    const mi = String(d.getMinutes()).padStart(2,'0'), ss = String(d.getSeconds()).padStart(2,'0');
+    return `${dd}/${mm}/${d.getFullYear()} ${ampm} ${h12}:${mi}:${ss}`;
+  })();
 
-  function row(key) {
-    if (!isMulti) return L[key];
-    return labelsAll.map(ll => ll[key]).filter((v,i,a) => a.indexOf(v)===i).join(' / ');
+  function BH(key) {
+    const parts = langs.map(l => cl[key] || (PRESETS[l]||PRESETS.en)[key] || '').filter((v,i,a)=>a.indexOf(v)===i&&v);
+    if (cl[key]) return cl[key]; // custom always single-line in preview
+    return parts.length > 1 ? parts[0] + '<br><small style="font-size:9px">' + parts[parts.length-1] + '</small>' : (parts[0]||'');
   }
 
-  return `<div style="font-family:'Courier New',monospace;font-size:${fontSize};text-align:center">
-    <div style="font-size:${parseInt(fontSize)+4}px;font-weight:bold">${tenantName}</div>
-    <div style="letter-spacing:2px;margin:3px 0;font-size:${parseInt(fontSize)-1}px">— ${row('bill')} —</div>
-  </div>
-  <div style="border-top:1px dashed #000;margin:6px 0"></div>
-  ${hdr ? `<div style="text-align:center;font-size:${parseInt(fontSize)-1}px;margin-bottom:6px">${hdr}</div>` : ''}
-  <table style="width:100%;font-family:'Courier New',monospace;font-size:${fontSize};border-collapse:collapse">
-    <tr><td>${row('table')}</td><td style="text-align:right">Table 1</td></tr>
-    <tr><td>${row('order')}</td><td style="text-align:right">1042</td></tr>
-    <tr><td>${row('date')}</td><td style="text-align:right">${new Date().toLocaleDateString()}</td></tr>
-  </table>
-  <div style="border-top:1px dashed #000;margin:6px 0"></div>
-  <table style="width:100%;font-family:'Courier New',monospace;font-size:${fontSize};border-collapse:collapse">
-    <tr><td>2× Chicken Burger</td><td style="text-align:right">$25.98</td></tr>
-    <tr><td>1× Pepsi</td><td style="text-align:right">$2.50</td></tr>
-  </table>
-  <div style="border-top:1px dashed #000;margin:6px 0"></div>
-  <table style="width:100%;font-family:'Courier New',monospace;font-size:${fontSize};border-collapse:collapse">
-    <tr><td>${row('subtotal')}</td><td style="text-align:right">$28.48</td></tr>
-    <tr style="font-weight:bold;font-size:${parseInt(fontSize)+2}px"><td>${row('total')}</td><td style="text-align:right">$28.48</td></tr>
-    ${showIQD ? `<tr style="font-size:${parseInt(fontSize)-1}px;color:#555"><td>${row('total')} (IQD)</td><td style="text-align:right">42,150 IQD</td></tr>` : ''}
-  </table>
-  <div style="border-top:1px dashed #000;margin:6px 0"></div>
-  <div style="text-align:center;font-family:'Courier New',monospace;font-size:${parseInt(fontSize)-1}px">${ftr || row('thanks')}</div>`;
+  return `<div style="font-family:Arial,sans-serif;font-size:11px;font-weight:700;color:#000">
+    <div style="text-align:center;font-size:15px;font-weight:900;margin-bottom:2px">${tenantName}</div>
+    ${hdr ? `<div style="text-align:center;font-size:10px;font-weight:700;white-space:pre-line;margin-bottom:3px">${hdr}</div>` : ''}
+    <div style="border-top:2px solid #000;margin:5px 0"></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;margin:2px 0"><span>${L('dine_in')} ز.وصل #1042</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;margin:2px 0"><span>Table 1</span><span>${now}</span></div>
+    <div style="border:1.5px solid #000;height:20px;margin:4px 0"></div>
+    <table style="width:100%;border-collapse:collapse;font-size:10px">
+      <tr>
+        <th style="border:1.5px solid #000;padding:3px;text-align:left;font-weight:900">${BH('item')}</th>
+        <th style="border:1.5px solid #000;padding:3px;text-align:center;font-weight:900">${BH('qty')}</th>
+        <th style="border:1.5px solid #000;padding:3px;text-align:right;font-weight:900">${BH('price')}</th>
+        <th style="border:1.5px solid #000;padding:3px;text-align:right;font-weight:900">${BH('total_col')}</th>
+      </tr>
+      <tr>
+        <td style="border:1.5px solid #000;padding:3px">Espresso</td>
+        <td style="border:1.5px solid #000;padding:3px;text-align:center">2</td>
+        <td style="border:1.5px solid #000;padding:3px;text-align:right">5,000</td>
+        <td style="border:1.5px solid #000;padding:3px;text-align:right">10,000</td>
+      </tr>
+      <tr>
+        <td style="border:1.5px solid #000;padding:3px">Juice</td>
+        <td style="border:1.5px solid #000;padding:3px;text-align:center">1</td>
+        <td style="border:1.5px solid #000;padding:3px;text-align:right">3,500</td>
+        <td style="border:1.5px solid #000;padding:3px;text-align:right">3,500</td>
+      </tr>
+    </table>
+    <div style="border-top:1px dashed #000;margin:4px 0"></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0"><span>${L('subtotal')}</span><span>13,500</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0"><span>${L('svcfee')}</span><span></span></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;padding:2px 0"><span>${L('discount')}</span><span></span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:900;border-top:2px solid #000;margin-top:3px;padding-top:3px"><span>${L('total')}</span><span>13,500</span></div>
+    ${showIQD ? `<div style="display:flex;justify-content:space-between;font-size:9px;padding:2px 0"><span>IQD</span><span>13,500</span></div>` : ''}
+    <div style="border-top:2px solid #000;margin:4px 0"></div>
+    <div style="text-align:center;font-size:10px">${L('served_by')} : Cashier</div>
+    ${ftr ? `<div style="text-align:center;font-size:10px;margin-top:2px">${ftr}</div>` : `<div style="text-align:center;font-size:10px;margin-top:2px">${L('thanks')}</div>`}
+  </div>`;
 }
 
 function updatePreview() {
@@ -739,7 +830,6 @@ function highlightLang() {
   updatePreview();
 }
 
-// Init preview
 updatePreview();
 </script>
 </body>

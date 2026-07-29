@@ -861,10 +861,15 @@ router.post('/settings/perm-passcode', requireAuth, requirePOS, async (req, res)
 router.post('/settings/bill', requireAuth, requirePOS, async (req, res) => {
   try {
     const { bill_language, bill_show_iqd, bill_font_size, bill_paper_width, bill_custom_header, bill_custom_footer } = req.body;
+    // Collect individual label overrides
+    const LABEL_KEYS = ['item','qty','price','total_col','subtotal','svcfee','discount','total','served_by','dine_in','takeaway','thanks','table','bill'];
+    const labels = {};
+    LABEL_KEYS.forEach(k => { const v = (req.body['lbl_' + k] || '').trim(); if (v) labels[k] = v; });
+    const labelsJson = Object.keys(labels).length ? JSON.stringify(labels) : null;
     await db.query(
-      `UPDATE tenants SET bill_language=$1, bill_show_iqd=$2, bill_font_size=$3, bill_paper_width=$4, bill_custom_header=$5, bill_custom_footer=$6 WHERE id=$7`,
+      `UPDATE tenants SET bill_language=$1, bill_show_iqd=$2, bill_font_size=$3, bill_paper_width=$4, bill_custom_header=$5, bill_custom_footer=$6, bill_custom_labels=$7 WHERE id=$8`,
       [bill_language || 'en', bill_show_iqd === '1', bill_font_size || 'normal', bill_paper_width || '80mm',
-       bill_custom_header || null, bill_custom_footer || null, req.user.tenantId]
+       bill_custom_header || null, bill_custom_footer || null, labelsJson, req.user.tenantId]
     );
     res.redirect('/pos/settings?tab=bill');
   } catch (err) { console.error(err); res.redirect('/pos/settings?tab=bill'); }

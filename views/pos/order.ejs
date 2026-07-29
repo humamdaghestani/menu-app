@@ -1106,17 +1106,20 @@ document.addEventListener('keydown', e => {
     const billLang    = '<%= tenant.bill_language || "en" %>';
     const billWidth   = '<%= tenant.bill_paper_width || "80mm" %>';
     const showIQD     = <%= tenant.bill_show_iqd !== false ? 'true' : 'false' %>;
-    const cashierName = '<%- (currentUser.name || currentUser.username || "Cashier").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const cashierName   = '<%- (currentUser.name || currentUser.username || "Cashier").replace(/\\/g,"\\\\").replace(/'/g,"\\'") %>';
+    const customLabels  = <%- JSON.stringify((() => { try { return JSON.parse(tenant.bill_custom_labels || '{}'); } catch(e) { return {}; } })()) %>;
 
     // Resolve multilingual labels
     const langs     = billLang.split('_');
     const labelsAll = langs.map(l => BILL_LABELS[l] || BILL_LABELS.en);
-    // L('key') → "Kurdish - English" or just single language
+    // L('key') → custom label if set, else "Kurdish - English" or single language
     function L(key) {
+      if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
       return labelsAll.map(ll => ll[key] || '').filter((v,i,a) => a.indexOf(v) === i && v).join(' - ');
     }
-    // BH('key') → two-line column header (non-EN on top, EN below in smaller text)
+    // BH('key') → custom label (single line) if set, else two-line column header
     function BH(key) {
+      if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
       const parts = labelsAll.map(ll => ll[key] || '').filter((v,i,a) => a.indexOf(v) === i && v);
       if (parts.length === 1) return parts[0];
       return `${parts[0]}<br><small style="font-size:9px">${parts[parts.length-1]}</small>`;
