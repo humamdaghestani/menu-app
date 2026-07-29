@@ -771,72 +771,139 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
-// ── Print Agent download ───────────────────────────────────────────────────────
-router.get('/print-agent-download', requireAuth, requirePOS, (req, res) => {
-  const port = 9191;
-  const script = `// POS Print Agent — run once on the POS computer: node pos-print-agent.js
-// Requires: npm install -g pdf-to-printer   (first time only)
-const http = require('http');
+// ── Print Agent installer (PowerShell — embeds everything, registers as startup task) ──
+router.get('/print-agent-installer', requireAuth, requirePOS, (req, res) => {
+  // The Node.js agent script — embedded verbatim in the PS1
+  const agentJs = String.raw`const http = require('http');
 const { exec } = require('child_process');
 const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
-const PORT = ${port};
+const PORT = 9191;
 
-// Try to load pdf-to-printer; fall back to PowerShell print verb
-let ptp;
-try { ptp = require('pdf-to-printer'); } catch(_) {}
+let ptp; try { ptp = require('pdf-to-printer'); } catch(_) {}
 
 http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+  if (req.method === 'GET' && req.url === '/ping') { res.end(JSON.stringify({ ok:true })); return; }
   if (req.method !== 'POST' || req.url !== '/print') { res.writeHead(404); res.end(); return; }
 
   let body = '';
   req.on('data', d => body += d.toString());
-  req.on('end', async () => {
+  req.on('end', () => {
     try {
       const { html, printer } = JSON.parse(body);
-      const tmp = path.join(os.tmpdir(), 'pos-receipt-' + Date.now() + '.html');
+      const tmp = path.join(os.tmpdir(), 'pos-rcpt-' + Date.now() + '.html');
       fs.writeFileSync(tmp, html, 'utf8');
 
-      // Locate Chrome
-      const chromeCandidates = [
-        'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
-        'C:\\\\Program Files (x86)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
-        process.env['LOCALAPPDATA'] + '\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',
+      const chromePaths = [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        (process.env.LOCALAPPDATA||'') + '\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
       ];
-      const chrome = chromeCandidates.find(p => fs.existsSync(p));
-      if (!chrome) { cleanup(tmp); res.end(JSON.stringify({ ok:false, error:'Chrome not found' })); return; }
+      const browser = chromePaths.find(p => { try { return fs.existsSync(p); } catch(_){ return false; } });
+      if (!browser) { fs.unlink(tmp,()=>{}); res.end(JSON.stringify({ok:false,error:'No browser found'})); return; }
 
-      const pdfPath = tmp.replace('.html', '.pdf');
-      exec(\`"\${chrome}" --headless=new --disable-gpu --print-to-pdf="\${pdfPath}" --print-to-pdf-no-header "file:///\${tmp.replace(/\\\\/g,'/')}" 2>nul\`, { timeout: 15000 }, (err) => {
-        if (err || !fs.existsSync(pdfPath)) { cleanup(tmp); res.end(JSON.stringify({ ok:false, error:'PDF generation failed' })); return; }
-
+      const pdf = tmp.replace('.html','.pdf');
+      exec(`"${browser}" --headless=new --disable-gpu --print-to-pdf="${pdf}" --print-to-pdf-no-header "file:///${tmp.replace(/\\/g,'/')}"`, {timeout:20000}, (err) => {
+        if (err || !fs.existsSync(pdf)) { fs.unlink(tmp,()=>{}); res.end(JSON.stringify({ok:false,error:'PDF failed'})); return; }
+        const done = () => { setTimeout(()=>{ try{fs.unlinkSync(tmp);}catch(_){} try{fs.unlinkSync(pdf);}catch(_){} },8000); };
         if (ptp) {
-          ptp.print(pdfPath, { printer }).then(() => {
-            cleanup(tmp, pdfPath);
-            res.end(JSON.stringify({ ok: true }));
-          }).catch(e => { cleanup(tmp,pdfPath); res.end(JSON.stringify({ok:false,error:e.message})); });
+          ptp.print(pdf, {printer}).then(()=>{ done(); res.end(JSON.stringify({ok:true})); }).catch(e=>{ done(); res.end(JSON.stringify({ok:false,error:e.message})); });
         } else {
-          // Fallback: PowerShell print verb (uses default registered PDF viewer)
-          exec(\`powershell -command "Start-Process -FilePath '\${pdfPath}' -Verb PrintTo -ArgumentList '\${printer}' -Wait"\`, { timeout: 30000 }, (e2) => {
-            setTimeout(() => cleanup(tmp, pdfPath), 5000);
-            res.end(JSON.stringify({ ok: !e2, error: e2 ? e2.message : null }));
-          });
+          exec(`powershell -WindowStyle Hidden -command "Start-Process -FilePath '${pdf}' -Verb PrintTo -ArgumentList '${printer}'"`, {timeout:30000}, e2=>{ done(); res.end(JSON.stringify({ok:!e2,error:e2?e2.message:null})); });
         }
       });
-    } catch(e) { res.end(JSON.stringify({ ok:false, error:e.message })); }
+    } catch(e) { res.end(JSON.stringify({ok:false,error:e.message})); }
   });
-}).listen(PORT, '127.0.0.1', () => console.log('POS Print Agent listening on http://127.0.0.1:' + PORT));
-
-function cleanup(...files) { files.forEach(f => { try { fs.unlinkSync(f); } catch(_){} }); }
+}).listen(PORT,'127.0.0.1',()=>{ console.log('POS Print Agent running on port '+PORT); });
 `;
-  res.setHeader('Content-Type', 'application/javascript');
-  res.setHeader('Content-Disposition', 'attachment; filename="pos-print-agent.js"');
-  res.send(script);
+
+  // Escape single quotes inside the agent for the PS1 here-string (double them)
+  const agentEscaped = agentJs.replace(/'/g, "''");
+
+  const ps1 = `# POS Print Agent Installer
+# Right-click this file -> "Run with PowerShell"
+# Sets up silent background printing. Runs automatically when Windows starts.
+
+$ErrorActionPreference = 'Stop'
+$AgentDir = "$env:APPDATA\\POSPrintAgent"
+
+Write-Host ""
+Write-Host "POS Print Agent Setup" -ForegroundColor Cyan
+Write-Host "=====================" -ForegroundColor Cyan
+
+# 1. Check Node.js
+Write-Host "[1/4] Checking Node.js..." -NoNewline
+$nodeOk = $null -ne (Get-Command node -ErrorAction SilentlyContinue)
+if (-not $nodeOk) {
+  Write-Host " not found. Installing via winget..." -ForegroundColor Yellow
+  winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+  $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
+  if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    Write-Host "Node.js install failed. Please install from https://nodejs.org and re-run this script." -ForegroundColor Red
+    Read-Host "Press Enter to exit"
+    exit 1
+  }
+  Write-Host " installed." -ForegroundColor Green
+} else { Write-Host " OK" -ForegroundColor Green }
+
+# 2. Create agent directory and write script
+Write-Host "[2/4] Installing agent..." -NoNewline
+New-Item -ItemType Directory -Force -Path $AgentDir | Out-Null
+$agentScript = @'
+${agentEscaped}
+'@
+$agentScript | Out-File -FilePath "$AgentDir\\pos-print-agent.js" -Encoding UTF8
+Write-Host " done" -ForegroundColor Green
+
+# 3. Install pdf-to-printer package
+Write-Host "[3/4] Installing print library..." -NoNewline
+Push-Location $AgentDir
+npm install pdf-to-printer --save --loglevel=error 2>&1 | Out-Null
+Pop-Location
+Write-Host " done" -ForegroundColor Green
+
+# 4. Register as Windows startup task
+Write-Host "[4/4] Registering startup task..." -NoNewline
+$nodePath = (Get-Command node).Source
+$action   = New-ScheduledTaskAction -Execute $nodePath -Argument "`"$AgentDir\\pos-print-agent.js`"" -WorkingDirectory $AgentDir
+$trigger  = New-ScheduledTaskTrigger -AtLogOn
+$settings = New-ScheduledTaskSettingsSet -Hidden -ExecutionTimeLimit 0 -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+$principal= New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
+Unregister-ScheduledTask -TaskName "POSPrintAgent" -Confirm:$false -ErrorAction SilentlyContinue
+Register-ScheduledTask -TaskName "POSPrintAgent" -Action $action -Trigger $trigger -Settings $settings -Principal $principal | Out-Null
+Start-ScheduledTask -TaskName "POSPrintAgent"
+Write-Host " done" -ForegroundColor Green
+
+Write-Host ""
+Write-Host "Setup complete!" -ForegroundColor Green
+Write-Host "The print agent is running and will start automatically with Windows." -ForegroundColor Green
+Write-Host "You can now close this window." -ForegroundColor Gray
+Write-Host ""
+Start-Sleep -Seconds 3
+`;
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="install-pos-print-agent.ps1"');
+  res.send(ps1);
+});
+
+// ── Print Agent ping (public — lets the browser test if agent is running) ────
+router.get('/print-agent-ping', requireAuth, requirePOS, async (req, res) => {
+  const port = (req.query.port || '9191').replace(/\D/g, '');
+  try {
+    const r = await fetch(`http://127.0.0.1:${port}/ping`, { signal: AbortSignal.timeout(3000) });
+    const j = await r.json();
+    res.json(j);
+  } catch(e) {
+    res.json({ ok: false, error: 'not_running' });
+  }
 });
 
 // ── Floor Plan Editor ─────────────────────────────────────────────────────────
