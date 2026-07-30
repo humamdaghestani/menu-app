@@ -1103,6 +1103,57 @@ router.get('/print-agent-js', requireAuth, requirePOS, (req, res) => {
   res.send(agentLines.join('\n'));
 });
 
+// ── Print Agent setup BAT download ────────────────────────────────────────────
+router.get('/print-agent-bat', requireAuth, requirePOS, (req, res) => {
+  const bat = [
+    '@echo off',
+    'title POS Print Agent Setup',
+    'echo.',
+    'echo  POS Print Agent Setup',
+    'echo  =====================',
+    'echo.',
+    'echo [1/3] Checking Node.js...',
+    'where node >nul 2>&1',
+    'if %errorlevel% neq 0 (',
+    '  echo  Node.js not found. Opening download page...',
+    '  start https://nodejs.org/en/download/',
+    '  echo  Install Node.js then run this file again.',
+    '  pause',
+    '  exit /b 1',
+    ')',
+    'echo  OK',
+    'echo [2/3] Installing agent...',
+    'set AGENT_DIR=%APPDATA%\\POSPrintAgent',
+    'if not exist "%AGENT_DIR%" mkdir "%AGENT_DIR%"',
+    'copy /y "%~dp0pos-print-agent.js" "%AGENT_DIR%\\pos-print-agent.js" >nul',
+    'if %errorlevel% neq 0 (',
+    '  echo  ERROR: pos-print-agent.js must be in the same folder as this file.',
+    '  pause',
+    '  exit /b 1',
+    ')',
+    'echo  Done',
+    'echo [3/3] Setting up auto-start with Windows...',
+    'set STARTUP=%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup',
+    '(',
+    '  echo @echo off',
+    '  echo start "" /b node "%AGENT_DIR%\\pos-print-agent.js"',
+    ') > "%STARTUP%\\POSPrintAgent.bat"',
+    'for /f "tokens=5" %%a in (\'netstat -aon ^| find ":9191 "\') do taskkill /f /pid %%a >nul 2>&1',
+    'timeout /t 1 /nobreak >nul',
+    'start "" /b node "%AGENT_DIR%\\pos-print-agent.js"',
+    'timeout /t 2 /nobreak >nul',
+    'echo  Done - agent is running!',
+    'echo.',
+    'echo  Setup complete! Agent will auto-start every time Windows starts.',
+    'echo  Go to POS Settings and click Test Connection to verify.',
+    'echo.',
+    'pause',
+  ].join('\r\n');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="setup-agent.bat"');
+  res.send(bat);
+});
+
 // ── Print Agent ping ───────────────────────────────────────────────────────────
 router.get('/print-agent-ping', requireAuth, requirePOS, async (req, res) => {
   const port = (req.query.port || '9191').replace(/\D/g, '');

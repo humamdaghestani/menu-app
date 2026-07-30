@@ -661,23 +661,15 @@
           <!-- Silent Printing -->
           <div class="card">
             <h2>Silent Printing (No Dialog)</h2>
-            <p class="card-desc">Run a tiny agent on the POS computer — press Print and receipts go straight to the printer with no dialog.</p>
+            <p class="card-desc">Press Print and receipts go straight to the printer — no dialog, no delay.</p>
 
-            <div style="background:#1a1a2e;border-radius:8px;padding:12px 14px;margin:0 0 14px;font-size:.82rem;color:#aaa;line-height:1.8">
-              <strong style="color:#c9b8ff">One-time setup (on the POS computer):</strong><br>
-              1. Enter the printer IP:Port below and save, then click <strong>Download Installer</strong>.<br>
-              2. Right-click the downloaded file → <strong>Run with PowerShell</strong>.<br>
-              3. It installs automatically and runs in the background — done.<br>
-              <span style="color:#666;font-size:.75rem">Requires Windows + Node.js (auto-installed if missing). Agent auto-starts with Windows. No npm packages required.</span>
-            </div>
-
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
               <div>
                 <label>Network Printer IP:Port <span style="color:#666;font-weight:400">(e.g. 192.168.1.178:9100)</span></label>
                 <input type="text" name="pos_print_agent_printer"
                   value="<%= tenant.pos_print_agent_printer || '' %>"
                   placeholder="192.168.1.178:9100" />
-                <div style="font-size:.72rem;color:#555;margin-top:4px">The IP address and port of your receipt printer on the local network</div>
+                <div style="font-size:.72rem;color:#555;margin-top:4px">IP address and port of your receipt printer</div>
               </div>
               <div>
                 <label>Agent Port <span style="color:#666;font-weight:400">(default 9191)</span></label>
@@ -687,18 +679,36 @@
               </div>
             </div>
 
-            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <a href="/pos/print-agent-js" class="btn btn-primary btn-sm" download="pos-print-agent.js">⬇ Download Agent</a>
+            <div style="background:#1a1a2e;border-radius:10px;padding:16px 18px;margin-bottom:14px">
+              <div style="font-weight:700;color:#c9b8ff;margin-bottom:12px;font-size:.88rem">One-time setup on each POS computer:</div>
+
+              <div style="display:flex;flex-direction:column;gap:10px">
+
+                <div style="display:flex;align-items:center;gap:14px">
+                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+                  <div style="font-size:.83rem;color:#ccc">Save settings above, then download both files to the same folder (e.g. Desktop):</div>
+                </div>
+                <div style="display:flex;gap:8px;margin-left:38px">
+                  <a href="/pos/print-agent-js" class="btn btn-primary btn-sm" download="pos-print-agent.js">⬇ Agent File</a>
+                  <a href="/pos/print-agent-bat" class="btn btn-primary btn-sm" download="setup-agent.bat">⬇ Setup File</a>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:14px;margin-top:4px">
+                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">2</div>
+                  <div style="font-size:.83rem;color:#ccc">Double-click <strong style="color:#fff">setup-agent.bat</strong> — it installs the agent and sets it to auto-start with Windows. (If Node.js is missing it will open the download page for you.)</div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:14px">
+                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+                  <div style="font-size:.83rem;color:#ccc">Click <strong style="color:#fff">Test Connection</strong> — if it turns green you're done.</div>
+                </div>
+
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;align-items:center">
               <button type="button" class="btn btn-ghost btn-sm" id="agentTestBtn" onclick="testAgent()">🔌 Test Connection</button>
               <span id="agentTestResult" style="font-size:.8rem"></span>
-            </div>
-            <div style="margin-top:12px;background:#111;border-radius:8px;padding:12px 14px;font-size:.8rem;color:#aaa;line-height:2">
-              <strong style="color:#c9b8ff">How to start the agent:</strong><br>
-              1. Click <strong>Download Agent</strong> above — save the file somewhere (e.g. Desktop)<br>
-              2. Open <strong>Command Prompt</strong> on the POS computer<br>
-              3. Run: <code style="background:#1a1a2e;color:#7fdbff;padding:1px 7px;border-radius:4px">node "C:\Users\ASUS\Desktop\pos-print-agent.js"</code><br>
-              4. Keep that window open, then click <strong>Test Connection</strong><br>
-              <span style="color:#555;font-size:.72rem">To auto-start with Windows: press Win+R → type <code style="color:#888">shell:startup</code> → create a shortcut to the above command.</span>
             </div>
           </div>
 
