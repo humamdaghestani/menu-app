@@ -1,4 +1,7 @@
-<!DOCTYPE html>
+<%
+let _customLabels = {};
+try { _customLabels = JSON.parse(tenant.bill_custom_labels || '{}'); } catch(_e) {}
+%><!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1181,11 +1184,84 @@ document.addEventListener('keydown', e => {
 </script>
 
 <script>
-  // ── Print bill: open server-rendered bill page in new window ─────────────
-  function printBill() {
+function printBill() {
+  const agentPort   = '<%- (tenant.pos_print_agent_port  || "").replace(/\D/g,"") %>';
+  const printerAddr = <%- JSON.stringify(tenant.pos_print_agent_printer || '') %>;
+
+  if (!agentPort || !printerAddr || !printerAddr.includes(':')) {
     window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
+    return;
   }
 
+  const [printerIp, prPStr] = printerAddr.split(':');
+  const printerPort = parseInt(prPStr) || 9100;
+
+  const { subtotal, discount, svcFee, grandTotal } = _totals();
+  const exRate  = <%= parseFloat(exchangeRate) || 1 %>;
+  const showIQD = <%- (tenant.bill_show_iqd !== false) ? 'true' : 'false' %>;
+
+  const BILL_LABELS = {
+    en: { subtotal:'Sub Total', svcfee:'Service', discount:'Discount', total:'Net Total', served_by:'Served by', thanks:'Thank you!' },
+    ar: { subtotal:'المجموع', svcfee:'رسوم الخدمة', discount:'خصم', total:'المجموع الكلي', served_by:'خدمك', thanks:'شكراً لكم!' },
+    ku: { subtotal:'گشتی', svcfee:'سێرڤس', discount:'دشکاندەن', total:'کۆی گشتی', served_by:'تو خزمەت کردن لەلایان', thanks:'سوپاس!' },
+  };
+  const customLabels = <%- JSON.stringify(_customLabels) %>;
+  const billLang     = <%- JSON.stringify(tenant.bill_language || 'en') %>;
+  const langs        = billLang.split('_');
+  function L(key) {
+    if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
+    return langs.map(l => (BILL_LABELS[l] || BILL_LABELS.en)[key] || '').filter((v,i,a) => a.indexOf(v)===i && v).join(' - ');
+  }
+
+  const _nd = new Date();
+  const _zp = n => String(n).padStart(2,'0');
+  const _hh = _nd.getHours();
+  const dateStr = _zp(_nd.getDate())+'/'+_zp(_nd.getMonth()+1)+'/'+_nd.getFullYear()+' '+(_hh>=12?'PM':'AM')+' '+_zp(_hh%12||12)+':'+_zp(_nd.getMinutes())+':'+_zp(_nd.getSeconds());
+
+  const iqd_total = (showIQD && exRate > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
+    ? Math.round(grandTotal * exRate).toLocaleString() : null;
+
+  const payload = {
+    type:          'bill',
+    printer_ip:    printerIp,
+    printer_port:  printerPort,
+    paper_width_mm: (<%- JSON.stringify(tenant.bill_paper_width || '80mm') %> === '58mm') ? 58 : 80,
+    shop:       <%- JSON.stringify(tenant.name || '') %>,
+    header:     <%- JSON.stringify(tenant.bill_custom_header || '') %>,
+    footer:     <%- JSON.stringify(tenant.bill_custom_footer || '') %>,
+    bill_id:    ORDER_ID,
+    table:      <%- JSON.stringify(order.table_name || '') %>,
+    order_type: <%- JSON.stringify(order.order_type === 'takeaway' ? 'Takeaway' : 'Dine-in') %>,
+    note:       <%- JSON.stringify(order.note || '') %>,
+    currency:   CUR,
+    date:       dateStr,
+    items:      _items.map(i => ({ qty: i.quantity, name: i.name, price: i.price, note: i.notes })),
+    labels: {
+      subtotal:  L('subtotal'),
+      svcfee:    L('svcfee'),
+      discount:  L('discount'),
+      total:     L('total'),
+      served_by: L('served_by'),
+      thanks:    L('thanks'),
+      cashier:   <%- JSON.stringify(currentUser.name || currentUser.username || '') %>,
+    },
+    subtotal:  subtotal > 0 ? subtotal.toFixed(2)  : null,
+    svcfee:    svcFee   > 0 ? svcFee.toFixed(2)    : null,
+    discount:  discount > 0 ? discount.toFixed(2)  : null,
+    total:     grandTotal.toFixed(2),
+    iqd_total: iqd_total,
+  };
+
+  fetch('http://127.0.0.1:' + agentPort + '/print', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(r => {
+    if (!r.ok) alert('Print failed: ' + (r.error || 'Unknown error'));
+  }).catch(() => {
+    window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
+  });
+}
 </script>
 </body>
 </html>

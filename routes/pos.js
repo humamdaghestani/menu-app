@@ -808,77 +808,128 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
-// ── Print Agent installer (PowerShell — embeds agent as base64, registers startup task) ──
+// ── Print Agent installer (PowerShell — embeds ESC/POS agent as base64, registers startup task) ──
 router.get('/print-agent-installer', requireAuth, requirePOS, (req, res) => {
-  // Agent code built as plain string array (no backtick template literals — avoids nesting issues)
+  // ESC/POS TCP agent — pure Node.js built-ins, no npm packages needed
   const agentLines = [
-    "const http = require('http');",
-    "const { exec, execFile } = require('child_process');",
-    "const fs   = require('fs');",
-    "const path = require('path');",
-    "const os   = require('os');",
-    "const PORT = 9191;",
-    "let ptp; try { ptp = require('pdf-to-printer'); } catch(_) {}",
-    "http.createServer(function(req, res) {",
-    "  res.setHeader('Access-Control-Allow-Origin', '*');",
-    "  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');",
-    "  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');",
-    "  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }",
-    "  if (req.method === 'GET' && req.url === '/ping') { res.end(JSON.stringify({ok:true})); return; }",
-    "  if (req.method !== 'POST' || req.url !== '/print') { res.writeHead(404); res.end(); return; }",
-    "  let body = '';",
-    "  req.on('data', function(d){ body += d.toString(); });",
-    "  req.on('end', function(){",
-    "    try {",
-    "      const p = JSON.parse(body), html = p.html, printer = p.printer;",
-    "      const tmp = path.join(os.tmpdir(), 'pos-rcpt-' + Date.now() + '.html');",
-    "      fs.writeFileSync(tmp, html, 'utf8');",
-    "      const browsers = [",
-    "        'C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',",
-    "        'C:\\\\Program Files (x86)\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',",
-    "        (process.env.LOCALAPPDATA||'') + '\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe',",
-    "        'C:\\\\Program Files\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe',",
-    "        'C:\\\\Program Files (x86)\\\\Microsoft\\\\Edge\\\\Application\\\\msedge.exe',",
-    "      ];",
-    "      const browser = browsers.find(function(x){ try{ return fs.existsSync(x); }catch(e){ return false; } });",
-    "      if (!browser) { try{fs.unlinkSync(tmp);}catch(e){} res.end(JSON.stringify({ok:false,error:'Chrome/Edge not found'})); return; }",
-    "      const pdf = tmp.replace('.html','.pdf');",
-    "      const url = 'file:///' + tmp.replace(/\\\\/g, '/');",
-    "      const cmd = '\"' + browser + '\" --headless=new --disable-gpu --print-to-pdf=\"' + pdf + '\" --print-to-pdf-no-header \"' + url + '\"';",
-    "      exec(cmd, {timeout:20000}, function(err){",
-    "        if (err || !fs.existsSync(pdf)){ try{fs.unlinkSync(tmp);}catch(e){} res.end(JSON.stringify({ok:false,error:'PDF generation failed'})); return; }",
-    "        function cleanup(){ setTimeout(function(){ try{fs.unlinkSync(tmp);}catch(e){} try{fs.unlinkSync(pdf);}catch(e){} },8000); }",
-    "        if (ptp){",
-    "          ptp.print(pdf,{printer:printer}).then(function(){ cleanup(); res.end(JSON.stringify({ok:true})); }).catch(function(e){ cleanup(); res.end(JSON.stringify({ok:false,error:e.message})); });",
-    "        } else {",
-    "          var psTmp = pdf + '.ps1';",
-    "          fs.writeFileSync(psTmp, 'Start-Process -FilePath \"' + pdf.replace(/\"/g,'') + '\" -Verb PrintTo -ArgumentList \"' + printer.replace(/\"/g,'') + '\"', 'utf8');",
-    "          execFile('powershell',['-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-File',psTmp],{timeout:30000},function(e2){",
-    "            setTimeout(function(){ try{fs.unlinkSync(psTmp);}catch(e){} },5000);",
-    "            cleanup(); res.end(JSON.stringify({ok:!e2,error:e2?e2.message:null}));",
-    "          });",
-    "        }",
+    "var http = require('http');",
+    "var net  = require('net');",
+    "var PORT = 9191;",
+    "function printTCP(ip, port, buf) {",
+    "  return new Promise(function(resolve, reject) {",
+    "    var sock = new net.Socket();",
+    "    sock.setTimeout(5000);",
+    "    sock.connect(port, ip, function() {",
+    "      sock.write(buf, function() {",
+    "        setTimeout(function() { sock.destroy(); resolve(); }, 400);",
     "      });",
-    "    } catch(e){ res.end(JSON.stringify({ok:false,error:e.message})); }",
+    "    });",
+    "    sock.on('error', function(e) { sock.destroy(); reject(e); });",
+    "    sock.on('timeout', function() { sock.destroy(); reject(new Error('Printer timeout')); });",
     "  });",
-    "}).listen(PORT,'127.0.0.1',function(){ console.log('POS Print Agent running on port '+PORT); });",
+    "}",
+    "function buildEscPos(data) {",
+    "  var buf = [];",
+    "  function txt(s) { var b = Buffer.from(String(s), 'utf8'); for (var i=0;i<b.length;i++) buf.push(b[i]); }",
+    "  function cmd() { for (var i=0;i<arguments.length;i++) buf.push(arguments[i]); }",
+    "  var pw = (data.paper_width_mm || 80) >= 80 ? 48 : 32;",
+    "  cmd(0x1B, 0x40);",
+    "  if (data.type === 'bill') {",
+    "    var CUR = data.currency || '$';",
+    "    function fmtAmt(n) { n = parseFloat(n)||0; return CUR + (n===Math.round(n)?Math.round(n).toString():n.toFixed(2)); }",
+    "    function rpad(s,n) { s=String(s); while(s.length<n) s+=' '; return s.slice(0,n); }",
+    "    function ln2(a,b,w) { return rpad(a, w-String(b).length)+String(b); }",
+    "    cmd(0x1B, 0x61, 0x01); cmd(0x1B, 0x21, 0x10);",
+    "    txt((data.shop||'')+'\n');",
+    "    cmd(0x1B, 0x21, 0x00);",
+    "    if (data.header) txt(data.header+'\n');",
+    "    txt('--------------------------------\n');",
+    "    cmd(0x1B, 0x61, 0x00);",
+    "    txt('Bill #'+(data.bill_id||'')+'  '+(data.table||'')+'\n');",
+    "    txt((data.order_type||'Dine-in')+'  '+(data.date||'')+'\n');",
+    "    if (data.note) txt('Note: '+data.note+'\n');",
+    "    txt('================================\n');",
+    "    var lbls = data.labels || {};",
+    "    var items = data.items || [];",
+    "    for (var i=0;i<items.length;i++) {",
+    "      var it = items[i];",
+    "      var pstr = fmtAmt((parseFloat(it.price)||0)*(parseInt(it.qty)||1));",
+    "      cmd(0x1B,0x45,0x01);",
+    "      txt(ln2(it.qty+'x '+it.name, pstr, pw)+'\n');",
+    "      cmd(0x1B,0x45,0x00);",
+    "      if (it.note) txt('   >> '+it.note+'\n');",
+    "    }",
+    "    txt('================================\n');",
+    "    if (data.subtotal) txt(ln2(lbls.subtotal||'Sub Total', fmtAmt(data.subtotal), pw)+'\n');",
+    "    if (data.svcfee)   txt(ln2((lbls.svcfee||'Service')+':', '+'+fmtAmt(data.svcfee), pw)+'\n');",
+    "    if (data.discount) txt(ln2(lbls.discount||'Discount', '-'+fmtAmt(data.discount), pw)+'\n');",
+    "    cmd(0x1B,0x21,0x10);",
+    "    txt(ln2(lbls.total||'Net Total', fmtAmt(data.total), pw)+'\n');",
+    "    cmd(0x1B,0x21,0x00);",
+    "    if (data.iqd_total) txt(ln2('IQD', data.iqd_total, pw)+'\n');",
+    "    txt('--------------------------------\n');",
+    "    cmd(0x1B,0x61,0x01);",
+    "    if (lbls.cashier) txt((lbls.served_by||'Served by')+': '+lbls.cashier+'\n');",
+    "    txt((data.footer||lbls.thanks||'Thank you!')+'\n');",
+    "  } else if (data.type === 'order') {",
+    "    cmd(0x1B,0x61,0x01); cmd(0x1B,0x21,0x30);",
+    "    txt((data.table||'Takeaway')+'\n');",
+    "    cmd(0x1B,0x21,0x00); cmd(0x1B,0x61,0x00);",
+    "    var t = new Date(); var hh=t.getHours()%12||12; var mm=String(t.getMinutes()).padStart(2,'0'); var ap=t.getHours()>=12?'PM':'AM';",
+    "    txt('Order #'+(data.order_id||'')+'   '+hh+':'+mm+' '+ap+'\n');",
+    "    if (data.order_type) txt(data.order_type+'\n');",
+    "    if (data.note) txt('Note: '+data.note+'\n');",
+    "    txt('--------------------------------\n');",
+    "    var items = data.items || [];",
+    "    for (var i=0;i<items.length;i++) {",
+    "      var it = items[i];",
+    "      cmd(0x1B,0x45,0x01);",
+    "      txt('x'+it.qty+'  '+it.name+'\n');",
+    "      cmd(0x1B,0x45,0x00);",
+    "      if (it.note) txt('   >> '+it.note+'\n');",
+    "    }",
+    "    txt('================================\n');",
+    "  }",
+    "  cmd(0x0A,0x0A,0x0A); cmd(0x1D,0x56,0x01);",
+    "  return Buffer.from(buf);",
+    "}",
+    "http.createServer(function(req, res) {",
+    "  res.setHeader('Access-Control-Allow-Origin','*');",
+    "  res.setHeader('Access-Control-Allow-Methods','POST,GET,OPTIONS');",
+    "  res.setHeader('Access-Control-Allow-Headers','Content-Type');",
+    "  if (req.method==='OPTIONS') { res.writeHead(204); res.end(); return; }",
+    "  if (req.method==='GET' && req.url==='/ping') { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({ok:true,version:'2.0'})); return; }",
+    "  if (req.method==='POST' && req.url==='/print') {",
+    "    var body='';",
+    "    req.on('data',function(d){ body+=d.toString(); });",
+    "    req.on('end',function() {",
+    "      var data; try { data=JSON.parse(body); } catch(e) { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({ok:false,error:'Invalid JSON'})); return; }",
+    "      var ip=data.printer_ip; var port=parseInt(data.printer_port)||9100;",
+    "      if (!ip) { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({ok:false,error:'printer_ip required'})); return; }",
+    "      var buf; try { buf=buildEscPos(data); } catch(e) { res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({ok:false,error:'Build error: '+e.message})); return; }",
+    "      printTCP(ip,port,buf).then(function(){ res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({ok:true})); }).catch(function(e){ res.writeHead(200,{'Content-Type':'application/json'}); res.end(JSON.stringify({ok:false,error:e.message})); });",
+    "    });",
+    "    return;",
+    "  }",
+    "  res.writeHead(404); res.end();",
+    "}).listen(PORT,'127.0.0.1',function(){ console.log('POS Print Agent v2 running on http://127.0.0.1:'+PORT); });",
   ];
 
   const agentCode = agentLines.join('\n');
   const agentB64  = Buffer.from(agentCode, 'utf8').toString('base64');
 
-  const ps1 = `# POS Print Agent Installer
+  const ps1 = `# POS Print Agent Installer v2
 # Right-click this file -> Run with PowerShell
-# Installs a silent background print service that auto-starts with Windows.
+# Installs a silent ESC/POS print agent — no npm packages needed.
 
 $ErrorActionPreference = 'Stop'
 $AgentDir = "$env:APPDATA\\POSPrintAgent"
 
 Write-Host ""
-Write-Host "POS Print Agent Setup" -ForegroundColor Cyan
-Write-Host "=====================" -ForegroundColor Cyan
+Write-Host "POS Print Agent v2 Setup" -ForegroundColor Cyan
+Write-Host "========================" -ForegroundColor Cyan
 
-Write-Host "[1/4] Checking Node.js..." -NoNewline
+Write-Host "[1/3] Checking Node.js..." -NoNewline
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Write-Host " not found. Installing via winget..." -ForegroundColor Yellow
   winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements | Out-Null
@@ -890,7 +941,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   Write-Host " installed." -ForegroundColor Green
 } else { Write-Host " OK" -ForegroundColor Green }
 
-Write-Host "[2/4] Writing agent..." -NoNewline
+Write-Host "[2/3] Writing agent..." -NoNewline
 New-Item -ItemType Directory -Force -Path $AgentDir | Out-Null
 $b64   = "${agentB64}"
 $bytes = [System.Convert]::FromBase64String($b64)
@@ -898,13 +949,7 @@ $txt   = [System.Text.Encoding]::UTF8.GetString($bytes)
 [System.IO.File]::WriteAllText("$AgentDir\\pos-print-agent.js", $txt, [System.Text.Encoding]::UTF8)
 Write-Host " done" -ForegroundColor Green
 
-Write-Host "[3/4] Installing print library..." -NoNewline
-Push-Location $AgentDir
-npm install pdf-to-printer --save --loglevel=error | Out-Null
-Pop-Location
-Write-Host " done" -ForegroundColor Green
-
-Write-Host "[4/4] Registering startup task..." -NoNewline
+Write-Host "[3/3] Registering startup task..." -NoNewline
 $nodePath = (Get-Command node).Source
 $q        = [char]34
 $agentArg = $q + $AgentDir + "\\pos-print-agent.js" + $q

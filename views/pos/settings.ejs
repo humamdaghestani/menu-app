@@ -661,23 +661,23 @@
           <!-- Silent Printing -->
           <div class="card">
             <h2>Silent Printing (No Dialog)</h2>
-            <p class="card-desc">Configure a local print agent to send bills directly to a named printer — no browser dialog, one click to print.</p>
+            <p class="card-desc">Run a tiny agent on the POS computer — press Print and receipts go straight to the printer with no dialog.</p>
 
             <div style="background:#1a1a2e;border-radius:8px;padding:12px 14px;margin:0 0 14px;font-size:.82rem;color:#aaa;line-height:1.8">
               <strong style="color:#c9b8ff">One-time setup (on the POS computer):</strong><br>
-              1. Click <strong>Download Installer</strong> below.<br>
+              1. Enter the printer IP:Port below and save, then click <strong>Download Installer</strong>.<br>
               2. Right-click the downloaded file → <strong>Run with PowerShell</strong>.<br>
-              3. It installs everything automatically and runs in the background — done.<br>
-              <span style="color:#666;font-size:.75rem">Requires Windows + Node.js (auto-installed if missing). Starts automatically when Windows starts.</span>
+              3. It installs automatically and runs in the background — done.<br>
+              <span style="color:#666;font-size:.75rem">Requires Windows + Node.js (auto-installed if missing). Agent auto-starts with Windows. No npm packages required.</span>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
               <div>
-                <label>Printer Name <span style="color:#666;font-weight:400">(exact Windows name)</span></label>
+                <label>Network Printer IP:Port <span style="color:#666;font-weight:400">(e.g. 192.168.1.178:9100)</span></label>
                 <input type="text" name="pos_print_agent_printer"
                   value="<%= tenant.pos_print_agent_printer || '' %>"
-                  placeholder="e.g. EPSON L6490" />
-                <div style="font-size:.72rem;color:#555;margin-top:4px">Windows → Settings → Bluetooth &amp; devices → Printers &amp; scanners → printer name</div>
+                  placeholder="192.168.1.178:9100" />
+                <div style="font-size:.72rem;color:#555;margin-top:4px">The IP address and port of your receipt printer on the local network</div>
               </div>
               <div>
                 <label>Agent Port <span style="color:#666;font-weight:400">(default 9191)</span></label>

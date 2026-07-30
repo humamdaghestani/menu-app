@@ -229,26 +229,51 @@ function printOrderTicket() {
   const btn = document.getElementById('btnPrintOrder');
   btn.disabled = true;
   btn.querySelector('.big').textContent = '⏳';
-  fetch('/captain/order/<%= order.id %>/print-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-    .then(r => r.json())
-    .then(r => {
-      btn.disabled = false;
-      btn.querySelector('.big').textContent = '🖨️';
-      if (r.ok) {
-        const t = document.createElement('div');
-        t.className = 'sent-toast';
-        t.textContent = '✓ Printed!';
-        document.body.appendChild(t);
-        setTimeout(() => t.remove(), 2500);
-      } else {
-        alert(r.error || 'Print failed');
-      }
-    })
-    .catch(() => {
-      btn.disabled = false;
-      btn.querySelector('.big').textContent = '🖨️';
-      alert('Could not reach server');
-    });
+
+  function resetBtn() { btn.disabled = false; btn.querySelector('.big').textContent = '🖨️'; }
+  function showToast(msg) {
+    const t = document.createElement('div'); t.className = 'sent-toast'; t.textContent = msg;
+    document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+  }
+
+  const agentPort   = '<%- (tenant.pos_print_agent_port  || "").replace(/\D/g,"") %>';
+  const printerAddr = <%- JSON.stringify(tenant.pos_print_agent_printer || '') %>;
+
+  if (!agentPort || !printerAddr || !printerAddr.includes(':')) {
+    // No agent configured — try server-side print (may fail for cloud deployments)
+    fetch('/captain/order/<%= order.id %>/print-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+      .then(r => r.json())
+      .then(r => { resetBtn(); if (r.ok) showToast('✓ Printed!'); else alert(r.error || 'Print failed'); })
+      .catch(() => { resetBtn(); alert('Could not reach printer. Configure Print Agent in POS Settings.'); });
+    return;
+  }
+
+  const [printerIp, prPStr] = printerAddr.split(':');
+  const printerPort = parseInt(prPStr) || 9100;
+
+  const payload = {
+    type:        'order',
+    printer_ip:  printerIp,
+    printer_port: printerPort,
+    order_id:    <%= order.id %>,
+    table:       <%- JSON.stringify(order.table_name || '') %>,
+    order_type:  '<%- order.order_type === "takeaway" ? "Takeaway" : "Dine-in" %>',
+    note:        <%- JSON.stringify(order.note || '') %>,
+    items:       <%- JSON.stringify(orderItems.map(i => ({ qty: i.quantity, name: i.name, note: i.notes || null }))) %>,
+  };
+
+  fetch('http://127.0.0.1:' + agentPort + '/print', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).then(r => r.json()).then(r => {
+    resetBtn();
+    if (r.ok) showToast('✓ Printed!');
+    else alert('Print failed: ' + (r.error || 'Unknown error'));
+  }).catch(() => {
+    resetBtn();
+    alert('Print agent not running. Install it from POS Settings → Silent Printing.');
+  });
 }
 </script>
 </body>
