@@ -975,14 +975,14 @@ try {
   Write-Host " OK — agent is running!" -ForegroundColor Green
 } catch {
   Write-Host " could not verify. Check that Node.js works:" -ForegroundColor Yellow
-  Write-Host "  node `"$agentJs`"" -ForegroundColor Cyan
+  Write-Host ("  node " + $q + $agentJs + $q) -ForegroundColor Cyan
 }
 
 Write-Host ""
 Write-Host "Done! Agent auto-starts with Windows. Go back to POS Settings and click Test Connection." -ForegroundColor Green
 Write-Host ""
 Write-Host "If Test Connection still fails, open Command Prompt and run:" -ForegroundColor Gray
-Write-Host "  node `"$agentJs`"" -ForegroundColor Cyan
+Write-Host ("  node " + $q + $agentJs + $q) -ForegroundColor Cyan
 Write-Host "Keep that window open while using POS." -ForegroundColor Gray
 Write-Host ""
 Read-Host "Press Enter to close"
