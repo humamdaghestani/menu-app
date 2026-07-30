@@ -952,20 +952,40 @@ Write-Host " done" -ForegroundColor Green
 Write-Host "[3/3] Registering startup task..." -NoNewline
 $nodePath = (Get-Command node).Source
 $q        = [char]34
-$agentArg = $q + $AgentDir + "\\pos-print-agent.js" + $q
+$agentJs  = "$AgentDir\\pos-print-agent.js"
+$agentArg = $q + $agentJs + $q
 $action   = New-ScheduledTaskAction -Execute $nodePath -Argument $agentArg -WorkingDirectory $AgentDir
 $trigger  = New-ScheduledTaskTrigger -AtLogOn
 $settings = New-ScheduledTaskSettingsSet -Hidden -ExecutionTimeLimit 0 -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
 $principal= New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
 Unregister-ScheduledTask -TaskName "POSPrintAgent" -Confirm:$false -ErrorAction SilentlyContinue
 Register-ScheduledTask -TaskName "POSPrintAgent" -Action $action -Trigger $trigger -Settings $settings -Principal $principal | Out-Null
-Start-ScheduledTask -TaskName "POSPrintAgent"
 Write-Host " done" -ForegroundColor Green
 
+Write-Host "[+] Starting agent now..." -NoNewline
+# Kill any old agent process on port 9191 first
+$old = Get-NetTCPConnection -LocalPort 9191 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess
+if ($old) { Stop-Process -Id $old -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1 }
+# Launch agent directly (not via scheduled task, so it works immediately)
+Start-Process -FilePath $nodePath -ArgumentList $agentArg -WorkingDirectory $AgentDir -WindowStyle Hidden
+Start-Sleep -Seconds 2
+# Verify it's listening
+try {
+  $r = Invoke-WebRequest -Uri "http://127.0.0.1:9191/ping" -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
+  Write-Host " OK — agent is running!" -ForegroundColor Green
+} catch {
+  Write-Host " could not verify. Check that Node.js works:" -ForegroundColor Yellow
+  Write-Host "  node `"$agentJs`"" -ForegroundColor Cyan
+}
+
 Write-Host ""
-Write-Host "Done! Print agent is running and will auto-start with Windows." -ForegroundColor Green
-Write-Host "You can now close this window." -ForegroundColor Gray
-Start-Sleep -Seconds 3
+Write-Host "Done! Agent auto-starts with Windows. Go back to POS Settings and click Test Connection." -ForegroundColor Green
+Write-Host ""
+Write-Host "If Test Connection still fails, open Command Prompt and run:" -ForegroundColor Gray
+Write-Host "  node `"$agentJs`"" -ForegroundColor Cyan
+Write-Host "Keep that window open while using POS." -ForegroundColor Gray
+Write-Host ""
+Read-Host "Press Enter to close"
 `;
 
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
