@@ -107,10 +107,11 @@ router.get('/order/:id', requireAuth, requireCaptain, async (req, res) => {
     const tenant = await getTenant(req.user.tenantId);
     const oRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
     if (!oRes.rows[0]) return res.redirect('/captain');
-    const [items, categories, menuItems] = await Promise.all([
+    const [items, categories, menuItems, printersRes] = await Promise.all([
       db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.id]),
       db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
       db.query('SELECT * FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY sort_order', [req.user.tenantId]),
+      db.query("SELECT * FROM pos_printers WHERE tenant_id=$1 AND is_active=true AND connection_type='network' AND ip_address IS NOT NULL ORDER BY id", [req.user.tenantId]),
     ]);
     const subtotal = calcSubtotal(items.rows);
     res.render('captain/order', {
@@ -118,6 +119,7 @@ router.get('/order/:id', requireAuth, requireCaptain, async (req, res) => {
       orderItems: items.rows,
       categories: categories.rows,
       menuItems: menuItems.rows,
+      printers: printersRes.rows,
       subtotal,
       sent: req.query.sent === '1',
       currentUser: req.user,
@@ -178,24 +180,15 @@ router.post('/order/:id/item/:itemId/qty', requireAuth, requireCaptain, async (r
   } catch (err) { res.redirect('/captain/order/' + req.params.id); }
 });
 
-// POST /captain/order/:id/send-kitchen
+// POST /captain/order/:id/send-kitchen — updates DB only, client handles printing via agent
 router.post('/order/:id/send-kitchen', requireAuth, requireCaptain, async (req, res) => {
   try {
-    const oRes   = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-    const iRes   = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.id]);
-    if (!oRes.rows[0] || !iRes.rows.length) return res.redirect('/captain/order/' + req.params.id);
-
-    const printers = await db.query(
-      "SELECT * FROM pos_printers WHERE tenant_id=$1 AND is_active=true AND role IN ('kitchen','both') AND connection_type='network' AND ip_address IS NOT NULL",
-      [req.user.tenantId]
-    );
-    const ticket = buildKitchenTicket(oRes.rows[0], iRes.rows);
-    for (const p of printers.rows) {
-      try { await printToKitchen(p, ticket); } catch (e) { console.error('Print fail:', e.message); }
-    }
+    const oRes = await db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    const iRes = await db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.id]);
+    if (!oRes.rows[0] || !iRes.rows.length) return res.json({ ok: false, error: 'No items' });
     await db.query('UPDATE pos_orders SET kitchen_sent_at=NOW() WHERE id=$1', [req.params.id]);
-    res.redirect('/captain/order/' + req.params.id + '?sent=1');
-  } catch (err) { console.error(err); res.redirect('/captain/order/' + req.params.id); }
+    res.json({ ok: true });
+  } catch (err) { console.error(err); res.json({ ok: false, error: 'Server error' }); }
 });
 
 // POST /captain/order/:id/request-bill

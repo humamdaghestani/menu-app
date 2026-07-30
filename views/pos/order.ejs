@@ -580,6 +580,22 @@ try { _customLabels = JSON.parse(tenant.bill_custom_labels || '{}'); } catch(_e)
 const CUR             = <%- JSON.stringify(tenant.currency || '$') %>;
 const ORDER_ID        = <%= order.id %>;
 const SERVICE_FEE_PCT = <%= serviceFeePct || 0 %>;
+const AGENT_PORT      = '<%- (tenant.pos_print_agent_port || "9191").replace(/\D/g,"") %>';
+const ALL_PRINTERS    = <%- JSON.stringify((printers || []).map(p => ({ ip: p.ip_address, port: parseInt(p.port) || 9100, role: p.role, paper_width_mm: p.paper_width === '58mm' ? 58 : 80 }))) %>;
+
+/* ── Send print job to local agent ── */
+async function _printToAgent(type, data, printers) {
+  if (!AGENT_PORT || !printers.length) return;
+  for (const pr of printers) {
+    try {
+      await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm }),
+      });
+    } catch(_) {}
+  }
+}
 function fmt(n) {
   if (n % 1 === 0) return Math.round(n).toLocaleString('en-US');
   const p = n.toFixed(2).split('.');
@@ -995,7 +1011,21 @@ async function fireKitchen() {
   _render();
   const r = await posAction(`/pos/api/order/${ORDER_ID}/fire`, {});
   if (r.ok && !r.offline) _render(r.data);
-  else if (!r.ok && r.error === 'nothing_to_fire') _showErrorToast('Nothing new to fire');
+  else if (!r.ok && r.error === 'nothing_to_fire') { _showErrorToast('Nothing new to fire'); return; }
+
+  // Print kitchen ticket via local agent
+  const kitchenPrinters = ALL_PRINTERS.filter(p => p.role === 'kitchen' || p.role === 'both');
+  if (kitchenPrinters.length && AGENT_PORT) {
+    const nd = new Date();
+    const zp = n => String(n).padStart(2,'0');
+    const timeStr = zp(nd.getHours()) + ':' + zp(nd.getMinutes());
+    await _printToAgent('order', {
+      table:    <%- JSON.stringify(order.table_name || '') %>,
+      order_id: ORDER_ID,
+      time:     timeStr,
+      items:    unfired.map(i => ({ qty: i.quantity, name: i.name, note: i.notes || '' })),
+    }, kitchenPrinters);
+  }
 }
 
 /* ── Hold / Unhold ── */
@@ -1185,16 +1215,12 @@ document.addEventListener('keydown', e => {
 
 <script>
 function printBill() {
-  const agentPort   = '<%- (tenant.pos_print_agent_port  || "").replace(/\D/g,"") %>';
-  const printerAddr = <%- JSON.stringify(tenant.pos_print_agent_printer || '') %>;
+  const receiptPrinters = ALL_PRINTERS.filter(p => p.role === 'receipt' || p.role === 'both');
 
-  if (!agentPort || !printerAddr || !printerAddr.includes(':')) {
+  if (!AGENT_PORT || !receiptPrinters.length) {
     window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
     return;
   }
-
-  const [printerIp, prPStr] = printerAddr.split(':');
-  const printerPort = parseInt(prPStr) || 9100;
 
   const { subtotal, discount, svcFee, grandTotal } = _totals();
   const exRate  = <%= parseFloat(exchangeRate) || 1 %>;
@@ -1221,11 +1247,7 @@ function printBill() {
   const iqd_total = (showIQD && exRate > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
     ? Math.round(grandTotal * exRate).toLocaleString() : null;
 
-  const payload = {
-    type:          'bill',
-    printer_ip:    printerIp,
-    printer_port:  printerPort,
-    paper_width_mm: (<%- JSON.stringify(tenant.bill_paper_width || '80mm') %> === '58mm') ? 58 : 80,
+  const data = {
     shop:       <%- JSON.stringify(tenant.name || '') %>,
     header:     <%- JSON.stringify(tenant.bill_custom_header || '') %>,
     footer:     <%- JSON.stringify(tenant.bill_custom_footer || '') %>,
@@ -1252,13 +1274,7 @@ function printBill() {
     iqd_total: iqd_total,
   };
 
-  fetch('http://127.0.0.1:' + agentPort + '/print', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  }).then(r => r.json()).then(r => {
-    if (!r.ok) alert('Print failed: ' + (r.error || 'Unknown error'));
-  }).catch(() => {
+  _printToAgent('bill', data, receiptPrinters).catch(() => {
     window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
   });
 }

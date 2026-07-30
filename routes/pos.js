@@ -397,7 +397,7 @@ router.post('/takeaway/open', requireAuth, requirePOS, requireSession, async (re
 router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
   try {
     const tenant = await getTenant(req.user.tenantId);
-    const [orderRes, itemsRes, categoriesRes, menuRes, tablesRes] = await Promise.all([
+    const [orderRes, itemsRes, categoriesRes, menuRes, tablesRes, printersRes] = await Promise.all([
       db.query('SELECT * FROM pos_orders WHERE id=$1 AND tenant_id=$2', [req.params.orderId, req.user.tenantId]),
       db.query('SELECT * FROM pos_order_items WHERE order_id=$1 ORDER BY id', [req.params.orderId]),
       db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
@@ -409,6 +409,7 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
          WHERE t.tenant_id=$2 ORDER BY t.sort_order, t.name`,
         [req.params.orderId, req.user.tenantId]
       ),
+      db.query("SELECT * FROM pos_printers WHERE tenant_id=$1 AND is_active=true AND connection_type='network' AND ip_address IS NOT NULL ORDER BY id", [req.user.tenantId]),
     ]);
     if (!orderRes.rows[0]) return res.redirect('/pos');
     const o = orderRes.rows[0];
@@ -427,6 +428,7 @@ router.get('/order/:orderId', requireAuth, requirePOS, async (req, res) => {
       categories: categoriesRes.rows,
       menuItems: menuRes.rows,
       tables: tablesRes.rows,
+      printers: printersRes.rows,
       subtotal, total, discount,
       exchangeRate, serviceFeePct,
       errorParam: req.query.error || null,
