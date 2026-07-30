@@ -688,14 +688,17 @@
             </div>
 
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-              <a href="/pos/print-agent-installer" class="btn btn-primary btn-sm" download="install-pos-print-agent.ps1">⬇ Download Installer</a>
+              <a href="/pos/print-agent-js" class="btn btn-primary btn-sm" download="pos-print-agent.js">⬇ Download Agent</a>
               <button type="button" class="btn btn-ghost btn-sm" id="agentTestBtn" onclick="testAgent()">🔌 Test Connection</button>
               <span id="agentTestResult" style="font-size:.8rem"></span>
             </div>
-            <div style="margin-top:10px;font-size:.76rem;color:#555;line-height:1.8">
-              If installer doesn't help, open <strong style="color:#888">Command Prompt</strong> on the POS computer and run:<br>
-              <code style="background:#111;color:#7fdbff;padding:2px 8px;border-radius:4px;font-size:.78rem">node "%APPDATA%\POSPrintAgent\pos-print-agent.js"</code><br>
-              Keep that window open while using POS, then click Test Connection.
+            <div style="margin-top:12px;background:#111;border-radius:8px;padding:12px 14px;font-size:.8rem;color:#aaa;line-height:2">
+              <strong style="color:#c9b8ff">How to start the agent:</strong><br>
+              1. Click <strong>Download Agent</strong> above — save the file somewhere (e.g. Desktop)<br>
+              2. Open <strong>Command Prompt</strong> on the POS computer<br>
+              3. Run: <code style="background:#1a1a2e;color:#7fdbff;padding:1px 7px;border-radius:4px">node "C:\Users\ASUS\Desktop\pos-print-agent.js"</code><br>
+              4. Keep that window open, then click <strong>Test Connection</strong><br>
+              <span style="color:#555;font-size:.72rem">To auto-start with Windows: press Win+R → type <code style="color:#888">shell:startup</code> → create a shortcut to the above command.</span>
             </div>
           </div>
 
