@@ -726,13 +726,14 @@ function toggleSFInput(cb) {
   document.getElementById('sfPctRow').style.display = cb.checked ? '' : 'none';
 }
 function testAgent() {
-  const port = (document.querySelector('[name=pos_print_agent_port]').value || '').trim() || '9191';
+  const port = (document.querySelector('[name=pos_print_agent_port]').value || '').trim().replace(/\D/g,'') || '9191';
   const btn  = document.getElementById('agentTestBtn');
   const out  = document.getElementById('agentTestResult');
   btn.disabled = true;
   out.style.color = '#aaa';
   out.textContent = 'Connecting…';
-  fetch(`/pos/print-agent-ping?port=${encodeURIComponent(port)}`)
+  // Ping the agent directly from the browser (localhost = this PC, not the cloud server)
+  fetch(`http://127.0.0.1:${port}/ping`, { signal: AbortSignal.timeout(4000) })
     .then(r => r.json())
     .then(r => {
       if (r.ok) {
@@ -745,7 +746,7 @@ function testAgent() {
     })
     .catch(() => {
       out.style.color = '#e74c3c';
-      out.textContent = 'Could not reach agent';
+      out.textContent = 'Not running — download and run the installer first';
     })
     .finally(() => { btn.disabled = false; });
 }
