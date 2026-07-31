@@ -1227,9 +1227,9 @@ function printBill() {
   const showIQD = <%- (tenant.bill_show_iqd !== false) ? 'true' : 'false' %>;
 
   const BILL_LABELS = {
-    en: { subtotal:'Sub Total', svcfee:'Service', discount:'Discount', total:'Net Total', served_by:'Served by', thanks:'Thank you!' },
-    ar: { subtotal:'المجموع', svcfee:'رسوم الخدمة', discount:'خصم', total:'المجموع الكلي', served_by:'خدمك', thanks:'شكراً لكم!' },
-    ku: { subtotal:'گشتی', svcfee:'سێرڤس', discount:'دشکاندەن', total:'کۆی گشتی', served_by:'تو خزمەت کردن لەلایان', thanks:'سوپاس!' },
+    en: { item:'Item', qty:'QTY', price:'Price', total_col:'Total', subtotal:'Sub Total', svcfee:'Service', discount:'Discount', total:'Net Total', served_by:'Served by', dine_in:'Dine-in', takeaway:'Takeaway', thanks:'Thank you!' },
+    ar: { item:'الصنف', qty:'الكمية', price:'السعر', total_col:'المجموع', subtotal:'المجموع', svcfee:'رسوم الخدمة', discount:'خصم', total:'المجموع الكلي', served_by:'خدمك', dine_in:'طلب داخلي', takeaway:'تيك أواي', thanks:'شكراً لكم!' },
+    ku: { item:'باپهت', qty:'بر', price:'نرخ', total_col:'گشتی', subtotal:'گشتی', svcfee:'سێرڤس', discount:'دشکاندەن', total:'کۆی گشتی', served_by:'تو خزمەت کردن لەلایان', dine_in:'طلب داخلي', takeaway:'تیک ئەوی', thanks:'سوپاس!' },
   };
   const customLabels = <%- JSON.stringify(_customLabels) %>;
   const billLang     = <%- JSON.stringify(tenant.bill_language || 'en') %>;
@@ -1253,12 +1253,16 @@ function printBill() {
     footer:     <%- JSON.stringify(tenant.bill_custom_footer || '') %>,
     bill_id:    ORDER_ID,
     table:      <%- JSON.stringify(order.table_name || '') %>,
-    order_type: <%- JSON.stringify(order.order_type === 'takeaway' ? 'Takeaway' : 'Dine-in') %>,
+    order_type: L(<%- JSON.stringify(order.order_type === 'takeaway' ? 'takeaway' : 'dine_in') %>),
     note:       <%- JSON.stringify(order.note || '') %>,
     currency:   CUR,
     date:       dateStr,
     items:      _items.map(i => ({ qty: i.quantity, name: i.name, price: i.price, note: i.notes })),
     labels: {
+      item:      L('item'),
+      qty:       L('qty'),
+      price:     L('price'),
+      total_col: L('total_col'),
       subtotal:  L('subtotal'),
       svcfee:    L('svcfee'),
       discount:  L('discount'),
