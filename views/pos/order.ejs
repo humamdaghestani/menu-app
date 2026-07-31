@@ -1215,74 +1215,9 @@ document.addEventListener('keydown', e => {
 
 <script>
 function printBill() {
-  const receiptPrinters = ALL_PRINTERS.filter(p => p.role === 'receipt' || p.role === 'both');
-
-  if (!AGENT_PORT || !receiptPrinters.length) {
-    window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
-    return;
-  }
-
-  const { subtotal, discount, svcFee, grandTotal } = _totals();
-  const exRate  = <%= parseFloat(exchangeRate) || 1 %>;
-  const showIQD = <%- (tenant.bill_show_iqd !== false) ? 'true' : 'false' %>;
-
-  const BILL_LABELS = {
-    en: { item:'Item', qty:'QTY', price:'Price', total_col:'Total', subtotal:'Sub Total', svcfee:'Service', discount:'Discount', total:'Net Total', served_by:'Served by', dine_in:'Dine-in', takeaway:'Takeaway', thanks:'Thank you!' },
-    ar: { item:'الصنف', qty:'الكمية', price:'السعر', total_col:'المجموع', subtotal:'المجموع', svcfee:'رسوم الخدمة', discount:'خصم', total:'المجموع الكلي', served_by:'خدمك', dine_in:'طلب داخلي', takeaway:'تيك أواي', thanks:'شكراً لكم!' },
-    ku: { item:'باپهت', qty:'بر', price:'نرخ', total_col:'گشتی', subtotal:'گشتی', svcfee:'سێرڤس', discount:'دشکاندەن', total:'کۆی گشتی', served_by:'تو خزمەت کردن لەلایان', dine_in:'طلب داخلي', takeaway:'تیک ئەوی', thanks:'سوپاس!' },
-  };
-  const customLabels = <%- JSON.stringify(customLabels || {}) %> || {};
-  const billLang     = <%- JSON.stringify(tenant.bill_language || 'en') %>;
-  const langs        = billLang.split('_');
-  function L(key) {
-    if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
-    return langs.map(l => (BILL_LABELS[l] || BILL_LABELS.en)[key] || '').filter((v,i,a) => a.indexOf(v)===i && v).join(' - ');
-  }
-  // Thermal printers don't render Arabic via ESC/POS text mode — strip to ASCII only
-  function LE(key) { return L(key).replace(/[^\x20-\x7E]+/g,'').replace(/\s*-\s*$/,'').trim() || BILL_LABELS.en[key] || ''; }
-
-  const _nd = new Date();
-  const _zp = n => String(n).padStart(2,'0');
-  const _hh = _nd.getHours();
-  const dateStr = _zp(_nd.getDate())+'/'+_zp(_nd.getMonth()+1)+'/'+_nd.getFullYear()+' '+(_hh>=12?'PM':'AM')+' '+_zp(_hh%12||12)+':'+_zp(_nd.getMinutes())+':'+_zp(_nd.getSeconds());
-
-  const iqd_total = (showIQD && exRate > 1 && CUR !== 'IQD' && CUR !== 'د.ع')
-    ? Math.round(grandTotal * exRate).toLocaleString() : null;
-
-  const data = {
-    shop:       <%- JSON.stringify(tenant.name || '') %>,
-    header:     <%- JSON.stringify(tenant.bill_custom_header || '') %>,
-    footer:     <%- JSON.stringify(tenant.bill_custom_footer || '') %>,
-    bill_id:    ORDER_ID,
-    table:      <%- JSON.stringify(order.table_name || '') %>,
-    order_type: L(<%- JSON.stringify(order.order_type === 'takeaway' ? 'takeaway' : 'dine_in') %>),
-    note:       <%- JSON.stringify(order.note || '') %>,
-    currency:   CUR,
-    date:       dateStr,
-    items:      _items.map(i => ({ qty: i.quantity, name: i.name, price: i.price, note: i.notes })),
-    labels: {
-      item:      L('item'),
-      qty:       L('qty'),
-      price:     L('price'),
-      total_col: L('total_col'),
-      subtotal:  L('subtotal'),
-      svcfee:    L('svcfee'),
-      discount:  L('discount'),
-      total:     L('total'),
-      served_by: L('served_by'),
-      thanks:    L('thanks'),
-      cashier:   <%- JSON.stringify(currentUser.name || currentUser.username || '') %>,
-    },
-    subtotal:  subtotal > 0 ? subtotal.toFixed(2)  : null,
-    svcfee:    svcFee   > 0 ? svcFee.toFixed(2)    : null,
-    discount:  discount > 0 ? discount.toFixed(2)  : null,
-    total:     grandTotal.toFixed(2),
-    iqd_total: iqd_total,
-  };
-
-  _printToAgent('bill', data, receiptPrinters).catch(() => {
-    window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
-  });
+  // Open the bill in a small popup — bill.ejs auto-fires window.print() then closes.
+  // This uses the Windows print driver which renders Arabic/Kurdish correctly.
+  window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
 }
 </script>
 </body>
