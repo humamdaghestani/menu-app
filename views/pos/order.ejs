@@ -1238,6 +1238,8 @@ function printBill() {
     if (customLabels[key] && customLabels[key].trim()) return customLabels[key].trim();
     return langs.map(l => (BILL_LABELS[l] || BILL_LABELS.en)[key] || '').filter((v,i,a) => a.indexOf(v)===i && v).join(' - ');
   }
+  // Thermal printers don't render Arabic via ESC/POS text mode — strip to ASCII only
+  function LE(key) { return L(key).replace(/[^\x20-\x7E]+/g,'').replace(/\s*-\s*$/,'').trim() || BILL_LABELS.en[key] || ''; }
 
   const _nd = new Date();
   const _zp = n => String(n).padStart(2,'0');
