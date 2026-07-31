@@ -1231,7 +1231,7 @@ function printBill() {
     ar: { item:'الصنف', qty:'الكمية', price:'السعر', total_col:'المجموع', subtotal:'المجموع', svcfee:'رسوم الخدمة', discount:'خصم', total:'المجموع الكلي', served_by:'خدمك', dine_in:'طلب داخلي', takeaway:'تيك أواي', thanks:'شكراً لكم!' },
     ku: { item:'باپهت', qty:'بر', price:'نرخ', total_col:'گشتی', subtotal:'گشتی', svcfee:'سێرڤس', discount:'دشکاندەن', total:'کۆی گشتی', served_by:'تو خزمەت کردن لەلایان', dine_in:'طلب داخلي', takeaway:'تیک ئەوی', thanks:'سوپاس!' },
   };
-  const customLabels = <%- JSON.stringify(_customLabels) %>;
+  const customLabels = <%- JSON.stringify(customLabels || {}) %> || {};
   const billLang     = <%- JSON.stringify(tenant.bill_language || 'en') %>;
   const langs        = billLang.split('_');
   function L(key) {
