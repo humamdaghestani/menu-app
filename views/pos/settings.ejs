@@ -667,11 +667,20 @@
               Printers are configured in the <strong>Printers</strong> tab. Set the IP and role (receipt/kitchen/both) for each printer there.
             </div>
 
-            <div style="margin-bottom:18px">
-              <label>Agent Port <span style="color:#666;font-weight:400">(default 9191)</span></label>
-              <input type="text" name="pos_print_agent_port"
-                value="<%= tenant.pos_print_agent_port || '9191' %>"
-                placeholder="9191" maxlength="5" style="width:110px" />
+            <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px">
+              <div>
+                <label>Agent Port <span style="color:#666;font-weight:400">(default 9191)</span></label>
+                <input type="text" name="pos_print_agent_port"
+                  value="<%= tenant.pos_print_agent_port || '9191' %>"
+                  placeholder="9191" maxlength="5" style="width:110px" />
+              </div>
+              <div>
+                <label>Agent LAN IP <span style="color:#666;font-weight:400">(for iPad / other devices)</span></label>
+                <input type="text" name="pos_print_agent_lan_ip"
+                  value="<%= tenant.pos_print_agent_lan_ip || '' %>"
+                  placeholder="e.g. 192.168.1.100" maxlength="40" style="width:180px" />
+                <div style="font-size:.75rem;color:#888;margin-top:3px">When the agent starts it shows the Network IP in the terminal.</div>
+              </div>
             </div>
 
             <div style="background:#1a1a2e;border-radius:10px;padding:16px 18px;margin-bottom:14px">

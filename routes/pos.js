@@ -1289,19 +1289,20 @@ router.post('/settings/perm-passcode', requireAuth, requirePOS, async (req, res)
 router.post('/settings/bill', requireAuth, requirePOS, async (req, res) => {
   try {
     const { bill_language, bill_show_iqd, bill_font_size, bill_paper_width, bill_custom_header, bill_custom_footer,
-            pos_print_agent_port, pos_print_agent_printer } = req.body;
+            pos_print_agent_port, pos_print_agent_printer, pos_print_agent_lan_ip } = req.body;
     // Collect individual label overrides
     const LABEL_KEYS = ['item','qty','price','total_col','subtotal','svcfee','discount','total','served_by','dine_in','takeaway','thanks','table','bill'];
     const labels = {};
     LABEL_KEYS.forEach(k => { const v = (req.body['lbl_' + k] || '').trim(); if (v) labels[k] = v; });
     const labelsJson = Object.keys(labels).length ? JSON.stringify(labels) : null;
-    const agentPort    = (pos_print_agent_port    || '').trim().replace(/\D/g,'') || null;
+    const agentPort   = (pos_print_agent_port   || '').trim().replace(/\D/g,'') || null;
     const agentPrinter = (pos_print_agent_printer || '').trim() || null;
+    const agentLanIp  = (pos_print_agent_lan_ip  || '').trim() || null;
     await db.query(
       `UPDATE tenants SET bill_language=$1, bill_show_iqd=$2, bill_font_size=$3, bill_paper_width=$4, bill_custom_header=$5, bill_custom_footer=$6, bill_custom_labels=$7,
-       pos_print_agent_port=$8, pos_print_agent_printer=$9 WHERE id=$10`,
+       pos_print_agent_port=$8, pos_print_agent_printer=$9, pos_print_agent_lan_ip=$10 WHERE id=$11`,
       [bill_language || 'en', bill_show_iqd === '1', bill_font_size || 'normal', bill_paper_width || '80mm',
-       bill_custom_header || null, bill_custom_footer || null, labelsJson, agentPort, agentPrinter, req.user.tenantId]
+       bill_custom_header || null, bill_custom_footer || null, labelsJson, agentPort, agentPrinter, agentLanIp, req.user.tenantId]
     );
     res.redirect('/pos/settings?tab=bill');
   } catch (err) { console.error(err); res.redirect('/pos/settings?tab=bill'); }

@@ -583,6 +583,7 @@ const pool = new Pool({
     // Local print agent settings
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_port    VARCHAR(10) DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_printer VARCHAR(200) DEFAULT NULL`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_lan_ip  VARCHAR(40) DEFAULT NULL`,
     // Floor plan layout per table
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_x       INTEGER DEFAULT NULL`,
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_y       INTEGER DEFAULT NULL`,

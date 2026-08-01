@@ -581,6 +581,9 @@ const CUR             = <%- JSON.stringify(tenant.currency || '$') %>;
 const ORDER_ID        = <%= order.id %>;
 const SERVICE_FEE_PCT = <%= serviceFeePct || 0 %>;
 const AGENT_PORT      = '<%- (tenant.pos_print_agent_port || "9191").replace(/\D/g,"") %>';
+const AGENT_LAN_IP    = '<%- (tenant.pos_print_agent_lan_ip || "").trim() %>';
+// On the agent PC itself use localhost; on iPad/other devices use the configured LAN IP
+const AGENT_HOST      = (location.hostname === '127.0.0.1' || location.hostname === 'localhost') ? '127.0.0.1' : (AGENT_LAN_IP || '127.0.0.1');
 const ALL_PRINTERS    = <%- JSON.stringify((printers || []).map(p => ({ ip: p.ip_address, port: parseInt(p.port) || 9100, role: p.role, paper_width_mm: p.paper_width === '58mm' ? 58 : 80 }))) %>;
 
 /* ── Send print job to local agent ── */
@@ -588,7 +591,7 @@ async function _printToAgent(type, data, printers) {
   if (!AGENT_PORT || !printers.length) return;
   for (const pr of printers) {
     try {
-      await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
+      await fetch('http://' + AGENT_HOST + ':' + AGENT_PORT + '/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm }),
@@ -1215,9 +1218,40 @@ document.addEventListener('keydown', e => {
 
 <script>
 function printBill() {
-  // Open the bill in a small popup — bill.ejs auto-fires window.print() then closes.
-  // This uses the Windows print driver which renders Arabic/Kurdish correctly.
-  window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
+  const receiptPrinters = ALL_PRINTERS.filter(p => p.role === 'receipt' || p.role === 'both');
+  const onAgentPc = (location.hostname === '127.0.0.1' || location.hostname === 'localhost' || !AGENT_LAN_IP);
+  if (onAgentPc) {
+    // On the Windows PC: open bill popup — auto-prints via Windows driver (full Arabic support)
+    window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
+  } else {
+    // On iPad / other device: send via agent using configured LAN IP
+    if (!AGENT_PORT || !receiptPrinters.length) {
+      window.open('/pos/order/<%= order.id %>/bill', '_blank');
+      return;
+    }
+    const { subtotal, discount, svcFee, grandTotal } = _totals();
+    const exRate  = <%= parseFloat(exchangeRate) || 1 %>;
+    const showIQD = <%- (tenant.bill_show_iqd !== false) ? 'true' : 'false' %>;
+    const _nd = new Date(), _zp = n => String(n).padStart(2,'0'), _hh = _nd.getHours();
+    const dateStr = _zp(_nd.getDate())+'/'+_zp(_nd.getMonth()+1)+'/'+_nd.getFullYear()+' '+(_hh>=12?'PM':'AM')+' '+_zp(_hh%12||12)+':'+_zp(_nd.getMinutes())+':'+_zp(_nd.getSeconds());
+    const iqd_total = (showIQD && exRate > 1 && CUR !== 'IQD' && CUR !== 'د.ع') ? Math.round(grandTotal * exRate).toLocaleString() : null;
+    _printToAgent('bill', {
+      shop:      <%- JSON.stringify(tenant.name || '') %>,
+      header:    <%- JSON.stringify(tenant.bill_custom_header || '') %>,
+      footer:    <%- JSON.stringify(tenant.bill_custom_footer || '') %>,
+      bill_id:   ORDER_ID,
+      table:     <%- JSON.stringify(order.table_name || '') %>,
+      order_type:<%- JSON.stringify(order.order_type === 'takeaway' ? 'Takeaway' : 'Dine-in') %>,
+      note:      <%- JSON.stringify(order.note || '') %>,
+      currency:  CUR, date: dateStr,
+      items:     _items.map(i => ({ qty: i.quantity, name: i.name, price: i.price, note: i.notes })),
+      labels:    { subtotal:'Sub Total', svcfee:'Service', discount:'Discount', total:'Net Total', served_by:'Served by', thanks:'Thank you!', cashier: <%- JSON.stringify(currentUser.name || currentUser.username || '') %> },
+      subtotal:  subtotal > 0 ? subtotal.toFixed(2) : null,
+      svcfee:    svcFee   > 0 ? svcFee.toFixed(2)   : null,
+      discount:  discount > 0 ? discount.toFixed(2)  : null,
+      total:     grandTotal.toFixed(2), iqd_total,
+    }, receiptPrinters);
+  }
 }
 </script>
 </body>
