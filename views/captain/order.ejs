@@ -225,15 +225,19 @@ async function _printToAgent(type, data, printers) {
     const job = { ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm };
     try {
       if (agentUp) {
-        await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
+        const r = await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job),
         });
+        const j = await r.json();
+        if (!j.ok) showToast('Printer error: ' + (j.error || 'unknown'));
       } else {
-        await fetch('/pos/print-relay', {
+        const r = await fetch('/pos/print-relay', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job),
         });
+        const j = await r.json();
+        if (!j.ok) showToast('Relay error — is the print agent running on the Windows PC?');
       }
-    } catch(_) {}
+    } catch(e) { showToast('Print failed: ' + e.message); }
   }
 }
 
