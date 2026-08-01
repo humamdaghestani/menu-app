@@ -1225,13 +1225,12 @@ document.addEventListener('keydown', e => {
 <script>
 function printBill() {
   const receiptPrinters = ALL_PRINTERS.filter(p => p.role === 'receipt' || p.role === 'both');
-  const onAgentPc = (location.hostname === '127.0.0.1' || location.hostname === 'localhost' || !AGENT_LAN_IP);
-  if (onAgentPc) {
+  if (_isLocal) {
     // On the Windows PC: open bill popup — auto-prints via Windows driver (full Arabic support)
     window.open('/pos/order/<%= order.id %>/bill', '_blank', 'width=460,height=700');
   } else {
-    // On iPad / other device: send via agent using configured LAN IP
-    if (!AGENT_PORT || !receiptPrinters.length) {
+    // On iPad / other device: print via relay — no LAN IP needed
+    if (!receiptPrinters.length) {
       window.open('/pos/order/<%= order.id %>/bill', '_blank');
       return;
     }

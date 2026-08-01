@@ -289,7 +289,7 @@ function printOrderTicket() {
   const reset = () => { btn.disabled = false; btn.querySelector('.big').textContent = '🖨️'; };
 
   const kitchenPrinters = ALL_PRINTERS.filter(p => p.role === 'kitchen' || p.role === 'both');
-  if (!AGENT_PORT || !kitchenPrinters.length) {
+  if (!kitchenPrinters.length || (_isLocal && !AGENT_PORT)) {
     fetch('/captain/order/<%= order.id %>/print-ticket', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
       .then(r => r.json())
       .then(r => { reset(); if (r.ok) showToast('✓ Printed!'); else alert(r.error || 'Print failed'); })
@@ -305,7 +305,7 @@ function printOrderTicket() {
     time:       zp(nd.getHours()) + ':' + zp(nd.getMinutes()),
     items:      ORDER_ITEMS,
   }, kitchenPrinters).then(() => { reset(); showToast('✓ Printed!'); }).catch(() => {
-    reset(); alert('Print agent not running. Install it from POS Settings → Silent Printing.');
+    reset(); alert('Print failed. Make sure the agent is running on the Windows PC.');
   });
 }
 </script>
