@@ -207,6 +207,8 @@
 
 <script>
 const AGENT_PORT   = '<%- (tenant.pos_print_agent_port || "9191").replace(/\D/g,"") %>';
+const AGENT_LAN_IP = '<%- (tenant.pos_print_agent_lan_ip || "").trim() %>';
+const AGENT_HOST   = (location.hostname === '127.0.0.1' || location.hostname === 'localhost') ? '127.0.0.1' : (AGENT_LAN_IP || '127.0.0.1');
 const ALL_PRINTERS = <%- JSON.stringify((printers || []).map(p => ({ ip: p.ip_address, port: parseInt(p.port) || 9100, role: p.role, paper_width_mm: p.paper_width === '58mm' ? 58 : 80 }))) %>;
 const ORDER_ITEMS  = <%- JSON.stringify(orderItems.map(i => ({ qty: i.quantity, name: i.name, note: i.notes || '' }))) %>;
 
@@ -214,7 +216,7 @@ async function _printToAgent(type, data, printers) {
   if (!AGENT_PORT || !printers.length) return;
   for (const pr of printers) {
     try {
-      await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
+      await fetch('http://' + AGENT_HOST + ':' + AGENT_PORT + '/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm }),
