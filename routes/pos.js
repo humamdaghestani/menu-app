@@ -1491,30 +1491,13 @@ router.get('/print-agent-install-bat', requireAuth, requirePOS, async (req, res)
   }
   const relayUrl = req.protocol + '://' + req.get('host');
   const dlUrl    = relayUrl + '/pos/print-agent-dl/' + agentToken;
-  const dir      = '%APPDATA%\\POSPrintAgent';
 
-  // VBS launcher written via PowerShell using [char]XX codes to avoid BAT special-char issues
-  // Resulting VBS: runs `node "path\to\pos-print-agent.js"` with window style 0 (hidden)
-  const vbsPs = [
-    "'Dim sh, p'",
-    "[char]13+[char]10",
-    "'Set sh = CreateObject([char]34+' + [char]34 + 'WScript.Shell' + [char]34 + '[char]34+')'",
-    // Cleaner: build it without nesting quotes
-  ].join(' + ');
-
-  // Actually build VBS PS expression cleanly using only [char] codes for " marks
-  const q = "[char]34";  // represents " in PS
-  const nl = "[char]13+[char]10"; // CRLF
-  const vbsPsExpr = [
-    `'Dim sh, p'+${nl}`,
-    `+'Set sh = CreateObject('+${q}+'WScript.Shell'+${q}+')'+${nl}`,
-    `+'p = Replace(WScript.ScriptFullName,'+${q}+'run-agent.vbs'+${q}+','+${q}+'pos-print-agent.js'+${q}+')'+${nl}`,
-    `+'sh.Run '+${q}+'node '+${q}+' '+[char]38+' Chr(34) '+[char]38+' p '+[char]38+' Chr(34), 0, False'`,
-  ].join('');
-
+  // VBS is written by the bat itself using echo statements (no fragile PS string concat).
+  // %AGENTJS% and %AGENTVBS% are bat variables expanded at runtime on the Windows PC.
+  // Chr(34) in VBS = " — used to quote paths at runtime. ^& and ^) escape & and ) inside bat paren blocks.
   const bat = [
     '@echo off',
-    'setlocal',
+    'setlocal EnableDelayedExpansion',
     'title POS Print Agent Setup',
     'echo.',
     'echo  POS Print Agent - One-Time Setup',
@@ -1524,43 +1507,55 @@ router.get('/print-agent-install-bat', requireAuth, requirePOS, async (req, res)
     ':: Check Node.js',
     'where node >nul 2>&1',
     'if %errorlevel% neq 0 (',
-    '  echo  Node.js is required. Opening nodejs.org...',
+    '  echo  [ERROR] Node.js not found. Opening download page...',
     '  start https://nodejs.org/en/download/',
-    '  echo  Install Node.js then run this file again.',
+    '  echo  Install Node.js LTS then double-click this file again.',
     '  echo.',
     '  pause & exit /b 1',
     ')',
-    'echo  Node.js found.',
+    'echo  [OK] Node.js found.',
+    '',
+    ':: Set paths',
+    'set "AGENTDIR=%APPDATA%\\POSPrintAgent"',
+    'set "AGENTJS=%AGENTDIR%\\pos-print-agent.js"',
+    'set "AGENTVBS=%AGENTDIR%\\run-agent.vbs"',
     '',
     ':: Create agent folder',
-    `if not exist "${dir}" mkdir "${dir}"`,
+    'if not exist "%AGENTDIR%" mkdir "%AGENTDIR%"',
     '',
-    ':: Download agent script from your POS server',
-    'echo  Downloading...',
-    `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '${dlUrl}' -OutFile '${dir}\\pos-print-agent.js' -UseBasicParsing"`,
+    ':: Download fresh agent from your POS server',
+    'echo  Downloading agent...',
+    `powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri '${dlUrl}' -OutFile '%AGENTJS%' -UseBasicParsing"`,
     'if %errorlevel% neq 0 (',
-    '  echo  Download failed. Check internet and try again.',
+    '  echo  [ERROR] Download failed. Check internet and try again.',
     '  pause & exit /b 1',
     ')',
-    'echo  Done.',
+    'echo  [OK] Agent downloaded.',
     '',
-    ':: Create hidden-window VBS launcher',
-    `powershell -NoProfile -ExecutionPolicy Bypass -Command "[System.IO.File]::WriteAllText('${dir}\\run-agent.vbs', ${vbsPsExpr})"`,
+    ':: Write VBS launcher (window style 0 = hidden, node resolved from PATH)',
+    '(',
+    '  echo Dim sh',
+    '  echo Set sh = CreateObject("WScript.Shell"^)',
+    '  echo sh.Run "node " ^& Chr(34^) ^& "%AGENTJS%" ^& Chr(34^), 0, False',
+    ') > "%AGENTVBS%"',
+    'echo  [OK] Launcher written.',
     '',
-    ':: Kill any existing agent',
-    "for /f \"tokens=5\" %%a in ('netstat -aon 2^>nul ^| find \":9191 \" ^| find \"LISTENING\"') do taskkill /f /pid %%a >nul 2>&1",
+    ':: Kill any existing agent on port 9191',
+    'for /f "tokens=5" %%a in (\'netstat -aon 2^>nul ^| find ":9191 " ^| find "LISTENING"\') do taskkill /f /pid %%a >nul 2>&1',
     '',
-    ':: Register auto-start at logon (no window)',
-    `powershell -NoProfile -ExecutionPolicy Bypass -Command "try{$a=New-ScheduledTaskAction -Execute 'wscript.exe' -Argument ('/B '+[char]34+'${dir}\\run-agent.vbs'+[char]34);$t=New-ScheduledTaskTrigger -AtLogOn;Register-ScheduledTask -TaskName 'POS Print Agent' -Action $a -Trigger $t -RunLevel Highest -Force -ErrorAction SilentlyContinue}catch{}"`,
+    ':: Register auto-start at Windows logon (hidden, no window)',
+    'powershell -NoProfile -ExecutionPolicy Bypass -Command "try{$vbs=\'%AGENTVBS%\';$a=New-ScheduledTaskAction -Execute \'wscript.exe\' -Argument (\'/B \'+[char]34+$vbs+[char]34);$t=New-ScheduledTaskTrigger -AtLogOn;Register-ScheduledTask -TaskName \'POS Print Agent\' -Action $a -Trigger $t -RunLevel Highest -Force -ErrorAction SilentlyContinue}catch{}"',
+    'echo  [OK] Auto-start registered.',
     '',
-    ':: Start now (hidden)',
-    `start "" wscript.exe /B "${dir}\\run-agent.vbs"`,
-    'timeout /t 2 /nobreak >nul',
+    ':: Start agent now (hidden)',
+    'start "" wscript.exe /B "%AGENTVBS%"',
+    'timeout /t 3 /nobreak >nul',
+    'echo  [OK] Agent started.',
     '',
     'echo.',
-    'echo  Done! POS Print Agent is running silently in the background.',
+    'echo  Done! POS Print Agent is running silently.',
     'echo  It will auto-start every time Windows starts.',
-    'echo  You can delete this file.',
+    'echo  Refresh the Settings page -- it should show green within 10 seconds.',
     'echo.',
     'pause',
   ].join('\r\n');
