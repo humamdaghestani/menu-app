@@ -661,53 +661,46 @@
           <!-- Silent Printing -->
           <div class="card">
             <h2>Silent Printing (No Dialog)</h2>
-            <p class="card-desc">Press Print and receipts go straight to the printer — no dialog, no delay.</p>
+            <p class="card-desc">Install the POS Print App once on the Windows PC — receipts and kitchen tickets print instantly with no popups, no terminal, works from any device including iPad.</p>
 
-            <div style="background:#f0f4ff;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.82rem;color:#444">
-              Printers are configured in the <strong>Printers</strong> tab. Set the IP and role (receipt/kitchen/both) for each printer there.
+            <div style="background:#f0f4ff;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:.82rem;color:#444">
+              Printer IPs and roles (receipt / kitchen / both) are set in the <strong>Printers</strong> tab above.
             </div>
 
-            <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:18px">
-              <div>
-                <label>Agent Port <span style="color:#666;font-weight:400">(default 9191)</span></label>
-                <input type="text" name="pos_print_agent_port"
-                  value="<%= tenant.pos_print_agent_port || '9191' %>"
-                  placeholder="9191" maxlength="5" style="width:110px" />
-              </div>
-              <div>
-                <label>Agent LAN IP <span style="color:#666;font-weight:400">(for iPad / other devices)</span></label>
-                <input type="text" name="pos_print_agent_lan_ip"
-                  value="<%= tenant.pos_print_agent_lan_ip || '' %>"
-                  placeholder="e.g. 192.168.1.100" maxlength="40" style="width:180px" />
-                <div style="font-size:.75rem;color:#888;margin-top:3px">When the agent starts it shows the Network IP in the terminal.</div>
+            <div style="background:#1a1a2e;border-radius:10px;padding:18px 20px;margin-bottom:14px">
+              <div style="font-weight:700;color:#c9b8ff;margin-bottom:14px;font-size:.9rem">One-time setup on the Windows PC:</div>
+
+              <div style="display:flex;flex-direction:column;gap:14px">
+
+                <div style="display:flex;align-items:flex-start;gap:14px">
+                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;min-width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:1px">1</div>
+                  <div>
+                    <div style="font-size:.85rem;color:#fff;font-weight:600;margin-bottom:6px">Download both files to the same folder (e.g. Desktop):</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                      <a href="/pos/print-agent-exe" class="btn btn-primary btn-sm">⬇ POS Print App (.exe)</a>
+                      <a href="/pos/print-agent-install-bat" class="btn btn-primary btn-sm" download="install-agent.bat">⬇ Install Script (.bat)</a>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:14px">
+                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;min-width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:1px">2</div>
+                  <div style="font-size:.85rem;color:#ccc">Double-click <strong style="color:#fff">install-agent.bat</strong> — it installs the app silently and registers it to auto-start with Windows. No Node.js needed. No terminal window ever.</div>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:14px">
+                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;min-width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-top:1px">3</div>
+                  <div style="font-size:.85rem;color:#ccc">Click <strong style="color:#fff">Test Connection</strong> below — green means you're done. After that you can delete both downloaded files.</div>
+                </div>
+
               </div>
             </div>
 
-            <div style="background:#1a1a2e;border-radius:10px;padding:16px 18px;margin-bottom:14px">
-              <div style="font-weight:700;color:#c9b8ff;margin-bottom:12px;font-size:.88rem">One-time setup on each POS computer:</div>
-
-              <div style="display:flex;flex-direction:column;gap:10px">
-
-                <div style="display:flex;align-items:center;gap:14px">
-                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
-                  <div style="font-size:.83rem;color:#ccc">Save settings above, then download both files to the same folder (e.g. Desktop):</div>
-                </div>
-                <div style="display:flex;gap:8px;margin-left:38px">
-                  <a href="/pos/print-agent-js" class="btn btn-primary btn-sm" download="pos-print-agent.js">⬇ Agent File</a>
-                  <a href="/pos/print-agent-bat" class="btn btn-primary btn-sm" download="setup-agent.bat">⬇ Setup File</a>
-                </div>
-
-                <div style="display:flex;align-items:flex-start;gap:14px;margin-top:4px">
-                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">2</div>
-                  <div style="font-size:.83rem;color:#ccc">Double-click <strong style="color:#fff">setup-agent.bat</strong> — it installs the agent and sets it to auto-start with Windows. (If Node.js is missing it will open the download page for you.)</div>
-                </div>
-
-                <div style="display:flex;align-items:center;gap:14px">
-                  <div style="background:#7c5cbf;color:#fff;font-weight:800;font-size:.8rem;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
-                  <div style="font-size:.83rem;color:#ccc">Click <strong style="color:#fff">Test Connection</strong> — if it turns green you're done.</div>
-                </div>
-
-              </div>
+            <div style="margin-bottom:10px;font-size:.8rem;color:#666">
+              Agent Port: <input type="text" name="pos_print_agent_port"
+                value="<%= tenant.pos_print_agent_port || '9191' %>"
+                placeholder="9191" maxlength="5" style="width:80px;display:inline-block;margin-left:4px" />
+              <span style="margin-left:10px;color:#aaa">(change only if 9191 is taken by another app)</span>
             </div>
 
             <div style="display:flex;gap:10px;align-items:center">

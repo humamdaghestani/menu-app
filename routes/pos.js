@@ -1305,6 +1305,50 @@ router.get('/print-agent-bat', requireAuth, requirePOS, (req, res) => {
   res.send(bat);
 });
 
+// ── Print Agent EXE download ──────────────────────────────────────────────────
+router.get('/print-agent-exe', (req, res) => {
+  const exePath = require('path').join(__dirname, '..', 'public', 'downloads', 'pos-print-agent.exe');
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Content-Disposition', 'attachment; filename="pos-print-agent.exe"');
+  res.sendFile(exePath);
+});
+
+// ── Print Agent install BAT (embeds relay URL + token, runs the exe) ──────────
+router.get('/print-agent-install-bat', requireAuth, requirePOS, async (req, res) => {
+  let agentToken = req.tenant?.pos_agent_token;
+  if (!agentToken) {
+    agentToken = require('crypto').randomBytes(32).toString('hex');
+    await db.query('UPDATE tenants SET pos_agent_token=$1 WHERE id=$2', [agentToken, req.user.tenantId]);
+  }
+  const relayUrl = req.protocol + '://' + req.get('host');
+  const bat = [
+    '@echo off',
+    'title POS Print Agent Setup',
+    'echo.',
+    'echo  Installing POS Print Agent...',
+    'echo.',
+    'set EXE=%~dp0pos-print-agent.exe',
+    'if not exist "%EXE%" (',
+    '  echo  ERROR: pos-print-agent.exe must be in the same folder as this file.',
+    '  pause & exit /b 1',
+    ')',
+    '"%EXE%" --install --url=' + relayUrl + ' --token=' + agentToken,
+    'if %errorlevel% neq 0 (',
+    '  echo.',
+    '  echo  If you see a permissions error, right-click this file and Run as Administrator.',
+    '  pause & exit /b 1',
+    ')',
+    'echo.',
+    'echo  Done! You can delete these two files now.',
+    'echo  The agent runs silently in the background and starts automatically with Windows.',
+    'echo.',
+    'pause',
+  ].join('\r\n');
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="install-agent.bat"');
+  res.send(bat);
+});
+
 // ── Print Agent ping ───────────────────────────────────────────────────────────
 router.get('/print-agent-ping', requireAuth, requirePOS, async (req, res) => {
   const port = (req.query.port || '9191').replace(/\D/g, '');
