@@ -5,7 +5,7 @@ try { _customLabels = JSON.parse(tenant.bill_custom_labels || '{}'); } catch(_e)
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Order — <%= order.table_name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -32,7 +32,7 @@ try { _customLabels = JSON.parse(tenant.bill_custom_labels || '{}'); } catch(_e)
     .menu-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
     .search-bar { padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); flex-shrink: 0; }
-    .search-input { width: 100%; padding: 8px 14px 8px 36px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .85rem; outline: none; font-family: inherit; }
+    .search-input { width: 100%; padding: 8px 14px 8px 36px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: 16px; outline: none; font-family: inherit; }
     .search-input:focus { border-color: #7c5cbf; }
     .search-wrap { position: relative; }
     .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #444; font-size: .9rem; pointer-events: none; }
@@ -101,10 +101,28 @@ try { _customLabels = JSON.parse(tenant.bill_custom_labels || '{}'); } catch(_e)
     .action-btn:hover { color: #c4b5fd; background: rgba(124,92,191,.08); }
     .action-btn:active { background: rgba(124,92,191,.18); }
     .action-btn span { font-size: .72rem; color: #888; font-weight: 700; }
-    /* ── Responsive: tablet portrait (481–860px wide) ── */
-    @media (max-width: 860px) {
-      .items-grid { grid-template-columns: repeat(auto-fill, minmax(110px,1fr)); }
-      .order-panel { width: 280px; }
+    /* ── Touch devices: larger tap targets ── */
+    @media (hover: none) and (pointer: coarse) {
+      .qty-btn { width: 36px; height: 36px; font-size: 1rem; border-radius: 8px; }
+      .qty-num { font-size: .88rem; width: 24px; }
+      .np-btn { padding: 14px 0; font-size: 1rem; }
+      .np-mode-btn { padding: 8px 0; font-size: .65rem; }
+      .action-btn { padding: 14px 4px; font-size: 1.15rem; }
+      .cat-btn { padding: 8px 16px; font-size: .8rem; min-height: 36px; }
+      .order-item { padding: 10px 6px; }
+    }
+    /* ── Tablet portrait 701–1024px (iPad) ── */
+    @media (min-width: 701px) and (max-width: 1024px) {
+      .order-panel { width: 300px; }
+      .items-grid { grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap: 10px; }
+      .item-card-img, .item-card-img-placeholder { height: 80px; }
+      .item-card-name { font-size: .82rem; }
+      .item-card-price { font-size: .82rem; }
+    }
+    /* ── Tablet wide 1025–1280px ── */
+    @media (min-width: 1025px) and (max-width: 1280px) {
+      .items-grid { grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); }
+      .order-panel { width: 300px; }
     }
     @media (max-width: 700px) {
       body { height: 100vh; overflow: hidden; }
