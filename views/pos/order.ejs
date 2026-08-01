@@ -586,16 +586,22 @@ const AGENT_LAN_IP    = '<%- (tenant.pos_print_agent_lan_ip || "").trim() %>';
 const AGENT_HOST      = (location.hostname === '127.0.0.1' || location.hostname === 'localhost') ? '127.0.0.1' : (AGENT_LAN_IP || '127.0.0.1');
 const ALL_PRINTERS    = <%- JSON.stringify((printers || []).map(p => ({ ip: p.ip_address, port: parseInt(p.port) || 9100, role: p.role, paper_width_mm: p.paper_width === '58mm' ? 58 : 80 }))) %>;
 
-/* ── Send print job to local agent ── */
+/* ── Send print job — direct agent on localhost, relay via Railway on iPad ── */
+const _isLocal = (location.hostname === '127.0.0.1' || location.hostname === 'localhost');
 async function _printToAgent(type, data, printers) {
-  if (!AGENT_PORT || !printers.length) return;
+  if (!printers.length) return;
   for (const pr of printers) {
+    const job = { ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm };
     try {
-      await fetch('http://' + AGENT_HOST + ':' + AGENT_PORT + '/print', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm }),
-      });
+      if (_isLocal && AGENT_PORT) {
+        await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job),
+        });
+      } else {
+        await fetch('/pos/print-relay', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job),
+        });
+      }
     } catch(_) {}
   }
 }
@@ -1016,9 +1022,9 @@ async function fireKitchen() {
   if (r.ok && !r.offline) _render(r.data);
   else if (!r.ok && r.error === 'nothing_to_fire') { _showErrorToast('Nothing new to fire'); return; }
 
-  // Print kitchen ticket via local agent
+  // Print kitchen ticket via agent (local) or relay (iPad)
   const kitchenPrinters = ALL_PRINTERS.filter(p => p.role === 'kitchen' || p.role === 'both');
-  if (kitchenPrinters.length && AGENT_PORT) {
+  if (kitchenPrinters.length && (AGENT_PORT || !_isLocal)) {
     const nd = new Date();
     const zp = n => String(n).padStart(2,'0');
     const timeStr = zp(nd.getHours()) + ':' + zp(nd.getMinutes());

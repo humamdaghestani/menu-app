@@ -814,12 +814,22 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
 });
 
 // ── Print Agent installer (PowerShell — embeds ESC/POS agent as base64, registers startup task) ──
-router.get('/print-agent-installer', requireAuth, requirePOS, (req, res) => {
+router.get('/print-agent-installer', requireAuth, requirePOS, async (req, res) => {
+  let agentToken = req.tenant?.pos_agent_token;
+  if (!agentToken) {
+    agentToken = require('crypto').randomBytes(32).toString('hex');
+    await db.query('UPDATE tenants SET pos_agent_token=$1 WHERE id=$2', [agentToken, req.user.tenantId]);
+  }
+  const relayBase = req.protocol + '://' + req.get('host');
   // ESC/POS TCP agent — pure Node.js built-ins, no npm packages needed
   const agentLines = [
-    "var http = require('http');",
-    "var net  = require('net');",
-    "var PORT = 9191;",
+    "var http  = require('http');",
+    "var https = require('https');",
+    "var url   = require('url');",
+    "var net   = require('net');",
+    "var PORT  = 9191;",
+    "var RELAY_URL   = '" + relayBase + "';",
+    "var AGENT_TOKEN = '" + agentToken + "';",
     "function printTCP(ip, port, buf) {",
     "  return new Promise(function(resolve, reject) {",
     "    var sock = new net.Socket();",
@@ -931,7 +941,38 @@ router.get('/print-agent-installer', requireAuth, requirePOS, (req, res) => {
     "    return;",
     "  }",
     "  res.writeHead(404); res.end();",
-    "}).listen(PORT,'127.0.0.1',function(){ console.log('POS Print Agent v2.1 running on http://127.0.0.1:'+PORT); });",
+    "}).listen(PORT,'0.0.0.0',function(){",
+    "  var os=require('os'); var ips=[];",
+    "  Object.values(os.networkInterfaces()).forEach(function(a){a.forEach(function(i){if(i.family==='IPv4'&&!i.internal)ips.push(i.address);});});",
+    "  console.log('POS Print Agent v2.1');",
+    "  console.log('  Local:   http://127.0.0.1:'+PORT);",
+    "  ips.forEach(function(ip){ console.log('  Network: http://'+ip+':'+PORT); });",
+    "  if (RELAY_URL) console.log('  Relay:   '+RELAY_URL+' (iPad/cloud printing active)');",
+    "});",
+    "function relayPoll() {",
+    "  if (!RELAY_URL || !AGENT_TOKEN) return;",
+    "  var parsed = url.parse(RELAY_URL+'/pos/agent/poll?token='+AGENT_TOKEN);",
+    "  var mod = parsed.protocol==='https:'?https:http;",
+    "  mod.get({host:parsed.hostname,port:parsed.port,path:parsed.path,headers:{'User-Agent':'POSAgent/2.1'}},function(res){",
+    "    var body=''; res.on('data',function(d){body+=d;}); res.on('end',function(){",
+    "      try {",
+    "        var r=JSON.parse(body);",
+    "        (r.jobs||[]).forEach(function(job){",
+    "          var p=typeof job.payload==='string'?JSON.parse(job.payload):job.payload;",
+    "          if(!p.printer_ip) return;",
+    "          var buf; try{buf=buildEscPos(p);}catch(e){return;}",
+    "          printTCP(p.printer_ip,parseInt(p.printer_port)||9100,buf).then(function(){",
+    "            var ap=url.parse(RELAY_URL+'/pos/agent/ack/'+job.id+'?token='+AGENT_TOKEN);",
+    "            var m2=ap.protocol==='https:'?https:http;",
+    "            var aq=m2.request({host:ap.hostname,port:ap.port,path:ap.path,method:'POST',headers:{'Content-Length':0}},function(){});",
+    "            aq.on('error',function(){}); aq.end();",
+    "          }).catch(function(){});",
+    "        });",
+    "      } catch(e){}",
+    "    });",
+    "  }).on('error',function(){});",
+    "}",
+    "setInterval(relayPoll, 2000);",
   ];
 
   const agentCode = agentLines.join('\n');
@@ -1012,12 +1053,58 @@ Read-Host "Press Enter to close"
   res.send(ps1);
 });
 
+// ── Print Relay — browser sends job; agent polls and prints ──────────────────
+router.post('/print-relay', requireAuth, async (req, res) => {
+  try {
+    await db.query('INSERT INTO pos_print_jobs (tenant_id, payload) VALUES ($1, $2)',
+      [req.user.tenantId, JSON.stringify(req.body)]);
+    res.json({ ok: true });
+  } catch(e) { console.error(e); res.json({ ok: false }); }
+});
+
+router.get('/agent/poll', async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.json({ jobs: [] });
+    const tRes = await db.query('SELECT id FROM tenants WHERE pos_agent_token=$1', [token]);
+    if (!tRes.rows[0]) return res.json({ jobs: [] });
+    const tid = tRes.rows[0].id;
+    await db.query("UPDATE pos_print_jobs SET status='expired' WHERE tenant_id=$1 AND status='pending' AND created_at < NOW()-INTERVAL '10 minutes'", [tid]);
+    const jobs = await db.query("SELECT * FROM pos_print_jobs WHERE tenant_id=$1 AND status='pending' ORDER BY id LIMIT 10", [tid]);
+    if (jobs.rows.length) {
+      await db.query("UPDATE pos_print_jobs SET status='processing' WHERE id = ANY($1)", [jobs.rows.map(j => j.id)]);
+    }
+    res.json({ jobs: jobs.rows });
+  } catch(e) { res.json({ jobs: [] }); }
+});
+
+router.post('/agent/ack/:id', async (req, res) => {
+  try {
+    const { token } = req.query;
+    const tRes = await db.query('SELECT id FROM tenants WHERE pos_agent_token=$1', [token]);
+    if (!tRes.rows[0]) return res.json({ ok: false });
+    await db.query("UPDATE pos_print_jobs SET status='done' WHERE id=$1 AND tenant_id=$2", [req.params.id, tRes.rows[0].id]);
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
 // ── Print Agent JS direct download (bypasses PowerShell execution policy) ─────
-router.get('/print-agent-js', requireAuth, requirePOS, (req, res) => {
+router.get('/print-agent-js', requireAuth, requirePOS, async (req, res) => {
+  // Generate agent token if not yet set
+  let agentToken = req.tenant?.pos_agent_token;
+  if (!agentToken) {
+    agentToken = require('crypto').randomBytes(32).toString('hex');
+    await db.query('UPDATE tenants SET pos_agent_token=$1 WHERE id=$2', [agentToken, req.user.tenantId]);
+  }
+  const relayBase = req.protocol + '://' + req.get('host');
   const agentLines = [
-    "var http = require('http');",
-    "var net  = require('net');",
-    "var PORT = 9191;",
+    "var http  = require('http');",
+    "var https = require('https');",
+    "var url   = require('url');",
+    "var net   = require('net');",
+    "var PORT  = 9191;",
+    "var RELAY_URL   = '" + relayBase + "';",
+    "var AGENT_TOKEN = '" + agentToken + "';",
     "function printTCP(ip, port, buf) {",
     "  return new Promise(function(resolve, reject) {",
     "    var sock = new net.Socket();",
@@ -1129,7 +1216,38 @@ router.get('/print-agent-js', requireAuth, requirePOS, (req, res) => {
     "    return;",
     "  }",
     "  res.writeHead(404); res.end();",
-    "}).listen(PORT,'127.0.0.1',function(){ console.log('POS Print Agent v2.1 running on http://127.0.0.1:'+PORT); });",
+    "}).listen(PORT,'0.0.0.0',function(){",
+    "  var os=require('os'); var ips=[];",
+    "  Object.values(os.networkInterfaces()).forEach(function(a){a.forEach(function(i){if(i.family==='IPv4'&&!i.internal)ips.push(i.address);});});",
+    "  console.log('POS Print Agent v2.1');",
+    "  console.log('  Local:   http://127.0.0.1:'+PORT);",
+    "  ips.forEach(function(ip){ console.log('  Network: http://'+ip+':'+PORT); });",
+    "  if (RELAY_URL) console.log('  Relay:   '+RELAY_URL+' (iPad/cloud printing active)');",
+    "});",
+    "function relayPoll() {",
+    "  if (!RELAY_URL || !AGENT_TOKEN) return;",
+    "  var parsed = url.parse(RELAY_URL+'/pos/agent/poll?token='+AGENT_TOKEN);",
+    "  var mod = parsed.protocol==='https:'?https:http;",
+    "  mod.get({host:parsed.hostname,port:parsed.port,path:parsed.path,headers:{'User-Agent':'POSAgent/2.1'}},function(res){",
+    "    var body=''; res.on('data',function(d){body+=d;}); res.on('end',function(){",
+    "      try {",
+    "        var r=JSON.parse(body);",
+    "        (r.jobs||[]).forEach(function(job){",
+    "          var p=typeof job.payload==='string'?JSON.parse(job.payload):job.payload;",
+    "          if(!p.printer_ip) return;",
+    "          var buf; try{buf=buildEscPos(p);}catch(e){return;}",
+    "          printTCP(p.printer_ip,parseInt(p.printer_port)||9100,buf).then(function(){",
+    "            var ap=url.parse(RELAY_URL+'/pos/agent/ack/'+job.id+'?token='+AGENT_TOKEN);",
+    "            var m2=ap.protocol==='https:'?https:http;",
+    "            var aq=m2.request({host:ap.hostname,port:ap.port,path:ap.path,method:'POST',headers:{'Content-Length':0}},function(){});",
+    "            aq.on('error',function(){}); aq.end();",
+    "          }).catch(function(){});",
+    "        });",
+    "      } catch(e){}",
+    "    });",
+    "  }).on('error',function(){});",
+    "}",
+    "setInterval(relayPoll, 2000);",
   ];
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="pos-print-agent.js"');

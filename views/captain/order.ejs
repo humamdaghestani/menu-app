@@ -212,15 +212,21 @@ const AGENT_HOST   = (location.hostname === '127.0.0.1' || location.hostname ===
 const ALL_PRINTERS = <%- JSON.stringify((printers || []).map(p => ({ ip: p.ip_address, port: parseInt(p.port) || 9100, role: p.role, paper_width_mm: p.paper_width === '58mm' ? 58 : 80 }))) %>;
 const ORDER_ITEMS  = <%- JSON.stringify(orderItems.map(i => ({ qty: i.quantity, name: i.name, note: i.notes || '' }))) %>;
 
+const _isLocal = (location.hostname === '127.0.0.1' || location.hostname === 'localhost');
 async function _printToAgent(type, data, printers) {
-  if (!AGENT_PORT || !printers.length) return;
+  if (!printers.length) return;
   for (const pr of printers) {
+    const job = { ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm };
     try {
-      await fetch('http://' + AGENT_HOST + ':' + AGENT_PORT + '/print', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, type, printer_ip: pr.ip, printer_port: pr.port, paper_width_mm: pr.paper_width_mm }),
-      });
+      if (_isLocal && AGENT_PORT) {
+        await fetch('http://127.0.0.1:' + AGENT_PORT + '/print', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job),
+        });
+      } else {
+        await fetch('/pos/print-relay', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(job),
+        });
+      }
     } catch(_) {}
   }
 }
