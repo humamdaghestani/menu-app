@@ -585,6 +585,7 @@ const pool = new Pool({
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_printer VARCHAR(200) DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_print_agent_lan_ip  VARCHAR(40) DEFAULT NULL`,
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_agent_token VARCHAR(64) DEFAULT NULL`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS pos_agent_last_seen TIMESTAMPTZ DEFAULT NULL`,
     `CREATE TABLE IF NOT EXISTS pos_print_jobs (
        id SERIAL PRIMARY KEY,
        tenant_id INTEGER NOT NULL,

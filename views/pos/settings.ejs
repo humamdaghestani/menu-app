@@ -702,10 +702,22 @@
               <span style="margin-left:10px;color:#aaa">(change only if 9191 is taken by another app)</span>
             </div>
 
-            <div style="display:flex;gap:10px;align-items:center">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
               <button type="button" class="btn btn-ghost btn-sm" id="agentTestBtn" onclick="testAgent()">🔌 Test Connection</button>
               <span id="agentTestResult" style="font-size:.8rem"></span>
             </div>
+            <% if (tenant.pos_agent_last_seen) {
+              const seenMs = Date.now() - new Date(tenant.pos_agent_last_seen).getTime();
+              const seenSec = Math.round(seenMs / 1000);
+              const seenTxt = seenSec < 10 ? 'just now' : seenSec < 60 ? seenSec + 's ago' : Math.round(seenSec/60) + ' min ago';
+              const isRecent = seenMs < 15000;
+            %>
+            <div style="margin-top:8px;font-size:.78rem;color:<%= isRecent ? '#2ecc71' : '#e67e22' %>">
+              Relay agent last seen: <%= seenTxt %> <%= isRecent ? '✓ Active — iPad printing will work' : '⚠ Agent may not be running — re-open install-agent.bat' %>
+            </div>
+            <% } else { %>
+            <div style="margin-top:8px;font-size:.78rem;color:#aaa">Relay agent: not yet connected — run install-agent.bat on the Windows PC</div>
+            <% } %>
           </div>
 
           <div class="save-row">

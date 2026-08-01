@@ -1069,6 +1069,7 @@ router.get('/agent/poll', async (req, res) => {
     const tRes = await db.query('SELECT id FROM tenants WHERE pos_agent_token=$1', [token]);
     if (!tRes.rows[0]) return res.json({ jobs: [] });
     const tid = tRes.rows[0].id;
+    await db.query('UPDATE tenants SET pos_agent_last_seen=NOW() WHERE id=$1', [tid]);
     await db.query("UPDATE pos_print_jobs SET status='expired' WHERE tenant_id=$1 AND status='pending' AND created_at < NOW()-INTERVAL '10 minutes'", [tid]);
     const jobs = await db.query("SELECT * FROM pos_print_jobs WHERE tenant_id=$1 AND status='pending' ORDER BY id LIMIT 10", [tid]);
     if (jobs.rows.length) {
