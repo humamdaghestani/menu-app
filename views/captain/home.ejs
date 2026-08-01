@@ -59,7 +59,7 @@
     .empty-state h2 { font-size: 1.1rem; color: #444; margin-bottom: 8px; }
 
     /* ── Install banner ── */
-    #installBanner { display:none; position:fixed; bottom:0; left:0; right:0; background:#1a1a2e; border-top:2px solid #7c5cbf; padding:14px 20px; z-index:1000; align-items:center; gap:14px; }
+    #installBanner { display:none; position:fixed; top:0; left:0; right:0; background:#2d1f4e; border-bottom:3px solid #7c5cbf; padding:16px 20px; z-index:1000; align-items:center; gap:14px; box-shadow:0 4px 24px rgba(0,0,0,.5); }
     #installBanner.show { display:flex; }
     #installBanner .ib-icon { font-size:1.8rem; flex-shrink:0; }
     #installBanner .ib-text { flex:1; font-size:.82rem; color:#ccc; line-height:1.5; }
@@ -79,10 +79,13 @@
 </div>
 <script>
 (function() {
-  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  // Modern iPads in desktop mode send a Mac user-agent, so also check maxTouchPoints
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    || (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   var isStandalone = window.navigator.standalone === true;
   var dismissed = localStorage.getItem('captainInstallDismissed');
-  if (isIOS && !isStandalone && !dismissed) {
+  if (!isStandalone && !dismissed) {
     document.getElementById('installBanner').classList.add('show');
   }
 })();
