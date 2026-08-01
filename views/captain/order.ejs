@@ -123,9 +123,30 @@
       .items-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; padding: 8px; }
       .item-placeholder, .item-img { height: 70px; }
     }
+    /* ── Install banner ── */
+    #installBanner { display:none; position:fixed; top:0; left:0; right:0; background:#2d1f4e; border-bottom:3px solid #7c5cbf; padding:14px 20px; z-index:1000; align-items:center; gap:14px; box-shadow:0 4px 24px rgba(0,0,0,.5); }
+    #installBanner.show { display:flex; }
+    #installBanner .ib-icon { font-size:1.6rem; flex-shrink:0; }
+    #installBanner .ib-text { flex:1; font-size:.8rem; color:#ccc; line-height:1.5; }
+    #installBanner .ib-text strong { color:#fff; }
+    #installBanner .ib-close { background:none; border:none; color:#777; font-size:1.3rem; cursor:pointer; flex-shrink:0; padding:4px; }
   </style>
 </head>
 <body>
+
+<div id="installBanner">
+  <div class="ib-icon">📲</div>
+  <div class="ib-text">
+    <strong>Install as App — no browser bar:</strong>
+    Tap <strong style="color:#c4b5fd">Share ↑</strong> in Safari → <strong style="color:#c4b5fd">Add to Home Screen</strong>
+  </div>
+  <button class="ib-close" onclick="document.getElementById('installBanner').classList.remove('show')">✕</button>
+</div>
+<script>
+if (window.navigator.standalone !== true) {
+  document.getElementById('installBanner').classList.add('show');
+}
+</script>
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:10px">
