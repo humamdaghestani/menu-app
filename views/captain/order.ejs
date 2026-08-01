@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title><%= order.table_name %> — Captain</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -24,7 +24,7 @@
     .search-bar { padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); flex-shrink: 0; }
     .search-wrap { position: relative; }
     .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #444; pointer-events: none; }
-    .search-input { width: 100%; padding: 9px 14px 9px 34px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 9px; color: #fff; font-size: .9rem; outline: none; font-family: inherit; }
+    .search-input { width: 100%; padding: 9px 14px 9px 34px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 9px; color: #fff; font-size: 16px; outline: none; font-family: inherit; }
     .search-input:focus { border-color: #7c5cbf; }
 
     .cat-bar { display: flex; gap: 7px; padding: 10px 12px; background: #13132a; border-bottom: 1px solid rgba(255,255,255,.05); overflow-x: auto; scrollbar-width: none; flex-shrink: 0; }
@@ -38,11 +38,11 @@
     .item-card:hover  { border-color: #7c5cbf; transform: translateY(-2px); }
     .item-card:active { transform: scale(.96); }
     .item-card.hidden { display: none; }
-    .item-img  { width: 100%; height: 80px; object-fit: cover; background: #2a2a3e; }
-    .item-placeholder { width: 100%; height: 80px; background: linear-gradient(135deg,#1e1e3a,#2a2a4e); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+    .item-img  { width: 100%; height: 90px; object-fit: cover; background: #2a2a3e; }
+    .item-placeholder { width: 100%; height: 90px; background: linear-gradient(135deg,#1e1e3a,#2a2a4e); display: flex; align-items: center; justify-content: center; font-size: 2rem; }
     .item-body  { padding: 10px 12px; }
-    .item-name  { font-size: .85rem; font-weight: 600; color: #ddd; line-height: 1.3; margin-bottom: 4px; }
-    .item-price { font-size: .88rem; color: #7c5cbf; font-weight: 700; }
+    .item-name  { font-size: .92rem; font-weight: 700; color: #e8e8e8; line-height: 1.3; margin-bottom: 5px; }
+    .item-price { font-size: .88rem; color: #a78bdf; font-weight: 700; }
 
     /* ── Order panel ── */
     .order-panel { width: 340px; flex-shrink: 0; display: flex; flex-direction: column; background: #13132a; border-left: 1px solid rgba(255,255,255,.06); }
@@ -87,11 +87,34 @@
     .kitchen-chip.sent { background: rgba(0,184,148,.1); color: #00b894; }
     .kitchen-chip.unsent { background: rgba(231,76,60,.1); color: #e74c3c; }
 
+    /* ── Touch devices: larger tap targets ── */
+    @media (hover: none) and (pointer: coarse) {
+      .qty-btn  { width: 38px; height: 38px; font-size: 1.1rem; border-radius: 9px; }
+      .qty-num  { font-size: 1rem; width: 26px; }
+      .cat-btn  { padding: 9px 18px; font-size: .85rem; min-height: 38px; }
+      .order-item { padding: 12px 8px; }
+      .btn-fire, .btn-bill, .btn-order { padding: 16px 8px; font-size: .92rem; }
+      .item-name  { font-size: 1rem; }
+      .item-price { font-size: .95rem; }
+    }
+    /* ── iPad portrait (701–1024px) ── */
+    @media (min-width: 701px) and (max-width: 1024px) {
+      .order-panel { width: 300px; }
+      .items-grid  { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    }
+    /* ── iPad landscape / large tablet (1025–1400px) ── */
+    @media (min-width: 1025px) and (max-width: 1400px) {
+      .order-panel { width: 320px; }
+      .items-grid  { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
+    }
+    /* ── Phone / small tablet stacked layout (≤700px) ── */
     @media (max-width: 700px) {
-      .order-panel { width: 100%; position: fixed; bottom: 0; left: 0; right: 0; max-height: 60vh; border-top: 2px solid #7c5cbf; border-left: none; z-index: 10; }
-      .menu-panel  { padding-bottom: 60vh; }
-      body { overflow: auto; height: auto; }
+      .order-panel { width: 100%; position: fixed; bottom: 0; left: 0; right: 0; max-height: 55vh; border-top: 2px solid #7c5cbf; border-left: none; z-index: 10; }
+      .menu-panel  { padding-bottom: 55vh; }
+      body   { overflow: auto; height: auto; }
       .layout { flex-direction: column; height: auto; overflow: visible; }
+      .items-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; padding: 8px; }
+      .item-placeholder, .item-img { height: 70px; }
     }
   </style>
 </head>
