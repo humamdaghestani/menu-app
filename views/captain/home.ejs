@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Captain" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#1a1a2e" />
+  <link rel="manifest" href="/captain-manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
   <title>Captain — <%= tenant.name %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -50,9 +57,40 @@
 
     .empty-state { text-align: center; padding: 80px 20px; color: #333; }
     .empty-state h2 { font-size: 1.1rem; color: #444; margin-bottom: 8px; }
+
+    /* ── Install banner ── */
+    #installBanner { display:none; position:fixed; bottom:0; left:0; right:0; background:#1a1a2e; border-top:2px solid #7c5cbf; padding:14px 20px; z-index:1000; align-items:center; gap:14px; }
+    #installBanner.show { display:flex; }
+    #installBanner .ib-icon { font-size:1.8rem; flex-shrink:0; }
+    #installBanner .ib-text { flex:1; font-size:.82rem; color:#ccc; line-height:1.5; }
+    #installBanner .ib-text strong { color:#fff; display:block; margin-bottom:2px; font-size:.9rem; }
+    #installBanner .ib-close { background:none; border:none; color:#555; font-size:1.3rem; cursor:pointer; flex-shrink:0; padding:4px; }
   </style>
 </head>
 <body>
+
+<div id="installBanner">
+  <div class="ib-icon">📲</div>
+  <div class="ib-text">
+    <strong>Install Captain App</strong>
+    Tap the <strong style="color:#7c5cbf">Share</strong> button in Safari, then <strong style="color:#7c5cbf">Add to Home Screen</strong> — runs fullscreen with no browser bar.
+  </div>
+  <button class="ib-close" onclick="dismissInstallBanner()">✕</button>
+</div>
+<script>
+(function() {
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone = window.navigator.standalone === true;
+  var dismissed = localStorage.getItem('captainInstallDismissed');
+  if (isIOS && !isStandalone && !dismissed) {
+    document.getElementById('installBanner').classList.add('show');
+  }
+})();
+function dismissInstallBanner() {
+  localStorage.setItem('captainInstallDismissed', '1');
+  document.getElementById('installBanner').classList.remove('show');
+}
+</script>
 
 <div class="topbar">
   <div class="topbar-left">
