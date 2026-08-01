@@ -25,6 +25,7 @@ const db = require('./db');
 
 const app = express();
 
+app.set('trust proxy', 1); // Railway / reverse-proxy: makes req.protocol return https correctly
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
