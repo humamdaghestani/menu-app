@@ -261,7 +261,7 @@ router.get('/session/:id/export-excel', requireAuth, requirePOS, async (req, res
        GROUP BY po.id, pp.method ORDER BY po.created_at`, [sid]);
 
     const itemsRes = await db.query(
-      `SELECT poi.order_id, poi.name, poi.quantity, poi.price, poi.note
+      `SELECT poi.order_id, poi.name, poi.quantity, poi.price, poi.notes
        FROM pos_order_items poi
        JOIN pos_orders po ON po.id=poi.order_id
        WHERE po.session_id=$1 ORDER BY poi.order_id, poi.id`, [sid]);
@@ -362,7 +362,7 @@ router.get('/session/:id/export-excel', requireAuth, requirePOS, async (req, res
         qty: i.quantity,
         price: parseFloat(i.price || 0),
         line: parseFloat(i.price || 0) * parseInt(i.quantity || 1),
-        note: i.note || '',
+        note: i.notes || '',
       });
     });
     ws3.getColumn('price').numFmt = '#,##0.00';
