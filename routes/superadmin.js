@@ -114,11 +114,14 @@ router.post('/tenants/:id/delete', requireSuperAdmin, async (req, res) => {
   try {
     // Nullify all cross-references between tables that both cascade from tenant
     // to avoid FK conflict during cascade delete
-    await db.query(`UPDATE pos_orders     SET session_id=NULL, table_id=NULL, created_by=NULL, customer_id=NULL WHERE tenant_id=$1`, [tid]);
-    await db.query(`UPDATE pos_sessions   SET opened_by=NULL WHERE tenant_id=$1`, [tid]);
-    await db.query(`UPDATE pos_passkeys   SET order_id=NULL, created_by=NULL, used_by=NULL WHERE tenant_id=$1`, [tid]);
-    await db.query(`UPDATE menu_items     SET category_id=NULL, tax_rate_id=NULL WHERE tenant_id=$1`, [tid]);
+    // Nullify cross-references between sibling tables (both cascade from tenant)
+    await db.query(`UPDATE pos_orders      SET session_id=NULL, table_id=NULL, created_by=NULL, customer_id=NULL WHERE tenant_id=$1`, [tid]);
+    await db.query(`UPDATE pos_sessions    SET opened_by=NULL WHERE tenant_id=$1`, [tid]);
+    await db.query(`UPDATE pos_passkeys    SET order_id=NULL, created_by=NULL, used_by=NULL WHERE tenant_id=$1`, [tid]);
+    await db.query(`UPDATE menu_items      SET category_id=NULL, tax_rate_id=NULL WHERE tenant_id=$1`, [tid]);
     await db.query(`UPDATE inventory_items SET inv_category_id=NULL WHERE tenant_id=$1`, [tid]);
+    // Explicitly delete tables that may lack CASCADE in older DB instances
+    await db.query(`DELETE FROM valet_requests WHERE tenant_id=$1`, [tid]);
     await db.query(`DELETE FROM tenants WHERE id=$1`, [tid]);
     res.redirect('/superadmin?success=Restaurant+deleted');
   } catch (err) { console.error(err); res.redirect('/superadmin?error=' + encodeURIComponent(err.message)); }
