@@ -97,7 +97,7 @@
     <div class="topbar-title">📋 Session #<%= session.id %></div>
   </div>
   <div style="display:flex;gap:8px">
-    <a href="/pos/session/<%= session.id %>/export-excel" class="btn btn-ghost" download style="color:#00b894">⬇ Excel</a>
+    <a href="/pos/session/<%= session.id %>/export-excel" class="btn btn-ghost" download="session-<%= session.id %>.xlsx" style="color:#00b894">⬇ Excel</a>
     <button onclick="history.back()" class="btn btn-ghost">← Back</button>
   </div>
 </div>

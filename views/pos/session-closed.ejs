@@ -53,7 +53,7 @@
   <div class="q">📊 Export this session as Excel?</div>
 
   <div class="btns">
-    <a href="/pos/session/<%= session.id %>/export-excel" class="btn btn-excel" download>
+    <a href="/pos/session/<%= session.id %>/export-excel" class="btn btn-excel" download="session-<%= session.id %>.xlsx">
       ⬇ Download Excel Report
     </a>
     <a href="/pos/session/open" class="btn btn-new">
