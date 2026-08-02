@@ -192,7 +192,7 @@
     <form method="POST" action="/pos/session/close" onsubmit="return onCloseSubmit(event)">
       <div class="form-group">
         <label>Actual Cash in Drawer (IQD)</label>
-        <input type="number" name="closing_cash" id="closingCashInput" value="" min="0" step="500"
+        <input type="number" name="closing_cash" id="closingCashInput" value="" min="0" step="any"
           placeholder="Count your drawer and enter here..." oninput="showVariance()" />
       </div>
       <div id="varianceBox" style="display:none;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:.85rem;font-weight:700"></div>
