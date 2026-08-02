@@ -121,7 +121,7 @@
     }
     nav::-webkit-scrollbar { display: none; }
     nav button {
-      background: none; border: none; color: var(--nav-text);
+      background: none; border: none; color: <%= tenant.category_text_color || 'var(--nav-text)' %>;
       font-size: .8rem; padding: 10px 12px; cursor: pointer;
       border-bottom: 3px solid transparent; white-space: nowrap;
       font-weight: 600; transition: color .2s, border-color .2s; font-family: inherit;
