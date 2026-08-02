@@ -448,12 +448,15 @@
           <label>Parent Category <span style="color:#bbb;font-weight:400">(optional — makes this a sub-category)</span></label>
           <select name="parent_id">
             <option value="">— Top-level category —</option>
-            <% (function buildOpts(cats, parentId, depth) {
-                 cats.filter(c => (c.parent_id || null) == (parentId || null)).forEach(cat => {
-                   const prefix = '  '.repeat(depth) + (depth > 0 ? '└ ' : '');
-            %>
-              <option value="<%= cat.id %>"><%= prefix %><%= cat.name %></option>
-            <% buildOpts(cats, cat.id, depth + 1); }); })(categories, null, 0); %>
+            <% categories.filter(c => !c.parent_id).forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+              <% categories.filter(c => String(c.parent_id) === String(cat.id)).forEach(sub => { %>
+                <option value="<%= sub.id %>">  └ <%= sub.name %></option>
+                <% categories.filter(c => String(c.parent_id) === String(sub.id)).forEach(subsub => { %>
+                  <option value="<%= subsub.id %>">    └ <%= subsub.name %></option>
+                <% }) %>
+              <% }) %>
+            <% }) %>
           </select>
         </div>
         <div class="form-group">
@@ -661,12 +664,15 @@
           <label>Parent Category</label>
           <select id="catEditParentSel" onchange="document.getElementById('catEditParentId').value=this.value">
             <option value="">— Top-level category —</option>
-            <% (function buildOpts2(cats, parentId, depth) {
-                 cats.filter(c => (c.parent_id || null) == (parentId || null)).forEach(cat => {
-                   const prefix = '  '.repeat(depth) + (depth > 0 ? '└ ' : '');
-            %>
-              <option value="<%= cat.id %>"><%= prefix %><%= cat.name %></option>
-            <% buildOpts2(cats, cat.id, depth + 1); }); })(categories, null, 0); %>
+            <% categories.filter(c => !c.parent_id).forEach(cat => { %>
+              <option value="<%= cat.id %>"><%= cat.name %></option>
+              <% categories.filter(c => String(c.parent_id) === String(cat.id)).forEach(sub => { %>
+                <option value="<%= sub.id %>">  └ <%= sub.name %></option>
+                <% categories.filter(c => String(c.parent_id) === String(sub.id)).forEach(subsub => { %>
+                  <option value="<%= subsub.id %>">    └ <%= subsub.name %></option>
+                <% }) %>
+              <% }) %>
+            <% }) %>
 
           </select>
         </div>
