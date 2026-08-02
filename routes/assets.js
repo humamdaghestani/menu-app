@@ -68,8 +68,10 @@ router.post('/:id/edit', requireAuth, requireAssets, async (req, res) => {
 });
 
 router.post('/:id/delete', requireAuth, requireAssets, async (req, res) => {
-  await db.query('DELETE FROM assets WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/assets');
+  try {
+    await db.query('DELETE FROM assets WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/assets');
+  } catch (err) { console.error(err); res.redirect('/assets?error=' + encodeURIComponent(err.message)); }
 });
 
 // Maintenance log
@@ -101,8 +103,10 @@ router.post('/:id/maintenance', requireAuth, requireAssets, async (req, res) => 
 });
 
 router.post('/:id/maintenance/:mid/delete', requireAuth, requireAssets, async (req, res) => {
-  await db.query('DELETE FROM asset_maintenance WHERE id=$1', [req.params.mid]);
-  res.redirect('/assets/' + req.params.id + '/maintenance');
+  try {
+    await db.query('DELETE FROM asset_maintenance WHERE id=$1', [req.params.mid]);
+    res.redirect('/assets/' + req.params.id + '/maintenance');
+  } catch (err) { console.error(err); res.redirect('/assets/' + req.params.id + '/maintenance?error=' + encodeURIComponent(err.message)); }
 });
 
 module.exports = router;

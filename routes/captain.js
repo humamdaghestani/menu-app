@@ -13,7 +13,7 @@ async function requireCaptain(req, res, next) {
     if (req.user.role === 'admin') return next();
     if ((req.user.permissions || []).includes('access_captain')) return next();
     res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">You do not have access to the Captain system.</h2>');
-  } catch { next(); }
+  } catch (e) { console.error(e); res.status(500).send('Server error'); }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

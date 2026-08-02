@@ -30,7 +30,7 @@ router.get('/', requireAuth, requireAccounting, async (req, res) => {
          payableRes, receivableRes, cashInRes, cashOutRes, recentExpRes] = await Promise.all([
 
     db.query(`SELECT COALESCE(SUM(total),0) AS total, COUNT(*) AS cnt
-              FROM pos_orders WHERE tenant_id=$1 AND status='closed' AND paid_at::date BETWEEN $2 AND $3`,
+              FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3`,
       [tid, from, to]),
 
     db.query(`SELECT COALESCE(SUM(total),0) AS total, COUNT(*) AS cnt
@@ -47,7 +47,7 @@ router.get('/', requireAuth, requireAccounting, async (req, res) => {
               GROUP BY ec.name, ec.color ORDER BY total DESC`, [tid, from, to]),
 
     db.query(`SELECT paid_at::date AS day, COALESCE(SUM(total),0) AS total
-              FROM pos_orders WHERE tenant_id=$1 AND status='closed' AND paid_at::date BETWEEN $2 AND $3
+              FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3
               GROUP BY paid_at::date ORDER BY day`, [tid, from, to]),
 
     // Total payable to suppliers (all time)
@@ -184,8 +184,10 @@ router.post('/suppliers/:id/edit', requireAuth, requireAccounting, async (req, r
 });
 
 router.post('/suppliers/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query('DELETE FROM suppliers WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/suppliers');
+  try {
+    await db.query('DELETE FROM suppliers WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/suppliers');
+  } catch (err) { console.error(err); res.redirect('/accounting/suppliers?error=' + encodeURIComponent(err.message)); }
 });
 
 // Supplier ledger detail (by entity id)
@@ -245,8 +247,10 @@ router.post('/suppliers/pay', requireAuth, requireAccounting, async (req, res) =
 });
 
 router.post('/suppliers/pay/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query(`DELETE FROM supplier_payments WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/suppliers');
+  try {
+    await db.query(`DELETE FROM supplier_payments WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/suppliers');
+  } catch (err) { console.error(err); res.redirect('/accounting/suppliers?error=' + encodeURIComponent(err.message)); }
 });
 
 // ── Customer Ledger Detail ─────────────────────────────────────────
@@ -477,32 +481,40 @@ router.post('/expenses', requireAuth, requireAccounting, async (req, res) => {
 });
 
 router.post('/expenses/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query(`DELETE FROM expenses WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/expenses');
+  try {
+    await db.query(`DELETE FROM expenses WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/expenses');
+  } catch (err) { console.error(err); res.redirect('/accounting/expenses?error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/expenses/:id/edit', requireAuth, requireAccounting, async (req, res) => {
   const { description, amount, expense_date, category_id, notes } = req.body;
-  await db.query(
-    `UPDATE expenses SET description=$1,amount=$2,expense_date=$3,category_id=$4,notes=$5 WHERE id=$6 AND tenant_id=$7`,
-    [description.trim(), parseFloat(amount), expense_date, category_id || null,
-     notes?.trim() || null, req.params.id, req.user.tenantId]
-  );
-  res.redirect('/accounting/expenses');
+  try {
+    await db.query(
+      `UPDATE expenses SET description=$1,amount=$2,expense_date=$3,category_id=$4,notes=$5 WHERE id=$6 AND tenant_id=$7`,
+      [description.trim(), parseFloat(amount), expense_date, category_id || null,
+       notes?.trim() || null, req.params.id, req.user.tenantId]
+    );
+    res.redirect('/accounting/expenses');
+  } catch (err) { console.error(err); res.redirect('/accounting/expenses?error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/categories', requireAuth, requireAccounting, async (req, res) => {
   const { name, color } = req.body;
   if (!name?.trim()) return res.redirect('/accounting/expenses');
-  await db.query(`INSERT INTO expense_categories (tenant_id,name,color) VALUES ($1,$2,$3)`,
-    [req.user.tenantId, name.trim(), color || '#e74c3c']);
-  res.redirect('/accounting/expenses');
+  try {
+    await db.query(`INSERT INTO expense_categories (tenant_id,name,color) VALUES ($1,$2,$3)`,
+      [req.user.tenantId, name.trim(), color || '#e74c3c']);
+    res.redirect('/accounting/expenses');
+  } catch (err) { console.error(err); res.redirect('/accounting/expenses?error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/categories/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query(`UPDATE expenses SET category_id=NULL WHERE category_id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
-  await db.query(`DELETE FROM expense_categories WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/expenses');
+  try {
+    await db.query(`UPDATE expenses SET category_id=NULL WHERE category_id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    await db.query(`DELETE FROM expense_categories WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/expenses');
+  } catch (err) { console.error(err); res.redirect('/accounting/expenses?error=' + encodeURIComponent(err.message)); }
 });
 
 // ── AP / AR Aging ─────────────────────────────────────────────────────────────
@@ -611,13 +623,17 @@ router.post('/cheques', requireAuth, requireAccounting, async (req, res) => {
 
 router.post('/cheques/:id/status', requireAuth, requireAccounting, async (req, res) => {
   const { status } = req.body;
-  await db.query('UPDATE cheques SET status=$1 WHERE id=$2 AND tenant_id=$3', [status, req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/cheques');
+  try {
+    await db.query('UPDATE cheques SET status=$1 WHERE id=$2 AND tenant_id=$3', [status, req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/cheques');
+  } catch (err) { console.error(err); res.redirect('/accounting/cheques?error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/cheques/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query('DELETE FROM cheques WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/cheques');
+  try {
+    await db.query('DELETE FROM cheques WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/cheques');
+  } catch (err) { console.error(err); res.redirect('/accounting/cheques?error=' + encodeURIComponent(err.message)); }
 });
 
 // ── Bank Accounts ─────────────────────────────────────────────────────────────
@@ -660,8 +676,10 @@ router.post('/tax/:id/edit', requireAuth, requireAccounting, async (req, res) =>
 });
 
 router.post('/tax/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query('DELETE FROM tax_rates WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/tax');
+  try {
+    await db.query('DELETE FROM tax_rates WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/tax');
+  } catch (err) { console.error(err); res.redirect('/accounting/tax?error=' + encodeURIComponent(err.message)); }
 });
 
 // ── Budgets ───────────────────────────────────────────────────────────────────
@@ -685,8 +703,10 @@ router.post('/budgets', requireAuth, requireAccounting, async (req, res) => {
 });
 
 router.post('/budgets/:id/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query('DELETE FROM budgets WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/accounting/budgets');
+  try {
+    await db.query('DELETE FROM budgets WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/accounting/budgets');
+  } catch (err) { console.error(err); res.redirect('/accounting/budgets?error=' + encodeURIComponent(err.message)); }
 });
 
 router.get('/budgets/:id', requireAuth, requireAccounting, async (req, res) => {
@@ -727,8 +747,10 @@ router.post('/budgets/:id/lines', requireAuth, requireAccounting, async (req, re
 });
 
 router.post('/budgets/:id/lines/:lid/delete', requireAuth, requireAccounting, async (req, res) => {
-  await db.query('DELETE FROM budget_lines WHERE id=$1', [req.params.lid]);
-  res.redirect('/accounting/budgets/' + req.params.id);
+  try {
+    await db.query('DELETE FROM budget_lines WHERE id=$1', [req.params.lid]);
+    res.redirect('/accounting/budgets/' + req.params.id);
+  } catch (err) { console.error(err); res.redirect('/accounting/budgets/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
 });
 
 module.exports = router;

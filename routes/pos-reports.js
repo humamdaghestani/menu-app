@@ -67,7 +67,7 @@ router.get('/session/:id', requireAuth, requirePOS, async (req, res) => {
            COALESCE(SUM(service_fee),0)   AS total_service_fees,
            COUNT(*) FILTER (WHERE discount_type!='none') AS discount_orders,
            COALESCE(SUM(CASE WHEN discount_type='fixed' THEN discount_value
-                             WHEN discount_type='percent' THEN total*discount_value/(100-discount_value)
+                             WHEN discount_type='percent' THEN total*discount_value/NULLIF(100-discount_value,0)
                              ELSE 0 END),0) AS total_discounts
          FROM pos_orders WHERE session_id=$1 AND status='paid'`,
         [session.id]
@@ -80,7 +80,7 @@ router.get('/session/:id', requireAuth, requirePOS, async (req, res) => {
            COALESCE(SUM(po.tip_amount),0) AS tip_total,
            COUNT(*) FILTER (WHERE po.discount_type!='none')::int AS discounts_given,
            COALESCE(SUM(CASE WHEN po.discount_type='fixed' THEN po.discount_value
-                             WHEN po.discount_type='percent' THEN po.total*po.discount_value/(100-po.discount_value)
+                             WHEN po.discount_type='percent' THEN po.total*po.discount_value/NULLIF(100-po.discount_value,0)
                              ELSE 0 END),0) AS total_discounts
          FROM pos_orders po LEFT JOIN users u ON u.id=po.created_by
          WHERE po.session_id=$1 AND po.status='paid'

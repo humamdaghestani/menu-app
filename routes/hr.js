@@ -66,8 +66,10 @@ router.post('/employees/:id/edit', requireAuth, requireHR, async (req, res) => {
 
 // Delete employee
 router.post('/employees/:id/delete', requireAuth, requireHR, async (req, res) => {
-  await db.query('DELETE FROM hr_employees WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/hr');
+  try {
+    await db.query('DELETE FROM hr_employees WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/hr');
+  } catch (err) { console.error(err); res.redirect('/hr?error=' + encodeURIComponent(err.message)); }
 });
 
 // Shifts page
@@ -105,8 +107,10 @@ router.post('/shifts', requireAuth, requireHR, async (req, res) => {
 
 // Delete shift
 router.post('/shifts/:id/delete', requireAuth, requireHR, async (req, res) => {
-  await db.query('DELETE FROM hr_shifts WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/hr/shifts');
+  try {
+    await db.query('DELETE FROM hr_shifts WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/hr/shifts');
+  } catch (err) { console.error(err); res.redirect('/hr/shifts?error=' + encodeURIComponent(err.message)); }
 });
 
 // Payroll page
@@ -145,15 +149,19 @@ router.post('/payroll', requireAuth, requireHR, async (req, res) => {
 
 // Mark payroll paid
 router.post('/payroll/:id/pay', requireAuth, requireHR, async (req, res) => {
-  await db.query(`UPDATE hr_payroll SET status='paid', paid_at=NOW() WHERE id=$1 AND tenant_id=$2`,
-    [req.params.id, req.user.tenantId]);
-  res.redirect('/hr/payroll');
+  try {
+    await db.query(`UPDATE hr_payroll SET status='paid', paid_at=NOW() WHERE id=$1 AND tenant_id=$2`,
+      [req.params.id, req.user.tenantId]);
+    res.redirect('/hr/payroll');
+  } catch (err) { console.error(err); res.redirect('/hr/payroll?error=' + encodeURIComponent(err.message)); }
 });
 
 // Delete payroll
 router.post('/payroll/:id/delete', requireAuth, requireHR, async (req, res) => {
-  await db.query('DELETE FROM hr_payroll WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/hr/payroll');
+  try {
+    await db.query('DELETE FROM hr_payroll WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/hr/payroll');
+  } catch (err) { console.error(err); res.redirect('/hr/payroll?error=' + encodeURIComponent(err.message)); }
 });
 
 module.exports = router;

@@ -54,15 +54,21 @@ router.post('/', requireAuth, requireReservations, async (req, res) => {
 
 router.post('/:id/status', requireAuth, requireReservations, async (req, res) => {
   const { status, date } = req.body;
-  await db.query(`UPDATE reservations SET status=$1 WHERE id=$2 AND tenant_id=$3`,
-    [status, req.params.id, req.user.tenantId]);
-  res.redirect('/reservations?date=' + (date || new Date().toISOString().slice(0,10)));
+  const back = '/reservations?date=' + (date || new Date().toISOString().slice(0,10));
+  try {
+    await db.query(`UPDATE reservations SET status=$1 WHERE id=$2 AND tenant_id=$3`,
+      [status, req.params.id, req.user.tenantId]);
+    res.redirect(back);
+  } catch (err) { console.error(err); res.redirect(back + '&error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/:id/delete', requireAuth, requireReservations, async (req, res) => {
   const { date } = req.body;
-  await db.query('DELETE FROM reservations WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/reservations?date=' + (date || new Date().toISOString().slice(0,10)));
+  const back = '/reservations?date=' + (date || new Date().toISOString().slice(0,10));
+  try {
+    await db.query('DELETE FROM reservations WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect(back);
+  } catch (err) { console.error(err); res.redirect(back + '&error=' + encodeURIComponent(err.message)); }
 });
 
 module.exports = router;

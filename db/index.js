@@ -681,6 +681,15 @@ const pool = new Pool({
       reason     TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    // Feedback extended columns
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q1            INTEGER`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q2            INTEGER`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q3            INTEGER`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q4            INTEGER`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q5            INTEGER`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS customer_name VARCHAR(120)`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS mobile        VARCHAR(30)`,
+    `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS table_no      VARCHAR(50)`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

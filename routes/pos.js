@@ -14,7 +14,7 @@ async function requirePOS(req, res, next) {
     if (req.user.role === 'admin') return next();
     if ((req.user.permissions || []).includes('access_pos')) return next();
     res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">You do not have access to the POS module. Ask your admin to grant access.</h2>');
-  } catch { next(); }
+  } catch (e) { console.error(e); res.status(500).send('Server error'); }
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -979,7 +979,8 @@ router.get('/sessions/:id', requireAuth, requirePOS, async (req, res) => {
 
 // ── Print Agent installer (PowerShell — embeds ESC/POS agent as base64, registers startup task) ──
 router.get('/print-agent-installer', requireAuth, requirePOS, async (req, res) => {
-  let agentToken = req.tenant?.pos_agent_token;
+  const tenantRow = await db.query('SELECT pos_agent_token FROM tenants WHERE id=$1', [req.user.tenantId]);
+  let agentToken = tenantRow.rows[0]?.pos_agent_token;
   if (!agentToken) {
     agentToken = require('crypto').randomBytes(32).toString('hex');
     await db.query('UPDATE tenants SET pos_agent_token=$1 WHERE id=$2', [agentToken, req.user.tenantId]);

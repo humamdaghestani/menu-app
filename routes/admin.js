@@ -128,6 +128,7 @@ router.get('/dashboard', requireAuth, requirePerm('items'), async (req, res) => 
       categories: categoriesRes.rows,
       items: itemsRes.rows,
       canEditPrices,
+      currentUser: req.user,
     });
   } catch (err) {
     console.error(err);
@@ -148,6 +149,7 @@ router.get('/items', requireAuth, requirePerm('items'), async (req, res) => {
       categories: categoriesRes.rows,
       items: itemsRes.rows,
       canEditPrices,
+      currentUser: req.user,
     });
   } catch (err) {
     console.error(err);
@@ -327,7 +329,7 @@ router.get('/orders', requireAuth, requirePerm('orders'), requireFeature('feat_o
       ...o,
       items: typeof o.items === 'string' ? (() => { try { return JSON.parse(o.items); } catch(e) { return []; } })() : (o.items || [])
     }));
-    res.render('admin/orders', { tenant: tenant.rows[0], orders: rows });
+    res.render('admin/orders', { tenant: tenant.rows[0], orders: rows, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
@@ -339,7 +341,7 @@ router.get('/qrcode', requireAuth, requireAdmin, async (req, res) => {
     const host    = req.get('host');
     const protocol = host.includes('localhost') ? 'http' : 'https';
     const menuUrl = `${protocol}://${host}/?tenant=${t.subdomain}`;
-    res.render('admin/qrcode', { tenant: t, menuUrl });
+    res.render('admin/qrcode', { tenant: t, menuUrl, currentUser: req.user });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
@@ -353,7 +355,7 @@ router.get('/settings', requireAuth, requireAdmin, async (req, res) => {
       db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
       db.query('SELECT id, email FROM users WHERE id=$1', [req.user.userId]),
     ]);
-    res.render('admin/settings', { tenant: tenantRes.rows[0], user: userRes.rows[0] });
+    res.render('admin/settings', { tenant: tenantRes.rows[0], user: userRes.rows[0], currentUser: req.user });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
@@ -490,7 +492,7 @@ router.post('/inventory/:id/stock', requireAuth, requirePerm('items'), bust, asy
     await db.query('UPDATE inventory_items SET stock_qty = stock_qty + $1 WHERE id=$2 AND tenant_id=$3', [qty, req.params.id, req.user.tenantId]);
     await db.query(
       `INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,notes,created_by) VALUES ($1,$2,$3,$4,$5,$6)`,
-      [req.user.tenantId, req.params.id, qty >= 0 ? 'purchase' : 'adjustment', qty, notes||null, req.user.id]
+      [req.user.tenantId, req.params.id, qty >= 0 ? 'purchase' : 'adjustment', qty, notes||null, req.user.userId]
     );
     if (req.query.json) { const r = await db.query('SELECT stock_qty FROM inventory_items WHERE id=$1', [req.params.id]); return res.json({ ok: true, stock_qty: r.rows[0]?.stock_qty }); }
     res.redirect('/admin/inventory');
@@ -758,7 +760,7 @@ router.get('/feedback', requireAuth, requirePerm('feedback'), requireFeature('fe
       'SELECT * FROM feedback WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200',
       [req.user.tenantId]
     );
-    res.render('admin/feedback', { tenant: tenant.rows[0], feedback: feedback.rows });
+    res.render('admin/feedback', { tenant: tenant.rows[0], feedback: feedback.rows, currentUser: req.user });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 

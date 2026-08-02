@@ -4,9 +4,11 @@ const db = require('../db');
 const requireAuth = require('../middleware/auth');
 
 async function requireFeat(req, res, next) {
-  const r = await db.query('SELECT feat_happy_hour FROM tenants WHERE id=$1', [req.user.tenantId]);
-  if (!r.rows[0]?.feat_happy_hour) return res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Happy Hour feature is not enabled.</h2>');
-  next();
+  try {
+    const r = await db.query('SELECT feat_happy_hour FROM tenants WHERE id=$1', [req.user.tenantId]);
+    if (!r.rows[0]?.feat_happy_hour) return res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Happy Hour feature is not enabled.</h2>');
+    next();
+  } catch (e) { console.error(e); res.status(500).send('Server error'); }
 }
 
 router.get('/', requireAuth, requireFeat, async (req, res) => {

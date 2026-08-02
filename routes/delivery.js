@@ -56,26 +56,32 @@ router.post('/', requireAuth, requireDelivery, async (req, res) => {
 
 router.post('/:id/status', requireAuth, requireDelivery, async (req, res) => {
   const { status } = req.body;
-  let sql = 'UPDATE delivery_orders SET status=$1';
-  const vals = [status];
-  if (status === 'dispatched') sql += `,dispatched_at=NOW()`;
-  if (status === 'delivered')  sql += `,delivered_at=NOW()`;
-  sql += ` WHERE id=$2 AND tenant_id=$3`;
-  vals.push(req.params.id, req.user.tenantId);
-  await db.query(sql, vals);
-  res.redirect('/delivery');
+  try {
+    let sql = 'UPDATE delivery_orders SET status=$1';
+    const vals = [status];
+    if (status === 'dispatched') sql += `,dispatched_at=NOW()`;
+    if (status === 'delivered')  sql += `,delivered_at=NOW()`;
+    sql += ` WHERE id=$2 AND tenant_id=$3`;
+    vals.push(req.params.id, req.user.tenantId);
+    await db.query(sql, vals);
+    res.redirect('/delivery');
+  } catch (err) { console.error(err); res.redirect('/delivery?error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/:id/rider', requireAuth, requireDelivery, async (req, res) => {
   const { rider_name } = req.body;
-  await db.query('UPDATE delivery_orders SET rider_name=$1 WHERE id=$2 AND tenant_id=$3',
-    [rider_name, req.params.id, req.user.tenantId]);
-  res.redirect('/delivery');
+  try {
+    await db.query('UPDATE delivery_orders SET rider_name=$1 WHERE id=$2 AND tenant_id=$3',
+      [rider_name, req.params.id, req.user.tenantId]);
+    res.redirect('/delivery');
+  } catch (err) { console.error(err); res.redirect('/delivery?error=' + encodeURIComponent(err.message)); }
 });
 
 router.post('/:id/delete', requireAuth, requireDelivery, async (req, res) => {
-  await db.query('DELETE FROM delivery_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
-  res.redirect('/delivery');
+  try {
+    await db.query('DELETE FROM delivery_orders WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    res.redirect('/delivery');
+  } catch (err) { console.error(err); res.redirect('/delivery?error=' + encodeURIComponent(err.message)); }
 });
 
 module.exports = router;
