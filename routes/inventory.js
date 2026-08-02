@@ -99,7 +99,8 @@ router.post('/categories/:id/delete', requireAuth, requireInventory, async (req,
 // Create item
 router.post('/items', requireAuth, requireInventory, async (req, res) => {
   const { name, sku, unit, reorder_level, is_raw_material, is_semi_finished, can_be_sold,
-          add_to_menu, menu_category_id, selling_price, menu_name, inv_category_id } = req.body;
+          add_to_menu, menu_category_id, selling_price, menu_name, inv_category_id,
+          initial_stock_qty, initial_avg_cost } = req.body;
   try {
     let menuItemId = null;
 
@@ -113,14 +114,27 @@ router.post('/items', requireAuth, requireInventory, async (req, res) => {
       menuItemId = miRes.rows[0].id;
     }
 
+    const initQty  = parseFloat(initial_stock_qty) || 0;
+    const initCost = parseFloat(initial_avg_cost)  || 0;
+
     await db.query(
-      `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, stock_qty, avg_cost, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [req.user.tenantId, name.trim(), sku?.trim() || null, unit || 'pcs',
-       parseFloat(reorder_level) || 0, menuItemId,
+       parseFloat(reorder_level) || 0, initQty, initCost, menuItemId,
        !!is_raw_material, !!is_semi_finished, !!can_be_sold,
        inv_category_id || null]
     );
+
+    if (initQty !== 0) {
+      const newItemRes = await db.query(`SELECT id FROM inventory_items WHERE tenant_id=$1 AND name=$2 ORDER BY id DESC LIMIT 1`, [req.user.tenantId, name.trim()]);
+      if (newItemRes.rows[0]) {
+        await db.query(
+          `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, unit_cost, notes, created_by) VALUES ($1,$2,'adjustment',$3,$4,'Opening stock',$5)`,
+          [req.user.tenantId, newItemRes.rows[0].id, initQty, initCost, req.user.userId]
+        );
+      }
+    }
     res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items?error=' + encodeURIComponent(err.message)); }
 });
@@ -154,12 +168,20 @@ router.post('/items/:id/adjust', requireAuth, requireInventory, async (req, res)
   const { qty_change, notes } = req.body;
   const delta = parseFloat(qty_change);
   if (isNaN(delta) || delta === 0) return res.redirect('/inventory/items');
+  const tid = req.user.tenantId;
   try {
-    await db.query(`UPDATE inventory_items SET stock_qty = stock_qty + $1 WHERE id=$2 AND tenant_id=$3`, [delta, req.params.id, req.user.tenantId]);
+    const itemRes = await db.query('SELECT name, avg_cost FROM inventory_items WHERE id=$1 AND tenant_id=$2', [req.params.id, tid]);
+    if (!itemRes.rows[0]) return res.redirect('/inventory/items');
+    const { name, avg_cost } = itemRes.rows[0];
+    const adjType = delta > 0 ? 'correction-in' : 'correction-out';
+    await db.query(`UPDATE inventory_items SET stock_qty = stock_qty + $1 WHERE id=$2 AND tenant_id=$3`, [delta, req.params.id, tid]);
     await db.query(
-      `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, notes, created_by)
-       VALUES ($1,$2,'adjustment',$3,$4,$5)`,
-      [req.user.tenantId, req.params.id, delta, notes?.trim() || null, req.user.userId]
+      `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, notes, created_by) VALUES ($1,$2,'adjustment',$3,$4,$5)`,
+      [tid, req.params.id, delta, notes?.trim() || null, req.user.userId]
+    );
+    await db.query(
+      `INSERT INTO inventory_adjustments (tenant_id,item_id,item_name,type,qty_change,reason,cost_impact,created_by) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [tid, req.params.id, name, adjType, delta, notes?.trim() || null, Math.abs(delta) * parseFloat(avg_cost), req.user.userId]
     );
     res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items'); }
@@ -170,7 +192,7 @@ router.get('/items/:id/recipe', requireAuth, requireInventory, async (req, res) 
   try {
     const tid = req.user.tenantId;
     const [itemRes, recipeRes, ingredientsRes] = await Promise.all([
-      db.query(`SELECT * FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]),
+      db.query(`SELECT ii.*, mi.name AS menu_item_name FROM inventory_items ii LEFT JOIN menu_items mi ON mi.id=ii.menu_item_id WHERE ii.id=$1 AND ii.tenant_id=$2`, [req.params.id, tid]),
       db.query(`
         SELECT ir.*, ii.name AS ingredient_name, ii.unit, ii.avg_cost,
                ROUND(ir.quantity * ii.avg_cost, 4) AS line_cost
@@ -278,7 +300,7 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 });
 
 // Save new purchase receipt
-router.post('/purchases', requireAuth, requireInventory, express.urlencoded({ extended: true }), async (req, res) => {
+router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
   const { supplier_name, invoice_no, receipt_date, notes, item_id, new_item_name, unit, quantity, unit_price } = req.body;
   const tid = req.user.tenantId;
 
@@ -414,6 +436,61 @@ router.post('/adjustments', requireAuth, requireInventory, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/inventory/adjustments?error=' + encodeURIComponent(err.message)); }
 });
 
+// ── Per-item transaction history ──────────────────────────────────────────────
+router.get('/items/:id/history', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const tid = req.user.tenantId;
+    const { from, to } = req.query;
+    const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const toDate   = to   || new Date().toISOString().slice(0, 10);
+
+    const [itemRes, txRes, openingRes] = await Promise.all([
+      db.query(`
+        SELECT ii.*, mi.name AS menu_item_name,
+          ic.name AS inv_category_name, ic.color AS inv_category_color
+        FROM inventory_items ii
+        LEFT JOIN menu_items mi ON mi.id = ii.menu_item_id
+        LEFT JOIN inventory_categories ic ON ic.id = ii.inv_category_id
+        WHERE ii.id=$1 AND ii.tenant_id=$2
+      `, [req.params.id, tid]),
+      db.query(`
+        SELECT it.*, u.name AS user_name,
+          pr.supplier_name, pr.invoice_no
+        FROM inventory_transactions it
+        LEFT JOIN users u ON u.id = it.created_by
+        LEFT JOIN purchase_receipts pr ON pr.id = it.reference_id AND it.reference_type='purchase_receipt'
+        WHERE it.item_id=$1 AND it.tenant_id=$2
+          AND it.created_at >= $3::date AND it.created_at < ($4::date + INTERVAL '1 day')
+        ORDER BY it.created_at ASC
+      `, [req.params.id, tid, fromDate, toDate]),
+      db.query(`
+        SELECT COALESCE(SUM(qty_change),0) AS total
+        FROM inventory_transactions
+        WHERE item_id=$1 AND tenant_id=$2 AND created_at < $3::date
+      `, [req.params.id, tid, fromDate]),
+    ]);
+
+    if (!itemRes.rows[0]) return res.redirect('/inventory/items');
+
+    let runningBalance = parseFloat(openingRes.rows[0].total);
+    const transactions = txRes.rows.map(t => {
+      runningBalance += parseFloat(t.qty_change);
+      return { ...t, balance_after: runningBalance };
+    });
+    transactions.reverse(); // show newest first
+
+    res.render('inventory/item-history', {
+      tenant: req.tenant,
+      currentUser: req.user,
+      item: itemRes.rows[0],
+      transactions,
+      openingBalance: parseFloat(openingRes.rows[0].total),
+      fromDate,
+      toDate,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
 // ── Stock deduction helper (called from POS pay route) ─────────────────────────
 async function deductStockForOrder(tenantId, orderId, userId) {
   try {
@@ -430,17 +507,31 @@ async function deductStockForOrder(tenantId, orderId, userId) {
 
       // Get recipe
       const recipe = await db.query(`SELECT * FROM inventory_recipes WHERE item_id=$1`, [invItemId]);
-      for (const r of recipe.rows) {
-        const deduct = parseFloat(r.quantity) * parseInt(oi.quantity);
+      if (recipe.rows.length === 0) {
+        // No recipe — deduct the sellable item directly (quantity ordered)
+        const deduct = parseInt(oi.quantity);
         await db.query(
           `UPDATE inventory_items SET stock_qty = stock_qty - $1 WHERE id=$2 AND tenant_id=$3`,
-          [deduct, r.ingredient_id, tenantId]
+          [deduct, invItemId, tenantId]
         );
         await db.query(
           `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, reference_id, reference_type, created_by)
            VALUES ($1,$2,'sale',$3,$4,'pos_order',$5)`,
-          [tenantId, r.ingredient_id, -deduct, orderId, userId]
+          [tenantId, invItemId, -deduct, orderId, userId]
         );
+      } else {
+        for (const r of recipe.rows) {
+          const deduct = parseFloat(r.quantity) * parseInt(oi.quantity);
+          await db.query(
+            `UPDATE inventory_items SET stock_qty = stock_qty - $1 WHERE id=$2 AND tenant_id=$3`,
+            [deduct, r.ingredient_id, tenantId]
+          );
+          await db.query(
+            `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, reference_id, reference_type, created_by)
+             VALUES ($1,$2,'sale',$3,$4,'pos_order',$5)`,
+            [tenantId, r.ingredient_id, -deduct, orderId, userId]
+          );
+        }
       }
     }
   } catch (err) {

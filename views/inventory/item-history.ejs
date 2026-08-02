@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History — <%= item.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; gap: 10px; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+
+    .main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+
+    .item-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 14px; padding: 20px 24px; margin-bottom: 20px; display: flex; gap: 32px; flex-wrap: wrap; align-items: center; }
+    .item-name { font-size: 1.2rem; font-weight: 800; color: #fff; }
+    .item-meta { font-size: .78rem; color: #555; margin-top: 4px; }
+    .stat-box { text-align: center; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; }
+    .stat-label { font-size: .68rem; color: #555; text-transform: uppercase; font-weight: 700; margin-top: 2px; }
+    .flag { font-size: .65rem; font-weight: 700; padding: 2px 7px; border-radius: 8px; display: inline-block; }
+    .flag-rm   { background: rgba(52,152,219,.15); color: #3498db; }
+    .flag-sf   { background: rgba(155,89,182,.15); color: #9b59b6; }
+    .flag-sold { background: rgba(0,184,148,.15);  color: #00b894; }
+
+    .filter-bar { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filter-label { font-size: .68rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .filter-input { padding: 7px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; }
+    .filter-input:focus { border-color: #7c5cbf; }
+
+    .opening-balance { background: rgba(124,92,191,.1); border: 1px solid rgba(124,92,191,.3); border-radius: 10px; padding: 12px 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; font-size: .88rem; color: #a78bdf; font-weight: 600; }
+
+    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 14px; border-bottom: 1px solid #2a2a3e; white-space: nowrap; }
+    td { padding: 10px 14px; font-size: .83rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .68rem; font-weight: 700; text-transform: uppercase; }
+    .badge-purchase   { background: rgba(0,184,148,.15); color: #00b894; }
+    .badge-sale       { background: rgba(231,76,60,.15); color: #e74c3c; }
+    .badge-adjustment { background: rgba(243,156,18,.15); color: #f39c12; }
+
+    .qty-pos { color: #00b894; font-weight: 700; }
+    .qty-neg { color: #e74c3c; font-weight: 700; }
+
+    .empty { text-align: center; padding: 48px; color: #444; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="All Modules">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="font-size:.82rem">Inventory</a>
+    <a href="/inventory/items" class="btn btn-ghost" style="font-size:.82rem">Items</a>
+    <span style="font-weight:700;color:#fff;font-size:.9rem">📊 <%= item.name %> — History</span>
+  </div>
+  <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+</div>
+
+<div class="main">
+
+  <!-- Item summary -->
+  <div class="item-card">
+    <div style="flex:1;min-width:160px">
+      <div class="item-name"><%= item.name %></div>
+      <div class="item-meta">
+        <% if (item.sku) { %><span style="color:#444">SKU: <%= item.sku %></span> · <% } %>
+        <%= item.unit %>
+        <% if (item.inv_category_name) { %> · <span style="color:<%= item.inv_category_color %>"><%= item.inv_category_name %></span><% } %>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap">
+        <% if (item.is_raw_material)  { %><span class="flag flag-rm">Raw Material</span><% } %>
+        <% if (item.is_semi_finished) { %><span class="flag flag-sf">Semi-Finished</span><% } %>
+        <% if (item.can_be_sold)      { %><span class="flag flag-sold">Can Be Sold</span><% } %>
+        <% if (item.menu_item_name)   { %><span style="font-size:.68rem;color:#666;padding:2px 7px;border-radius:8px;background:rgba(255,255,255,.05)">🛒 <%= item.menu_item_name %></span><% } %>
+      </div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:<%= parseFloat(item.stock_qty) <= parseFloat(item.reorder_level) && parseFloat(item.reorder_level) > 0 ? '#e74c3c' : '#00b894' %>">
+        <%= parseFloat(item.stock_qty).toFixed(3) %>
+      </div>
+      <div class="stat-label">Current Stock (<%= item.unit %>)</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:#7c5cbf"><%= tenant.currency || '$' %><%= parseFloat(item.avg_cost).toFixed(4) %></div>
+      <div class="stat-label">Avg Cost / <%= item.unit %></div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:#fff"><%= parseFloat(item.stock_qty * item.avg_cost).toFixed(2) %></div>
+      <div class="stat-label">Stock Value</div>
+    </div>
+    <% if (parseFloat(item.reorder_level) > 0) { %>
+    <div class="stat-box">
+      <div class="stat-val" style="color:#f39c12"><%= parseFloat(item.reorder_level).toFixed(2) %></div>
+      <div class="stat-label">Reorder Level</div>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Date filter -->
+  <form method="GET" class="filter-bar">
+    <div class="filter-group">
+      <span class="filter-label">From</span>
+      <input type="date" name="from" class="filter-input" value="<%= fromDate %>" />
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">To</span>
+      <input type="date" name="to" class="filter-input" value="<%= toDate %>" />
+    </div>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a href="/inventory/items/<%= item.id %>/history" class="btn btn-ghost">Reset (30 days)</a>
+  </form>
+
+  <!-- Opening balance -->
+  <div class="opening-balance">
+    <span>Opening balance at <%= fromDate %>:</span>
+    <span style="font-size:1.1rem"><%= parseFloat(openingBalance).toFixed(3) %> <%= item.unit %></span>
+  </div>
+
+  <!-- Transaction log -->
+  <% if (transactions.length === 0) { %>
+  <div class="empty">
+    <div style="font-size:2.5rem">📭</div>
+    <div style="margin-top:10px">No transactions in this period.</div>
+  </div>
+  <% } else { %>
+  <div class="table-wrap">
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Date & Time</th>
+          <th>Type</th>
+          <th>Qty Change</th>
+          <th>Balance After</th>
+          <th>Unit Cost</th>
+          <th>Reference</th>
+          <th>Notes</th>
+          <th>User</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% transactions.forEach(t => { %>
+      <tr>
+        <td style="color:#666;white-space:nowrap"><%= t.created_at.toISOString().replace('T',' ').slice(0,16) %></td>
+        <td><span class="badge badge-<%= t.type %>"><%= t.type %></span></td>
+        <td class="<%= parseFloat(t.qty_change) >= 0 ? 'qty-pos' : 'qty-neg' %>">
+          <%= parseFloat(t.qty_change) >= 0 ? '+' : '' %><%= parseFloat(t.qty_change).toFixed(3) %> <%= item.unit %>
+        </td>
+        <td style="color:#fff;font-weight:600"><%= parseFloat(t.balance_after).toFixed(3) %></td>
+        <td style="color:#7c5cbf">
+          <% if (parseFloat(t.unit_cost) > 0) { %><%= tenant.currency || '$' %><%= parseFloat(t.unit_cost).toFixed(4) %><% } else { %>—<% } %>
+        </td>
+        <td style="font-size:.78rem;color:#555">
+          <% if (t.supplier_name) { %><span style="color:#aaa">🛒 <%= t.supplier_name %></span><% if (t.invoice_no) { %><br><span style="color:#444">#<%= t.invoice_no %></span><% } %><% } else if (t.reference_id && t.reference_type === 'pos_order') { %><span style="color:#aaa">POS #<%= t.reference_id %></span><% } else { %>—<% } %>
+        </td>
+        <td style="font-size:.78rem;color:#aaa"><%= t.notes || '—' %></td>
+        <td style="font-size:.78rem;color:#555"><%= t.user_name || '—' %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <% } %>
+
+</div>
+</body>
+</html>

@@ -65,7 +65,7 @@
           <td style="color:<%= parseFloat(a.qty_change) >= 0 ? '#00b894' : '#e74c3c' %>;font-weight:700">
             <%= parseFloat(a.qty_change) >= 0 ? '+' : '' %><%= parseFloat(a.qty_change).toFixed(3) %>
           </td>
-          <td style="color:#e74c3c">$<%= parseFloat(a.cost_impact).toFixed(2) %></td>
+          <td style="color:#e74c3c"><%= tenant.currency || '$' %><%= parseFloat(a.cost_impact).toFixed(2) %></td>
           <td style="font-size:.78rem;color:#aaa"><%= a.reason || '—' %></td>
           <td style="font-size:.78rem;color:#555"><%= a.created_at.toISOString().slice(0,10) %></td>
         </tr>

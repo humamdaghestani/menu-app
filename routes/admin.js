@@ -425,7 +425,9 @@ router.get('/inventory', requireAuth, requirePerm('items'), async (req, res) => 
       db.query('SELECT id,name,parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order,name', [req.user.tenantId]),
       db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
     ]);
-    res.render('admin/inventory', { tenant: tenantRes.rows[0], items: invRes.rows, categories: catsRes.rows, currentUser: req.user });
+    const tenant = tenantRes.rows[0];
+    if (!tenant?.feat_inventory) return res.redirect('/inventory');
+    res.render('admin/inventory', { tenant, items: invRes.rows, categories: catsRes.rows, currentUser: req.user });
   } catch(err) { console.error(err); res.status(500).send('Server error'); }
 });
 
@@ -476,9 +478,10 @@ router.post('/inventory/:id/edit', requireAuth, requirePerm('items'), bust, asyn
       );
     }
 
+    const { inv_category_id } = req.body;
     await db.query(
-      `UPDATE inventory_items SET name=$1,sku=$2,unit=$3,stock_qty=$4,reorder_level=$5,avg_cost=$6,selling_price=$7,can_be_sold=$8,notes=$9,description=$10,image_url=$11,badge=$12 WHERE id=$13 AND tenant_id=$14`,
-      [name, sku||null, unit||'pcs', stock_qty||0, reorder_level||0, avg_cost||0, selling_price||0, nowSold, notes||null, description||null, image_url||null, badge||null, req.params.id, req.user.tenantId]
+      `UPDATE inventory_items SET name=$1,sku=$2,unit=$3,stock_qty=$4,reorder_level=$5,avg_cost=$6,selling_price=$7,can_be_sold=$8,notes=$9,description=$10,image_url=$11,badge=$12,inv_category_id=$13 WHERE id=$14 AND tenant_id=$15`,
+      [name, sku||null, unit||'pcs', stock_qty||0, reorder_level||0, avg_cost||0, selling_price||0, nowSold, notes||null, description||null, image_url||null, badge||null, inv_category_id||null, req.params.id, req.user.tenantId]
     );
     if (req.query.json) return res.json({ ok: true });
     res.redirect('/admin/inventory?success=Item+updated');
@@ -492,7 +495,7 @@ router.post('/inventory/:id/stock', requireAuth, requirePerm('items'), bust, asy
     await db.query('UPDATE inventory_items SET stock_qty = stock_qty + $1 WHERE id=$2 AND tenant_id=$3', [qty, req.params.id, req.user.tenantId]);
     await db.query(
       `INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,notes,created_by) VALUES ($1,$2,$3,$4,$5,$6)`,
-      [req.user.tenantId, req.params.id, qty >= 0 ? 'purchase' : 'adjustment', qty, notes||null, req.user.userId]
+      [req.user.tenantId, req.params.id, 'adjustment', qty, notes||null, req.user.userId]
     );
     if (req.query.json) { const r = await db.query('SELECT stock_qty FROM inventory_items WHERE id=$1', [req.params.id]); return res.json({ ok: true, stock_qty: r.rows[0]?.stock_qty }); }
     res.redirect('/admin/inventory');

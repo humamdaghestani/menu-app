@@ -681,6 +681,14 @@ const pool = new Pool({
       reason     TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     )`,
+    // Currency column for tenant
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS currency VARCHAR(5) DEFAULT '$'`,
+    // Unique constraint on recipe lines (prevents duplicates — safe to run multiple times)
+    `DO $$ BEGIN
+       IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='inventory_recipes_item_ingredient_unique') THEN
+         ALTER TABLE inventory_recipes ADD CONSTRAINT inventory_recipes_item_ingredient_unique UNIQUE (item_id, ingredient_id);
+       END IF;
+     END $$`,
     // Feedback extended columns
     `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q1            INTEGER`,
     `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS q2            INTEGER`,

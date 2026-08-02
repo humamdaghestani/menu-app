@@ -171,6 +171,7 @@
         <td style="color:#666"><%= item.menu_item_name || '—' %></td>
         <td>
           <div class="action-btns">
+            <a href="/inventory/items/<%= item.id %>/history" class="btn btn-ghost btn-sm" title="Transaction history">📊</a>
             <a href="/inventory/items/<%= item.id %>/recipe" class="btn btn-ghost btn-sm">📝 Recipe</a>
             <button class="btn btn-ghost btn-sm" onclick='openEdit(<%= JSON.stringify(item) %>)'>Edit</button>
             <button class="btn btn-ghost btn-sm" onclick='openAdjust(<%= item.id %>, "<%= item.name.replace(/"/g,"") %>", "<%= item.unit %>")'>±Stock</button>
@@ -242,6 +243,17 @@
         <div class="form-group">
           <label class="form-label">Reorder Level</label>
           <input type="number" name="reorder_level" class="form-input" placeholder="0" step="0.001" min="0" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Opening Stock Qty</label>
+          <input type="number" name="initial_stock_qty" class="form-input" placeholder="0" step="0.001" min="0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initial Avg Cost</label>
+          <input type="number" name="initial_avg_cost" class="form-input" placeholder="0.00" step="0.0001" min="0" />
         </div>
       </div>
 
