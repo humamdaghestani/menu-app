@@ -368,11 +368,12 @@ router.get('/session/:id/export-excel', requireAuth, requirePOS, async (req, res
     ws3.getColumn('price').numFmt = '#,##0.00';
     ws3.getColumn('line').numFmt  = '#,##0.00';
 
-    const filename = `session-${sid}-${tenant.name || 'report'}.xlsx`.replace(/[^a-z0-9\-_.]/gi, '_');
+    const filename = `session-${sid}-${(tenant.name || 'report').replace(/[^a-z0-9\-_]/gi, '_')}.xlsx`;
+    const buffer = await wb.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    await wb.xlsx.write(res);
-    res.end();
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
   } catch(e) { console.error(e); res.status(500).send('Export failed: ' + e.message); }
 });
 
