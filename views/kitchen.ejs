@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kitchen Display — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; overflow-x: hidden; }
+
+    .topbar { background: #111; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 2px solid #222; position: sticky; top: 0; z-index: 100; }
+    .topbar-brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+    .topbar-time { font-size: 1.1rem; font-weight: 600; color: #555; font-variant-numeric: tabular-nums; }
+    .topbar-status { font-size: .78rem; color: #555; }
+    .connected { color: #00b894 !important; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; padding: 20px; }
+
+    .order-card { background: #1a1a1a; border: 2px solid #2a2a2a; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .2s; }
+    .order-card.status-open      { border-color: #f39c12; }
+    .order-card.status-pending   { border-color: #f39c12; }
+    .order-card.status-preparing { border-color: #3498db; }
+    .order-card.status-ready     { border-color: #00b894; }
+
+    .order-head { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .order-num { font-size: 1.1rem; font-weight: 800; color: #fff; }
+    .order-meta { font-size: .75rem; color: #666; margin-top: 2px; }
+    .order-age { font-size: .8rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .age-ok   { background: rgba(0,184,148,.15); color: #00b894; }
+    .age-warn { background: rgba(243,156,18,.15); color: #f39c12; }
+    .age-late { background: rgba(231,76,60,.15); color: #e74c3c; }
+
+    .status-badge { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; padding: 3px 10px; border-radius: 20px; }
+    .badge-pending   { background: rgba(243,156,18,.2); color: #f39c12; }
+    .badge-preparing { background: rgba(52,152,219,.2); color: #3498db; }
+    .badge-ready     { background: rgba(0,184,148,.2); color: #00b894; }
+
+    .order-items { padding: 0 16px 4px; flex: 1; }
+    .item-row { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.05); display: flex; gap: 10px; align-items: flex-start; }
+    .item-row:last-child { border-bottom: none; }
+    .item-qty { font-size: 1rem; font-weight: 800; color: #a78bdf; min-width: 28px; }
+    .item-name { font-size: .9rem; font-weight: 600; color: #fff; line-height: 1.2; }
+    .item-mods { font-size: .75rem; color: #666; margin-top: 3px; }
+    .item-note { font-size: .75rem; color: #f39c12; margin-top: 2px; font-style: italic; }
+
+    .order-actions { padding: 12px 16px; display: flex; gap: 8px; border-top: 1px solid #222; }
+    .act-btn { flex: 1; padding: 8px; border: none; border-radius: 8px; font-size: .8rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: opacity .15s; }
+    .act-btn:hover { opacity: .85; }
+    .btn-prepare { background: #3498db; color: #fff; }
+    .btn-ready   { background: #00b894; color: #fff; }
+    .btn-done    { background: rgba(255,255,255,.08); color: #888; }
+
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; color: #333; }
+    .empty-icon { font-size: 4rem; margin-bottom: 12px; }
+    .empty-msg { font-size: 1.1rem; font-weight: 700; }
+    .empty-sub { font-size: .85rem; margin-top: 6px; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+    .pulsing { animation: pulse 1.5s infinite; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-brand">🍳 Kitchen Display — <%= tenant.name %></div>
+    <div class="topbar-status" id="connStatus">Connecting…</div>
+  </div>
+  <div class="topbar-time" id="clock"></div>
+</div>
+
+<div id="ordersGrid" class="grid">
+  <% if (orders.length === 0) { %>
+  <div class="empty-state" style="grid-column:1/-1">
+    <div class="empty-icon">✅</div>
+    <div class="empty-msg">All caught up!</div>
+    <div class="empty-sub">No pending orders right now</div>
+  </div>
+  <% } else { %>
+  <%- orders.map(ord => renderCard(ord)).join('') %>
+  <% } %>
+</div>
+
+<script>
+const TOKEN = '<%= token %>';
+let lastOrderIds = <%- JSON.stringify(orders.map(o=>o.id)) %>;
+
+function ageBadge(mins) {
+  const m = Math.round(mins);
+  const cls = m < 10 ? 'age-ok' : m < 20 ? 'age-warn' : 'age-late';
+  return `<span class="order-age ${cls}">${m}m</span>`;
+}
+
+function statusBadge(status) {
+  return `<span class="status-badge badge-${status}">${status}</span>`;
+}
+
+function cardActions(ordId, status) {
+  let btns = '';
+  if (status === 'open' || status === 'pending')
+    btns += `<button class="act-btn btn-prepare" onclick="setStatus(${ordId},'preparing')">🔥 Start Preparing</button>`;
+  if (status === 'preparing')
+    btns += `<button class="act-btn btn-ready"   onclick="setStatus(${ordId},'ready')">✅ Ready</button>`;
+  if (status === 'ready')
+    btns += `<button class="act-btn btn-done"    onclick="setStatus(${ordId},'completed')">✓ Done / Served</button>`;
+  return btns;
+}
+
+function buildCard(ord) {
+  const age = parseFloat(ord.age_minutes);
+  const items = (ord.items || []).map(i => `
+    <div class="item-row">
+      <div class="item-qty">${i.quantity}×</div>
+      <div>
+        <div class="item-name">${escH(i.item_name)}</div>
+        ${i.modifiers_text ? `<div class="item-mods">${escH(i.modifiers_text)}</div>` : ''}
+        ${i.notes ? `<div class="item-note">📝 ${escH(i.notes)}</div>` : ''}
+      </div>
+    </div>`).join('');
+  return `
+  <div class="order-card status-${ord.status}" id="card-${ord.id}">
+    <div class="order-head">
+      <div>
+        <div class="order-num">#${ord.id} ${ord.table_no ? '— Table ' + escH(ord.table_no) : ''}</div>
+        <div class="order-meta">${ord.order_type || 'dine-in'} · ${new Date(ord.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        ${statusBadge(ord.status)}
+        ${ageBadge(age)}
+      </div>
+    </div>
+    <div class="order-items">${items}</div>
+    <div class="order-actions">${cardActions(ord.id, ord.status)}</div>
+  </div>`;
+}
+
+function escH(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function setStatus(ordId, status) {
+  try {
+    const r = await fetch(`/kitchen/orders/${ordId}/status?token=${TOKEN}`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: `status=${status}`,
+    });
+    if (r.ok) poll();
+  } catch(e) { console.error(e); }
+}
+
+async function poll() {
+  try {
+    const r = await fetch(`/kitchen/poll?token=${TOKEN}`);
+    if (!r.ok) { setConnStatus(false); return; }
+    const orders = await r.json();
+    setConnStatus(true);
+    const grid = document.getElementById('ordersGrid');
+    if (orders.length === 0) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">✅</div><div class="empty-msg">All caught up!</div><div class="empty-sub">No pending orders right now</div></div>`;
+      lastOrderIds = [];
+      return;
+    }
+    // Check for new orders (play a beep if new)
+    const newIds = orders.map(o=>o.id);
+    const hasNew = newIds.some(id => !lastOrderIds.includes(id));
+    if (hasNew && lastOrderIds.length > 0) beep();
+    lastOrderIds = newIds;
+    grid.innerHTML = orders.map(buildCard).join('');
+  } catch(e) { setConnStatus(false); }
+}
+
+function setConnStatus(ok) {
+  const el = document.getElementById('connStatus');
+  el.textContent = ok ? '● Live' : '○ Reconnecting…';
+  el.className = 'topbar-status ' + (ok ? 'connected' : 'pulsing');
+}
+
+function beep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.3, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    o.start(ctx.currentTime); o.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+setInterval(poll, 8000);
+
+// Initial connection status
+setTimeout(() => poll(), 500);
+</script>
+</body>
+</html>

@@ -117,10 +117,15 @@ router.post('/logout', (req, res) => {
 // ── Dashboard ──────────────────────────────────────
 router.get('/dashboard', requireAuth, requirePerm('items'), async (req, res) => {
   try {
-    const [categoriesRes, itemsRes, tenantRes] = await Promise.all([
-      db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
-      db.query(`SELECT i.*, c.name as category_name FROM menu_items i LEFT JOIN categories c ON i.category_id=c.id WHERE i.tenant_id=$1 ORDER BY i.sort_order`, [req.user.tenantId]),
-      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+    const tid = req.user.tenantId;
+    const [categoriesRes, itemsRes, tenantRes, todayRevenueRes, yesterdayRevenueRes, hourlyRes, topItemsRes] = await Promise.all([
+      db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [tid]),
+      db.query(`SELECT i.*, c.name as category_name FROM menu_items i LEFT JOIN categories c ON i.category_id=c.id WHERE i.tenant_id=$1 ORDER BY i.sort_order`, [tid]),
+      db.query('SELECT * FROM tenants WHERE id=$1', [tid]),
+      db.query(`SELECT COALESCE(SUM(total),0) AS revenue, COUNT(*)::int AS order_count FROM pos_orders WHERE tenant_id=$1 AND DATE(created_at)=CURRENT_DATE AND status='paid'`, [tid]),
+      db.query(`SELECT COALESCE(SUM(total),0) AS revenue, COUNT(*)::int AS order_count FROM pos_orders WHERE tenant_id=$1 AND DATE(created_at)=CURRENT_DATE-1 AND status='paid'`, [tid]),
+      db.query(`SELECT EXTRACT(HOUR FROM created_at)::int AS hour, COALESCE(SUM(total),0) AS revenue FROM pos_orders WHERE tenant_id=$1 AND DATE(created_at)=CURRENT_DATE AND status='paid' GROUP BY hour ORDER BY hour`, [tid]),
+      db.query(`SELECT oi.name AS item_name, SUM(oi.quantity)::int AS qty_sold, SUM(oi.quantity * oi.price) AS revenue FROM pos_order_items oi JOIN pos_orders o ON o.id=oi.order_id WHERE o.tenant_id=$1 AND DATE(o.created_at)=CURRENT_DATE AND o.status='paid' GROUP BY oi.name ORDER BY qty_sold DESC LIMIT 8`, [tid]),
     ]);
     const canEditPrices = req.user.role === 'admin' || (req.user.permissions || []).includes('edit_prices');
     res.render('admin/dashboard', {
@@ -129,6 +134,12 @@ router.get('/dashboard', requireAuth, requirePerm('items'), async (req, res) => 
       items: itemsRes.rows,
       canEditPrices,
       currentUser: req.user,
+      todayRevenue: parseFloat(todayRevenueRes.rows[0]?.revenue) || 0,
+      todayOrders: todayRevenueRes.rows[0]?.order_count || 0,
+      yesterdayRevenue: parseFloat(yesterdayRevenueRes.rows[0]?.revenue) || 0,
+      yesterdayOrders: yesterdayRevenueRes.rows[0]?.order_count || 0,
+      hourlyRevenue: hourlyRes.rows,
+      topItems: topItemsRes.rows,
     });
   } catch (err) {
     console.error(err);
@@ -176,14 +187,15 @@ router.post('/items', requireAuth, bust, async (req, res) => {
 });
 
 router.post('/items/:id/edit', requireAuth, bust, async (req, res) => {
-  const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge, options } = req.body;
+  const { name, name_ar, name_ku, price, description, description_ar, description_ku, image_url, category_id, badge, options, allergens } = req.body;
   let optionsJson = '[]';
   try { optionsJson = JSON.stringify(JSON.parse(options || '[]')); } catch {}
+  const allergensArr = Array.isArray(allergens) ? allergens : (allergens ? [allergens] : []);
   try {
     await db.query(
-      `UPDATE menu_items SET name=$1, name_ar=$2, name_ku=$3, price=$4, description=$5, description_ar=$6, description_ku=$7, image_url=$8, category_id=$9, badge=$10, options=$11
-       WHERE id=$12 AND tenant_id=$13`,
-      [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, optionsJson, req.params.id, req.user.tenantId]
+      `UPDATE menu_items SET name=$1, name_ar=$2, name_ku=$3, price=$4, description=$5, description_ar=$6, description_ku=$7, image_url=$8, category_id=$9, badge=$10, options=$11, allergens=$12
+       WHERE id=$13 AND tenant_id=$14`,
+      [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, optionsJson, JSON.stringify(allergensArr), req.params.id, req.user.tenantId]
     );
     if (req.query.json) return res.json({ ok: true });
     res.redirect('/admin/items?success=Item+updated');
@@ -355,7 +367,10 @@ router.get('/settings', requireAuth, requireAdmin, async (req, res) => {
       db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
       db.query('SELECT id, email FROM users WHERE id=$1', [req.user.userId]),
     ]);
-    res.render('admin/settings', { tenant: tenantRes.rows[0], user: userRes.rows[0], currentUser: req.user });
+    res.render('admin/settings', {
+      tenant: tenantRes.rows[0], user: userRes.rows[0], currentUser: req.user,
+      kitchen_token: req.query.kitchen_token || null,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).send('Server error');
@@ -408,6 +423,15 @@ router.post('/settings', requireAuth, requireAdmin, bust, async (req, res) => {
     console.error(err);
     res.redirect('/admin/settings?error=Failed+to+save+settings');
   }
+});
+
+router.post('/settings/kitchen-token', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    await db.query('UPDATE tenants SET kitchen_token=$1 WHERE id=$2', [token, req.user.tenantId]);
+    res.redirect('/admin/settings?success=Kitchen+token+regenerated&kitchen_token=' + token);
+  } catch (err) { console.error(err); res.redirect('/admin/settings?error=Failed+to+generate+token'); }
 });
 
 // ── Inventory ──────────────────────────────────────

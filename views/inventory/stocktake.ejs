@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Take — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-lg { padding: 12px 28px; font-size: .95rem; }
+
+    .main { padding: 28px; max-width: 1100px; margin: 0 auto; }
+
+    .info-banner { background: rgba(124,92,191,.12); border: 1px solid rgba(124,92,191,.3); border-radius: 12px; padding: 14px 20px; margin-bottom: 24px; font-size: .85rem; color: #a78bdf; }
+    .info-banner strong { color: #fff; }
+
+    .filter-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+    .search-input { flex: 1; min-width: 200px; padding: 9px 14px; background: #1a1a2e; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; }
+    .search-input:focus { border-color: #7c5cbf; }
+    .cat-btn { padding: 6px 14px; border: 1.5px solid #2a2a3e; border-radius: 20px; background: transparent; color: #888; cursor: pointer; font-size: .78rem; font-weight: 600; font-family: inherit; }
+    .cat-btn.active { background: #7c5cbf; border-color: #7c5cbf; color: #fff; }
+
+    .card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 20px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    th { text-align: left; color: #444; font-size: .7rem; text-transform: uppercase; font-weight: 700; padding: 8px 12px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,.04); color: #ccc; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+
+    .qty-input { width: 110px; padding: 7px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; text-align: right; }
+    .qty-input:focus { border-color: #7c5cbf; }
+    .qty-input.changed { border-color: #f39c12 !important; background: rgba(243,156,18,.08) !important; }
+
+    .variance-neg { color: #e74c3c; font-weight: 700; }
+    .variance-pos { color: #00b894; font-weight: 700; }
+    .variance-zero { color: #555; }
+
+    .toast { position: fixed; top: 70px; right: 20px; padding: 10px 18px; border-radius: 10px; font-size: .85rem; font-weight: 600; z-index: 9999; }
+    .toast-ok { background: rgba(0,184,148,.2); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
+
+    .sticky-footer { position: fixed; bottom: 0; left: 0; right: 0; background: #1a1a2e; border-top: 1px solid #2a2a3e; padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; z-index: 200; }
+    .changed-count { font-size: .85rem; color: #f39c12; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="font-weight:700;color:#fff">📋 Stock Take</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/inventory/reports" class="btn btn-ghost">📊 Reports</a>
+    <button form="stocktakeForm" type="submit" class="btn btn-primary">✔ Submit Counts</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="info-banner">
+    <strong>Physical Count:</strong> Enter the actual quantity you counted for each item. Leave blank to skip. Only changed items will be adjusted. Variances are automatically recorded as corrections.
+  </div>
+
+  <% if (locals.success) { %>
+  <div style="background:rgba(0,184,148,.15);border:1px solid rgba(0,184,148,.3);border-radius:10px;padding:12px 18px;margin-bottom:20px;color:#00b894;font-weight:600">
+    ✓ <%= locals.success %> item(s) adjusted successfully.
+  </div>
+  <% } %>
+
+  <div class="filter-bar">
+    <input type="text" id="searchInput" class="search-input" placeholder="Search items..." oninput="filterItems()" />
+    <button class="cat-btn active" onclick="filterCat('',this)">All</button>
+    <%
+      const cats = [...new Set(items.map(i => i.inv_category_name))];
+      cats.forEach(c => { %>
+    <button class="cat-btn" onclick="filterCat('<%= c %>',this)"><%= c %></button>
+    <% }) %>
+  </div>
+
+  <form method="POST" action="/inventory/stocktake" id="stocktakeForm">
+    <div class="card">
+      <table id="itemTable">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Unit</th>
+            <th style="text-align:right">System Qty</th>
+            <th style="text-align:right">Actual Count</th>
+            <th style="text-align:right">Variance</th>
+          </tr>
+        </thead>
+        <tbody>
+        <% items.forEach(item => { %>
+        <tr data-name="<%= item.name.toLowerCase() %>" data-cat="<%= item.inv_category_name %>">
+          <td style="color:#fff;font-weight:600"><%= item.name %></td>
+          <td>
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<%= item.inv_category_color %>;margin-right:5px;vertical-align:middle"></span>
+            <span style="font-size:.78rem;color:#666"><%= item.inv_category_name %></span>
+          </td>
+          <td style="color:#555;font-size:.8rem"><%= item.unit %></td>
+          <td style="text-align:right;font-weight:700;color:<%= parseFloat(item.stock_qty) <= parseFloat(item.reorder_level) && parseFloat(item.reorder_level) > 0 ? '#e74c3c' : '#a78bdf' %>">
+            <%= parseFloat(item.stock_qty).toFixed(3) %>
+          </td>
+          <td style="text-align:right">
+            <input type="hidden" name="item_id" value="<%= item.id %>" />
+            <input type="number" name="actual_qty" class="qty-input"
+              step="0.001" min="0" placeholder="—"
+              data-system="<%= parseFloat(item.stock_qty) %>"
+              oninput="updateVariance(this)" />
+          </td>
+          <td style="text-align:right" class="variance-cell variance-zero">—</td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </form>
+</div>
+
+<div class="sticky-footer">
+  <div class="changed-count" id="changedCount">0 items changed</div>
+  <button form="stocktakeForm" type="submit" class="btn btn-primary btn-lg">✔ Submit Stock Take</button>
+</div>
+
+<script>
+let activeCategory = '';
+
+function updateVariance(input) {
+  const row = input.closest('tr');
+  const cell = row.querySelector('.variance-cell');
+  const val = input.value.trim();
+  if (val === '') {
+    input.classList.remove('changed');
+    cell.textContent = '—';
+    cell.className = 'variance-cell variance-zero';
+  } else {
+    const actual = parseFloat(val);
+    const system = parseFloat(input.dataset.system);
+    const v = actual - system;
+    input.classList.add('changed');
+    cell.textContent = (v >= 0 ? '+' : '') + v.toFixed(3);
+    cell.className = 'variance-cell ' + (v > 0 ? 'variance-pos' : v < 0 ? 'variance-neg' : 'variance-zero');
+  }
+  updateChangedCount();
+}
+
+function updateChangedCount() {
+  const n = document.querySelectorAll('.qty-input.changed').length;
+  document.getElementById('changedCount').textContent = n + ' item' + (n !== 1 ? 's' : '') + ' changed';
+}
+
+function filterItems() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('#itemTable tbody tr').forEach(row => {
+    const name = row.dataset.name || '';
+    const cat  = row.dataset.cat  || '';
+    const matchQ = name.includes(q);
+    const matchC = !activeCategory || cat === activeCategory;
+    row.style.display = matchQ && matchC ? '' : 'none';
+  });
+}
+
+function filterCat(cat, btn) {
+  activeCategory = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterItems();
+}
+</script>
+</body>
+</html>

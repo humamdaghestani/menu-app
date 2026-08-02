@@ -446,6 +446,17 @@
         <div id="optionGroups" style="display:flex;flex-direction:column;gap:8px"></div>
         <input type="hidden" name="options" id="editOptions" value="[]" />
       </div>
+      <div class="form-group full" style="margin-top:8px">
+        <label>Allergen Labels</label>
+        <div id="allergenCheckboxes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+          <% ['gluten','dairy','nuts','eggs','soy','fish','shellfish','sesame','celery','mustard','sulphites','lupin','molluscs'].forEach(a => { %>
+          <label style="display:flex;align-items:center;gap:5px;font-size:.8rem;padding:4px 10px;border:1.5px solid #2a2a3e;border-radius:20px;cursor:pointer;user-select:none" class="allergen-check">
+            <input type="checkbox" name="allergens" value="<%= a %>" class="allergen-cb" style="accent-color:#7c5cbf" />
+            <%= a %>
+          </label>
+          <% }) %>
+        </div>
+      </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
         <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -517,6 +528,17 @@
     document.getElementById('editBadge').value         = item.badge || '';
     _optGroups = item.options ? JSON.parse(JSON.stringify(item.options)) : [];
     renderOptionGroups(); syncOptions();
+    // Set allergen checkboxes
+    const itemAllergens = item.allergens || [];
+    document.querySelectorAll('.allergen-cb').forEach(cb => {
+      cb.checked = itemAllergens.includes(cb.value);
+      const lbl = cb.closest('.allergen-check');
+      if (lbl) lbl.style.borderColor = cb.checked ? '#7c5cbf' : '#2a2a3e';
+    });
+    document.querySelectorAll('.allergen-cb').forEach(cb => cb.onchange = () => {
+      const lbl = cb.closest('.allergen-check');
+      if (lbl) lbl.style.borderColor = cb.checked ? '#7c5cbf' : '#2a2a3e';
+    });
     previewImg(document.getElementById('editImageUrl'), 'editPreview');
     document.getElementById('editOverlay').classList.add('open');
   }

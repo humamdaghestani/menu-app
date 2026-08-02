@@ -205,6 +205,8 @@
     .card-body { padding: 14px 16px 16px; }
     .card-body h3 { font-size: .98rem; font-weight: 700; margin-bottom: 5px; color: #1a1a2e; }
     .card-desc { color: #888; font-size: .8rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 10px; }
+    .allergen-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .allergen-tag { font-size: 1rem; cursor: default; }
     .card-footer { display: flex; align-items: center; justify-content: space-between; }
     .price { color: var(--accent); font-weight: 800; font-size: 1rem; }
     .add-btn {
@@ -1370,6 +1372,9 @@
     const unavailHTML = item.is_available === false ? `<div class="unavailable-tag">${L.unavailable}</div>` : '';
     const localName  = getLocalized(item, 'name', currentLang);
     const localDesc  = getLocalized(item, 'description', currentLang);
+    const allergens  = item.allergens || [];
+    const ALLERGEN_EMOJI = {gluten:'🌾',dairy:'🥛',nuts:'🥜',eggs:'🥚',soy:'🫘',fish:'🐟',shellfish:'🦐',sesame:'🌰',celery:'🌿',mustard:'🟡',sulphites:'🍷',lupin:'🟠',molluscs:'🐚'};
+    const allergenHTML = allergens.length ? `<div class="allergen-row">${allergens.map(a=>`<span class="allergen-tag" title="${a}">${ALLERGEN_EMOJI[a]||'⚠'}</span>`).join('')}</div>` : '';
 
     card.innerHTML = `
       <div class="card-img-wrap">
@@ -1379,6 +1384,7 @@
       <div class="card-body">
         <h3>${localName}</h3>
         <p class="card-desc">${localDesc}</p>
+        ${allergenHTML}
         <div class="card-footer">
           <span class="price">${CURRENCY}${item.price}</span>
           ${CART_ENABLED && item.is_available !== false ? `<button class="add-btn">${L.addToCart}</button>` : ''}

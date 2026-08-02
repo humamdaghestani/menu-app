@@ -683,6 +683,12 @@ const pool = new Pool({
     )`,
     // Currency column for tenant
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS currency VARCHAR(5) DEFAULT '$'`,
+    // Purchase receipt status (for void)
+    `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'`,
+    // Allergen tags on menu items
+    `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS allergens JSONB DEFAULT '[]'`,
+    // Kitchen display token (for TV-facing KDS without login)
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS kitchen_token VARCHAR(64) DEFAULT NULL`,
     // Unique constraint on recipe lines (prevents duplicates — safe to run multiple times)
     `DO $$ BEGIN
        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='inventory_recipes_item_ingredient_unique') THEN

@@ -571,11 +571,39 @@
       <button class="btn btn-primary" type="submit">Update Credentials</button>
     </form>
   </div>
+
+  <!-- Kitchen Display Token -->
+  <div class="card">
+    <h2>🍳 Kitchen Display Token</h2>
+    <p style="font-size:.85rem;color:#888;margin-bottom:16px">Use this token to connect a standalone Kitchen Display (TV) at <strong>/kitchen?token=…</strong> — no staff login required.</p>
+    <% if (tenant.kitchen_token) { %>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <code style="background:#0f0f1a;border:1px solid #2a2a3e;border-radius:8px;padding:9px 14px;font-size:.82rem;color:#a78bdf;word-break:break-all;flex:1"><%= tenant.kitchen_token %></code>
+      <button type="button" onclick="copyToken()" class="btn btn-ghost" style="flex-shrink:0">Copy</button>
+      <a href="/kitchen?token=<%= tenant.kitchen_token %>" target="_blank" class="btn btn-ghost" style="flex-shrink:0">Open KDS ↗</a>
+    </div>
+    <% } else { %>
+    <p style="font-size:.82rem;color:#555;margin-bottom:14px">No token generated yet.</p>
+    <% } %>
+    <form method="POST" action="/admin/settings/kitchen-token">
+      <button type="submit" class="btn btn-primary"><%= tenant.kitchen_token ? '🔄 Regenerate Token' : '+ Generate Token' %></button>
+    </form>
+    <% if (locals.kitchen_token) { %>
+    <div style="margin-top:14px;background:rgba(0,184,148,.12);border:1px solid rgba(0,184,148,.3);border-radius:10px;padding:12px 16px;font-size:.82rem;color:#00b894">
+      ✓ New token: <strong><code><%= locals.kitchen_token %></code></strong><br>
+      <a href="/kitchen?token=<%= locals.kitchen_token %>" target="_blank" style="color:#00b894">Open Kitchen Display ↗</a>
+    </div>
+    <% } %>
+  </div>
 </div>
 
 <div id="toast"></div>
 
 <script>
+  function copyToken() {
+    const code = document.querySelector('code');
+    if (code) navigator.clipboard.writeText(code.textContent).then(() => showT('Token copied!', 'success'));
+  }
   function previewImg(input, previewId) {
     const preview = document.getElementById(previewId);
     if (input.value) {

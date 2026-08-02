@@ -11,7 +11,14 @@
     .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-danger { background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .btn-danger:hover { background: rgba(231,76,60,.25); }
+    .badge-voided { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: .75rem; font-weight: 700; background: rgba(231,76,60,.15); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+    .badge-active { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: .75rem; font-weight: 700; background: rgba(0,184,148,.15); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
     .main { padding: 24px; max-width: 800px; margin: 0 auto; }
+    .toast { position: fixed; top: 70px; right: 20px; padding: 10px 18px; border-radius: 10px; font-size: .85rem; font-weight: 600; z-index: 9999; }
+    .toast-ok  { background: rgba(0,184,148,.2); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
+    .toast-err { background: rgba(231,76,60,.2); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
     .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 24px; margin-bottom: 20px; }
     .receipt-header { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
     .rh-item { }
@@ -32,8 +39,17 @@
     <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem;font-weight:600;flex-shrink:0">Inventory</a>
     <button onclick="history.back()" class="btn btn-ghost">← Back</button>
     <span style="font-weight:700;color:#fff">🧾 Receipt #<%= receipt.id %></span>
+    <span class="badge-<%= receipt.status || 'active' %>"><%= receipt.status || 'active' %></span>
   </div>
+  <% if ((receipt.status || 'active') === 'active') { %>
+  <form method="POST" action="/inventory/purchases/<%= receipt.id %>/void" onsubmit="return confirm('Void this receipt? Stock will be reversed.')">
+    <button type="submit" class="btn btn-danger">🚫 Void Receipt</button>
+  </form>
+  <% } %>
 </div>
+<% if (locals.success) { %><div class="toast toast-ok" id="toast"><%= locals.success %></div><% } %>
+<% if (locals.error)   { %><div class="toast toast-err" id="toast"><%= locals.error %></div><% } %>
+<script>setTimeout(()=>{const t=document.getElementById('toast');if(t)t.remove();},3500);</script>
 
 <div class="main">
   <div class="card">

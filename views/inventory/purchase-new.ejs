@@ -91,9 +91,10 @@
       <div class="card-title">Receipt Info</div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Supplier Name</label>
+          <label class="form-label">Supplier</label>
+          <input type="hidden" name="supplier_id" id="suppIdField" />
           <div class="supp-wrap">
-            <input type="text" name="supplier_name" id="supplierInput" class="form-input" placeholder="Search or type new supplier…" autocomplete="off"
+            <input type="text" name="supplier_name" id="supplierInput" class="form-input" placeholder="Search suppliers or type name…" autocomplete="off"
               oninput="suppFilter(this.value)" onfocus="suppFilter(this.value)" />
             <div class="supp-drop" id="suppDrop"></div>
           </div>
@@ -149,19 +150,22 @@
 <script>
 const CUR = '<%= tenant.currency || "IQD" %>';
 const INV_ITEMS = <%- JSON.stringify(invItems) %>;
-const SUPPLIERS = <%- JSON.stringify(suppliers) %>;
+const SUPPLIERS = <%- JSON.stringify(suppliers) %>; // [{id, name}, ...]
 let idx = 0;
 
 // ── Supplier autocomplete ──────────────────────────────────────────
 function suppFilter(q) {
   const drop = document.getElementById('suppDrop');
-  const matches = SUPPLIERS.filter(s => s.toLowerCase().includes((q||'').toLowerCase()));
-  if (matches.length === 0) { drop.classList.remove('open'); return; }
-  drop.innerHTML = matches.map(s => `<div class="supp-opt" onclick="suppSelect('${escJ(s)}')">${escH(s)}</div>`).join('');
+  const ql = (q||'').toLowerCase();
+  const matches = SUPPLIERS.filter(s => s.name.toLowerCase().includes(ql));
+  if (matches.length === 0 && !q) { drop.classList.remove('open'); return; }
+  const items = matches.map(s => `<div class="supp-opt" onclick="suppSelect(${s.id},'${escJ(s.name)}')">${escH(s.name)}</div>`).join('');
+  drop.innerHTML = items || `<div class="supp-opt" style="color:#555">No matches — will save as free-text</div>`;
   drop.classList.add('open');
 }
-function suppSelect(name) {
+function suppSelect(id, name) {
   document.getElementById('supplierInput').value = name;
+  document.getElementById('suppIdField').value = id || '';
   document.getElementById('suppDrop').classList.remove('open');
 }
 document.addEventListener('click', e => {

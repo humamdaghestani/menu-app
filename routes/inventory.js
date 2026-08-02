@@ -271,13 +271,13 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
   try {
     const [invItemsRes, suppliersRes] = await Promise.all([
       db.query(`SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [req.user.tenantId]),
-      db.query(`SELECT DISTINCT supplier_name FROM purchase_receipts WHERE tenant_id=$1 AND supplier_name IS NOT NULL ORDER BY supplier_name`, [req.user.tenantId]),
+      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [req.user.tenantId]),
     ]);
     res.render('inventory/purchase-new', {
       tenant: req.tenant,
       currentUser: req.user,
       invItems: invItemsRes.rows,
-      suppliers: suppliersRes.rows.map(r => r.supplier_name),
+      suppliers: suppliersRes.rows,
       error: req.query.error || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -301,7 +301,7 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 
 // Save new purchase receipt
 router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
-  const { supplier_name, invoice_no, receipt_date, notes, item_id, new_item_name, unit, quantity, unit_price } = req.body;
+  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, item_id, new_item_name, unit, quantity, unit_price } = req.body;
   const tid = req.user.tenantId;
 
   const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
@@ -328,9 +328,9 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
     await client.query('BEGIN');
 
     const rr = await client.query(
-      `INSERT INTO purchase_receipts (tenant_id, supplier_name, invoice_no, receipt_date, total, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [tid, supplier_name?.trim() || null, invoice_no?.trim() || null,
+      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [tid, supplier_name?.trim() || null, parseInt(supplier_id)||null, invoice_no?.trim() || null,
        receipt_date || new Date().toISOString().slice(0, 10), total,
        notes?.trim() || null, req.user.userId]
     );
@@ -434,6 +434,306 @@ router.post('/adjustments', requireAuth, requireInventory, async (req, res) => {
 
     res.redirect('/inventory/adjustments');
   } catch (err) { console.error(err); res.redirect('/inventory/adjustments?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Suppliers ─────────────────────────────────────────────────────────────────
+router.get('/suppliers', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const tid = req.user.tenantId;
+    const [suppRes, paidRes, purchaseRes] = await Promise.all([
+      db.query(`SELECT * FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
+      db.query(`SELECT supplier_id, COALESCE(SUM(amount),0) AS paid FROM supplier_payments WHERE tenant_id=$1 AND supplier_id IS NOT NULL GROUP BY supplier_id`, [tid]),
+      db.query(`SELECT supplier_id, COUNT(*) AS receipt_count, COALESCE(SUM(total),0) AS total_purchased FROM purchase_receipts WHERE tenant_id=$1 AND supplier_id IS NOT NULL GROUP BY supplier_id`, [tid]),
+    ]);
+    const paidMap = {}, purchMap = {};
+    paidRes.rows.forEach(r => { paidMap[r.supplier_id] = parseFloat(r.paid); });
+    purchaseRes.rows.forEach(r => { purchMap[r.supplier_id] = { count: parseInt(r.receipt_count), total: parseFloat(r.total_purchased) }; });
+    const suppliers = suppRes.rows.map(s => ({
+      ...s,
+      paid: paidMap[s.id] || 0,
+      receipt_count: purchMap[s.id]?.count || 0,
+      total_purchased: purchMap[s.id]?.total || 0,
+    }));
+    res.render('inventory/suppliers', { tenant: req.tenant, currentUser: req.user, suppliers });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/suppliers', requireAuth, requireInventory, async (req, res) => {
+  const { name, phone, email, address, tax_no, opening_balance, notes } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO suppliers (tenant_id,name,phone,email,address,tax_no,opening_balance,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [req.user.tenantId, name.trim(), phone||null, email||null, address||null, tax_no||null, parseFloat(opening_balance)||0, notes||null]
+    );
+    res.redirect('/inventory/suppliers?success=Supplier+added');
+  } catch (err) { console.error(err); res.redirect('/inventory/suppliers?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/suppliers/:id/edit', requireAuth, requireInventory, async (req, res) => {
+  const { name, phone, email, address, tax_no, opening_balance, notes } = req.body;
+  try {
+    await db.query(
+      `UPDATE suppliers SET name=$1,phone=$2,email=$3,address=$4,tax_no=$5,opening_balance=$6,notes=$7 WHERE id=$8 AND tenant_id=$9`,
+      [name.trim(), phone||null, email||null, address||null, tax_no||null, parseFloat(opening_balance)||0, notes||null, req.params.id, req.user.tenantId]
+    );
+    res.redirect('/inventory/suppliers?success=Saved');
+  } catch (err) { console.error(err); res.redirect('/inventory/suppliers?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/suppliers/:id/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`UPDATE purchase_receipts SET supplier_id=NULL WHERE supplier_id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    await db.query(`DELETE FROM suppliers WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect('/inventory/suppliers');
+  } catch (err) { console.error(err); res.redirect('/inventory/suppliers?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Purchase receipt void ──────────────────────────────────────────────────────
+router.post('/purchases/:id/void', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const receiptRes = await client.query(`SELECT * FROM purchase_receipts WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    if (!receiptRes.rows[0]) { await client.query('ROLLBACK'); return res.redirect('/inventory/purchases'); }
+    if (receiptRes.rows[0].status === 'voided') { await client.query('ROLLBACK'); return res.redirect(`/inventory/purchases/${req.params.id}?error=Already+voided`); }
+    const linesRes = await client.query(`SELECT * FROM purchase_receipt_lines WHERE receipt_id=$1`, [req.params.id]);
+    for (const l of linesRes.rows) {
+      if (!l.item_id) continue;
+      const cur = await client.query(`SELECT stock_qty, avg_cost FROM inventory_items WHERE id=$1`, [l.item_id]);
+      if (!cur.rows[0]) continue;
+      const oldQty  = parseFloat(cur.rows[0].stock_qty);
+      const oldCost = parseFloat(cur.rows[0].avg_cost);
+      const lineQty = parseFloat(l.quantity);
+      const newQty  = Math.max(0, oldQty - lineQty);
+      const newCost = newQty > 0 ? Math.max(0, (oldQty * oldCost - lineQty * parseFloat(l.unit_price)) / newQty) : oldCost;
+      await client.query(`UPDATE inventory_items SET stock_qty=$1, avg_cost=$2 WHERE id=$3`, [newQty, newCost, l.item_id]);
+      await client.query(
+        `INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,unit_cost,reference_id,reference_type,notes,created_by) VALUES ($1,$2,'adjustment',$3,$4,$5,'purchase_receipt',$6,$7)`,
+        [tid, l.item_id, -lineQty, parseFloat(l.unit_price), req.params.id, 'Void receipt #'+req.params.id, req.user.userId]
+      );
+    }
+    await client.query(`UPDATE purchase_receipts SET status='voided' WHERE id=$1`, [req.params.id]);
+    await client.query('COMMIT');
+    res.redirect(`/inventory/purchases/${req.params.id}?success=Receipt+voided`);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.redirect(`/inventory/purchases/${req.params.id}?error=` + encodeURIComponent(err.message));
+  } finally { client.release(); }
+});
+
+// ── Inventory Reports ──────────────────────────────────────────────────────────
+router.get('/reports', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const tid = req.user.tenantId;
+    const { from, to } = req.query;
+    const fromDate = from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const toDate   = to   || new Date().toISOString().slice(0, 10);
+    const [stockByCatRes, movementRes, writeOffRes, cogsRes, topMoversRes, lowStockRes, dailyPurchaseRes] = await Promise.all([
+      db.query(`
+        SELECT COALESCE(ic.name,'Uncategorised') AS category, COALESCE(ic.color,'#555') AS color,
+          COUNT(ii.id)::int AS item_count,
+          COALESCE(SUM(ii.stock_qty * ii.avg_cost),0) AS total_value
+        FROM inventory_items ii
+        LEFT JOIN inventory_categories ic ON ic.id=ii.inv_category_id
+        WHERE ii.tenant_id=$1 AND ii.is_active=true
+        GROUP BY ic.name, ic.color ORDER BY total_value DESC
+      `, [tid]),
+      db.query(`
+        SELECT type, COUNT(*)::int AS tx_count,
+          COALESCE(SUM(CASE WHEN qty_change>0 THEN qty_change ELSE 0 END),0) AS total_in,
+          COALESCE(SUM(CASE WHEN qty_change<0 THEN -qty_change ELSE 0 END),0) AS total_out
+        FROM inventory_transactions
+        WHERE tenant_id=$1 AND created_at>=$2::date AND created_at<($3::date+INTERVAL '1 day')
+        GROUP BY type ORDER BY type
+      `, [tid, fromDate, toDate]),
+      db.query(`
+        SELECT type, COUNT(*)::int AS cnt,
+          COALESCE(SUM(-qty_change),0) AS total_qty,
+          COALESCE(SUM(cost_impact),0) AS total_cost
+        FROM inventory_adjustments
+        WHERE tenant_id=$1 AND created_at>=$2::date AND created_at<($3::date+INTERVAL '1 day')
+          AND type IN ('write-off','spoilage','correction-out')
+        GROUP BY type ORDER BY total_cost DESC
+      `, [tid, fromDate, toDate]),
+      db.query(`
+        SELECT COALESCE(SUM(-it.qty_change * COALESCE(it.unit_cost, ii.avg_cost)),0) AS cogs
+        FROM inventory_transactions it
+        JOIN inventory_items ii ON ii.id=it.item_id
+        WHERE it.tenant_id=$1 AND it.type='sale'
+          AND it.created_at>=$2::date AND it.created_at<($3::date+INTERVAL '1 day')
+      `, [tid, fromDate, toDate]),
+      db.query(`
+        SELECT ii.name, ii.unit, COALESCE(SUM(-it.qty_change),0) AS total_sold,
+          ii.stock_qty, ii.avg_cost,
+          COALESCE(SUM(-it.qty_change * COALESCE(it.unit_cost,ii.avg_cost)),0) AS cogs
+        FROM inventory_transactions it
+        JOIN inventory_items ii ON ii.id=it.item_id
+        WHERE it.tenant_id=$1 AND it.type='sale'
+          AND it.created_at>=$2::date AND it.created_at<($3::date+INTERVAL '1 day')
+        GROUP BY ii.id ORDER BY total_sold DESC LIMIT 10
+      `, [tid, fromDate, toDate]),
+      db.query(`
+        SELECT name, unit, stock_qty, reorder_level, avg_cost,
+          (stock_qty * avg_cost) AS value
+        FROM inventory_items
+        WHERE tenant_id=$1 AND is_active=true AND reorder_level>0 AND stock_qty<=reorder_level
+        ORDER BY (stock_qty - reorder_level) ASC
+      `, [tid]),
+      db.query(`
+        SELECT DATE(created_at) AS day, COALESCE(SUM(total),0) AS total
+        FROM purchase_receipts
+        WHERE tenant_id=$1 AND status='active'
+          AND created_at>=$2::date AND created_at<($3::date+INTERVAL '1 day')
+        GROUP BY day ORDER BY day
+      `, [tid, fromDate, toDate]),
+    ]);
+    const totalStockValue = stockByCatRes.rows.reduce((s, r) => s + parseFloat(r.total_value), 0);
+    res.render('inventory/reports', {
+      tenant: req.tenant, currentUser: req.user,
+      fromDate, toDate, totalStockValue,
+      stockByCategory: stockByCatRes.rows,
+      movement: movementRes.rows,
+      writeOffs: writeOffRes.rows,
+      cogs: parseFloat(cogsRes.rows[0]?.cogs) || 0,
+      topMovers: topMoversRes.rows,
+      lowStock: lowStockRes.rows,
+      dailyPurchases: dailyPurchaseRes.rows,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// ── Stock Take ─────────────────────────────────────────────────────────────────
+router.get('/stocktake', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const itemsRes = await db.query(`
+      SELECT ii.*, COALESCE(ic.name,'Uncategorised') AS inv_category_name, COALESCE(ic.color,'#555') AS inv_category_color
+      FROM inventory_items ii
+      LEFT JOIN inventory_categories ic ON ic.id=ii.inv_category_id
+      WHERE ii.tenant_id=$1 AND ii.is_active=true
+      ORDER BY ic.sort_order NULLS LAST, ii.name
+    `, [req.user.tenantId]);
+    res.render('inventory/stocktake', { tenant: req.tenant, currentUser: req.user, items: itemsRes.rows });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/stocktake', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const ids  = [].concat(req.body.item_id   || []);
+  const qtys = [].concat(req.body.actual_qty || []);
+  try {
+    let changed = 0;
+    for (let i = 0; i < ids.length; i++) {
+      const actual = parseFloat(qtys[i]);
+      if (isNaN(actual)) continue;
+      const itemRes = await db.query(`SELECT name, stock_qty, avg_cost FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [ids[i], tid]);
+      if (!itemRes.rows[0]) continue;
+      const { name, stock_qty, avg_cost } = itemRes.rows[0];
+      const variance = actual - parseFloat(stock_qty);
+      if (Math.abs(variance) < 0.0001) continue;
+      const adjType = variance > 0 ? 'correction-in' : 'correction-out';
+      await db.query(`UPDATE inventory_items SET stock_qty=$1 WHERE id=$2 AND tenant_id=$3`, [actual, ids[i], tid]);
+      await db.query(`INSERT INTO inventory_adjustments (tenant_id,item_id,item_name,type,qty_change,reason,cost_impact,created_by) VALUES ($1,$2,$3,$4,$5,'Stock take',$6,$7)`,
+        [tid, ids[i], name, adjType, variance, Math.abs(variance)*parseFloat(avg_cost), req.user.userId]);
+      await db.query(`INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,notes,created_by) VALUES ($1,$2,'adjustment',$3,'Stock take',$4)`,
+        [tid, ids[i], variance, req.user.userId]);
+      changed++;
+    }
+    res.redirect('/inventory/stocktake?success=' + changed);
+  } catch (err) { console.error(err); res.redirect('/inventory/stocktake?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Excel export ───────────────────────────────────────────────────────────────
+router.get('/export', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const itemsRes = await db.query(`
+      SELECT ii.name, ii.sku, COALESCE(ic.name,'') AS category, ii.unit,
+        ii.stock_qty, ii.reorder_level, ii.avg_cost,
+        ROUND(ii.stock_qty * ii.avg_cost,2) AS total_value,
+        COALESCE(mi.name,'') AS menu_item,
+        CASE WHEN ii.is_raw_material THEN 'Yes' ELSE 'No' END AS raw_material,
+        CASE WHEN ii.is_semi_finished THEN 'Yes' ELSE 'No' END AS semi_finished,
+        CASE WHEN ii.can_be_sold THEN 'Yes' ELSE 'No' END AS can_be_sold
+      FROM inventory_items ii
+      LEFT JOIN inventory_categories ic ON ic.id=ii.inv_category_id
+      LEFT JOIN menu_items mi ON mi.id=ii.menu_item_id
+      WHERE ii.tenant_id=$1 AND ii.is_active=true ORDER BY ii.name
+    `, [req.user.tenantId]);
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Inventory');
+    ws.columns = [
+      { header: 'Name', key: 'name', width: 28 },
+      { header: 'SKU', key: 'sku', width: 14 },
+      { header: 'Category', key: 'category', width: 18 },
+      { header: 'Unit', key: 'unit', width: 8 },
+      { header: 'Stock Qty', key: 'stock_qty', width: 11 },
+      { header: 'Reorder Level', key: 'reorder_level', width: 14 },
+      { header: 'Avg Cost', key: 'avg_cost', width: 11 },
+      { header: 'Total Value', key: 'total_value', width: 13 },
+      { header: 'Menu Item', key: 'menu_item', width: 22 },
+      { header: 'Raw Material', key: 'raw_material', width: 13 },
+      { header: 'Semi-Finished', key: 'semi_finished', width: 14 },
+      { header: 'Can Be Sold', key: 'can_be_sold', width: 12 },
+    ];
+    const hdr = ws.getRow(1);
+    hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7c5cbf' } };
+    itemsRes.rows.forEach(r => ws.addRow(r));
+    // Highlight low stock rows
+    ws.eachRow((row, idx) => {
+      if (idx < 2) return;
+      const stock = row.getCell(5).value;
+      const reorder = row.getCell(6).value;
+      if (parseFloat(stock) <= parseFloat(reorder) && parseFloat(reorder) > 0) {
+        row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFffe0e0' } };
+      }
+    });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="inventory-${new Date().toISOString().slice(0,10)}.xlsx"`);
+    res.send(await wb.xlsx.writeBuffer());
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.get('/transactions/export', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const fromDate = from || new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+    const toDate   = to   || new Date().toISOString().slice(0,10);
+    const txRes = await db.query(`
+      SELECT it.created_at, it.type, ii.name AS item, ii.unit,
+        it.qty_change, it.unit_cost, it.notes,
+        COALESCE(u.name, u.email,'') AS user_name,
+        it.reference_type, it.reference_id
+      FROM inventory_transactions it
+      JOIN inventory_items ii ON ii.id=it.item_id
+      LEFT JOIN users u ON u.id=it.created_by
+      WHERE it.tenant_id=$1 AND it.created_at>=$2::date AND it.created_at<($3::date+INTERVAL '1 day')
+      ORDER BY it.created_at DESC
+    `, [req.user.tenantId, fromDate, toDate]);
+    const ExcelJS = require('exceljs');
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Transactions');
+    ws.columns = [
+      { header: 'Date', key: 'created_at', width: 20 },
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Item', key: 'item', width: 26 },
+      { header: 'Unit', key: 'unit', width: 8 },
+      { header: 'Qty Change', key: 'qty_change', width: 12 },
+      { header: 'Unit Cost', key: 'unit_cost', width: 11 },
+      { header: 'Notes', key: 'notes', width: 30 },
+      { header: 'User', key: 'user_name', width: 18 },
+      { header: 'Reference', key: 'reference_type', width: 16 },
+    ];
+    const hdr = ws.getRow(1);
+    hdr.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    hdr.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2d4a7a' } };
+    txRes.rows.forEach(r => ws.addRow({ ...r, created_at: new Date(r.created_at).toISOString().replace('T',' ').slice(0,16) }));
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="transactions-${fromDate}-${toDate}.xlsx"`);
+    res.send(await wb.xlsx.writeBuffer());
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Per-item transaction history ──────────────────────────────────────────────

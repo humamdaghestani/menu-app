@@ -363,6 +363,112 @@
     </div>
   </div>
 
+  <!-- Sales Charts -->
+  <% if (typeof todayRevenue !== 'undefined') { %>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px">
+    <div class="stat-card">
+      <span class="stat-icon">💰</span>
+      <div class="stat-value"><%= (tenant.currency||'$') %><%= todayRevenue.toFixed(0) %></div>
+      <div class="stat-label">Today's Revenue</div>
+      <% const revDiff = todayRevenue - yesterdayRevenue; %>
+      <div style="font-size:.72rem;margin-top:4px;color:<%= revDiff>=0?'#00b894':'#e74c3c' %>">
+        <%= revDiff >= 0 ? '▲' : '▼' %> vs yesterday (<%= (tenant.currency||'$') %><%= Math.abs(revDiff).toFixed(0) %>)
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">🧾</span>
+      <div class="stat-value"><%= todayOrders %></div>
+      <div class="stat-label">Today's Orders</div>
+      <% const ordDiff = todayOrders - yesterdayOrders; %>
+      <div style="font-size:.72rem;margin-top:4px;color:<%= ordDiff>=0?'#00b894':'#e74c3c' %>">
+        <%= ordDiff >= 0 ? '▲' : '▼' %> vs yesterday (<%= Math.abs(ordDiff) %> orders)
+      </div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📊</span>
+      <div class="stat-value"><%= todayOrders > 0 ? (tenant.currency||'$') + (todayRevenue/todayOrders).toFixed(0) : '—' %></div>
+      <div class="stat-label">Avg Order Value</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-icon">📅</span>
+      <div class="stat-value"><%= (tenant.currency||'$') %><%= yesterdayRevenue.toFixed(0) %></div>
+      <div class="stat-label">Yesterday</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+    <% if (hourlyRevenue && hourlyRevenue.length) { %>
+    <div class="card">
+      <div class="card-header"><h2>Revenue by Hour (Today)</h2></div>
+      <div style="padding:12px 4px 0">
+        <canvas id="hourlyChart" height="130"></canvas>
+      </div>
+    </div>
+    <% } %>
+    <% if (topItems && topItems.length) { %>
+    <div class="card">
+      <div class="card-header"><h2>Top Items Today</h2></div>
+      <div style="padding:8px 0 4px">
+        <% const maxQty = Math.max(...topItems.map(t=>t.qty_sold)); %>
+        <% topItems.forEach((t,i) => { %>
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 16px">
+          <div style="width:20px;text-align:right;font-size:.75rem;color:#888;font-weight:700"><%= i+1 %></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.83rem;font-weight:600;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= t.item_name %></div>
+            <div style="height:6px;background:#eee;border-radius:3px;margin-top:3px">
+              <div style="height:6px;border-radius:3px;background:var(--accent);width:<%= (t.qty_sold/maxQty*100).toFixed(0) %>%"></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:.8rem;font-weight:700;color:var(--accent)"><%= t.qty_sold %>×</div>
+            <div style="font-size:.7rem;color:#888"><%= (tenant.currency||'$') %><%= parseFloat(t.revenue).toFixed(0) %></div>
+          </div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <% if (hourlyRevenue && hourlyRevenue.length) { %>
+  <script>
+  (function(){
+    const hours  = <%- JSON.stringify(hourlyRevenue.map(r=>r.hour+'h')) %>;
+    const values = <%- JSON.stringify(hourlyRevenue.map(r=>parseFloat(r.revenue))) %>;
+    const canvas = document.getElementById('hourlyChart');
+    if (!canvas) return;
+    const W = canvas.offsetWidth || 500;
+    const H = 130;
+    canvas.width  = W;
+    canvas.height = H;
+    const ctx   = canvas.getContext('2d');
+    const max   = Math.max(...values, 1);
+    const padL  = 10, padR = 10, padT = 10, padB = 22;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+    const barW  = Math.max(4, (plotW / hours.length) - 4);
+    const step  = plotW / hours.length;
+    ctx.clearRect(0, 0, W, H);
+    values.forEach((v, i) => {
+      const barH = (v / max) * plotH;
+      const x = padL + i * step + (step - barW) / 2;
+      const y = padT + plotH - barH;
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#e94560';
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, barH, [3,3,0,0]);
+      ctx.fill();
+      if (i % 2 === 0) {
+        ctx.fillStyle = '#999';
+        ctx.font = '10px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText(hours[i], x + barW/2, H - 5);
+      }
+    });
+  })();
+  </script>
+  <% } %>
+  <% } %>
+
   <!-- Category breakdown -->
   <% if (categories.length > 0) { %>
   <div class="card" style="margin-bottom:24px">

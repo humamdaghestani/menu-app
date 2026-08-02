@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory Reports — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-green { background: rgba(0,184,148,.2); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
+
+    .main { padding: 28px; max-width: 1200px; margin: 0 auto; }
+    .filter-bar { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 16px 20px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 28px; }
+    .filter-bar label { font-size: .72rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .filter-bar input[type=date] { background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; padding: 7px 10px; font-size: .85rem; font-family: inherit; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 14px; margin-bottom: 28px; }
+    .stat { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 18px; }
+    .stat-label { font-size: .7rem; text-transform: uppercase; color: #555; font-weight: 700; }
+    .stat-val { font-size: 1.7rem; font-weight: 800; margin-top: 6px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+    @media (max-width: 768px) { .grid2 { grid-template-columns: 1fr; } }
+    .card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 20px; overflow-x: auto; }
+    .card-title { font-size: .9rem; font-weight: 800; color: #fff; margin-bottom: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { text-align: left; color: #444; font-size: .7rem; text-transform: uppercase; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,.04); color: #ccc; }
+    tr:last-child td { border-bottom: none; }
+    .empty { text-align: center; color: #444; padding: 24px; font-size: .82rem; }
+
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .7rem; font-weight: 700; }
+    .bar-wrap { background: rgba(255,255,255,.06); border-radius: 4px; height: 8px; margin-top: 4px; }
+    .bar-fill { height: 8px; border-radius: 4px; background: linear-gradient(90deg,#7c5cbf,#a78bdf); }
+
+    canvas { max-width: 100%; display: block; margin: 0 auto; }
+  </style>
+</head>
+<body>
+<% const cur = tenant.currency || '$' %>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="font-weight:700;color:#fff">📊 Inventory Reports</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/inventory/export" class="btn btn-green">⬇ Items Excel</a>
+    <a href="/inventory/transactions/export?from=<%= fromDate %>&to=<%= toDate %>" class="btn btn-green">⬇ Transactions Excel</a>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Date filter -->
+  <form class="filter-bar" method="GET">
+    <div>
+      <label>From</label><br/>
+      <input type="date" name="from" value="<%= fromDate %>" />
+    </div>
+    <div>
+      <label>To</label><br/>
+      <input type="date" name="to" value="<%= toDate %>" />
+    </div>
+    <button type="submit" class="btn btn-primary" style="align-self:flex-end">Apply</button>
+  </form>
+
+  <!-- KPI row -->
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-label">Total Stock Value</div>
+      <div class="stat-val" style="color:#a78bdf"><%= cur %><%= totalStockValue.toFixed(0) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">COGS (period)</div>
+      <div class="stat-val" style="color:#f39c12"><%= cur %><%= cogs.toFixed(0) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Write-offs (cost)</div>
+      <div class="stat-val" style="color:#e74c3c"><%= cur %><%= writeOffs.reduce((s,r)=>s+parseFloat(r.total_cost||0),0).toFixed(0) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Low Stock Items</div>
+      <div class="stat-val" style="color:<%= lowStock.length > 0 ? '#e74c3c' : '#00b894' %>"><%= lowStock.length %></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Stock by category -->
+    <div class="card">
+      <div class="card-title">📦 Stock Value by Category</div>
+      <% if (stockByCategory.length) { %>
+      <table>
+        <thead><tr><th>Category</th><th>Items</th><th>Value</th><th>Share</th></tr></thead>
+        <tbody>
+        <% stockByCategory.forEach(c => {
+             const pct = totalStockValue > 0 ? (parseFloat(c.total_value)/totalStockValue*100).toFixed(1) : 0;
+        %>
+        <tr>
+          <td>
+            <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= c.color %>;margin-right:6px;vertical-align:middle"></span>
+            <%= c.category %>
+          </td>
+          <td style="text-align:right"><%= c.item_count %></td>
+          <td style="font-weight:700;color:#a78bdf"><%= cur %><%= parseFloat(c.total_value).toFixed(2) %></td>
+          <td style="min-width:100px">
+            <div style="font-size:.7rem;color:#666;margin-bottom:2px"><%= pct %>%</div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:<%= pct %>%"></div></div>
+          </td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } else { %><div class="empty">No items</div><% } %>
+    </div>
+
+    <!-- Movement summary -->
+    <div class="card">
+      <div class="card-title">🔄 Movement Summary (period)</div>
+      <% if (movement.length) { %>
+      <table>
+        <thead><tr><th>Type</th><th>Transactions</th><th>Total In</th><th>Total Out</th></tr></thead>
+        <tbody>
+        <% movement.forEach(m => { %>
+        <tr>
+          <td><span class="badge" style="background:rgba(124,92,191,.15);color:#a78bdf"><%= m.type %></span></td>
+          <td style="text-align:right"><%= m.tx_count %></td>
+          <td style="color:#00b894">+<%= parseFloat(m.total_in).toFixed(2) %></td>
+          <td style="color:#e74c3c">-<%= parseFloat(m.total_out).toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } else { %><div class="empty">No transactions in period</div><% } %>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Top movers -->
+    <div class="card">
+      <div class="card-title">🔝 Top 10 Items Sold (period)</div>
+      <% if (topMovers.length) { %>
+      <table>
+        <thead><tr><th>Item</th><th>Unit</th><th>Qty Sold</th><th>COGS</th><th>Stock Left</th></tr></thead>
+        <tbody>
+        <% topMovers.forEach(m => { %>
+        <tr>
+          <td style="color:#fff;font-weight:600"><%= m.name %></td>
+          <td style="color:#555"><%= m.unit %></td>
+          <td style="color:#a78bdf;font-weight:700"><%= parseFloat(m.total_sold).toFixed(2) %></td>
+          <td style="color:#f39c12"><%= cur %><%= parseFloat(m.cogs).toFixed(2) %></td>
+          <td style="color:<%= parseFloat(m.stock_qty) <= 0 ? '#e74c3c' : '#ccc' %>"><%= parseFloat(m.stock_qty).toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } else { %><div class="empty">No sales in period</div><% } %>
+    </div>
+
+    <!-- Low stock alerts -->
+    <div class="card">
+      <div class="card-title">⚠️ Low Stock Alerts</div>
+      <% if (lowStock.length) { %>
+      <table>
+        <thead><tr><th>Item</th><th>Unit</th><th>Stock</th><th>Reorder At</th><th>Value</th></tr></thead>
+        <tbody>
+        <% lowStock.forEach(i => { %>
+        <tr>
+          <td style="color:#e74c3c;font-weight:700"><%= i.name %></td>
+          <td style="color:#555"><%= i.unit %></td>
+          <td style="color:#e74c3c;font-weight:700"><%= parseFloat(i.stock_qty).toFixed(2) %></td>
+          <td style="color:#f39c12"><%= parseFloat(i.reorder_level).toFixed(2) %></td>
+          <td><%= cur %><%= parseFloat(i.value||0).toFixed(2) %></td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+      <% } else { %><div class="empty" style="color:#00b894">✓ All items above reorder level</div><% } %>
+    </div>
+  </div>
+
+  <!-- Write-offs -->
+  <% if (writeOffs.length) { %>
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-title">🗑️ Write-offs & Spoilage (period)</div>
+    <table>
+      <thead><tr><th>Type</th><th>Count</th><th>Total Qty</th><th>Total Cost</th></tr></thead>
+      <tbody>
+      <% writeOffs.forEach(w => { %>
+      <tr>
+        <td><span class="badge" style="background:rgba(231,76,60,.15);color:#e74c3c"><%= w.type %></span></td>
+        <td style="text-align:right"><%= w.cnt %></td>
+        <td style="color:#f39c12"><%= parseFloat(w.total_qty).toFixed(2) %></td>
+        <td style="color:#e74c3c;font-weight:700"><%= cur %><%= parseFloat(w.total_cost).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <!-- Daily purchase chart -->
+  <% if (dailyPurchases.length > 1) { %>
+  <div class="card">
+    <div class="card-title">📈 Daily Purchases (period)</div>
+    <canvas id="purchaseChart" height="120"></canvas>
+  </div>
+  <script>
+  (function(){
+    const labels = <%- JSON.stringify(dailyPurchases.map(r=>r.day.toISOString ? r.day.toISOString().slice(0,10) : String(r.day))) %>;
+    const data   = <%- JSON.stringify(dailyPurchases.map(r=>parseFloat(r.total))) %>;
+    const canvas = document.getElementById('purchaseChart');
+    const ctx    = canvas.getContext('2d');
+    const W = canvas.offsetWidth || 800;
+    const H = 120;
+    canvas.width  = W;
+    canvas.height = H;
+    const maxVal = Math.max(...data, 1);
+    const pad = 40;
+    const plotW = W - pad * 2;
+    const plotH = H - 20;
+    const step = plotW / (labels.length - 1 || 1);
+    ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(124,92,191,.3)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = (plotH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+    }
+    ctx.beginPath();
+    data.forEach((v, i) => {
+      const x = pad + i * step;
+      const y = plotH - (v / maxVal) * (plotH - 10);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = '#7c5cbf';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    data.forEach((v, i) => {
+      const x = pad + i * step;
+      const y = plotH - (v / maxVal) * (plotH - 10);
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#a78bdf';
+      ctx.fill();
+    });
+  })();
+  </script>
+  <% } %>
+
+</div>
+</body>
+</html>

@@ -21,6 +21,7 @@ const deliveryRouter    = require('./routes/delivery');
 const modifiersRouter   = require('./routes/modifiers');
 const happyHoursRouter  = require('./routes/happy-hours');
 const posReportsRouter  = require('./routes/pos-reports');
+const kitchenRouter     = require('./routes/kitchen');
 const db = require('./db');
 
 const app = express();
@@ -87,6 +88,7 @@ app.use('/pos/modifiers',   modifiersRouter);
 app.use('/pos/happy-hours', happyHoursRouter);
 app.use('/pos/reports',     posReportsRouter);
 app.use('/pos',     posRouter);
+app.use('/kitchen', kitchenRouter);
 app.use('/captain', captainRouter);
 app.use('/inventory',   inventoryRouter);
 app.use('/accounting',  accountingRouter);
