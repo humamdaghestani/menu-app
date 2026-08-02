@@ -139,6 +139,14 @@
     nav button:hover .cat-img-wrap { border-color: var(--cat-border-hover); }
     .cat-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
+    /* ── Sub-category nav ── */
+    #subCategoryNav { display: none; gap: 8px; padding: 6px 16px 10px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border); }
+    #subCategoryNav::-webkit-scrollbar { display: none; }
+    #subCategoryNav.visible { display: flex; }
+    #subCategoryNav button { flex-shrink: 0; padding: 5px 14px; border: 1.5px solid var(--cat-border); border-radius: 20px; background: var(--cat-bg); color: var(--nav-text); font-size: .82rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .15s; }
+    #subCategoryNav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    #subCategoryNav button:hover { border-color: var(--cat-border-hover); color: var(--nav-hover); }
+
     /* ── Toolbar ── */
     .toolbar { max-width: 1100px; margin: 28px auto 0; padding: 0 24px; display: flex; justify-content: flex-end; }
     .search-wrap { position: relative; }
@@ -658,6 +666,7 @@
         </button>
       <% }) %>
     </nav>
+    <div id="subCategoryNav"></div>
     <!-- Closed Banner sits below categories, still inside sticky -->
     <div id="closedBanner" style="display:none;background:rgba(233,69,96,0.92);color:#fff;text-align:center;padding:10px 20px;font-weight:600;font-size:.88rem;backdrop-filter:blur(8px);">
       🕐 <span id="closedBannerText"></span>
@@ -1146,10 +1155,37 @@
   }
 
   // ── Category Nav ──────────────────────────────────
+  const subNav = document.getElementById('subCategoryNav');
+
+  function getChildren(parentId) {
+    return categories.filter(c => String(c.parent_id) === String(parentId));
+  }
+
+  function showSubNav(parentId) {
+    const children = getChildren(parentId);
+    subNav.innerHTML = '';
+    if (children.length === 0) { subNav.classList.remove('visible'); return; }
+    children.forEach(sub => {
+      const btn = document.createElement('button');
+      btn.dataset.id = sub.id;
+      btn.textContent = getLocalized(sub, 'name', currentLang);
+      btn.addEventListener('click', () => {
+        activeCategory = sub.id;
+        subNav.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderGrid();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      subNav.appendChild(btn);
+    });
+    subNav.classList.add('visible');
+  }
+
   document.getElementById('categoryNav').querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       activeCategory = btn.dataset.id;
       setActiveNav(activeCategory);
+      showSubNav(activeCategory);
       renderGrid();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -1185,7 +1221,8 @@
     const filtered = items.filter(item => {
       const matchCat = activeCategory === 'all'
         || Number(item.category_id) === Number(activeCategory)
-        || subMap[Number(item.category_id)] === Number(activeCategory);
+        || subMap[Number(item.category_id)] === Number(activeCategory)
+        || subMap[subMap[Number(item.category_id)]] === Number(activeCategory);
       if (!matchCat) return false;
       if (!searchQuery) return true;
       return (item.name || '').toLowerCase().includes(searchQuery) ||
