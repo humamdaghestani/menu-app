@@ -435,6 +435,16 @@
             <button type="submit" style="background:none;border:none;cursor:pointer;color:#bbb;font-size:.85rem">✕</button>
           </form>
         </div>
+        <% categories.filter(c => String(c.parent_id) === String(sub.id)).forEach(subsub => { %>
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 8px 4px 48px;background:#f5f5f5;border-radius:8px;margin-bottom:4px;font-size:.82rem">
+          <span style="color:#ccc">↳</span>
+          <span style="color:#888"><%= subsub.name %></span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick='openCatEdit(<%- JSON.stringify(subsub) %>)' style="padding:1px 6px;font-size:.7rem;margin-left:auto">Edit</button>
+          <form method="POST" action="/admin/categories/<%= subsub.id %>/delete" onsubmit="return confirm('Delete subcategory?')" style="margin:0">
+            <button type="submit" style="background:none;border:none;cursor:pointer;color:#ccc;font-size:.82rem">✕</button>
+          </form>
+        </div>
+        <% }) %>
         <% }) %>
       <% }) %>
     </div>

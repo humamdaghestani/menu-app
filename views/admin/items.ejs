@@ -221,12 +221,17 @@
           <label>Category</label>
           <select name="category_id">
             <option value="">No category</option>
-            <% rootCatsAdmin.forEach(cat => { %>
-              <% const subs = getSubcatsAdmin(cat.id); %>
+            <% categories.filter(c => !c.parent_id).forEach(cat => { %>
+              <% const subs = categories.filter(c => String(c.parent_id) === String(cat.id)); %>
               <% if (subs.length > 0) { %>
                 <optgroup label="<%= cat.name %>">
                   <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
-                  <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                  <% subs.forEach(sub => { %>
+                    <option value="<%= sub.id %>">↳ <%= sub.name %></option>
+                    <% categories.filter(c => String(c.parent_id) === String(sub.id)).forEach(subsub => { %>
+                      <option value="<%= subsub.id %>">  ↳ <%= subsub.name %></option>
+                    <% }) %>
+                  <% }) %>
                 </optgroup>
               <% } else { %>
                 <option value="<%= cat.id %>"><%= cat.name %></option>
@@ -372,12 +377,17 @@
           <label>Category</label>
           <select name="category_id" id="editCategory">
             <option value="">No category</option>
-            <% rootCatsAdmin.forEach(cat => { %>
-              <% const subs = getSubcatsAdmin(cat.id); %>
+            <% categories.filter(c => !c.parent_id).forEach(cat => { %>
+              <% const subs = categories.filter(c => String(c.parent_id) === String(cat.id)); %>
               <% if (subs.length > 0) { %>
                 <optgroup label="<%= cat.name %>">
                   <option value="<%= cat.id %>"><%= cat.name %> (main)</option>
-                  <% subs.forEach(sub => { %><option value="<%= sub.id %>">↳ <%= sub.name %></option><% }) %>
+                  <% subs.forEach(sub => { %>
+                    <option value="<%= sub.id %>">↳ <%= sub.name %></option>
+                    <% categories.filter(c => String(c.parent_id) === String(sub.id)).forEach(subsub => { %>
+                      <option value="<%= subsub.id %>">  ↳ <%= subsub.name %></option>
+                    <% }) %>
+                  <% }) %>
                 </optgroup>
               <% } else { %>
                 <option value="<%= cat.id %>"><%= cat.name %></option>
