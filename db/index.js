@@ -670,6 +670,7 @@ const pool = new Pool({
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_shape   VARCHAR(20) DEFAULT 'square'`,
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_w       INTEGER DEFAULT 80`,
     `ALTER TABLE restaurant_tables ADD COLUMN IF NOT EXISTS floor_h       INTEGER DEFAULT 80`,
+    `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subcategory_text_color TEXT`,
     // No-sale cash drawer log
     `CREATE TABLE IF NOT EXISTS pos_no_sale_log (
       id         SERIAL PRIMARY KEY,
