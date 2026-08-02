@@ -111,6 +111,8 @@ router.post('/tenants/:id/toggle', requireSuperAdmin, async (req, res) => {
 
 router.post('/tenants/:id/delete', requireSuperAdmin, async (req, res) => {
   try {
+    // Break cross-reference: pos_orders.session_id → pos_sessions before cascade
+    await db.query('UPDATE pos_orders SET session_id = NULL WHERE tenant_id=$1', [req.params.id]);
     await db.query('DELETE FROM tenants WHERE id=$1', [req.params.id]);
     res.redirect('/superadmin?success=Restaurant+deleted');
   } catch (err) { console.error(err); res.redirect('/superadmin?error=Failed+to+delete'); }
