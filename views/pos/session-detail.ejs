@@ -50,6 +50,18 @@
     td { padding: 11px 14px; font-size: .82rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
 
+    /* Orders toolbar */
+    .orders-toolbar { display:flex; gap:8px; padding:12px 14px; border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; align-items:center; }
+    .orders-search { flex:1; min-width:160px; padding:7px 12px; background:#0f0f1a; border:1.5px solid #2a2a3e; border-radius:8px; color:#fff; font-size:.82rem; outline:none; font-family:inherit; }
+    .orders-search:focus { border-color:#7c5cbf; }
+    .orders-select { padding:7px 10px; background:#0f0f1a; border:1.5px solid #2a2a3e; border-radius:8px; color:#aaa; font-size:.78rem; outline:none; font-family:inherit; cursor:pointer; }
+    .orders-select:focus { border-color:#7c5cbf; }
+    .orders-count { font-size:.75rem; color:#444; margin-left:auto; white-space:nowrap; }
+    /* Sortable headers */
+    th.sortable { cursor:pointer; user-select:none; }
+    th.sortable:hover { color:#aaa; }
+    th.sort-asc::after  { content:' ↑'; color:#7c5cbf; }
+    th.sort-desc::after { content:' ↓'; color:#7c5cbf; }
     /* Activity log */
     .log-list { display: flex; flex-direction: column; gap: 0; }
     .log-group { }
@@ -129,28 +141,50 @@
       <% if (orders.length === 0) { %>
       <div class="empty">No orders in this session</div>
       <% } else { %>
-      <table>
+      <div class="orders-toolbar">
+        <input class="orders-search" id="orderSearch" placeholder="Search table / name…" oninput="filterOrders()" />
+        <select class="orders-select" id="statusFilter" onchange="filterOrders()">
+          <option value="">All statuses</option>
+          <option value="paid">Paid</option>
+          <option value="void">Voided</option>
+          <option value="open">Open</option>
+        </select>
+        <select class="orders-select" id="discountFilter" onchange="filterOrders()">
+          <option value="">All discounts</option>
+          <option value="yes">Has discount</option>
+          <option value="no">No discount</option>
+        </select>
+        <span class="orders-count" id="ordersCount"></span>
+      </div>
+      <table id="ordersTable">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Table / Name</th>
-            <th>Items</th>
-            <th>Discount</th>
-            <th>Total</th>
+            <th class="sortable" data-col="id" onclick="sortOrders(this)">#</th>
+            <th class="sortable" data-col="name" onclick="sortOrders(this)">Table / Name</th>
+            <th class="sortable" data-col="items" onclick="sortOrders(this)">Items</th>
+            <th class="sortable" data-col="discount" onclick="sortOrders(this)">Discount</th>
+            <th class="sortable" data-col="total" onclick="sortOrders(this)">Total</th>
             <th>Payment</th>
-            <th>Time</th>
-            <th>Status</th>
+            <th class="sortable" data-col="time" onclick="sortOrders(this)">Time</th>
+            <th class="sortable" data-col="status" onclick="sortOrders(this)">Status</th>
             <th></th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="ordersTbody">
           <% orders.forEach(o => { %>
-          <tr>
+          <% const hasDiscount = o.discount_type && o.discount_type !== 'none'; %>
+          <tr data-id="<%= o.id %>"
+              data-name="<%= (o.table_name||'').toLowerCase() %>"
+              data-items="<%= parseInt(o.item_count)||0 %>"
+              data-discount="<%= hasDiscount ? 'yes' : 'no' %>"
+              data-total="<%= parseFloat(o.total||0) %>"
+              data-status="<%= o.status %>"
+              data-time="<%= new Date(o.created_at).getTime() %>">
             <td style="color:#555">#<%= o.id %></td>
             <td><%= o.table_name %></td>
             <td style="color:#666"><%= o.item_count %> items</td>
             <td style="color:#3498db;font-size:.75rem">
-              <% if (o.discount_type && o.discount_type !== 'none') { %>
+              <% if (hasDiscount) { %>
                 <%= o.discount_type === 'percent' ? o.discount_value + '%' : (tenant.currency||'$') + parseFloat(o.discount_value).toFixed(2) %>
               <% } else { %>—<% } %>
             </td>
@@ -167,6 +201,7 @@
           <% }) %>
         </tbody>
       </table>
+      <div id="ordersEmpty" style="display:none" class="empty">No orders match your filters.</div>
       <% } %>
     </div>
   </div>
@@ -254,6 +289,60 @@ function switchTab(name, el) {
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
 }
+
+// ── Orders table: filter + sort ───────────────────────────────────────────────
+var _sortCol = 'id', _sortDir = 1;
+
+function filterOrders() {
+  var q       = (document.getElementById('orderSearch')?.value || '').toLowerCase();
+  var status  = document.getElementById('statusFilter')?.value || '';
+  var disc    = document.getElementById('discountFilter')?.value || '';
+  var rows    = document.querySelectorAll('#ordersTbody tr');
+  var visible = 0;
+  rows.forEach(function(r) {
+    var name     = r.dataset.name || '';
+    var rstatus  = r.dataset.status || '';
+    var rdisc    = r.dataset.discount || '';
+    var show = (!q || name.includes(q))
+            && (!status || rstatus === status)
+            && (!disc   || rdisc   === disc);
+    r.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  var countEl = document.getElementById('ordersCount');
+  if (countEl) countEl.textContent = visible + ' order' + (visible !== 1 ? 's' : '');
+  var emptyEl = document.getElementById('ordersEmpty');
+  var tableEl = document.getElementById('ordersTable');
+  if (emptyEl && tableEl) {
+    emptyEl.style.display  = visible === 0 ? '' : 'none';
+    tableEl.style.display  = visible === 0 ? 'none' : '';
+  }
+}
+
+function sortOrders(th) {
+  var col = th.dataset.col;
+  if (_sortCol === col) { _sortDir *= -1; } else { _sortCol = col; _sortDir = 1; }
+  document.querySelectorAll('th.sortable').forEach(function(h) {
+    h.classList.remove('sort-asc', 'sort-desc');
+  });
+  th.classList.add(_sortDir === 1 ? 'sort-asc' : 'sort-desc');
+
+  var tbody = document.getElementById('ordersTbody');
+  var rows  = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort(function(a, b) {
+    var av = a.dataset[col] || '', bv = b.dataset[col] || '';
+    var numCols = ['id','items','total','time'];
+    if (numCols.includes(col)) {
+      av = parseFloat(av) || 0; bv = parseFloat(bv) || 0;
+      return (av - bv) * _sortDir;
+    }
+    return av.localeCompare(bv) * _sortDir;
+  });
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
+
+// Init count on load
+window.addEventListener('DOMContentLoaded', function() { filterOrders(); });
 </script>
 </body>
 </html>
