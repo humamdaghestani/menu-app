@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
+const ExcelJS = require('exceljs');
 
 // Gate all POS routes behind feat_pos + user-level access_pos permission
 async function requirePOS(req, res, next) {
@@ -205,12 +206,174 @@ router.post('/session/close', requireAuth, requirePOS, async (req, res) => {
     );
     if (openCheck.rows.length > 0) return res.redirect('/pos/session/close');
 
+    const closedId = session.id;
     await db.query(
       "UPDATE pos_sessions SET status='closed', closing_cash=$1, notes=$2, closed_at=NOW() WHERE id=$3",
       [parseFloat(req.body.closing_cash) || 0, req.body.notes || null, session.id]
     );
-    res.redirect('/pos/session/open');
+    res.redirect('/pos/session/' + closedId + '/closed');
   } catch (err) { console.error(err); res.redirect('/pos/session/close'); }
+});
+
+// ── Session closed — export prompt ───────────────────────────────────────────
+router.get('/session/:id/closed', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const sid = parseInt(req.params.id);
+    const sessRes = await db.query(
+      `SELECT ps.*, u.name AS opened_by_name, u.email AS opened_by_email
+       FROM pos_sessions ps LEFT JOIN users u ON u.id=ps.opened_by
+       WHERE ps.id=$1 AND ps.tenant_id=$2`, [sid, req.user.tenantId]);
+    if (!sessRes.rows[0]) return res.redirect('/pos/session/open');
+    const session = sessRes.rows[0];
+    const stats = await db.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE status='paid') AS paid,
+         COALESCE(SUM(total) FILTER (WHERE status='paid'),0) AS total_sales
+       FROM pos_orders WHERE session_id=$1`, [sid]);
+    const s = stats.rows[0];
+    const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]).then(r => r.rows[0]);
+    res.render('pos/session-closed', { session, stats: s, tenant, currentUser: req.user });
+  } catch(e) { console.error(e); res.redirect('/pos/session/open'); }
+});
+
+// ── Session Excel export ──────────────────────────────────────────────────────
+router.get('/session/:id/export-excel', requireAuth, requirePOS, async (req, res) => {
+  try {
+    const sid = parseInt(req.params.id);
+    const tenant = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]).then(r => r.rows[0]);
+    const sessRes = await db.query(
+      `SELECT ps.*, u.name AS opened_by_name, u.email AS opened_by_email
+       FROM pos_sessions ps LEFT JOIN users u ON u.id=ps.opened_by
+       WHERE ps.id=$1 AND ps.tenant_id=$2`, [sid, req.user.tenantId]);
+    if (!sessRes.rows[0]) return res.status(404).send('Session not found');
+    const session = sessRes.rows[0];
+
+    const ordersRes = await db.query(
+      `SELECT po.id, po.table_name, po.status, po.total, po.discount_type, po.discount_value,
+              po.created_at, po.paid_at,
+              COALESCE(pp.method,'—') AS pay_method,
+              COALESCE(SUM(poi.price * poi.quantity),0) AS subtotal,
+              COUNT(poi.id)::int AS item_count
+       FROM pos_orders po
+       LEFT JOIN pos_order_items poi ON poi.order_id = po.id
+       LEFT JOIN pos_payments pp ON pp.order_id = po.id
+       WHERE po.session_id=$1
+       GROUP BY po.id, pp.method ORDER BY po.created_at`, [sid]);
+
+    const itemsRes = await db.query(
+      `SELECT poi.order_id, poi.name, poi.quantity, poi.price, poi.note
+       FROM pos_order_items poi
+       JOIN pos_orders po ON po.id=poi.order_id
+       WHERE po.session_id=$1 ORDER BY poi.order_id, poi.id`, [sid]);
+
+    const cur = tenant.currency || '$';
+    const fmt = n => parseFloat(n || 0).toFixed(2);
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = tenant.name || 'POS';
+    wb.created = new Date();
+
+    // ── Sheet 1: Summary ──
+    const ws1 = wb.addWorksheet('Summary');
+    ws1.getColumn(1).width = 28;
+    ws1.getColumn(2).width = 24;
+
+    const addRow = (label, value, bold) => {
+      const r = ws1.addRow([label, value]);
+      if (bold) { r.font = { bold: true }; }
+      r.getCell(1).font = { color: { argb: 'FF888888' }, ...(bold ? { bold: true } : {}) };
+      r.getCell(2).font = bold ? { bold: true } : {};
+    };
+
+    ws1.addRow([tenant.name || 'Session Report']).font = { bold: true, size: 14 };
+    ws1.addRow([]);
+    addRow('Session #', session.id, true);
+    addRow('Status', session.status);
+    addRow('Opened By', session.opened_by_name || session.opened_by_email || '—');
+    addRow('Opened At', session.opened_at ? new Date(session.opened_at).toLocaleString() : '—');
+    addRow('Closed At', session.closed_at ? new Date(session.closed_at).toLocaleString() : '—');
+    ws1.addRow([]);
+    addRow('Opening Cash (IQD)', Math.round(parseFloat(session.opening_cash || 0)).toLocaleString());
+    addRow('Closing Cash (IQD)', session.closing_cash != null ? Math.round(parseFloat(session.closing_cash)).toLocaleString() : '—');
+    ws1.addRow([]);
+
+    const paid   = ordersRes.rows.filter(o => o.status === 'paid');
+    const voided = ordersRes.rows.filter(o => o.status === 'void');
+    const cashSales = paid.filter(o => o.pay_method === 'cash').reduce((s,o) => s + parseFloat(o.total||0), 0);
+    const cardSales = paid.filter(o => o.pay_method !== 'cash' && o.pay_method !== '—').reduce((s,o) => s + parseFloat(o.total||0), 0);
+    const totalSales = paid.reduce((s,o) => s + parseFloat(o.total||0), 0);
+
+    addRow('Total Sales', cur + fmt(totalSales), true);
+    addRow('Cash Sales', cur + fmt(cashSales));
+    addRow('Card Sales', cur + fmt(cardSales));
+    addRow('Paid Orders', paid.length);
+    addRow('Voided Orders', voided.length);
+    if (session.notes) { ws1.addRow([]); addRow('Notes', session.notes); }
+
+    // ── Sheet 2: Orders ──
+    const ws2 = wb.addWorksheet('Orders');
+    ws2.columns = [
+      { header: '#',           key: 'id',        width: 8  },
+      { header: 'Table/Name',  key: 'table',     width: 22 },
+      { header: 'Items',       key: 'items',     width: 8  },
+      { header: 'Discount',    key: 'discount',  width: 14 },
+      { header: 'Total',       key: 'total',     width: 14 },
+      { header: 'Payment',     key: 'payment',   width: 12 },
+      { header: 'Status',      key: 'status',    width: 10 },
+      { header: 'Time',        key: 'time',      width: 20 },
+    ];
+    ws2.getRow(1).font = { bold: true };
+    ws2.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1a1a2e' } };
+    ws2.getRow(1).font = { bold: true, color: { argb: 'FFCCCCCC' } };
+
+    ordersRes.rows.forEach(o => {
+      let disc = '—';
+      if (o.discount_type && o.discount_type !== 'none') {
+        disc = o.discount_type === 'percent' ? o.discount_value + '%' : cur + fmt(o.discount_value);
+      }
+      ws2.addRow({
+        id: o.id,
+        table: o.table_name || '—',
+        items: o.item_count,
+        discount: disc,
+        total: parseFloat(o.total || 0),
+        payment: o.pay_method || '—',
+        status: o.status,
+        time: o.created_at ? new Date(o.created_at).toLocaleString() : '—',
+      });
+    });
+    ws2.getColumn('total').numFmt = '#,##0.00';
+
+    // ── Sheet 3: Item Details ──
+    const ws3 = wb.addWorksheet('Item Details');
+    ws3.columns = [
+      { header: 'Order #',    key: 'order_id',  width: 10 },
+      { header: 'Item',       key: 'name',      width: 28 },
+      { header: 'Qty',        key: 'qty',       width: 6  },
+      { header: 'Unit Price', key: 'price',     width: 14 },
+      { header: 'Line Total', key: 'line',      width: 14 },
+      { header: 'Note',       key: 'note',      width: 24 },
+    ];
+    ws3.getRow(1).font = { bold: true };
+    itemsRes.rows.forEach(i => {
+      ws3.addRow({
+        order_id: i.order_id,
+        name: i.name,
+        qty: i.quantity,
+        price: parseFloat(i.price || 0),
+        line: parseFloat(i.price || 0) * parseInt(i.quantity || 1),
+        note: i.note || '',
+      });
+    });
+    ws3.getColumn('price').numFmt = '#,##0.00';
+    ws3.getColumn('line').numFmt  = '#,##0.00';
+
+    const filename = `session-${sid}-${tenant.name || 'report'}.xlsx`.replace(/[^a-z0-9\-_.]/gi, '_');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    await wb.xlsx.write(res);
+    res.end();
+  } catch(e) { console.error(e); res.status(500).send('Export failed: ' + e.message); }
 });
 
 // ── Update exchange rate for open session ─────────────────────────────────────

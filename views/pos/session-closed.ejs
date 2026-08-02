@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Session Closed — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #1a1a2e; border-radius: 18px; border: 1px solid rgba(255,255,255,.08); padding: 40px 36px; max-width: 480px; width: 100%; text-align: center; }
+    .icon { font-size: 3rem; margin-bottom: 16px; }
+    h1 { font-size: 1.4rem; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .sub { font-size: .85rem; color: #555; margin-bottom: 28px; }
+    .stats { display: flex; gap: 10px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+    .stat { background: #0f0f1a; border-radius: 10px; padding: 12px 20px; min-width: 110px; }
+    .stat-label { font-size: .65rem; color: #444; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
+    .stat-val { font-size: 1.1rem; font-weight: 700; color: #fff; }
+    .stat-val.green { color: #00b894; }
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,.06); margin: 0 0 28px; }
+    .q { font-size: .95rem; font-weight: 600; color: #ccc; margin-bottom: 20px; }
+    .btns { display: flex; flex-direction: column; gap: 10px; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 20px; border-radius: 12px; font-size: .9rem; font-weight: 700; font-family: inherit; cursor: pointer; border: none; text-decoration: none; transition: opacity .15s; }
+    .btn:hover { opacity: .88; }
+    .btn-excel { background: #1d6f42; color: #fff; }
+    .btn-new   { background: #7c5cbf; color: #fff; }
+    .btn-skip  { background: rgba(255,255,255,.06); color: #888; }
+    .session-info { font-size: .75rem; color: #333; margin-top: 24px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="icon">✅</div>
+  <h1>Session #<%= session.id %> Closed</h1>
+  <div class="sub"><%= new Date(session.closed_at).toLocaleString() %></div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Paid Orders</div>
+      <div class="stat-val green"><%= parseInt(stats.paid) || 0 %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Sales</div>
+      <div class="stat-val green"><%= tenant.currency || '$' %><%= parseFloat(stats.total_sales || 0).toFixed(2) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Closing Cash</div>
+      <div class="stat-val"><%= session.closing_cash != null ? Math.round(parseFloat(session.closing_cash)).toLocaleString() + ' IQD' : '—' %></div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+  <div class="q">📊 Export this session as Excel?</div>
+
+  <div class="btns">
+    <a href="/pos/session/<%= session.id %>/export-excel" class="btn btn-excel" download>
+      ⬇ Download Excel Report
+    </a>
+    <a href="/pos/session/open" class="btn btn-new">
+      ＋ Open New Session
+    </a>
+    <a href="/pos/session/<%= session.id %>" class="btn btn-skip">
+      View Session Details
+    </a>
+  </div>
+
+  <div class="session-info">Session #<%= session.id %> · <%= session.opened_by_name || session.opened_by_email || '' %></div>
+</div>
+
+</body>
+</html>
