@@ -1522,11 +1522,7 @@
 
   // ── Init ──────────────────────────────────────────
   setLang(currentLang);
-  // If user already picked a language before, skip the splash on refresh
-  if (localStorage.getItem('lang')) {
-    const _splash = document.getElementById('splash');
-    if (_splash) _splash.style.display = 'none';
-  }
+  // Always show splash on every visit
 
   // Pre-fill table number from URL ?table=N (set by table QR codes)
   const _tableParam = new URLSearchParams(window.location.search).get('table');
