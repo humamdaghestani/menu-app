@@ -44,6 +44,7 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const r = await db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]);
     const tenant = r.rows[0];
+    if (!tenant) { res.clearCookie('token'); return res.redirect('/admin/login'); }
     res.render('admin/home', { tenant, currentUser: req.user });
   } catch (err) { console.error(err); res.redirect('/admin/dashboard'); }
 });
