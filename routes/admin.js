@@ -8,6 +8,8 @@ const db = require('../db');
 const requireAuth = require('../middleware/auth');
 const { cacheBustByTenantId } = require('./menu');
 const imagekit = require('../utils/imagekit');
+const audit = require('../lib/audit');
+const { loginRateLimiter, clearAttempts } = require('../middleware/rateLimiter');
 
 const upload      = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const uploadLarge = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -71,8 +73,9 @@ router.get('/login', (req, res) => {
   res.render('admin/login', { error: null });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginRateLimiter, async (req, res) => {
   const { email, password } = req.body;
+  const ip = req.ip;
 
   try {
     const result = await db.query(
@@ -83,6 +86,7 @@ router.post('/login', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      audit.log({ action: 'login.failed', entity: 'user', detail: { email, reason: 'user_not_found' }, ip });
       return res.render('admin/login', { error: 'Invalid email or password' });
     }
 
@@ -90,9 +94,11 @@ router.post('/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash);
 
     if (!valid) {
+      audit.log({ tenantId: user.tenant_id, userEmail: email, action: 'login.failed', entity: 'user', entityId: user.id, detail: { reason: 'wrong_password' }, ip });
       return res.render('admin/login', { error: 'Invalid email or password' });
     }
 
+    clearAttempts(ip);
     const permissions = user.role === 'admin' ? [] : JSON.parse(user.permissions || '[]');
     const token = jwt.sign(
       { userId: user.id, tenantId: user.tenant_id, role: user.role, permissions },
@@ -101,7 +107,7 @@ router.post('/login', async (req, res) => {
     );
 
     res.cookie('token', token, { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 });
-
+    audit.log({ tenantId: user.tenant_id, userId: user.id, userEmail: user.email, action: 'login.success', entity: 'user', entityId: user.id, detail: { role: user.role }, ip });
     res.redirect('/admin');
   } catch (err) {
     console.error(err);
@@ -109,7 +115,8 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', requireAuth, (req, res) => {
+  audit.log({ tenantId: req.user.tenantId, userId: req.user.userId, userEmail: req.user.email, action: 'logout', ip: req.ip });
   res.clearCookie('token');
   res.redirect('/admin/login');
 });
@@ -177,6 +184,7 @@ router.post('/items', requireAuth, bust, async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [req.user.tenantId, category_id || null, name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, badge || null]
     );
+    audit.log({ tenantId: req.user.tenantId, userId: req.user.userId, userEmail: req.user.email, action: 'item.create', entity: 'menu_item', entityId: ins.rows[0].id, detail: { name, price }, ip: req.ip });
     if (req.query.json) return res.json({ ok: true, item: ins.rows[0] });
     res.redirect('/admin/items?success=Item+added');
   } catch (err) {
@@ -192,11 +200,17 @@ router.post('/items/:id/edit', requireAuth, bust, async (req, res) => {
   try { optionsJson = JSON.stringify(JSON.parse(options || '[]')); } catch {}
   const allergensArr = Array.isArray(allergens) ? allergens : (allergens ? [allergens] : []);
   try {
+    // Capture old price for audit
+    const oldRes = await db.query('SELECT name, price FROM menu_items WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
+    const old = oldRes.rows[0];
     await db.query(
       `UPDATE menu_items SET name=$1, name_ar=$2, name_ku=$3, price=$4, description=$5, description_ar=$6, description_ku=$7, image_url=$8, category_id=$9, badge=$10, options=$11, allergens=$12
        WHERE id=$13 AND tenant_id=$14`,
       [name, name_ar || null, name_ku || null, price, description, description_ar || null, description_ku || null, image_url, category_id || null, badge || null, optionsJson, JSON.stringify(allergensArr), req.params.id, req.user.tenantId]
     );
+    const detail = { name };
+    if (old && parseFloat(old.price) !== parseFloat(price)) detail.price_change = { from: old.price, to: price };
+    audit.log({ tenantId: req.user.tenantId, userId: req.user.userId, userEmail: req.user.email, action: detail.price_change ? 'item.price_change' : 'item.edit', entity: 'menu_item', entityId: req.params.id, detail, ip: req.ip });
     if (req.query.json) return res.json({ ok: true });
     res.redirect('/admin/items?success=Item+updated');
   } catch (err) {
@@ -208,10 +222,12 @@ router.post('/items/:id/edit', requireAuth, bust, async (req, res) => {
 
 router.post('/items/:id/delete', requireAuth, bust, async (req, res) => {
   try {
+    const old = await db.query('SELECT name, price FROM menu_items WHERE id=$1 AND tenant_id=$2', [req.params.id, req.user.tenantId]);
     await db.query(
       'DELETE FROM menu_items WHERE id=$1 AND tenant_id=$2',
       [req.params.id, req.user.tenantId]
     );
+    audit.log({ tenantId: req.user.tenantId, userId: req.user.userId, userEmail: req.user.email, action: 'item.delete', entity: 'menu_item', entityId: req.params.id, detail: old.rows[0] || {}, ip: req.ip });
     if (req.query.json) return res.json({ ok: true });
     res.redirect('/admin/items');
   } catch (err) {
@@ -898,6 +914,71 @@ router.post('/upload', requireAuth, upload.single('file'), async (req, res) => {
     console.error('ImageKit upload error:', err);
     res.json({ ok: false, error: err.message || JSON.stringify(err) });
   }
+});
+
+// ── Global search ──────────────────────────────────────────────────────────────
+router.get('/search', requireAuth, async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (q.length < 2) return res.json([]);
+  const tid  = req.user.tenantId;
+  const like = `%${q}%`;
+  try {
+    const [itemsR, ordersR, invR, suppR, purchR] = await Promise.all([
+      db.query(`SELECT id, name, price FROM menu_items WHERE tenant_id=$1 AND (name ILIKE $2 OR description ILIKE $2) AND is_available!=false LIMIT 6`, [tid, like]),
+      db.query(`SELECT id, table_name, total, status FROM pos_orders WHERE tenant_id=$1 AND (table_name ILIKE $2 OR id::text LIKE $3) ORDER BY created_at DESC LIMIT 6`, [tid, like, `%${q}%`]),
+      db.query(`SELECT id, name, stock_qty, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true AND (name ILIKE $2 OR sku ILIKE $2) LIMIT 6`, [tid, like]),
+      db.query(`SELECT id, name, phone FROM suppliers WHERE tenant_id=$1 AND (name ILIKE $2 OR phone ILIKE $2) LIMIT 5`, [tid, like]),
+      db.query(`SELECT id, invoice_no, supplier_name, total FROM purchase_receipts WHERE tenant_id=$1 AND (invoice_no ILIKE $2 OR supplier_name ILIKE $2) ORDER BY created_at DESC LIMIT 5`, [tid, like]),
+    ]);
+
+    const cur = (t) => t.currency || '';
+    const results = [
+      ...itemsR.rows.map(r  => ({ icon: '🍽️', label: r.name,                     sub: `Menu item`,                                         url: '/admin/items',                  category: 'Menu Items' })),
+      ...ordersR.rows.map(r => ({ icon: '🧾', label: `Order #${r.id}`,             sub: `Table ${r.table_name||'—'} · ${r.status}`,          url: `/pos/orders/${r.id}`,           category: 'POS Orders' })),
+      ...invR.rows.map(r    => ({ icon: '📦', label: r.name,                       sub: `Stock: ${parseFloat(r.stock_qty).toFixed(2)} ${r.unit}`, url: '/inventory/items',         category: 'Inventory' })),
+      ...suppR.rows.map(r   => ({ icon: '🏢', label: r.name,                       sub: r.phone || 'Supplier',                               url: '/inventory/suppliers',          category: 'Suppliers' })),
+      ...purchR.rows.map(r  => ({ icon: '📄', label: `Receipt #${r.id}`,           sub: `${r.supplier_name||''} · ${r.total}`,               url: `/inventory/purchases/${r.id}`,  category: 'Purchases' })),
+    ];
+    res.json(results);
+  } catch (err) { console.error(err); res.json([]); }
+});
+
+// ── Audit log viewer ───────────────────────────────────────────────────────────
+router.get('/audit', requireAuth, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { action, from, to, page } = req.query;
+  const pageNum  = Math.max(1, parseInt(page) || 1);
+  const pageSize = 50;
+  const offset   = (pageNum - 1) * pageSize;
+  const fromDate = from || new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const toDate   = to   || new Date().toISOString().slice(0, 10);
+
+  try {
+    let whereExtra = '';
+    const params = [tid, fromDate, toDate];
+    if (action) { params.push(action); whereExtra = ` AND action ILIKE $${params.length}`; }
+
+    const [logsRes, countRes, tenantRes] = await Promise.all([
+      db.query(`
+        SELECT * FROM audit_log
+        WHERE tenant_id=$1 AND created_at>=$2::date AND created_at<($3::date+INTERVAL '1 day')${whereExtra}
+        ORDER BY created_at DESC LIMIT ${pageSize} OFFSET ${offset}
+      `, params),
+      db.query(`SELECT COUNT(*)::int AS n FROM audit_log WHERE tenant_id=$1 AND created_at>=$2::date AND created_at<($3::date+INTERVAL '1 day')${whereExtra}`, params),
+      db.query('SELECT * FROM tenants WHERE id=$1', [tid]),
+    ]);
+
+    const distinctActions = await db.query(`SELECT DISTINCT action FROM audit_log WHERE tenant_id=$1 ORDER BY action`, [tid]);
+    res.render('admin/audit', {
+      tenant: tenantRes.rows[0],
+      currentUser: req.user,
+      logs: logsRes.rows,
+      total: countRes.rows[0]?.n || 0,
+      pageNum, pageSize, fromDate, toDate,
+      filterAction: action || '',
+      actions: distinctActions.rows.map(r => r.action),
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 module.exports = router;

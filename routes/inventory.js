@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const requireAuth = require('../middleware/auth');
+const audit = require('../lib/audit');
 
 async function requireInventory(req, res, next) {
   try {
@@ -515,6 +516,7 @@ router.post('/purchases/:id/void', requireAuth, requireInventory, async (req, re
     }
     await client.query(`UPDATE purchase_receipts SET status='voided' WHERE id=$1`, [req.params.id]);
     await client.query('COMMIT');
+    audit.log({ tenantId: tid, userId: req.user.userId, userEmail: req.user.email, action: 'purchase.void', entity: 'purchase_receipt', entityId: req.params.id, detail: { total: receiptRes.rows[0].total, supplier: receiptRes.rows[0].supplier_name }, ip: req.ip });
     res.redirect(`/inventory/purchases/${req.params.id}?success=Receipt+voided`);
   } catch (err) {
     await client.query('ROLLBACK');

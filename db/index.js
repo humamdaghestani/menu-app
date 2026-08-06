@@ -690,6 +690,20 @@ const pool = new Pool({
     // Kitchen display token (for TV-facing KDS without login)
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS kitchen_token VARCHAR(64) DEFAULT NULL`,
     `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS bill_image TEXT`,
+    // Audit log — tracks every important action with who/when/what
+    `CREATE TABLE IF NOT EXISTS audit_log (
+      id         SERIAL PRIMARY KEY,
+      tenant_id  INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      user_id    INTEGER,
+      user_email VARCHAR(120),
+      action     VARCHAR(80)  NOT NULL,
+      entity     VARCHAR(60),
+      entity_id  VARCHAR(60),
+      detail     JSONB        DEFAULT '{}',
+      ip         VARCHAR(45),
+      created_at TIMESTAMP    DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_audit_log_tenant ON audit_log(tenant_id, created_at DESC)`,
     // Unique constraint on recipe lines (prevents duplicates — safe to run multiple times)
     `DO $$ BEGIN
        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='inventory_recipes_item_ingredient_unique') THEN
