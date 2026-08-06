@@ -312,6 +312,7 @@
             <th>Image</th>
             <th>Item</th>
             <th>Price</th>
+            <th>Food Cost</th>
             <th>Category</th>
             <th>Badge</th>
             <th>Available</th>
@@ -328,6 +329,19 @@
               <div class="item-desc"><%= (item.description || '').substring(0,60) %><%= item.description && item.description.length > 60 ? '…' : '' %></div>
             </td>
             <td><strong><%= item.price %></strong></td>
+            <td>
+              <% const fc = foodCostMap[item.id]; %>
+              <% if (fc != null && parseFloat(item.price) > 0) { %>
+                <span style="font-size:.78rem;color:#e0b060"><%= fc.toFixed(2) %></span>
+                <span style="font-size:.7rem;color:<%= (fc/item.price*100)>35?'#e74c3c':'#00b894' %>">
+                  (<%= (fc/item.price*100).toFixed(0) %>%)
+                </span>
+              <% } else if (fc != null) { %>
+                <span style="font-size:.78rem;color:#e0b060"><%= fc.toFixed(2) %></span>
+              <% } else { %>
+                <span style="color:#444;font-size:.75rem">—</span>
+              <% } %>
+            </td>
             <td><%= item.category_name || '—' %></td>
             <td>
               <% if (item.badge) { %>

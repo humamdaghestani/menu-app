@@ -156,16 +156,27 @@ router.get('/dashboard', requireAuth, requirePerm('items'), async (req, res) => 
 
 router.get('/items', requireAuth, requirePerm('items'), async (req, res) => {
   try {
-    const [categoriesRes, itemsRes, tenantRes] = await Promise.all([
+    const [categoriesRes, itemsRes, tenantRes, foodCostRes] = await Promise.all([
       db.query('SELECT * FROM categories WHERE tenant_id=$1 ORDER BY sort_order', [req.user.tenantId]),
       db.query(`SELECT i.*, c.name as category_name FROM menu_items i LEFT JOIN categories c ON i.category_id=c.id WHERE i.tenant_id=$1 ORDER BY i.sort_order`, [req.user.tenantId]),
       db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+      db.query(`
+        SELECT ii.menu_item_id, ROUND(SUM(ir.quantity * ing.avg_cost),2) AS food_cost
+        FROM inventory_items ii
+        JOIN inventory_recipes ir ON ir.item_id = ii.id
+        JOIN inventory_items ing ON ing.id = ir.ingredient_id
+        WHERE ii.tenant_id=$1 AND ii.menu_item_id IS NOT NULL
+        GROUP BY ii.menu_item_id
+      `, [req.user.tenantId]),
     ]);
+    const foodCostMap = {};
+    foodCostRes.rows.forEach(r => { foodCostMap[r.menu_item_id] = parseFloat(r.food_cost); });
     const canEditPrices = req.user.role === 'admin' || (req.user.permissions || []).includes('edit_prices');
     res.render('admin/items', {
       tenant: tenantRes.rows[0],
       categories: categoriesRes.rows,
       items: itemsRes.rows,
+      foodCostMap,
       canEditPrices,
       currentUser: req.user,
     });

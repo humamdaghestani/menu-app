@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= supplier.name %> — Suppliers</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger { background: rgba(231,76,60,.12); color: #e74c3c; border: 1px solid rgba(231,76,60,.2); }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+
+    .main { padding: 28px; max-width: 1100px; margin: 0 auto; }
+
+    .info-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 14px; padding: 24px; margin-bottom: 20px; display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+    .info-name { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .info-meta { font-size: .82rem; color: #555; line-height: 1.7; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 16px; }
+    .stat-label { font-size: .7rem; text-transform: uppercase; color: #555; font-weight: 700; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
+
+    .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+    .tab { padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; background: rgba(255,255,255,.05); color: #666; border: none; font-family: inherit; }
+    .tab.active { background: #7c5cbf; color: #fff; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+    .card-header { padding: 14px 20px; border-bottom: 1px solid #2a2a3e; display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: .9rem; font-weight: 700; color: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    th { text-align: left; color: #444; font-size: .7rem; text-transform: uppercase; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: #ccc; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+
+    .pay-form-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .pay-form-card h2 { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-label { font-size: .7rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .form-input { padding: 8px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; }
+    .form-input:focus { border-color: #7c5cbf; }
+
+    .badge-void { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; background: rgba(231,76,60,.12); color: #e74c3c; }
+    .badge-active { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; background: rgba(0,184,148,.12); color: #00b894; }
+
+    .toast { position: fixed; top: 70px; right: 20px; padding: 10px 18px; border-radius: 10px; font-size: .85rem; font-weight: 600; z-index: 9999; }
+    .toast-ok  { background: rgba(0,184,148,.2); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
+    .toast-err { background: rgba(231,76,60,.2); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+  </style>
+</head>
+<body>
+
+<% const cur = tenant.currency || '$' %>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px">🏠</a>
+    <a href="/inventory/suppliers" class="btn btn-ghost">← Suppliers</a>
+    <span style="color:#555">/</span>
+    <span style="font-weight:700;color:#fff"><%= supplier.name %></span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Supplier info -->
+  <div class="info-card">
+    <div style="flex:1;min-width:200px">
+      <div class="info-name">🏢 <%= supplier.name %></div>
+      <div class="info-meta">
+        <% if (supplier.phone) { %><div>📞 <%= supplier.phone %></div><% } %>
+        <% if (supplier.email) { %><div>✉️ <%= supplier.email %></div><% } %>
+        <% if (supplier.address) { %><div>📍 <%= supplier.address %></div><% } %>
+        <% if (supplier.tax_no) { %><div>Tax: <%= supplier.tax_no %></div><% } %>
+        <% if (supplier.notes) { %><div style="margin-top:6px;color:#666"><%= supplier.notes %></div><% } %>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0">
+      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('editModal').style.display='flex'">✏️ Edit</button>
+    </div>
+  </div>
+
+  <!-- Balance summary -->
+  <div class="stats-row">
+    <div class="stat">
+      <div class="stat-label">Opening Balance</div>
+      <div class="stat-val" style="color:#a78bdf"><%= cur %><%= parseFloat(supplier.opening_balance||0).toFixed(2) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Purchased</div>
+      <div class="stat-val" style="color:#e0b060"><%= cur %><%= totalPurchased.toFixed(2) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Paid</div>
+      <div class="stat-val" style="color:#00b894"><%= cur %><%= totalPaid.toFixed(2) %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Outstanding Balance</div>
+      <div class="stat-val" style="color:<%= balance > 0.01 ? '#e74c3c' : '#00b894' %>">
+        <%= cur %><%= balance.toFixed(2) %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('purchases', this)">📋 Purchases (<%= purchases.length %>)</button>
+    <button class="tab" onclick="switchTab('payments', this)">💳 Payments (<%= payments.length %>)</button>
+  </div>
+
+  <!-- Purchases panel -->
+  <div class="panel active" id="tab-purchases">
+    <div class="card">
+      <div class="card-header">
+        <h2>Purchase Receipts</h2>
+        <a href="/inventory/purchases/new" class="btn btn-ghost btn-sm">+ New Purchase</a>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Invoice #</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        <% if (!purchases.length) { %>
+        <tr><td colspan="6" style="text-align:center;color:#444;padding:32px">No purchases yet</td></tr>
+        <% } %>
+        <% purchases.forEach(p => { %>
+        <tr>
+          <td style="color:#888;font-size:.8rem"><%= new Date(p.receipt_date).toLocaleDateString() %></td>
+          <td style="color:#ccc"><%= p.invoice_no || '—' %></td>
+          <td style="color:#888;font-size:.78rem"><%= p.notes ? p.notes.substring(0,40) : '—' %></td>
+          <td style="font-weight:700;color:<%= p.status==='voided'?'#555':'#fff' %>"><%= cur %><%= parseFloat(p.total||0).toFixed(2) %></td>
+          <td><span class="badge-<%= p.status==='voided'?'void':'active' %>"><%= p.status || 'active' %></span></td>
+          <td><a href="/inventory/purchases/<%= p.id %>" class="btn btn-ghost btn-sm">View</a></td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Payments panel -->
+  <div class="panel" id="tab-payments">
+    <!-- Add payment form -->
+    <div class="pay-form-card">
+      <h2>💳 Record Payment</h2>
+      <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/pay">
+        <div class="form-grid" style="align-items:flex-end">
+          <div class="form-group">
+            <label class="form-label">Amount *</label>
+            <input name="amount" class="form-input" type="number" step="0.01" min="0.01" required placeholder="0.00" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input name="payment_date" class="form-input" type="date" value="<%= new Date().toISOString().slice(0,10) %>" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Method</label>
+            <select name="method" class="form-input">
+              <option value="cash">Cash</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="card">Card</option>
+              <option value="cheque">Cheque</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <input name="notes" class="form-input" placeholder="Reference, memo…" />
+          </div>
+          <div class="form-group" style="justify-content:flex-end">
+            <button type="submit" class="btn btn-primary" style="align-self:flex-end">Save Payment</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Payment history -->
+    <div class="card">
+      <div class="card-header"><h2>Payment History</h2></div>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Amount</th><th>Method</th><th>Notes</th><th></th></tr>
+        </thead>
+        <tbody>
+        <% if (!payments.length) { %>
+        <tr><td colspan="5" style="text-align:center;color:#444;padding:32px">No payments recorded yet</td></tr>
+        <% } %>
+        <% let running = parseFloat(supplier.opening_balance||0) + totalPurchased; %>
+        <% payments.forEach(p => { running -= parseFloat(p.amount||0); %>
+        <tr>
+          <td style="color:#888;font-size:.8rem"><%= new Date(p.payment_date).toLocaleDateString() %></td>
+          <td style="font-weight:700;color:#00b894"><%= cur %><%= parseFloat(p.amount).toFixed(2) %></td>
+          <td style="color:#888;font-size:.8rem;text-transform:capitalize"><%= p.method || 'cash' %></td>
+          <td style="color:#555;font-size:.8rem"><%= p.notes || '—' %></td>
+          <td>
+            <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/payments/<%= p.id %>/delete" onsubmit="return confirm('Delete this payment?')">
+              <button type="submit" class="btn btn-danger btn-sm">✕</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:16px;padding:28px;width:460px;max-width:95vw">
+    <div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:20px">✏️ Edit Supplier</div>
+    <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/edit">
+      <div class="form-grid" style="margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label">Name *</label>
+          <input name="name" class="form-input" required value="<%= supplier.name %>" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input name="phone" class="form-input" value="<%= supplier.phone||'' %>" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input name="email" class="form-input" type="email" value="<%= supplier.email||'' %>" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tax No</label>
+          <input name="tax_no" class="form-input" value="<%= supplier.tax_no||'' %>" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Opening Balance</label>
+          <input name="opening_balance" class="form-input" type="number" step="0.01" value="<%= supplier.opening_balance||0 %>" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Address</label>
+        <input name="address" class="form-input" value="<%= supplier.address||'' %>" />
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-input" rows="2" style="resize:vertical"><%= supplier.notes||'' %></textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<% if (locals.success) { %><div class="toast toast-ok" id="toast"><%= locals.success %></div><% } %>
+<% if (locals.error) { %><div class="toast toast-err" id="toast"><%= locals.error %></div><% } %>
+
+<script>
+function switchTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+setTimeout(() => { const t = document.getElementById('toast'); if (t) t.remove(); }, 3500);
+</script>
+</body>
+</html>

@@ -489,6 +489,52 @@ router.post('/suppliers/:id/delete', requireAuth, requireInventory, async (req, 
   } catch (err) { console.error(err); res.redirect('/inventory/suppliers?error=' + encodeURIComponent(err.message)); }
 });
 
+// ── Supplier detail page ───────────────────────────────────────────────────────
+router.get('/suppliers/:id', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [suppRes, purchRes, payRes] = await Promise.all([
+      db.query(`SELECT * FROM suppliers WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]),
+      db.query(`SELECT * FROM purchase_receipts WHERE supplier_id=$1 AND tenant_id=$2 ORDER BY receipt_date DESC`, [req.params.id, tid]),
+      db.query(`SELECT * FROM supplier_payments WHERE supplier_id=$1 AND tenant_id=$2 ORDER BY payment_date DESC, created_at DESC`, [req.params.id, tid]),
+    ]);
+    if (!suppRes.rows[0]) return res.redirect('/inventory/suppliers');
+    const supplier = suppRes.rows[0];
+    const totalPurchased = purchRes.rows.reduce((s, r) => s + parseFloat(r.total || 0), 0);
+    const totalPaid = payRes.rows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const balance = totalPurchased + parseFloat(supplier.opening_balance || 0) - totalPaid;
+    res.render('inventory/supplier-detail', {
+      tenant: req.tenant, currentUser: req.user,
+      supplier, purchases: purchRes.rows, payments: payRes.rows,
+      totalPurchased, totalPaid, balance,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// ── Record supplier payment ────────────────────────────────────────────────────
+router.post('/suppliers/:id/pay', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { amount, payment_date, method, notes } = req.body;
+  try {
+    const suppRes = await db.query(`SELECT name FROM suppliers WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    if (!suppRes.rows[0]) return res.redirect('/inventory/suppliers');
+    await db.query(
+      `INSERT INTO supplier_payments (tenant_id, supplier_id, supplier_name, amount, payment_date, method, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [tid, req.params.id, suppRes.rows[0].name, parseFloat(amount), payment_date || new Date().toISOString().slice(0,10), method || 'cash', notes || null, req.user.userId]
+    );
+    res.redirect('/inventory/suppliers/' + req.params.id + '?success=Payment+recorded');
+  } catch (err) { console.error(err); res.redirect('/inventory/suppliers/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Delete supplier payment ────────────────────────────────────────────────────
+router.post('/suppliers/:id/payments/:pid/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`DELETE FROM supplier_payments WHERE id=$1 AND tenant_id=$2`, [req.params.pid, req.user.tenantId]);
+    res.redirect('/inventory/suppliers/' + req.params.id + '?success=Payment+deleted');
+  } catch (err) { console.error(err); res.redirect('/inventory/suppliers/' + req.params.id); }
+});
+
 // ── Purchase receipt void ──────────────────────────────────────────────────────
 router.post('/purchases/:id/void', requireAuth, requireInventory, async (req, res) => {
   const tid = req.user.tenantId;
