@@ -219,15 +219,25 @@
     </a>
     <% } %>
 
-    <!-- Settings (admin only) -->
+    <!-- Restaurant Settings (admin only) -->
     <% if (_isAdmin) { %>
-    <a href="/admin/workspace" class="module-card" style="--accent:#f39c12">
+    <a href="/admin/settings" class="module-card" style="--accent:#f39c12">
       <div class="module-icon">⚙️</div>
       <div>
-        <div class="module-name">Settings</div>
-        <div class="module-desc">Manage users, set module access, configure permissions per team member</div>
+        <div class="module-name">Restaurant Settings</div>
+        <div class="module-desc">Branding, logo, theme color, opening hours, menu appearance, custom CSS</div>
       </div>
       <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Admin</span>
+    </a>
+
+    <!-- Team & Access (admin only) -->
+    <a href="/admin/workspace" class="module-card" style="--accent:#6c63ff">
+      <div class="module-icon">👥</div>
+      <div>
+        <div class="module-name">Team & Access</div>
+        <div class="module-desc">Manage staff accounts, set module permissions per team member</div>
+      </div>
+      <span class="module-badge" style="background:rgba(108,99,255,.15);color:#6c63ff">Admin</span>
     </a>
 
     <!-- Audit Log (admin only) -->
