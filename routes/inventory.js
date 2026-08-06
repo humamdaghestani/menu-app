@@ -301,7 +301,7 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 
 // Save new purchase receipt
 router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
-  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, item_id, new_item_name, unit, quantity, unit_price } = req.body;
+  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, bill_image, item_id, new_item_name, unit, quantity, unit_price } = req.body;
   const tid = req.user.tenantId;
 
   const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
@@ -328,11 +328,11 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
     await client.query('BEGIN');
 
     const rr = await client.query(
-      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, bill_image, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
       [tid, supplier_name?.trim() || null, parseInt(supplier_id)||null, invoice_no?.trim() || null,
        receipt_date || new Date().toISOString().slice(0, 10), total,
-       notes?.trim() || null, req.user.userId]
+       notes?.trim() || null, bill_image || null, req.user.userId]
     );
     const receiptId = rr.rows[0].id;
 
@@ -521,6 +521,28 @@ router.post('/purchases/:id/void', requireAuth, requireInventory, async (req, re
     console.error(err);
     res.redirect(`/inventory/purchases/${req.params.id}?error=` + encodeURIComponent(err.message));
   } finally { client.release(); }
+});
+
+// ── Attach / replace bill image on existing receipt ───────────────────────────
+router.post('/purchases/:id/image', requireAuth, requireInventory, async (req, res) => {
+  const { bill_image } = req.body;
+  try {
+    if (!bill_image || !bill_image.startsWith('data:image/')) {
+      return res.redirect(`/inventory/purchases/${req.params.id}?error=Invalid+image`);
+    }
+    await db.query(
+      `UPDATE purchase_receipts SET bill_image=$1 WHERE id=$2 AND tenant_id=$3`,
+      [bill_image, req.params.id, req.user.tenantId]
+    );
+    res.redirect(`/inventory/purchases/${req.params.id}?success=Image+saved`);
+  } catch (err) { console.error(err); res.redirect(`/inventory/purchases/${req.params.id}?error=` + encodeURIComponent(err.message)); }
+});
+
+router.post('/purchases/:id/image/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`UPDATE purchase_receipts SET bill_image=NULL WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect(`/inventory/purchases/${req.params.id}?success=Image+removed`);
+  } catch (err) { console.error(err); res.redirect(`/inventory/purchases/${req.params.id}?error=` + encodeURIComponent(err.message)); }
 });
 
 // ── Inventory Reports ──────────────────────────────────────────────────────────

@@ -112,6 +112,25 @@
         <label class="form-label">Notes</label>
         <input type="text" name="notes" class="form-input" placeholder="optional..." />
       </div>
+      <div class="form-group" style="margin-top:12px">
+        <label class="form-label">Bill Image <span style="font-size:.7rem;color:#555;font-weight:400;text-transform:none">(photo / scan — auto-compressed)</span></label>
+        <input type="hidden" name="bill_image" id="billImageData" />
+        <div id="imgPickerWrap" style="position:relative">
+          <label for="billImageFile" id="imgDropZone" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border:2px dashed #2a2a3e;border-radius:10px;padding:22px 14px;cursor:pointer;transition:border-color .15s;min-height:90px">
+            <span style="font-size:1.6rem">🖼️</span>
+            <span style="font-size:.82rem;color:#555">Click or drag an image here</span>
+            <span style="font-size:.72rem;color:#444">JPG, PNG, HEIC, WEBP — resized to max 1200 px, compressed automatically</span>
+          </label>
+          <input type="file" id="billImageFile" accept="image/*" style="display:none" onchange="handleBillImage(this.files[0])" />
+        </div>
+        <div id="imgPreviewWrap" style="display:none;margin-top:10px;position:relative">
+          <img id="imgPreviewEl" style="max-width:100%;max-height:220px;border-radius:8px;border:1px solid #2a2a3e;object-fit:contain;display:block" />
+          <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+            <span id="imgSizeLabel" style="font-size:.72rem;color:#00b894"></span>
+            <button type="button" onclick="clearBillImage()" style="background:none;border:none;color:#e74c3c;font-size:.78rem;cursor:pointer;font-family:inherit">✕ Remove</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -358,6 +377,54 @@ function removeLine(i) {
 }
 
 addLine();
+
+// ── Bill image: client-side resize & compress ──────────────────────
+const MAX_PX = 1200;
+const QUALITY = 0.72;
+
+function handleBillImage(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => resizeAndStore(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function resizeAndStore(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    let { width: w, height: h } = img;
+    if (w > MAX_PX || h > MAX_PX) {
+      const ratio = Math.min(MAX_PX / w, MAX_PX / h);
+      w = Math.round(w * ratio);
+      h = Math.round(h * ratio);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    const out = canvas.toDataURL('image/jpeg', QUALITY);
+    document.getElementById('billImageData').value = out;
+    document.getElementById('imgPreviewEl').src = out;
+    document.getElementById('imgPreviewWrap').style.display = 'block';
+    document.getElementById('imgDropZone').style.borderColor = '#7c5cbf';
+    const kb = Math.round(out.length * 0.75 / 1024);
+    document.getElementById('imgSizeLabel').textContent = `${w}×${h}px — ~${kb} KB`;
+  };
+  img.src = dataUrl;
+}
+
+function clearBillImage() {
+  document.getElementById('billImageData').value = '';
+  document.getElementById('billImageFile').value = '';
+  document.getElementById('imgPreviewWrap').style.display = 'none';
+  document.getElementById('imgDropZone').style.borderColor = '#2a2a3e';
+}
+
+// Drag-and-drop support
+const dz = document.getElementById('imgDropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = '#7c5cbf'; });
+dz.addEventListener('dragleave', () => dz.style.borderColor = document.getElementById('billImageData').value ? '#7c5cbf' : '#2a2a3e');
+dz.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleBillImage(f); });
 </script>
 </body>
 </html>

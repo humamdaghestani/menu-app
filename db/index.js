@@ -689,6 +689,7 @@ const pool = new Pool({
     `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS allergens JSONB DEFAULT '[]'`,
     // Kitchen display token (for TV-facing KDS without login)
     `ALTER TABLE tenants ADD COLUMN IF NOT EXISTS kitchen_token VARCHAR(64) DEFAULT NULL`,
+    `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS bill_image TEXT`,
     // Unique constraint on recipe lines (prevents duplicates — safe to run multiple times)
     `DO $$ BEGIN
        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='inventory_recipes_item_ingredient_unique') THEN

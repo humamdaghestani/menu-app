@@ -29,6 +29,14 @@
     td { padding: 10px 12px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
     tr:last-child td { border-bottom: none; }
     .grand { display: flex; justify-content: flex-end; gap: 16px; align-items: center; padding-top: 14px; border-top: 1px solid #2a2a3e; margin-top: 8px; }
+    .img-card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; margin-bottom: 20px; }
+    .img-card-title { font-size: .85rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
+    .drop-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 2px dashed #2a2a3e; border-radius: 10px; padding: 22px 14px; cursor: pointer; transition: border-color .15s; min-height: 90px; }
+    .drop-zone:hover, .drop-zone.hover { border-color: #7c5cbf; }
+    .bill-img { max-width: 100%; max-height: 480px; border-radius: 10px; border: 1px solid #2a2a3e; object-fit: contain; display: block; cursor: zoom-in; }
+    .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 9000; align-items: center; justify-content: center; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 95vw; max-height: 95vh; border-radius: 10px; object-fit: contain; }
   </style>
 </head>
 <body>
@@ -100,6 +108,102 @@
       <span style="font-size:1.4rem;font-weight:800;color:#fff"><%= tenant.currency || '$' %><%= parseFloat(receipt.total).toFixed(2) %></span>
     </div>
   </div>
+
+  <!-- Bill Image -->
+  <div class="img-card">
+    <div class="img-card-title">📎 Bill Image</div>
+    <% if (receipt.bill_image) { %>
+    <img src="<%= receipt.bill_image %>" class="bill-img" onclick="openLightbox()" alt="Bill image" />
+    <div style="display:flex;gap:10px;margin-top:12px;align-items:center">
+      <button onclick="openLightbox()" class="btn btn-ghost">🔍 Full Size</button>
+      <a href="<%= receipt.bill_image %>" download="receipt-<%= receipt.id %>.jpg" class="btn btn-ghost">⬇ Download</a>
+      <form method="POST" action="/inventory/purchases/<%= receipt.id %>/image/delete" onsubmit="return confirm('Remove the bill image?')" style="margin-left:auto">
+        <button type="submit" class="btn btn-danger" style="font-size:.78rem">✕ Remove</button>
+      </form>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid #2a2a3e;padding-top:14px">
+      <div style="font-size:.75rem;color:#555;margin-bottom:8px">Replace image</div>
+    <% } else { %>
+    <div style="font-size:.82rem;color:#555;margin-bottom:12px">No image attached yet.</div>
+    <% } %>
+    <form method="POST" action="/inventory/purchases/<%= receipt.id %>/image" id="imgUploadForm">
+      <input type="hidden" name="bill_image" id="billImageData" />
+      <label for="billImageFile" id="imgDropZone" class="drop-zone">
+        <span style="font-size:1.6rem">🖼️</span>
+        <span style="font-size:.82rem;color:#555">Click or drag image here</span>
+        <span style="font-size:.72rem;color:#444">Any image — auto-resized &amp; compressed</span>
+      </label>
+      <input type="file" id="billImageFile" accept="image/*" style="display:none" onchange="handleBillImage(this.files[0])" />
+      <div id="imgPreviewWrap" style="display:none;margin-top:10px">
+        <img id="imgPreviewEl" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #2a2a3e;object-fit:contain;display:block" />
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <span id="imgSizeLabel" style="font-size:.72rem;color:#00b894"></span>
+          <button type="button" onclick="clearBillImage()" style="background:none;border:none;color:#e74c3c;font-size:.78rem;cursor:pointer;font-family:inherit">✕ Remove</button>
+          <button type="submit" class="btn btn-primary" style="margin-left:auto">💾 Save Image</button>
+        </div>
+      </div>
+    </form>
+    <% if (receipt.bill_image) { %></div><% } %>
+  </div>
 </div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <% if (receipt.bill_image) { %>
+  <img src="<%= receipt.bill_image %>" alt="Bill" />
+  <% } %>
+</div>
+
+<script>
+const MAX_PX  = 1200;
+const QUALITY = 0.72;
+
+function handleBillImage(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => resizeAndStore(e.target.result);
+  reader.readAsDataURL(file);
+}
+function resizeAndStore(dataUrl) {
+  const img = new Image();
+  img.onload = () => {
+    let { width: w, height: h } = img;
+    if (w > MAX_PX || h > MAX_PX) {
+      const ratio = Math.min(MAX_PX / w, MAX_PX / h);
+      w = Math.round(w * ratio); h = Math.round(h * ratio);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    const out = canvas.toDataURL('image/jpeg', QUALITY);
+    document.getElementById('billImageData').value = out;
+    document.getElementById('imgPreviewEl').src = out;
+    document.getElementById('imgPreviewWrap').style.display = 'block';
+    document.getElementById('imgDropZone').style.borderColor = '#7c5cbf';
+    const kb = Math.round(out.length * 0.75 / 1024);
+    document.getElementById('imgSizeLabel').textContent = `${w}×${h}px · ~${kb} KB`;
+  };
+  img.src = dataUrl;
+}
+function clearBillImage() {
+  document.getElementById('billImageData').value = '';
+  document.getElementById('billImageFile').value = '';
+  document.getElementById('imgPreviewWrap').style.display = 'none';
+  document.getElementById('imgDropZone').style.borderColor = '#2a2a3e';
+}
+function openLightbox()  { document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); }
+
+const dz = document.getElementById('imgDropZone');
+if (dz) {
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('hover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('hover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('hover');
+    const f = e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) handleBillImage(f);
+  });
+}
+</script>
 </body>
 </html>
