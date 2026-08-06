@@ -143,17 +143,45 @@
     </div>
   </div>
   <nav class="sidebar-nav">
-    <a href="/admin" title="All Modules"><span class="icon">🏠</span><span>All Modules</span></a>
+    <a href="/admin"><span class="icon">🏠</span><span>Home</span></a>
     <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
     <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
-    <% if (_can('items')) { %><a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
-    <% if (_can('items')) { %><a href="/admin/items"><span class="icon">🍽️</span><span>Items</span></a><% } %>
-    <% if (_can('orders') && tenant.feat_orders !== false) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
-    <% if (_can('feedback') && tenant.feat_feedback !== false) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
-    <% if (_can('import') && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
-    <a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a>
-    <% if (tenant.feat_pos) { %><a href="/pos"><span class="icon">🖥️</span><span>POS</span></a><% } %>
-    <% if (_isAdmin) { %><a href="/admin/users"><span class="icon">👥</span><span>Users</span></a><% } %>
+    <% if (_isAdmin || _can('access_menu')) { %>
+    <a href="/admin/dashboard"><span class="icon">🍽️</span><span>Menu</span></a>
+    <% } %>
+    <% if (tenant.feat_pos && (_isAdmin || _can('access_pos'))) { %>
+    <a href="/pos"><span class="icon">🖥️</span><span>Point of Sale</span></a>
+    <% } %>
+    <% if (tenant.feat_inventory && (_isAdmin || _can('access_inventory'))) { %>
+    <a href="/inventory"><span class="icon">📦</span><span>Inventory</span></a>
+    <a href="/inventory/purchases"><span class="icon">🧾</span><span>Purchases</span></a>
+    <% } %>
+    <% if (tenant.feat_accounting && (_isAdmin || _can('access_accounting'))) { %>
+    <a href="/accounting"><span class="icon">📒</span><span>Accounting</span></a>
+    <% } %>
+    <% if (tenant.feat_captain && (_isAdmin || _can('access_captain'))) { %>
+    <a href="/captain"><span class="icon">🍽️</span><span>Captain / Waiter</span></a>
+    <% } %>
+    <% if (tenant.feat_reports && _isAdmin) { %>
+    <a href="/reports"><span class="icon">📊</span><span>Reports</span></a>
+    <% } %>
+    <% if (tenant.feat_hr && _isAdmin) { %>
+    <a href="/hr"><span class="icon">👤</span><span>HR & Payroll</span></a>
+    <% } %>
+    <% if (tenant.feat_reservations && (_isAdmin || _can('access_pos'))) { %>
+    <a href="/reservations"><span class="icon">📅</span><span>Reservations</span></a>
+    <% } %>
+    <% if (tenant.feat_loyalty && _isAdmin) { %>
+    <a href="/loyalty"><span class="icon">⭐</span><span>Loyalty</span></a>
+    <% } %>
+    <% if (tenant.feat_delivery && (_isAdmin || _can('access_pos'))) { %>
+    <a href="/delivery"><span class="icon">🛵</span><span>Delivery</span></a>
+    <% } %>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
+    <% if (_isAdmin) { %>
+    <a href="/admin/workspace"><span class="icon">👥</span><span>Team & Access</span></a>
+    <a href="/admin/audit"><span class="icon">🔍</span><span>Audit Log</span></a>
+    <% } %>
     <a href="/admin/settings" class="active"><span class="icon">⚙️</span><span>Settings</span></a>
     <form method="POST" action="/admin/logout" style="margin-top:auto">
       <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
