@@ -53,7 +53,10 @@
     </div>
   </div>
   <div class="topbar-actions">
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <button onclick="openSearch()" class="btn btn-ghost" style="gap:8px">
+      🔍 <span style="color:#888">Search…</span>
+      <kbd style="background:rgba(255,255,255,.1);border-radius:4px;padding:1px 6px;font-size:.7rem;font-family:monospace;color:#666">Ctrl K</kbd>
+    </button>
     <a href="http://<%= tenant.subdomain %>.m-menus.com" target="_blank" class="btn btn-ghost">👁️ View Menu</a>
     <form method="POST" action="/admin/logout" style="display:inline">
       <button class="btn btn-ghost" type="submit">Logout</button>
@@ -226,10 +229,110 @@
       </div>
       <span class="module-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Admin</span>
     </a>
+
+    <!-- Audit Log (admin only) -->
+    <a href="/admin/audit" class="module-card" style="--accent:#e74c3c">
+      <div class="module-icon">🔍</div>
+      <div>
+        <div class="module-name">Audit Log</div>
+        <div class="module-desc">Track all logins, item changes, purchase voids and staff actions with timestamps</div>
+      </div>
+      <span class="module-badge" style="background:rgba(231,76,60,.15);color:#e74c3c">Admin</span>
+    </a>
     <% } %>
 
   </div>
 </div>
 
+<!-- Global Search Modal -->
+<div id="searchModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)" onclick="if(event.target===this)closeSearch()">
+  <div style="margin:80px auto 0;max-width:560px;background:#1e1e2e;border-radius:16px;border:1px solid #2a2a3e;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid #2a2a3e">
+      <span style="font-size:1.1rem">🔍</span>
+      <input id="searchInput" type="text" placeholder="Search menu items, orders, inventory…" autocomplete="off"
+        style="flex:1;background:none;border:none;outline:none;font-size:1rem;color:#fff;font-family:inherit"
+        oninput="onSearchInput()" onkeydown="searchKeyNav(event)" />
+      <kbd onclick="closeSearch()" style="cursor:pointer;background:rgba(255,255,255,.08);border-radius:5px;padding:2px 8px;font-size:.72rem;color:#666">Esc</kbd>
+    </div>
+    <div id="searchResults" style="max-height:400px;overflow-y:auto;padding:8px 0">
+      <div style="padding:32px;text-align:center;color:#444;font-size:.85rem">Start typing to search…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _searchTimer = null;
+let _searchIdx = -1;
+
+function openSearch() {
+  document.getElementById('searchModal').style.display = '';
+  setTimeout(() => document.getElementById('searchInput').focus(), 50);
+}
+function closeSearch() {
+  document.getElementById('searchModal').style.display = 'none';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchResults').innerHTML = '<div style="padding:32px;text-align:center;color:#444;font-size:.85rem">Start typing to search…</div>';
+  _searchIdx = -1;
+}
+
+function onSearchInput() {
+  clearTimeout(_searchTimer);
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) { document.getElementById('searchResults').innerHTML = '<div style="padding:32px;text-align:center;color:#444;font-size:.85rem">Start typing to search…</div>'; return; }
+  document.getElementById('searchResults').innerHTML = '<div style="padding:24px;text-align:center;color:#555;font-size:.83rem">Searching…</div>';
+  _searchTimer = setTimeout(() => runSearch(q), 280);
+}
+
+async function runSearch(q) {
+  try {
+    const r = await fetch('/admin/search?q=' + encodeURIComponent(q));
+    const data = await r.json();
+    renderResults(data, q);
+  } catch { document.getElementById('searchResults').innerHTML = '<div style="padding:24px;text-align:center;color:#e74c3c">Search failed</div>'; }
+}
+
+function renderResults(data, q) {
+  const groups = [
+    { key: 'items',     label: 'Menu Items',      icon: '🍽️', url: r => '/admin/items' },
+    { key: 'orders',    label: 'Orders',           icon: '🧾', url: r => '/pos' },
+    { key: 'inventory', label: 'Inventory',        icon: '📦', url: r => '/inventory' },
+    { key: 'suppliers', label: 'Suppliers',        icon: '🏭', url: r => '/inventory/suppliers' },
+    { key: 'purchases', label: 'Purchase Receipts',icon: '📋', url: r => '/inventory/purchases/' + r.id },
+  ];
+  let html = '';
+  let total = 0;
+  groups.forEach(g => {
+    const rows = data[g.key] || [];
+    if (!rows.length) return;
+    total += rows.length;
+    html += `<div style="padding:6px 20px 2px;font-size:.68rem;font-weight:700;color:#444;text-transform:uppercase;letter-spacing:.5px">${g.icon} ${g.label}</div>`;
+    rows.slice(0, 5).forEach(r => {
+      const title = r.name || r.table_name || r.supplier_name || r.ref_number || '#' + r.id;
+      const sub = r.category_name || r.status || r.total_amount && ('$' + parseFloat(r.total_amount).toFixed(2)) || '';
+      html += `<a href="${g.url(r)}" class="sres" onclick="closeSearch()" style="display:flex;align-items:center;gap:12px;padding:10px 20px;text-decoration:none;border-radius:0;color:#ccc">
+        <span style="font-size:1rem">${g.icon}</span>
+        <span style="flex:1"><span style="color:#fff;font-weight:600">${esc(title)}</span>${sub ? '<br><span style="font-size:.72rem;color:#666">' + esc(sub) + '</span>' : ''}</span>
+      </a>`;
+    });
+  });
+  if (!total) html = '<div style="padding:32px;text-align:center;color:#444;font-size:.85rem">No results for "' + esc(q) + '"</div>';
+  document.getElementById('searchResults').innerHTML = html;
+  _searchIdx = -1;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function searchKeyNav(e) {
+  const items = document.querySelectorAll('.sres');
+  if (e.key === 'ArrowDown') { e.preventDefault(); _searchIdx = Math.min(_searchIdx+1, items.length-1); items.forEach((el,i) => el.style.background = i===_searchIdx ? 'rgba(255,255,255,.06)' : ''); if(items[_searchIdx]) items[_searchIdx].scrollIntoView({block:'nearest'}); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _searchIdx = Math.max(_searchIdx-1, -1); items.forEach((el,i) => el.style.background = i===_searchIdx ? 'rgba(255,255,255,.06)' : ''); }
+  else if (e.key === 'Enter' && _searchIdx >= 0 && items[_searchIdx]) { items[_searchIdx].click(); }
+  else if (e.key === 'Escape') closeSearch();
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+});
+</script>
 </body>
 </html>
