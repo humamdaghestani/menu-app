@@ -118,10 +118,11 @@ router.post('/items', requireAuth, requireInventory, async (req, res) => {
     const initQty  = parseFloat(initial_stock_qty) || 0;
     const initCost = parseFloat(initial_avg_cost)  || 0;
 
+    const { barcode } = req.body;
     await db.query(
-      `INSERT INTO inventory_items (tenant_id, name, sku, unit, reorder_level, stock_qty, avg_cost, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-      [req.user.tenantId, name.trim(), sku?.trim() || null, unit || 'pcs',
+      `INSERT INTO inventory_items (tenant_id, name, sku, barcode, unit, reorder_level, stock_qty, avg_cost, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [req.user.tenantId, name.trim(), sku?.trim() || null, barcode?.trim() || null, unit || 'pcs',
        parseFloat(reorder_level) || 0, initQty, initCost, menuItemId,
        !!is_raw_material, !!is_semi_finished, !!can_be_sold,
        inv_category_id || null]
@@ -142,18 +143,30 @@ router.post('/items', requireAuth, requireInventory, async (req, res) => {
 
 // Edit item
 router.post('/items/:id/edit', requireAuth, requireInventory, async (req, res) => {
-  const { name, sku, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id } = req.body;
+  const { name, sku, barcode, unit, reorder_level, menu_item_id, is_raw_material, is_semi_finished, can_be_sold, inv_category_id } = req.body;
   try {
     await db.query(
-      `UPDATE inventory_items SET name=$1, sku=$2, unit=$3, reorder_level=$4, menu_item_id=$5,
-        is_raw_material=$6, is_semi_finished=$7, can_be_sold=$8, inv_category_id=$9
-       WHERE id=$10 AND tenant_id=$11`,
-      [name.trim(), sku?.trim() || null, unit || 'pcs', parseFloat(reorder_level) || 0,
+      `UPDATE inventory_items SET name=$1, sku=$2, barcode=$3, unit=$4, reorder_level=$5, menu_item_id=$6,
+        is_raw_material=$7, is_semi_finished=$8, can_be_sold=$9, inv_category_id=$10
+       WHERE id=$11 AND tenant_id=$12`,
+      [name.trim(), sku?.trim() || null, barcode?.trim() || null, unit || 'pcs', parseFloat(reorder_level) || 0,
        menu_item_id || null, !!is_raw_material, !!is_semi_finished, !!can_be_sold,
        inv_category_id || null, req.params.id, req.user.tenantId]
     );
     res.redirect('/inventory/items');
   } catch (err) { console.error(err); res.redirect('/inventory/items?error=' + encodeURIComponent(err.message)); }
+});
+
+// Barcode lookup API (used by purchase form scanner)
+router.get('/api/barcode/:code', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const r = await db.query(
+      `SELECT id, name, unit, barcode, avg_cost FROM inventory_items WHERE tenant_id=$1 AND barcode=$2 AND is_active=true LIMIT 1`,
+      [req.user.tenantId, req.params.code.trim()]
+    );
+    if (!r.rows[0]) return res.json({ found: false });
+    res.json({ found: true, item: r.rows[0] });
+  } catch (err) { res.json({ found: false }); }
 });
 
 // Delete item
@@ -272,7 +285,7 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
   try {
     const tid = req.user.tenantId;
     const [invItemsRes, suppliersRes, lastPricesRes] = await Promise.all([
-      db.query(`SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name, unit, barcode FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
       db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
       db.query(`
         SELECT DISTINCT ON (prl.item_id)

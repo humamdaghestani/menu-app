@@ -719,6 +719,8 @@ const pool = new Pool({
     `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS customer_name VARCHAR(120)`,
     `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS mobile        VARCHAR(30)`,
     `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS table_no      VARCHAR(50)`,
+    `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS barcode VARCHAR(80)`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_items_barcode ON inventory_items(tenant_id, barcode) WHERE barcode IS NOT NULL`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

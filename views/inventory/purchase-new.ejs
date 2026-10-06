@@ -151,7 +151,16 @@
     <div class="card">
       <div class="card-title">
         <span>📦 Items Purchased</span>
-        <button type="button" class="btn btn-primary" onclick="addLine()">+ Add Row</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="position:relative;display:flex;align-items:center">
+            <span style="position:absolute;left:10px;font-size:.9rem;pointer-events:none">📷</span>
+            <input type="text" id="barcodeInput" placeholder="Scan barcode…" autocomplete="off"
+              style="padding:6px 10px 6px 32px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-size:.85rem;font-family:inherit;outline:none;width:180px"
+              onfocus="this.style.borderColor='#7c5cbf'" onblur="this.style.borderColor='#2a2a3e'"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();scanBarcode(this.value);this.value='';}" />
+          </div>
+          <button type="button" class="btn btn-primary" onclick="addLine()">+ Add Row</button>
+        </div>
       </div>
 
       <table class="lines-table">
@@ -528,6 +537,41 @@ function clearBillImage() {
   document.getElementById('billImageFile').value = '';
   document.getElementById('imgPreviewWrap').style.display = 'none';
   document.getElementById('imgDropZone').style.borderColor = '#2a2a3e';
+}
+
+// ── Barcode scanner ────────────────────────────────────────────────
+async function scanBarcode(code) {
+  code = (code || '').trim();
+  if (!code) return;
+  try {
+    const r = await fetch('/inventory/api/barcode/' + encodeURIComponent(code));
+    const data = await r.json();
+    if (!data.found) {
+      showScanToast('⚠ No item found for barcode: ' + code, '#e74c3c');
+      return;
+    }
+    const item = data.item;
+    addLine();
+    const i = idx - 1;
+    // Small delay so DOM is ready
+    setTimeout(() => {
+      selectItem(i, item.id, item.name, item.unit);
+      const qtyInput = document.getElementById('qty_' + i);
+      if (qtyInput) { qtyInput.value = 1; qtyInput.focus(); recalc(i); }
+    }, 50);
+    showScanToast('✓ ' + item.name, '#00b894');
+  } catch (e) {
+    showScanToast('⚠ Scanner error', '#e74c3c');
+  }
+}
+function showScanToast(msg, color) {
+  let t = document.getElementById('scanToast');
+  if (!t) { t = document.createElement('div'); t.id = 'scanToast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.style.cssText = `position:fixed;top:70px;right:20px;padding:9px 16px;border-radius:9px;font-size:.85rem;font-weight:700;z-index:9999;background:${color}22;color:${color};border:1px solid ${color}44;transition:opacity .4s`;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2200);
 }
 
 // Drag-and-drop support
