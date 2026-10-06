@@ -543,6 +543,10 @@ function clearBillImage() {
 async function scanBarcode(code) {
   code = (code || '').trim();
   if (!code) return;
+
+  // Refocus barcode input immediately so next scan is ready
+  setTimeout(() => { const b = document.getElementById('barcodeInput'); if (b) b.focus(); }, 80);
+
   try {
     const r = await fetch('/inventory/api/barcode/' + encodeURIComponent(code));
     const data = await r.json();
@@ -551,15 +555,36 @@ async function scanBarcode(code) {
       return;
     }
     const item = data.item;
+
+    // Check if this item is already in the lines — if so, just increment qty
+    const existingId = [...document.querySelectorAll('[id^="item_id_"]')]
+      .find(el => el.value == item.id);
+    if (existingId) {
+      const lineIdx = existingId.id.replace('item_id_', '');
+      const qtyInput = document.getElementById('qty_' + lineIdx);
+      if (qtyInput) {
+        qtyInput.value = (parseFloat(qtyInput.value) || 0) + 1;
+        recalc(lineIdx);
+        // Flash the row
+        const row = document.getElementById('line_' + lineIdx);
+        if (row) {
+          row.style.background = 'rgba(0,184,148,.12)';
+          setTimeout(() => row.style.background = '', 600);
+        }
+        showScanToast('✓ ' + item.name + ' × ' + qtyInput.value, '#00b894');
+        return;
+      }
+    }
+
+    // New item — add a line and fill all info
     addLine();
     const i = idx - 1;
-    // Small delay so DOM is ready
     setTimeout(() => {
       selectItem(i, item.id, item.name, item.unit);
       const qtyInput = document.getElementById('qty_' + i);
-      if (qtyInput) { qtyInput.value = 1; qtyInput.focus(); recalc(i); }
+      if (qtyInput) { qtyInput.value = 1; recalc(i); }
+      showScanToast('✓ ' + item.name, '#00b894');
     }, 50);
-    showScanToast('✓ ' + item.name, '#00b894');
   } catch (e) {
     showScanToast('⚠ Scanner error', '#e74c3c');
   }
