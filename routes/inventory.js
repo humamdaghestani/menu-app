@@ -527,20 +527,65 @@ router.post('/suppliers/:id/delete', requireAuth, requireInventory, async (req, 
 router.get('/suppliers/:id', requireAuth, requireInventory, async (req, res) => {
   const tid = req.user.tenantId;
   try {
-    const [suppRes, purchRes, payRes] = await Promise.all([
+    const [suppRes, purchRes, payRes, ledgerRes, monthlyRes] = await Promise.all([
       db.query(`SELECT * FROM suppliers WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]),
       db.query(`SELECT * FROM purchase_receipts WHERE supplier_id=$1 AND tenant_id=$2 ORDER BY receipt_date DESC`, [req.params.id, tid]),
       db.query(`SELECT * FROM supplier_payments WHERE supplier_id=$1 AND tenant_id=$2 ORDER BY payment_date DESC, created_at DESC`, [req.params.id, tid]),
+      // Full chronological ledger (purchases + payments combined)
+      db.query(`
+        SELECT * FROM (
+          SELECT receipt_date AS txn_date, 'Purchase' AS type, invoice_no AS reference,
+                 COALESCE(total,0) AS debit, 0 AS credit, id AS source_id, 'purchase' AS source_type,
+                 notes, status
+          FROM purchase_receipts
+          WHERE tenant_id=$1 AND supplier_id=$2
+          UNION ALL
+          SELECT payment_date AS txn_date, 'Payment' AS type, method AS reference,
+                 0 AS debit, COALESCE(amount,0) AS credit, id AS source_id, 'payment' AS source_type,
+                 notes, 'active' AS status
+          FROM supplier_payments
+          WHERE tenant_id=$1 AND supplier_id=$2
+        ) t ORDER BY txn_date ASC, source_type DESC
+      `, [tid, req.params.id]),
+      // Monthly purchase totals for mini-chart
+      db.query(`
+        SELECT TO_CHAR(receipt_date,'YYYY-MM') AS month, COALESCE(SUM(total),0) AS total
+        FROM purchase_receipts WHERE tenant_id=$1 AND supplier_id=$2 AND status='active'
+        GROUP BY month ORDER BY month DESC LIMIT 12
+      `, [tid, req.params.id]),
     ]);
     if (!suppRes.rows[0]) return res.redirect('/inventory/suppliers');
     const supplier = suppRes.rows[0];
-    const totalPurchased = purchRes.rows.reduce((s, r) => s + parseFloat(r.total || 0), 0);
+    const totalPurchased = purchRes.rows.filter(r => r.status !== 'voided').reduce((s, r) => s + parseFloat(r.total || 0), 0);
     const totalPaid = payRes.rows.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
     const balance = totalPurchased + parseFloat(supplier.opening_balance || 0) - totalPaid;
+
+    // Running balance on ledger
+    let running = parseFloat(supplier.opening_balance || 0);
+    const ledger = ledgerRes.rows.map(r => {
+      if (r.status === 'voided') return { ...r, running_balance: running, skipped: true };
+      running += parseFloat(r.debit) - parseFloat(r.credit);
+      return { ...r, running_balance: running };
+    });
+
+    // Aging buckets (from active purchases only)
+    const today = new Date();
+    const aging = { current: 0, d30: 0, d60: 0, d90: 0, older: 0 };
+    purchRes.rows.filter(r => r.status !== 'voided').forEach(r => {
+      const days = Math.floor((today - new Date(r.receipt_date)) / 86400000);
+      if (days <= 30) aging.current += parseFloat(r.total || 0);
+      else if (days <= 60) aging.d30 += parseFloat(r.total || 0);
+      else if (days <= 90) aging.d60 += parseFloat(r.total || 0);
+      else if (days <= 120) aging.d90 += parseFloat(r.total || 0);
+      else aging.older += parseFloat(r.total || 0);
+    });
+
     res.render('inventory/supplier-detail', {
       tenant: req.tenant, currentUser: req.user,
       supplier, purchases: purchRes.rows, payments: payRes.rows,
       totalPurchased, totalPaid, balance,
+      ledger, aging,
+      monthly: monthlyRes.rows.reverse(),
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });

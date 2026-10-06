@@ -3,123 +3,309 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><%= supplier.name %> — Suppliers</title>
+  <title><%= supplier.name %> — Supplier</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
-    .topbar { background: #1a1a2e; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
-    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
-    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 100; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost   { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
     .btn-primary { background: #7c5cbf; color: #fff; }
-    .btn-primary:hover { opacity: .88; }
-    .btn-danger { background: rgba(231,76,60,.12); color: #e74c3c; border: 1px solid rgba(231,76,60,.2); }
+    .btn-primary:hover { opacity:.88; }
+    .btn-green   { background: rgba(0,184,148,.15); color: #00b894; border: 1px solid rgba(0,184,148,.25); }
+    .btn-green:hover { background: rgba(0,184,148,.25); }
+    .btn-danger  { background: rgba(231,76,60,.12); color: #e74c3c; border: 1px solid rgba(231,76,60,.2); }
     .btn-sm { padding: 4px 10px; font-size: .75rem; }
+    .btn-print { background: rgba(116,185,255,.12); color: #74b9ff; }
 
-    .main { padding: 28px; max-width: 1100px; margin: 0 auto; }
+    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
 
-    .info-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 14px; padding: 24px; margin-bottom: 20px; display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
-    .info-name { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
-    .info-meta { font-size: .82rem; color: #555; line-height: 1.7; }
+    /* Header card */
+    .header-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 14px; padding: 22px 24px; margin-bottom: 20px; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+    .supplier-name { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .supplier-meta { font-size: .82rem; color: #555; line-height: 1.8; }
+    .supplier-meta span { color: #888; }
 
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 14px; margin-bottom: 24px; }
-    .stat { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 16px; }
-    .stat-label { font-size: .7rem; text-transform: uppercase; color: #555; font-weight: 700; }
-    .stat-val { font-size: 1.4rem; font-weight: 800; margin-top: 4px; }
+    /* KPI row */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .kpi { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 14px 16px; }
+    .kpi-label { font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; margin-bottom: 5px; }
+    .kpi-val { font-size: 1.25rem; font-weight: 800; }
 
-    .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
-    .tab { padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; background: rgba(255,255,255,.05); color: #666; border: none; font-family: inherit; }
+    /* Aging */
+    .aging-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+    .aging-cell { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 10px; padding: 12px; text-align: center; }
+    .aging-cell .al { font-size: .65rem; font-weight: 700; color: #444; text-transform: uppercase; margin-bottom: 4px; }
+    .aging-cell .av { font-size: .95rem; font-weight: 800; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 18px; flex-wrap: wrap; }
+    .tab { padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: .85rem; font-weight: 600; background: rgba(255,255,255,.05); color: #555; border: none; font-family: inherit; transition: all .15s; }
     .tab.active { background: #7c5cbf; color: #fff; }
 
     .panel { display: none; }
     .panel.active { display: block; }
 
-    .card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
-    .card-header { padding: 14px 20px; border-bottom: 1px solid #2a2a3e; display: flex; align-items: center; justify-content: space-between; }
-    .card-header h2 { font-size: .9rem; font-weight: 700; color: #fff; }
-    table { width: 100%; border-collapse: collapse; font-size: .83rem; }
-    th { text-align: left; color: #444; font-size: .7rem; text-transform: uppercase; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid #2a2a3e; }
-    td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.04); color: #ccc; vertical-align: middle; }
+    /* Cards */
+    .card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+    .card-header { padding: 13px 20px; border-bottom: 1px solid #2a2a3e; display: flex; align-items: center; justify-content: space-between; }
+    .card-header h2 { font-size: .88rem; font-weight: 700; color: #fff; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { text-align: left; color: #3a3a5a; font-size: .68rem; text-transform: uppercase; font-weight: 700; padding: 9px 14px; border-bottom: 1px solid #2a2a3e; white-space: nowrap; }
+    td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,.03); color: #bbb; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
 
-    .pay-form-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-    .pay-form-card h2 { font-size: .9rem; font-weight: 700; color: #fff; margin-bottom: 16px; }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-label { font-size: .7rem; font-weight: 700; color: #555; text-transform: uppercase; }
-    .form-input { padding: 8px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; }
-    .form-input:focus { border-color: #7c5cbf; }
+    .badge-void   { display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;background:rgba(231,76,60,.12);color:#e74c3c; }
+    .badge-active { display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;background:rgba(0,184,148,.12);color:#00b894; }
+    .badge-pay    { display:inline-block;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;background:rgba(116,185,255,.12);color:#74b9ff; }
 
-    .badge-void { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; background: rgba(231,76,60,.12); color: #e74c3c; }
-    .badge-active { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .7rem; font-weight: 700; background: rgba(0,184,148,.12); color: #00b894; }
+    .debit-col  { color: #e74c3c; font-weight: 700; }
+    .credit-col { color: #00b894; font-weight: 700; }
+    .bal-pos    { color: #e74c3c; font-weight: 700; }
+    .bal-zero   { color: #00b894; font-weight: 700; }
 
-    .toast { position: fixed; top: 70px; right: 20px; padding: 10px 18px; border-radius: 10px; font-size: .85rem; font-weight: 600; z-index: 9999; }
+    /* Pay form */
+    .pay-card { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+    .pay-card h3 { font-size: .88rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
+    .fg { display: flex; flex-direction: column; gap: 4px; }
+    .fl { font-size: .68rem; font-weight: 700; color: #444; text-transform: uppercase; }
+    .fi { padding: 8px 10px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .85rem; font-family: inherit; outline: none; width: 100%; }
+    .fi:focus { border-color: #7c5cbf; }
+    .pay-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 10px; align-items: flex-end; }
+
+    /* Mini bar chart */
+    .mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; margin-top: 10px; }
+    .mini-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+    .mini-bar { background: #7c5cbf; border-radius: 3px 3px 0 0; width: 100%; transition: opacity .15s; }
+    .mini-bar:hover { opacity: .75; }
+    .mini-label { font-size: .55rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+
+    .toast { position: fixed; top: 68px; right: 20px; padding: 10px 18px; border-radius: 10px; font-size: .85rem; font-weight: 600; z-index: 9999; }
     .toast-ok  { background: rgba(0,184,148,.2); color: #00b894; border: 1px solid rgba(0,184,148,.3); }
     .toast-err { background: rgba(231,76,60,.2); color: #e74c3c; border: 1px solid rgba(231,76,60,.3); }
+
+    @media print {
+      .topbar, .tabs, .no-print { display: none !important; }
+      .panel { display: block !important; }
+      body { background: #fff; color: #000; }
+      .card, .kpi, .aging-cell { background: #fff; border: 1px solid #ddd; }
+      th { color: #333; } td { color: #000; }
+    }
+    @media (max-width: 600px) { .aging-row { grid-template-columns: repeat(3,1fr); } }
   </style>
 </head>
 <body>
 
 <% const cur = tenant.currency || '$' %>
 
-<div class="topbar">
+<div class="topbar no-print">
   <div style="display:flex;align-items:center;gap:8px">
     <a href="/admin" class="btn btn-ghost" style="padding:6px 10px">🏠</a>
     <a href="/inventory/suppliers" class="btn btn-ghost">← Suppliers</a>
-    <span style="color:#555">/</span>
-    <span style="font-weight:700;color:#fff"><%= supplier.name %></span>
+    <span style="color:#333">/</span>
+    <span style="font-weight:700;color:#fff;font-size:.9rem"><%= supplier.name %></span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button onclick="window.print()" class="btn btn-print">🖨️ Print Statement</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('editModal').style.display='flex'">✏️ Edit</button>
   </div>
 </div>
 
 <div class="main">
 
-  <!-- Supplier info -->
-  <div class="info-card">
-    <div style="flex:1;min-width:200px">
-      <div class="info-name">🏢 <%= supplier.name %></div>
-      <div class="info-meta">
-        <% if (supplier.phone) { %><div>📞 <%= supplier.phone %></div><% } %>
-        <% if (supplier.email) { %><div>✉️ <%= supplier.email %></div><% } %>
-        <% if (supplier.address) { %><div>📍 <%= supplier.address %></div><% } %>
-        <% if (supplier.tax_no) { %><div>Tax: <%= supplier.tax_no %></div><% } %>
-        <% if (supplier.notes) { %><div style="margin-top:6px;color:#666"><%= supplier.notes %></div><% } %>
+  <!-- Supplier header -->
+  <div class="header-card">
+    <div style="flex:1;min-width:220px">
+      <div class="supplier-name">🏢 <%= supplier.name %></div>
+      <div class="supplier-meta">
+        <% if (supplier.phone) { %><span>📞</span> <%= supplier.phone %><br><% } %>
+        <% if (supplier.email) { %><span>✉️</span> <%= supplier.email %><br><% } %>
+        <% if (supplier.address) { %><span>📍</span> <%= supplier.address %><br><% } %>
+        <% if (supplier.tax_no) { %><span>Tax:</span> <%= supplier.tax_no %><br><% } %>
+        <% if (supplier.notes) { %><span style="font-style:italic;color:#444"><%= supplier.notes %></span><% } %>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0">
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('editModal').style.display='flex'">✏️ Edit</button>
+    <% if (monthly && monthly.length > 1) {
+       const maxM = Math.max(...monthly.map(m => parseFloat(m.total)));
+    %>
+    <div style="min-width:160px">
+      <div style="font-size:.65rem;color:#444;font-weight:700;text-transform:uppercase;margin-bottom:6px">Purchases last <%= monthly.length %> months</div>
+      <div class="mini-chart">
+        <% monthly.forEach(m => { const h = maxM > 0 ? Math.round(parseFloat(m.total)/maxM*56) : 4; %>
+        <div class="mini-bar-wrap" title="<%= m.month %>: <%= cur %><%= parseFloat(m.total).toFixed(0) %>">
+          <div class="mini-bar" style="height:<%= Math.max(h,3) %>px"></div>
+          <div class="mini-label"><%= m.month.slice(5) %></div>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Opening Balance</div>
+      <div class="kpi-val" style="color:#a78bdf"><%= cur %> <%= parseFloat(supplier.opening_balance||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Purchased</div>
+      <div class="kpi-val" style="color:#e0b060"><%= cur %> <%= totalPurchased.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Paid</div>
+      <div class="kpi-val" style="color:#00b894"><%= cur %> <%= totalPaid.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="kpi" style="border-color:<%= balance > 0.01 ? 'rgba(231,76,60,.3)' : 'rgba(0,184,148,.3)' %>">
+      <div class="kpi-label">Balance Due</div>
+      <div class="kpi-val" style="color:<%= balance > 0.01 ? '#e74c3c' : '#00b894' %>">
+        <%= cur %> <%= balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Purchases</div>
+      <div class="kpi-val" style="color:#ccc"><%= purchases.length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Payments Made</div>
+      <div class="kpi-val" style="color:#ccc"><%= payments.length %></div>
     </div>
   </div>
 
-  <!-- Balance summary -->
-  <div class="stats-row">
-    <div class="stat">
-      <div class="stat-label">Opening Balance</div>
-      <div class="stat-val" style="color:#a78bdf"><%= cur %><%= parseFloat(supplier.opening_balance||0).toFixed(2) %></div>
+  <!-- Aging -->
+  <% if (purchases.length) { %>
+  <div style="font-size:.68rem;font-weight:700;color:#333;text-transform:uppercase;margin-bottom:8px;letter-spacing:.4px">Aging of Purchases</div>
+  <div class="aging-row">
+    <div class="aging-cell">
+      <div class="al">0–30 days</div>
+      <div class="av" style="color:#00b894"><%= cur %> <%= aging.current.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
     </div>
-    <div class="stat">
-      <div class="stat-label">Total Purchased</div>
-      <div class="stat-val" style="color:#e0b060"><%= cur %><%= totalPurchased.toFixed(2) %></div>
+    <div class="aging-cell">
+      <div class="al">31–60 days</div>
+      <div class="av" style="color:#e0b060"><%= cur %> <%= aging.d30.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
     </div>
-    <div class="stat">
-      <div class="stat-label">Total Paid</div>
-      <div class="stat-val" style="color:#00b894"><%= cur %><%= totalPaid.toFixed(2) %></div>
+    <div class="aging-cell">
+      <div class="al">61–90 days</div>
+      <div class="av" style="color:#f39c12"><%= cur %> <%= aging.d60.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
     </div>
-    <div class="stat">
-      <div class="stat-label">Outstanding Balance</div>
-      <div class="stat-val" style="color:<%= balance > 0.01 ? '#e74c3c' : '#00b894' %>">
-        <%= cur %><%= balance.toFixed(2) %>
-      </div>
+    <div class="aging-cell">
+      <div class="al">91–120 days</div>
+      <div class="av" style="color:#e74c3c"><%= cur %> <%= aging.d90.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+    </div>
+    <div class="aging-cell">
+      <div class="al">&gt;120 days</div>
+      <div class="av" style="color:#c0392b"><%= cur %> <%= aging.older.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
     </div>
   </div>
+  <% } %>
 
   <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('purchases', this)">📋 Purchases (<%= purchases.length %>)</button>
-    <button class="tab" onclick="switchTab('payments', this)">💳 Payments (<%= payments.length %>)</button>
+  <div class="tabs no-print">
+    <button class="tab active" onclick="switchTab('ledger',this)">📒 Account Statement</button>
+    <button class="tab" onclick="switchTab('purchases',this)">📋 Purchases (<%= purchases.length %>)</button>
+    <button class="tab" onclick="switchTab('payments',this)">💳 Payments (<%= payments.length %>)</button>
   </div>
 
-  <!-- Purchases panel -->
-  <div class="panel active" id="tab-purchases">
+  <!-- LEDGER TAB -->
+  <div class="panel active" id="tab-ledger">
+    <div class="pay-card no-print">
+      <h3>💳 Record Payment</h3>
+      <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/pay">
+        <div class="pay-grid">
+          <div class="fg"><label class="fl">Amount *</label><input name="amount" class="fi" type="number" step="0.01" min="0.01" required placeholder="0.00" /></div>
+          <div class="fg"><label class="fl">Date</label><input name="payment_date" class="fi" type="date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+          <div class="fg">
+            <label class="fl">Method</label>
+            <select name="method" class="fi">
+              <option value="cash">Cash</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="card">Card</option>
+              <option value="cheque">Cheque</option>
+            </select>
+          </div>
+          <div class="fg"><label class="fl">Reference / Notes</label><input name="notes" class="fi" placeholder="Ref number, memo…" /></div>
+          <div class="fg" style="justify-content:flex-end"><button type="submit" class="btn btn-green" style="align-self:flex-end;width:100%">✓ Save Payment</button></div>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Account Statement</h2>
+        <span style="font-size:.75rem;color:#444">All transactions · chronological</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Reference</th>
+            <th>Notes</th>
+            <th style="text-align:right">Debit (Owed)</th>
+            <th style="text-align:right">Credit (Paid)</th>
+            <th style="text-align:right">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Opening balance row -->
+          <tr style="background:rgba(124,92,191,.06)">
+            <td style="color:#555;font-size:.78rem">—</td>
+            <td><span class="badge-pay">Opening</span></td>
+            <td style="color:#555">—</td>
+            <td style="color:#555">Opening balance</td>
+            <td style="text-align:right" class="debit-col"><%= parseFloat(supplier.opening_balance||0) > 0 ? cur + ' ' + parseFloat(supplier.opening_balance).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : '—' %></td>
+            <td style="text-align:right">—</td>
+            <td style="text-align:right" class="<%= parseFloat(supplier.opening_balance||0) > 0 ? 'bal-pos' : 'bal-zero' %>">
+              <%= cur %> <%= parseFloat(supplier.opening_balance||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
+            </td>
+          </tr>
+          <% ledger.forEach(r => {
+            const d = new Date(r.txn_date);
+            const dateStr = d.toLocaleDateString();
+            const isVoid = r.status === 'voided';
+          %>
+          <tr style="<%= isVoid ? 'opacity:.4' : '' %>">
+            <td style="color:#666;font-size:.78rem;white-space:nowrap"><%= dateStr %></td>
+            <td>
+              <% if (r.type === 'Purchase') { %>
+                <span class="badge-<%= isVoid ? 'void' : 'active' %>"><%= isVoid ? 'Voided' : 'Purchase' %></span>
+              <% } else { %>
+                <span class="badge-pay">Payment</span>
+              <% } %>
+            </td>
+            <td style="font-size:.8rem;color:#888"><%= r.reference || '—' %></td>
+            <td style="font-size:.78rem;color:#555;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= r.notes || '—' %></td>
+            <td style="text-align:right" class="<%= parseFloat(r.debit) > 0 && !isVoid ? 'debit-col' : '' %>">
+              <%= parseFloat(r.debit) > 0 ? (cur + ' ' + parseFloat(r.debit).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : '—' %>
+            </td>
+            <td style="text-align:right" class="<%= parseFloat(r.credit) > 0 ? 'credit-col' : '' %>">
+              <%= parseFloat(r.credit) > 0 ? (cur + ' ' + parseFloat(r.credit).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : '—' %>
+            </td>
+            <td style="text-align:right" class="<%= isVoid ? '' : r.running_balance > 0.01 ? 'bal-pos' : 'bal-zero' %>">
+              <%= isVoid ? '—' : (cur + ' ' + r.running_balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) %>
+            </td>
+          </tr>
+          <% }) %>
+          <!-- Closing balance -->
+          <tr style="background:rgba(124,92,191,.08);font-weight:700">
+            <td colspan="6" style="text-align:right;color:#a78bdf;font-size:.82rem">Closing Balance</td>
+            <td style="text-align:right" class="<%= balance > 0.01 ? 'bal-pos' : 'bal-zero' %>">
+              <%= cur %> <%= balance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
+            </td>
+          </tr>
+          <% if (!ledger.length) { %>
+          <tr><td colspan="7" style="text-align:center;color:#333;padding:32px">No transactions yet</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PURCHASES TAB -->
+  <div class="panel" id="tab-purchases">
     <div class="card">
       <div class="card-header">
         <h2>Purchase Receipts</h2>
@@ -127,26 +313,17 @@
       </div>
       <table>
         <thead>
-          <tr>
-            <th>Date</th>
-            <th>Invoice #</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
+          <tr><th>Date</th><th>Invoice #</th><th>Notes</th><th style="text-align:right">Total</th><th>Status</th><th></th></tr>
         </thead>
         <tbody>
-        <% if (!purchases.length) { %>
-        <tr><td colspan="6" style="text-align:center;color:#444;padding:32px">No purchases yet</td></tr>
-        <% } %>
+        <% if (!purchases.length) { %><tr><td colspan="6" style="text-align:center;color:#333;padding:32px">No purchases yet</td></tr><% } %>
         <% purchases.forEach(p => { %>
-        <tr>
-          <td style="color:#888;font-size:.8rem"><%= new Date(p.receipt_date).toLocaleDateString() %></td>
+        <tr style="<%= p.status==='voided'?'opacity:.45':'' %>">
+          <td style="color:#666;font-size:.78rem;white-space:nowrap"><%= new Date(p.receipt_date).toLocaleDateString() %></td>
           <td style="color:#ccc"><%= p.invoice_no || '—' %></td>
-          <td style="color:#888;font-size:.78rem"><%= p.notes ? p.notes.substring(0,40) : '—' %></td>
-          <td style="font-weight:700;color:<%= p.status==='voided'?'#555':'#fff' %>"><%= cur %><%= parseFloat(p.total||0).toFixed(2) %></td>
-          <td><span class="badge-<%= p.status==='voided'?'void':'active' %>"><%= p.status || 'active' %></span></td>
+          <td style="color:#555;font-size:.78rem"><%= p.notes ? p.notes.substring(0,50) : '—' %></td>
+          <td style="text-align:right;font-weight:700;color:<%= p.status==='voided'?'#333':'#fff' %>"><%= cur %> <%= parseFloat(p.total||0).toLocaleString(undefined,{minimumFractionDigits:2}) %></td>
+          <td><span class="badge-<%= p.status==='voided'?'void':'active' %>"><%= p.status||'active' %></span></td>
           <td><a href="/inventory/purchases/<%= p.id %>" class="btn btn-ghost btn-sm">View</a></td>
         </tr>
         <% }) %>
@@ -155,59 +332,40 @@
     </div>
   </div>
 
-  <!-- Payments panel -->
+  <!-- PAYMENTS TAB -->
   <div class="panel" id="tab-payments">
-    <!-- Add payment form -->
-    <div class="pay-form-card">
-      <h2>💳 Record Payment</h2>
+    <div class="pay-card">
+      <h3>💳 Record Payment</h3>
       <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/pay">
-        <div class="form-grid" style="align-items:flex-end">
-          <div class="form-group">
-            <label class="form-label">Amount *</label>
-            <input name="amount" class="form-input" type="number" step="0.01" min="0.01" required placeholder="0.00" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input name="payment_date" class="form-input" type="date" value="<%= new Date().toISOString().slice(0,10) %>" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Method</label>
-            <select name="method" class="form-input">
+        <div class="pay-grid">
+          <div class="fg"><label class="fl">Amount *</label><input name="amount" class="fi" type="number" step="0.01" min="0.01" required placeholder="0.00" /></div>
+          <div class="fg"><label class="fl">Date</label><input name="payment_date" class="fi" type="date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+          <div class="fg">
+            <label class="fl">Method</label>
+            <select name="method" class="fi">
               <option value="cash">Cash</option>
               <option value="bank">Bank Transfer</option>
               <option value="card">Card</option>
               <option value="cheque">Cheque</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label">Notes</label>
-            <input name="notes" class="form-input" placeholder="Reference, memo…" />
-          </div>
-          <div class="form-group" style="justify-content:flex-end">
-            <button type="submit" class="btn btn-primary" style="align-self:flex-end">Save Payment</button>
-          </div>
+          <div class="fg"><label class="fl">Notes</label><input name="notes" class="fi" placeholder="Ref number, memo…" /></div>
+          <div class="fg" style="justify-content:flex-end"><button type="submit" class="btn btn-green" style="align-self:flex-end;width:100%">✓ Save</button></div>
         </div>
       </form>
     </div>
-
-    <!-- Payment history -->
     <div class="card">
       <div class="card-header"><h2>Payment History</h2></div>
       <table>
-        <thead>
-          <tr><th>Date</th><th>Amount</th><th>Method</th><th>Notes</th><th></th></tr>
-        </thead>
+        <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Notes</th><th></th></tr></thead>
         <tbody>
-        <% if (!payments.length) { %>
-        <tr><td colspan="5" style="text-align:center;color:#444;padding:32px">No payments recorded yet</td></tr>
-        <% } %>
-        <% let running = parseFloat(supplier.opening_balance||0) + totalPurchased; %>
-        <% payments.forEach(p => { running -= parseFloat(p.amount||0); %>
+        <% if (!payments.length) { %><tr><td colspan="5" style="text-align:center;color:#333;padding:32px">No payments recorded yet</td></tr><% } %>
+        <% payments.forEach(p => { %>
         <tr>
-          <td style="color:#888;font-size:.8rem"><%= new Date(p.payment_date).toLocaleDateString() %></td>
-          <td style="font-weight:700;color:#00b894"><%= cur %><%= parseFloat(p.amount).toFixed(2) %></td>
-          <td style="color:#888;font-size:.8rem;text-transform:capitalize"><%= p.method || 'cash' %></td>
-          <td style="color:#555;font-size:.8rem"><%= p.notes || '—' %></td>
+          <td style="color:#666;font-size:.78rem"><%= new Date(p.payment_date).toLocaleDateString() %></td>
+          <td class="credit-col"><%= cur %> <%= parseFloat(p.amount).toLocaleString(undefined,{minimumFractionDigits:2}) %></td>
+          <td style="color:#888;font-size:.8rem;text-transform:capitalize"><%= p.method||'cash' %></td>
+          <td style="color:#555;font-size:.78rem"><%= p.notes||'—' %></td>
           <td>
             <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/payments/<%= p.id %>/delete" onsubmit="return confirm('Delete this payment?')">
               <button type="submit" class="btn btn-danger btn-sm">✕</button>
@@ -222,41 +380,20 @@
 </div>
 
 <!-- Edit modal -->
-<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
-  <div style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:16px;padding:28px;width:460px;max-width:95vw">
-    <div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:20px">✏️ Edit Supplier</div>
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:16px;padding:28px;width:480px;max-width:96vw;max-height:90vh;overflow-y:auto">
+    <div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:18px">✏️ Edit Supplier</div>
     <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/edit">
-      <div class="form-grid" style="margin-bottom:12px">
-        <div class="form-group">
-          <label class="form-label">Name *</label>
-          <input name="name" class="form-input" required value="<%= supplier.name %>" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Phone</label>
-          <input name="phone" class="form-input" value="<%= supplier.phone||'' %>" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <input name="email" class="form-input" type="email" value="<%= supplier.email||'' %>" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tax No</label>
-          <input name="tax_no" class="form-input" value="<%= supplier.tax_no||'' %>" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Opening Balance</label>
-          <input name="opening_balance" class="form-input" type="number" step="0.01" value="<%= supplier.opening_balance||0 %>" />
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div class="fg" style="grid-column:1/-1"><label class="fl">Name *</label><input name="name" class="fi" required value="<%= supplier.name %>" /></div>
+        <div class="fg"><label class="fl">Phone</label><input name="phone" class="fi" value="<%= supplier.phone||'' %>" /></div>
+        <div class="fg"><label class="fl">Email</label><input name="email" class="fi" type="email" value="<%= supplier.email||'' %>" /></div>
+        <div class="fg"><label class="fl">Tax No</label><input name="tax_no" class="fi" value="<%= supplier.tax_no||'' %>" /></div>
+        <div class="fg"><label class="fl">Opening Balance</label><input name="opening_balance" class="fi" type="number" step="0.01" value="<%= supplier.opening_balance||0 %>" /></div>
+        <div class="fg" style="grid-column:1/-1"><label class="fl">Address</label><input name="address" class="fi" value="<%= supplier.address||'' %>" /></div>
+        <div class="fg" style="grid-column:1/-1"><label class="fl">Notes</label><textarea name="notes" class="fi" rows="2" style="resize:vertical"><%= supplier.notes||'' %></textarea></div>
       </div>
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">Address</label>
-        <input name="address" class="form-input" value="<%= supplier.address||'' %>" />
-      </div>
-      <div class="form-group" style="margin-bottom:16px">
-        <label class="form-label">Notes</label>
-        <textarea name="notes" class="form-input" rows="2" style="resize:vertical"><%= supplier.notes||'' %></textarea>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         <button type="button" class="btn btn-ghost" onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
         <button type="submit" class="btn btn-primary">Save</button>
       </div>
@@ -265,7 +402,7 @@
 </div>
 
 <% if (locals.success) { %><div class="toast toast-ok" id="toast"><%= locals.success %></div><% } %>
-<% if (locals.error) { %><div class="toast toast-err" id="toast"><%= locals.error %></div><% } %>
+<% if (locals.error)   { %><div class="toast toast-err" id="toast"><%= locals.error %></div><% } %>
 
 <script>
 function switchTab(name, btn) {
