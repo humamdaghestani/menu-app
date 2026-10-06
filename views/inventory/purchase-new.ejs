@@ -50,10 +50,25 @@
 
     /* Supplier autocomplete */
     .supp-wrap { position: relative; }
-    .supp-drop { display: none; position: absolute; top: calc(100% + 3px); left: 0; right: 0; background: #1a1a2e; border: 1.5px solid #7c5cbf; border-radius: 8px; z-index: 200; max-height: 180px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    .supp-drop { display: none; position: absolute; top: calc(100% + 3px); left: 0; right: 0; background: #1a1a2e; border: 1.5px solid #7c5cbf; border-radius: 8px; z-index: 200; max-height: 220px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
     .supp-drop.open { display: block; }
     .supp-opt { padding: 8px 12px; font-size: .88rem; color: #ccc; cursor: pointer; }
     .supp-opt:hover, .supp-opt.focused { background: rgba(124,92,191,.2); color: #fff; }
+    .supp-opt-create { padding: 10px 12px; font-size: .88rem; color: #7c5cbf; font-weight: 700; cursor: pointer; border-top: 1px solid #2a2a3e; display: flex; align-items: center; gap: 8px; }
+    .supp-opt-create:hover { background: rgba(124,92,191,.15); }
+
+    /* Quick-create supplier modal */
+    .qmodal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 900; align-items: center; justify-content: center; }
+    .qmodal-bg.open { display: flex; }
+    .qmodal { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 16px; padding: 28px; width: 480px; max-width: 96vw; max-height: 92vh; overflow-y: auto; }
+    .qmodal-title { font-size: 1.05rem; font-weight: 800; color: #fff; margin-bottom: 20px; }
+    .qf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .qf-group { display: flex; flex-direction: column; gap: 5px; }
+    .qf-group.full { grid-column: 1/-1; }
+    .qf-label { font-size: .7rem; font-weight: 700; color: #555; text-transform: uppercase; }
+    .qf-input { padding: 9px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; outline: none; width: 100%; }
+    .qf-input:focus { border-color: #7c5cbf; }
+    .qerror { color: #e74c3c; font-size: .82rem; margin-bottom: 10px; display: none; }
 
     /* New item inline */
     .new-item-row { display: none; margin-top: 4px; }
@@ -175,13 +190,17 @@ const LAST_PRICES = <%- JSON.stringify(lastPrices) %>;
 let idx = 0;
 
 // ── Supplier autocomplete ──────────────────────────────────────────
+let _suppList = <%- JSON.stringify(suppliers) %>; // live-updated when new supplier is created
+
 function suppFilter(q) {
   const drop = document.getElementById('suppDrop');
   const ql = (q||'').toLowerCase();
-  const matches = SUPPLIERS.filter(s => s.name.toLowerCase().includes(ql));
+  const matches = _suppList.filter(s => s.name.toLowerCase().includes(ql));
   if (matches.length === 0 && !q) { drop.classList.remove('open'); return; }
-  const items = matches.map(s => `<div class="supp-opt" onclick="suppSelect(${s.id},'${escJ(s.name)}')">${escH(s.name)}</div>`).join('');
-  drop.innerHTML = items || `<div class="supp-opt" style="color:#555">No matches — will save as free-text</div>`;
+  let html = matches.map(s => `<div class="supp-opt" onclick="suppSelect(${s.id},'${escJ(s.name)}')">${escH(s.name)}</div>`).join('');
+  if (!matches.length) html = `<div class="supp-opt" style="color:#555;cursor:default">No match found</div>`;
+  html += `<div class="supp-opt-create" onclick="openCreateSupplier('${escJ(q||'')}')">➕ Create new supplier${q ? ': <b>' + escH(q) + '</b>' : ''}</div>`;
+  drop.innerHTML = html;
   drop.classList.add('open');
 }
 function suppSelect(id, name) {
@@ -192,7 +211,6 @@ function suppSelect(id, name) {
 document.addEventListener('click', e => {
   if (!e.target.closest('.supp-wrap')) document.getElementById('suppDrop').classList.remove('open');
 });
-// Keyboard nav on supplier
 document.addEventListener('keydown', e => {
   const drop = document.getElementById('suppDrop');
   if (!drop.classList.contains('open')) return;
@@ -204,6 +222,56 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Enter' && cur) { e.preventDefault(); cur.click(); }
   else if (e.key === 'Escape') drop.classList.remove('open');
 });
+
+// ── Quick-create supplier modal ────────────────────────────────────
+function openCreateSupplier(prefill) {
+  document.getElementById('suppDrop').classList.remove('open');
+  document.getElementById('qsName').value = prefill || '';
+  document.getElementById('qsPhone').value = '';
+  document.getElementById('qsEmail').value = '';
+  document.getElementById('qsAddress').value = '';
+  document.getElementById('qsTaxNo').value = '';
+  document.getElementById('qsBalance').value = '0';
+  document.getElementById('qsNotes').value = '';
+  document.getElementById('qsError').style.display = 'none';
+  document.getElementById('qsModal').classList.add('open');
+  document.getElementById('qsName').focus();
+}
+function closeCreateSupplier() {
+  document.getElementById('qsModal').classList.remove('open');
+}
+async function submitCreateSupplier() {
+  const name = document.getElementById('qsName').value.trim();
+  if (!name) { showQsError('Supplier name is required'); return; }
+  const btn = document.getElementById('qsSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/inventory/suppliers/quick', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        phone:           document.getElementById('qsPhone').value.trim()||null,
+        email:           document.getElementById('qsEmail').value.trim()||null,
+        address:         document.getElementById('qsAddress').value.trim()||null,
+        tax_no:          document.getElementById('qsTaxNo').value.trim()||null,
+        opening_balance: document.getElementById('qsBalance').value||0,
+        notes:           document.getElementById('qsNotes').value.trim()||null,
+      }),
+    });
+    const data = await r.json();
+    if (!data.ok) { showQsError(data.error || 'Failed to save'); return; }
+    // Add to local list and select
+    _suppList.push({ id: data.id, name: data.name });
+    suppSelect(data.id, data.name);
+    closeCreateSupplier();
+  } catch (e) { showQsError('Network error'); }
+  btn.disabled = false; btn.textContent = 'Save Supplier';
+}
+function showQsError(msg) {
+  const el = document.getElementById('qsError');
+  el.textContent = msg; el.style.display = 'block';
+}
 
 // ── Searchable picker ──────────────────────────────────────────────
 function createPicker(i) {
@@ -468,5 +536,47 @@ dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor 
 dz.addEventListener('dragleave', () => dz.style.borderColor = document.getElementById('billImageData').value ? '#7c5cbf' : '#2a2a3e');
 dz.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleBillImage(f); });
 </script>
+
+<!-- Quick-create supplier modal -->
+<div class="qmodal-bg" id="qsModal" onclick="if(event.target===this)closeCreateSupplier()">
+  <div class="qmodal">
+    <div class="qmodal-title">🏢 New Supplier</div>
+    <div class="qerror" id="qsError"></div>
+    <div class="qf-grid">
+      <div class="qf-group full">
+        <label class="qf-label">Name *</label>
+        <input id="qsName" class="qf-input" placeholder="Supplier name" />
+      </div>
+      <div class="qf-group">
+        <label class="qf-label">Phone</label>
+        <input id="qsPhone" class="qf-input" placeholder="+964…" />
+      </div>
+      <div class="qf-group">
+        <label class="qf-label">Email</label>
+        <input id="qsEmail" class="qf-input" type="email" placeholder="email@…" />
+      </div>
+      <div class="qf-group full">
+        <label class="qf-label">Address</label>
+        <input id="qsAddress" class="qf-input" placeholder="Street, city…" />
+      </div>
+      <div class="qf-group">
+        <label class="qf-label">Tax / VAT No</label>
+        <input id="qsTaxNo" class="qf-input" placeholder="optional" />
+      </div>
+      <div class="qf-group">
+        <label class="qf-label">Opening Balance</label>
+        <input id="qsBalance" class="qf-input" type="number" step="0.01" value="0" />
+      </div>
+      <div class="qf-group full">
+        <label class="qf-label">Notes</label>
+        <textarea id="qsNotes" class="qf-input" rows="2" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+      <button type="button" class="btn btn-ghost" onclick="closeCreateSupplier()">Cancel</button>
+      <button type="button" id="qsSaveBtn" class="btn btn-primary" onclick="submitCreateSupplier()">Save Supplier</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

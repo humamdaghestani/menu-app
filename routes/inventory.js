@@ -491,6 +491,19 @@ router.post('/suppliers', requireAuth, requireInventory, async (req, res) => {
   } catch (err) { console.error(err); res.redirect('/inventory/suppliers?error=' + encodeURIComponent(err.message)); }
 });
 
+// AJAX quick-create supplier (used from purchase form)
+router.post('/suppliers/quick', requireAuth, requireInventory, async (req, res) => {
+  const { name, phone, email, address, tax_no, opening_balance, notes } = req.body;
+  try {
+    if (!name || !name.trim()) return res.json({ ok: false, error: 'Name is required' });
+    const r = await db.query(
+      `INSERT INTO suppliers (tenant_id,name,phone,email,address,tax_no,opening_balance,notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, name`,
+      [req.user.tenantId, name.trim(), phone||null, email||null, address||null, tax_no||null, parseFloat(opening_balance)||0, notes||null]
+    );
+    res.json({ ok: true, id: r.rows[0].id, name: r.rows[0].name });
+  } catch (err) { console.error(err); res.json({ ok: false, error: err.message }); }
+});
+
 router.post('/suppliers/:id/edit', requireAuth, requireInventory, async (req, res) => {
   const { name, phone, email, address, tax_no, opening_balance, notes } = req.body;
   try {
