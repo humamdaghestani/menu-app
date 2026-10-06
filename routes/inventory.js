@@ -270,15 +270,36 @@ router.get('/purchases', requireAuth, requireInventory, async (req, res) => {
 
 router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => {
   try {
-    const [invItemsRes, suppliersRes] = await Promise.all([
-      db.query(`SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [req.user.tenantId]),
-      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [req.user.tenantId]),
+    const tid = req.user.tenantId;
+    const [invItemsRes, suppliersRes, lastPricesRes] = await Promise.all([
+      db.query(`SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
+      db.query(`
+        SELECT DISTINCT ON (prl.item_id)
+          prl.item_id,
+          prl.unit_price   AS last_price,
+          pr.receipt_date  AS last_date,
+          pr.supplier_name AS last_supplier
+        FROM purchase_receipt_lines prl
+        JOIN purchase_receipts pr ON pr.id = prl.receipt_id
+        WHERE pr.tenant_id=$1 AND pr.status='active' AND prl.item_id IS NOT NULL
+        ORDER BY prl.item_id, pr.receipt_date DESC, pr.id DESC
+      `, [tid]),
     ]);
+    const lastPrices = {};
+    lastPricesRes.rows.forEach(r => {
+      lastPrices[r.item_id] = {
+        price: parseFloat(r.last_price),
+        date: r.last_date ? new Date(r.last_date).toLocaleDateString() : null,
+        supplier: r.last_supplier || null,
+      };
+    });
     res.render('inventory/purchase-new', {
       tenant: req.tenant,
       currentUser: req.user,
       invItems: invItemsRes.rows,
       suppliers: suppliersRes.rows,
+      lastPrices,
       error: req.query.error || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }

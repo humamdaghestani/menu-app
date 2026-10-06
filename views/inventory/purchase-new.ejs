@@ -142,11 +142,12 @@
       <table class="lines-table">
         <thead>
           <tr>
-            <th style="width:38%">Item</th>
-            <th style="width:12%">Unit</th>
-            <th style="width:16%">Quantity</th>
-            <th style="width:18%">Unit Price (<%= tenant.currency || 'IQD' %>)</th>
-            <th style="width:12%">Total</th>
+            <th style="width:30%">Item</th>
+            <th style="width:9%">Unit</th>
+            <th style="width:12%">Qty</th>
+            <th style="width:20%">Unit Price (<%= tenant.currency || 'IQD' %>)</th>
+            <th style="width:17%">Last Price</th>
+            <th style="width:8%">Total</th>
             <th style="width:4%"></th>
           </tr>
         </thead>
@@ -169,7 +170,8 @@
 <script>
 const CUR = '<%= tenant.currency || "IQD" %>';
 const INV_ITEMS = <%- JSON.stringify(invItems) %>;
-const SUPPLIERS = <%- JSON.stringify(suppliers) %>; // [{id, name}, ...]
+const SUPPLIERS = <%- JSON.stringify(suppliers) %>;
+const LAST_PRICES = <%- JSON.stringify(lastPrices) %>;
 let idx = 0;
 
 // ── Supplier autocomplete ──────────────────────────────────────────
@@ -300,6 +302,25 @@ function selectItem(i, id, name, unit) {
   unitFld.value = unit;
   unitFld.setAttribute('readonly', 'readonly');
   document.getElementById('newRow_'  + i).classList.remove('show');
+
+  // Auto-fill last price and show hint
+  const lp = LAST_PRICES[id];
+  const priceInput = document.getElementById('price_' + i);
+  const lastCell   = document.getElementById('last_' + i);
+  if (lp && lp.price > 0) {
+    if (!priceInput.value || parseFloat(priceInput.value) === 0) {
+      priceInput.value = lp.price.toFixed(4);
+      recalc(i);
+    }
+    let hint = `<span style="color:#a78bdf;font-weight:700">${CUR} ${lp.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+    if (lp.date) hint += `<br><span style="color:#444;font-size:.7rem">${lp.date}`;
+    if (lp.supplier) hint += ` · ${lp.supplier}`;
+    if (lp.date) hint += `</span>`;
+    lastCell.innerHTML = hint;
+  } else {
+    lastCell.innerHTML = '<span style="color:#333;font-size:.75rem">No history</span>';
+  }
+  updateDiff(i);
 }
 
 function selectNew(i) {
@@ -343,15 +364,35 @@ function addLine() {
   const tdUnit  = mkTd(`<input type="text" name="unit" id="unit_${i}" class="line-input" placeholder="kg" />`);
   const tdQty   = mkTd(`<input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" required />`);
   const tdPrice = mkTd(`<input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" required />`);
+  const tdLast  = mkTd(`<div id="last_${i}" style="font-size:.78rem;line-height:1.5;color:#555">—</div>`);
   const tdTotal = mkTd(`<span class="line-total" id="lt_${i}">${CUR} 0.00</span>`);
   const tdDel   = mkTd(`<button type="button" class="btn-remove">✕</button>`);
   tdDel.querySelector('button').onclick = () => removeLine(i);
   tdQty.querySelector('input').oninput   = () => recalc(i);
   tdPrice.querySelector('input').oninput = () => recalc(i);
 
-  tr.append(tdItem, tdUnit, tdQty, tdPrice, tdTotal, tdDel);
+  tr.append(tdItem, tdUnit, tdQty, tdPrice, tdLast, tdTotal, tdDel);
   tbody.appendChild(tr);
   document.getElementById('search_' + i).focus();
+}
+
+function updateDiff(i) {
+  const itemId = document.getElementById('item_id_' + i)?.value;
+  const lp = itemId && LAST_PRICES[itemId];
+  if (!lp || !lp.price) return;
+  const cur = parseFloat(document.getElementById('price_' + i)?.value) || 0;
+  if (!cur) return;
+  const diff = cur - lp.price;
+  const pct  = (diff / lp.price * 100);
+  const el   = document.getElementById('last_' + i);
+  if (!el) return;
+  const diffStr = (diff >= 0 ? '▲ +' : '▼ ') + Math.abs(diff).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})
+    + ' (' + (diff >= 0 ? '+' : '') + pct.toFixed(1) + '%)';
+  const color = diff > 0 ? '#e74c3c' : diff < 0 ? '#00b894' : '#888';
+  let hint = `<span style="color:#a78bdf;font-weight:700">${CUR} ${lp.price.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}</span>`;
+  if (lp.date) hint += `<br><span style="color:#444;font-size:.7rem">${lp.date}${lp.supplier ? ' · ' + lp.supplier : ''}</span>`;
+  hint += `<br><span style="color:${color};font-size:.78rem;font-weight:700">${diffStr}</span>`;
+  el.innerHTML = hint;
 }
 
 function recalc(i) {
@@ -359,6 +400,7 @@ function recalc(i) {
   const price = parseFloat(document.getElementById('price_' + i)?.value) || 0;
   const el    = document.getElementById('lt_' + i);
   if (el) el.textContent = CUR + ' ' + (qty * price).toFixed(2);
+  updateDiff(i);
   recalcTotal();
 }
 
