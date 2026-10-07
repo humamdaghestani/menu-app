@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Table Analytics — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1100px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+    .filter-row input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:11px 16px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .pct-bar-bg{height:5px;background:#2a2a3e;border-radius:3px;width:80px;display:inline-block}
+    .pct-bar-fill{height:5px;border-radius:3px;background:#7c5cbf;display:block}
+    .empty{text-align:center;padding:48px;color:#333;font-size:.9rem}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/reports" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Reports</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Table Analytics</span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">🪑 Table Analytics</div>
+
+  <form method="GET" action="/reports/tables" class="filter-row">
+    <input type="date" name="from" value="<%= from %>" />
+    <span style="color:#444">→</span>
+    <input type="date" name="to" value="<%= to %>" />
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </form>
+
+  <% if (!tables.length) { %>
+    <div class="card"><div class="empty">No order data for this period.</div></div>
+  <% } else { %>
+  <div class="card">
+    <div class="card-head">
+      Performance by Table
+      <span style="font-size:.73rem;color:#555">Total: <%= (tenant.currency||'') %><%= totalRevenue.toLocaleString(undefined,{maximumFractionDigits:0}) %></span>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Table</th><th>Visits</th><th>Revenue</th><th>Revenue Share</th>
+          <th>Avg Check</th><th>Avg Duration</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% tables.forEach(t => {
+           const pct = totalRevenue > 0 ? Math.round(parseFloat(t.revenue)/totalRevenue*100) : 0;
+           const rev = parseFloat(t.revenue);
+           const avg = parseFloat(t.avg_check) || 0;
+           const mins = t.avg_minutes || 0;
+      %>
+      <tr>
+        <td style="color:#fff;font-weight:700"><%= t.table_name %></td>
+        <td><%= t.visits %></td>
+        <td style="font-weight:600;color:#00b894"><%= (tenant.currency||'') %><%= rev.toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="pct-bar-bg"><span class="pct-bar-fill" style="width:<%= pct %>%"></span></span>
+            <span style="color:#888;font-size:.78rem"><%= pct %>%</span>
+          </div>
+        </td>
+        <td><%= (tenant.currency||'') %><%= avg.toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+        <td style="color:#555"><%= mins > 0 ? mins + ' min' : '—' %></td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <% } %>
+</div>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Return #<%= ret.id %> — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .main{padding:24px;max-width:760px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .toast{background:#1e3a2e;border:1px solid #00b894;color:#00b894;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;padding:22px;margin-bottom:16px}
+    .meta-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;margin-bottom:0}
+    .meta-item .meta-label{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#444;margin-bottom:4px}
+    .meta-item .meta-val{font-size:.95rem;font-weight:600;color:#ddd}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 0;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 0;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .total-row td{font-weight:700;color:#e74c3c;font-size:1rem;border-top:2px solid #2a2a3e;padding-top:14px}
+    @media print{.topbar{display:none}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/returns" class="btn btn-ghost">Returns</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Return #<%= ret.id %></span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">↩️ Goods Return #<%= ret.id %></div>
+  <div style="font-size:.8rem;color:#555;margin-bottom:20px"><%= new Date(ret.return_date).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}) %></div>
+
+  <% if (success) { %><div class="toast">✅ <%= success %></div><% } %>
+
+  <div class="card">
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="meta-label">Supplier</div>
+        <div class="meta-val"><%= ret.supplier_name || '—' %></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Reference / DN</div>
+        <div class="meta-val"><%= ret.reference_no || '—' %></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Return Date</div>
+        <div class="meta-val"><%= new Date(ret.return_date).toLocaleDateString() %></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Reason</div>
+        <div class="meta-val"><%= ret.reason || '—' %></div>
+      </div>
+    </div>
+    <% if (ret.notes) { %>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #2a2a3e;font-size:.83rem;color:#555"><%= ret.notes %></div>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div style="font-size:.88rem;font-weight:700;color:#fff">Return Items</div>
+    <table>
+      <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>
+      <% lines.forEach(l => { %>
+      <tr>
+        <td style="color:#ddd;font-weight:500"><%= l.item_name %></td>
+        <td><%= parseFloat(l.qty).toLocaleString(undefined,{maximumFractionDigits:3}) %></td>
+        <td style="color:#555"><%= l.unit || '—' %></td>
+        <td style="color:#888"><%= (tenant.currency||'') %><%= parseFloat(l.unit_price||0).toFixed(4) %></td>
+        <td style="text-align:right;font-weight:600;color:#e74c3c"><%= (tenant.currency||'') %><%= parseFloat(l.total||0).toFixed(2) %></td>
+      </tr>
+      <% }); %>
+      </tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="4">Total Returned</td>
+          <td style="text-align:right"><%= (tenant.currency||'') %><%= parseFloat(ret.total||0).toFixed(2) %></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+</body>
+</html>

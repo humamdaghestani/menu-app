@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Ingredient Price History — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1100px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:800px){.grid2{grid-template-columns:1fr}}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .chg-up{color:#e74c3c;font-weight:700}
+    .chg-dn{color:#00b894;font-weight:700}
+    .chg-flat{color:#555}
+    .a-link{color:#7c5cbf;font-size:.78rem;text-decoration:none;font-weight:600}
+    .a-link:hover{color:#9d7de0}
+    .detail-card{background:#1a1a2e;border-radius:14px;border:1.5px solid #7c5cbf40;overflow:hidden;margin-bottom:16px}
+    .detail-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.9rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+    .empty{text-align:center;padding:32px;color:#333;font-size:.85rem}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Price History</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">📈 Ingredient Price History</div>
+
+  <% if (selItemId && selItemName) { %>
+  <!-- Item detail panel -->
+  <div class="detail-card">
+    <div class="detail-head">
+      📊 Price History: <%= selItemName %>
+      <a href="/inventory/price-history" style="margin-left:auto;font-size:.75rem;color:#7c5cbf">← Back to all items</a>
+    </div>
+    <% if (!itemHistory.length) { %>
+      <div class="empty">No purchase history found for this item.</div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Date</th><th>Supplier</th><th>Unit Price</th></tr></thead>
+      <tbody>
+      <% itemHistory.forEach(h => { %>
+      <tr>
+        <td style="white-space:nowrap;color:#888"><%= new Date(h.receipt_date).toLocaleDateString() %></td>
+        <td><%= h.supplier_name || '—' %></td>
+        <td style="font-weight:600;color:#fff"><%= (tenant.currency||'') %><%= parseFloat(h.unit_price).toFixed(4) %></td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+  <% } %>
+
+  <!-- All items price comparison -->
+  <div class="card">
+    <div class="card-head">
+      Latest vs Previous Price (sorted by biggest change)
+      <span style="font-size:.72rem;color:#444"><%= items.length %> items with purchase history</span>
+    </div>
+    <% if (!items.length) { %>
+      <div class="empty">No purchase receipt history yet. Record a purchase receipt to start tracking.</div>
+    <% } else { %>
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th><th>Unit</th><th>Avg Cost</th>
+          <th>Latest Price</th><th>Prev Price</th><th>Change</th><th>Supplier</th><th>Last Purchase</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+      <% items.forEach(i => {
+           const chgPct = i.change_pct;
+           const chgCls = chgPct === null ? 'chg-flat' : chgPct > 0 ? 'chg-up' : chgPct < 0 ? 'chg-dn' : 'chg-flat';
+           const chgPrefix = chgPct !== null && chgPct > 0 ? '+' : '';
+      %>
+      <tr>
+        <td style="color:#ddd;font-weight:600"><%= i.name %></td>
+        <td style="color:#555"><%= i.unit %></td>
+        <td style="color:#888"><%= (tenant.currency||'') %><%= parseFloat(i.avg_cost).toFixed(4) %></td>
+        <td style="font-weight:700;color:#fff"><%= (tenant.currency||'') %><%= parseFloat(i.latest_price).toFixed(4) %></td>
+        <td style="color:#555"><%= i.prev_price != null ? (tenant.currency||'') + parseFloat(i.prev_price).toFixed(4) : '—' %></td>
+        <td class="<%= chgCls %>">
+          <%= chgPct !== null ? chgPrefix + chgPct.toFixed(1) + '%' : '—' %>
+        </td>
+        <td style="color:#555;font-size:.78rem"><%= i.supplier_name || '—' %></td>
+        <td style="color:#555;font-size:.78rem;white-space:nowrap"><%= i.latest_date ? new Date(i.latest_date).toLocaleDateString() : '—' %></td>
+        <td><a href="/inventory/price-history?item=<%= i.id %>" class="a-link">History</a></td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>

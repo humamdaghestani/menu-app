@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Void &amp; Discount Analysis — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1100px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+    .filter-row input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px}
+    .kpi-label{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:7px}
+    .kpi-val{font-size:1.45rem;font-weight:800;line-height:1}
+    .kpi-sub{font-size:.7rem;color:#444;margin-top:4px}
+    .red{color:#e74c3c}.yellow{color:#f39c12}.green{color:#00b894}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 16px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .empty{text-align:center;padding:32px;color:#333;font-size:.85rem}
+    .void-badge{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(231,76,60,.15);color:#e74c3c;display:inline-block}
+    .disc-badge{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(241,196,15,.12);color:#f1c40f;display:inline-block}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/reports" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Reports</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Voids &amp; Discounts</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">🚫 Void &amp; Discount Analysis</div>
+
+  <form method="GET" action="/reports/voids" class="filter-row">
+    <input type="date" name="from" value="<%= from %>" />
+    <span style="color:#444">→</span>
+    <input type="date" name="to" value="<%= to %>" />
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </form>
+
+  <div class="kpi-grid">
+    <div class="kpi" style="<%= voids.length > 0 ? 'border-color:rgba(231,76,60,.4)' : '' %>">
+      <div class="kpi-label">Voided Orders</div>
+      <div class="kpi-val red"><%= voids.length %></div>
+      <div class="kpi-sub">in this period</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Void Value</div>
+      <div class="kpi-val red"><%= (tenant.currency||'') %><%= voids.reduce((s,v)=>s+parseFloat(v.total||0),0).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">potential revenue lost</div>
+    </div>
+    <div class="kpi" style="<%= discCount > 0 ? 'border-color:rgba(241,196,15,.35)' : '' %>">
+      <div class="kpi-label">Discounted Orders</div>
+      <div class="kpi-val yellow"><%= discCount %></div>
+      <div class="kpi-sub">orders with discount applied</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Discounted</div>
+      <div class="kpi-val yellow"><%= (tenant.currency||'') %><%= discTotal.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">revenue impact</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Void log -->
+    <div class="card">
+      <div class="card-head">🚫 Void Log (<%= voids.length %>)</div>
+      <% if (!voids.length) { %><div class="empty">No voids in this period ✅</div>
+      <% } else { %>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Date</th><th>Table</th><th>Amount</th><th>By</th></tr></thead>
+        <tbody>
+        <% voids.forEach(v => { %>
+        <tr>
+          <td style="color:#888;white-space:nowrap"><%= new Date(v.created_at).toLocaleDateString() %></td>
+          <td><%= v.table_name || '—' %></td>
+          <td class="red" style="font-weight:600"><%= (tenant.currency||'') %><%= parseFloat(v.total||0).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+          <td style="color:#555"><%= v.by_user || '—' %></td>
+        </tr>
+        <% }); %>
+        </tbody>
+      </table>
+      </div>
+      <% } %>
+    </div>
+
+    <!-- Discount by staff -->
+    <div class="card">
+      <div class="card-head">💸 Discounts by Staff</div>
+      <% if (!discByUser.length) { %><div class="empty">No discounts in this period</div>
+      <% } else { %>
+      <table>
+        <thead><tr><th>Staff</th><th>Orders</th><th>Total Disc.</th><th>Types</th></tr></thead>
+        <tbody>
+        <% discByUser.forEach(u => { %>
+        <tr>
+          <td style="color:#ddd;font-weight:500"><%= u.name || 'Unknown' %></td>
+          <td><%= u.disc_orders %></td>
+          <td class="yellow" style="font-weight:600"><%= (tenant.currency||'') %><%= parseFloat(u.disc_total).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+          <td style="color:#555;font-size:.75rem"><%= u.types %></td>
+        </tr>
+        <% }); %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+  </div>
+</div>
+</body>
+</html>

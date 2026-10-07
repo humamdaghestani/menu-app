@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu Engineering — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1200px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+    .filter-row input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+
+    /* Quadrant grid */
+    .quadrant-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+    @media(max-width:700px){.quadrant-grid{grid-template-columns:1fr}}
+    .quadrant{border-radius:14px;border:1.5px solid;padding:0;overflow:hidden}
+    .q-star    {border-color:rgba(0,184,148,.4);background:rgba(0,184,148,.04)}
+    .q-plow    {border-color:rgba(52,152,219,.4);background:rgba(52,152,219,.04)}
+    .q-puzzle  {border-color:rgba(241,196,15,.4);background:rgba(241,196,15,.04)}
+    .q-dog     {border-color:rgba(149,165,166,.35);background:rgba(149,165,166,.03)}
+    .q-head{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px}
+    .q-title{font-size:.95rem;font-weight:800;color:#fff}
+    .q-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:10px}
+    .q-star .q-badge{background:rgba(0,184,148,.2);color:#00b894}
+    .q-plow .q-badge{background:rgba(52,152,219,.2);color:#3498db}
+    .q-puzzle .q-badge{background:rgba(241,196,15,.2);color:#f1c40f}
+    .q-dog .q-badge{background:rgba(149,165,166,.15);color:#95a5a6}
+    .q-desc{font-size:.72rem;color:#555;margin-left:auto}
+    .q-items{max-height:260px;overflow-y:auto}
+    .q-item{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .q-item:last-child{border-bottom:none}
+    .q-item-name{font-size:.85rem;font-weight:600;color:#ddd;flex:1}
+    .q-item-cat{font-size:.72rem;color:#444;margin-left:8px}
+    .q-item-stats{font-size:.78rem;color:#666;text-align:right;white-space:nowrap}
+    .q-empty{padding:28px;text-align:center;color:#333;font-size:.85rem}
+
+    /* Data table */
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .card-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;justify-content:space-between}
+    .card-head-title{font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:9px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .q-chip{font-size:.68rem;font-weight:700;padding:2px 9px;border-radius:10px;display:inline-block}
+    .chip-star  {background:rgba(0,184,148,.15);color:#00b894}
+    .chip-plow  {background:rgba(52,152,219,.15);color:#3498db}
+    .chip-puzzle{background:rgba(241,196,15,.12);color:#f1c40f}
+    .chip-dog   {background:rgba(149,165,166,.12);color:#95a5a6}
+    .sort-btn{cursor:pointer;color:#7c5cbf;background:none;border:none;font-size:.7rem}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/reports" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Reports</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Menu Engineering</span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">🍽️ Menu Engineering</div>
+
+  <form method="GET" action="/reports/menu-engineering" class="filter-row">
+    <input type="date" name="from" value="<%= from %>" />
+    <span style="color:#444">→</span>
+    <input type="date" name="to" value="<%= to %>" />
+    <button type="submit" class="btn btn-primary">Apply</button>
+    <span style="font-size:.75rem;color:#444;margin-left:8px">
+      Avg margin: <strong style="color:#fff"><%= avgMargin.toFixed(2) %></strong> &nbsp;·&nbsp;
+      Avg daily sales: <strong style="color:#fff"><%= avgQty.toFixed(1) %></strong>
+    </span>
+  </form>
+
+  <!-- Quadrant Overview -->
+  <div class="quadrant-grid">
+
+    <div class="quadrant q-star">
+      <div class="q-head">
+        <span style="font-size:1.4rem">⭐</span>
+        <div class="q-title">Stars</div>
+        <span class="q-badge"><%= stars.length %> items</span>
+        <span class="q-desc">High margin · High popularity</span>
+      </div>
+      <div class="q-items">
+        <% if (!stars.length) { %><div class="q-empty">No items in this quadrant</div><% } %>
+        <% stars.forEach(i => { %>
+        <div class="q-item">
+          <div>
+            <div class="q-item-name"><%= i.name %><span class="q-item-cat"> <%= i.category||'' %></span></div>
+          </div>
+          <div class="q-item-stats">
+            <%= i.qty_sold %> sold &nbsp;·&nbsp;
+            <span style="color:#00b894"><%= i.margin_pct.toFixed(0) %>% margin</span>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="quadrant q-plow">
+      <div class="q-head">
+        <span style="font-size:1.4rem">🐎</span>
+        <div class="q-title">Plow Horses</div>
+        <span class="q-badge"><%= plowHorses.length %> items</span>
+        <span class="q-desc">Low margin · High popularity → Raise price</span>
+      </div>
+      <div class="q-items">
+        <% if (!plowHorses.length) { %><div class="q-empty">No items in this quadrant</div><% } %>
+        <% plowHorses.forEach(i => { %>
+        <div class="q-item">
+          <div class="q-item-name"><%= i.name %><span class="q-item-cat"> <%= i.category||'' %></span></div>
+          <div class="q-item-stats">
+            <%= i.qty_sold %> sold &nbsp;·&nbsp;
+            <span style="color:#3498db"><%= i.margin_pct.toFixed(0) %>% margin</span>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="quadrant q-puzzle">
+      <div class="q-head">
+        <span style="font-size:1.4rem">❓</span>
+        <div class="q-title">Puzzles</div>
+        <span class="q-badge"><%= puzzles.length %> items</span>
+        <span class="q-desc">High margin · Low popularity → Promote</span>
+      </div>
+      <div class="q-items">
+        <% if (!puzzles.length) { %><div class="q-empty">No items in this quadrant</div><% } %>
+        <% puzzles.forEach(i => { %>
+        <div class="q-item">
+          <div class="q-item-name"><%= i.name %><span class="q-item-cat"> <%= i.category||'' %></span></div>
+          <div class="q-item-stats">
+            <%= i.qty_sold %> sold &nbsp;·&nbsp;
+            <span style="color:#f1c40f"><%= i.margin_pct.toFixed(0) %>% margin</span>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <div class="quadrant q-dog">
+      <div class="q-head">
+        <span style="font-size:1.4rem">🐕</span>
+        <div class="q-title">Dogs</div>
+        <span class="q-badge"><%= dogs.length %> items</span>
+        <span class="q-desc">Low margin · Low popularity → Review/Remove</span>
+      </div>
+      <div class="q-items">
+        <% if (!dogs.length) { %><div class="q-empty">No items in this quadrant</div><% } %>
+        <% dogs.forEach(i => { %>
+        <div class="q-item">
+          <div class="q-item-name"><%= i.name %><span class="q-item-cat"> <%= i.category||'' %></span></div>
+          <div class="q-item-stats">
+            <%= i.qty_sold %> sold &nbsp;·&nbsp;
+            <span style="color:#95a5a6"><%= i.margin_pct.toFixed(0) %>% margin</span>
+          </div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Table -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-title">📋 All Menu Items (<%= items.length %>)</div>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th><th>Category</th><th>Price</th><th>Cost</th>
+          <th>Contribution</th><th>Margin %</th><th>Qty Sold</th><th>Revenue</th><th>Class</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% const cu = tenant.currency || ''; items.forEach(i => { %>
+      <tr>
+        <td style="color:#fff;font-weight:600"><%= i.name %></td>
+        <td style="color:#555"><%= i.category || '—' %></td>
+        <td><%= cu %><%= parseFloat(i.price).toFixed(2) %></td>
+        <td style="color:<%= i.cost > 0 ? '#ccc' : '#333' %>"><%= i.cost > 0 ? cu + parseFloat(i.cost).toFixed(2) : 'No recipe' %></td>
+        <td style="color:#00b894;font-weight:600"><%= cu %><%= parseFloat(i.contribution_margin).toFixed(2) %></td>
+        <td style="color:<%= i.margin_pct >= 60 ? '#00b894' : i.margin_pct >= 30 ? '#f1c40f' : '#e74c3c' %>">
+          <%= parseFloat(i.margin_pct).toFixed(1) %>%
+        </td>
+        <td style="color:<%= i.qty_sold > 0 ? '#ccc' : '#333' %>"><%= i.qty_sold %></td>
+        <td style="font-weight:600"><%= cu %><%= parseFloat(i.revenue).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+        <td>
+          <span class="q-chip chip-<%= i.quadrant === 'plow_horse' ? 'plow' : i.quadrant %>">
+            <%= i.quadrant === 'star' ? '⭐ Star' : i.quadrant === 'plow_horse' ? '🐎 Plow Horse' : i.quadrant === 'puzzle' ? '❓ Puzzle' : '🐕 Dog' %>
+          </span>
+        </td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <div style="font-size:.72rem;color:#333;text-align:center;padding:8px">
+    Classification is relative to this period's averages. Items with no recipe cost assume 0 cost (may overstate margin).
+  </div>
+</div>
+</body>
+</html>

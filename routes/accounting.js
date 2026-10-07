@@ -770,6 +770,92 @@ router.post('/budgets/:id/lines/:lid/delete', requireAuth, requireAccounting, as
   } catch (err) { console.error(err); res.redirect('/accounting/budgets/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
 });
 
+// ── Balance Sheet ─────────────────────────────────────────────────
+router.get('/balance-sheet', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const asOf = req.query.date || new Date().toISOString().slice(0,10);
+  try {
+    const [invRes, bankRes, receivableRes, payableRes, returnsRes] = await Promise.all([
+      // Current assets: inventory value
+      db.query(`SELECT COALESCE(SUM(stock_qty * avg_cost),0) AS value,
+                  COUNT(*) AS items FROM inventory_items WHERE tenant_id=$1 AND is_active=true`, [tid]),
+      // Current assets: bank accounts
+      db.query(`SELECT COALESCE(SUM(opening_balance),0) AS balance FROM bank_accounts WHERE tenant_id=$1`, [tid]),
+      // Current assets: customer receivables
+      db.query(`SELECT COALESCE(SUM(amount - amount_paid),0) AS total
+                FROM customer_credits WHERE tenant_id=$1 AND status != 'paid'`, [tid]),
+      // Liabilities: supplier payables
+      db.query(`SELECT
+                  COALESCE((SELECT SUM(total) FROM purchase_receipts WHERE tenant_id=$1),0) AS purchased,
+                  COALESCE((SELECT SUM(amount) FROM supplier_payments WHERE tenant_id=$1),0) AS paid`, [tid]),
+      // Reduce payables by goods returned
+      db.query(`SELECT COALESCE(SUM(total),0) AS total FROM purchase_returns WHERE tenant_id=$1`, [tid]),
+    ]);
+
+    const inventoryValue  = parseFloat(invRes.rows[0].value)         || 0;
+    const bankBalance     = parseFloat(bankRes.rows[0].balance)      || 0;
+    const receivables     = parseFloat(receivableRes.rows[0].total)  || 0;
+    const totalPurchased  = parseFloat(payableRes.rows[0].purchased) || 0;
+    const totalPaid       = parseFloat(payableRes.rows[0].paid)      || 0;
+    const goodsReturned   = parseFloat(returnsRes.rows[0].total)     || 0;
+    const supplierPayable = Math.max(0, totalPurchased - totalPaid - goodsReturned);
+
+    const totalAssets      = inventoryValue + bankBalance + receivables;
+    const totalLiabilities = supplierPayable;
+    const equity           = totalAssets - totalLiabilities;
+
+    res.render('accounting/balance-sheet', {
+      tenant: req.tenant, currentUser: req.user, asOf,
+      inventoryValue, bankBalance, receivables, totalAssets,
+      supplierPayable, totalLiabilities, equity,
+      inventoryItems: parseInt(invRes.rows[0].items) || 0,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+// ── Break-even Calculator ─────────────────────────────────────────
+router.get('/breakeven', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+  const to   = now.toISOString().slice(0,10);
+  try {
+    const [revRes, cogsRes, expRes] = await Promise.all([
+      db.query(`SELECT COALESCE(SUM(total),0) AS rev, COUNT(*) AS orders
+                FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+      db.query(`SELECT COALESCE(SUM(ABS(it.qty_change)*ii.avg_cost),0) AS cogs
+                FROM inventory_transactions it
+                JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=it.tenant_id
+                WHERE it.tenant_id=$1 AND it.type='sale' AND it.created_at::date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+      db.query(`SELECT COALESCE(SUM(amount),0) AS total FROM expenses WHERE tenant_id=$1 AND expense_date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+    ]);
+
+    const revenue   = parseFloat(revRes.rows[0].rev)    || 0;
+    const cogs      = parseFloat(cogsRes.rows[0].cogs)  || 0;
+    const expenses  = parseFloat(expRes.rows[0].total)  || 0;
+    const orders    = parseInt(revRes.rows[0].orders)   || 0;
+    const daysCovered = Math.max(1, Math.round((new Date(to) - new Date(from)) / 86400000) + 1);
+    const avgCheck  = orders > 0 ? revenue / orders : 0;
+    const cogsRatio = revenue > 0 ? cogs / revenue : 0;
+    const cmRatio   = 1 - cogsRatio;
+    const breakEvenRev    = cmRatio > 0 ? expenses / cmRatio : 0;
+    const breakEvenOrders = avgCheck > 0 ? Math.ceil(breakEvenRev / avgCheck) : 0;
+    const dailyTarget     = Math.ceil(breakEvenOrders / daysCovered);
+    const dailyRevTarget  = breakEvenRev / daysCovered;
+
+    res.render('accounting/breakeven', {
+      tenant: req.tenant, currentUser: req.user,
+      from, to, daysCovered,
+      revenue, cogs, expenses, orders, avgCheck,
+      cogsRatio, cmRatio, breakEvenRev, breakEvenOrders,
+      dailyTarget, dailyRevTarget,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
 // ── P&L Statement ─────────────────────────────────────────────────
 router.get('/pl', requireAuth, requireAccounting, async (req, res) => {
   const tid = req.user.tenantId;

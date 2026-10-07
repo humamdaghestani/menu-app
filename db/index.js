@@ -804,6 +804,30 @@ const pool = new Pool({
       created_at  TIMESTAMPTZ DEFAULT NOW()
     )`,
     `CREATE INDEX IF NOT EXISTS idx_inventory_batches_expiry ON inventory_batches(tenant_id, expiry_date) WHERE expiry_date IS NOT NULL`,
+    // ── Goods Returns / Debit Notes ───────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS purchase_returns (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      supplier_id   INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+      supplier_name VARCHAR(120),
+      return_date   DATE DEFAULT CURRENT_DATE,
+      reference_no  VARCHAR(60),
+      reason        VARCHAR(200),
+      notes         TEXT,
+      total         NUMERIC(12,2) DEFAULT 0,
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS purchase_return_lines (
+      id          SERIAL PRIMARY KEY,
+      return_id   INTEGER REFERENCES purchase_returns(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE SET NULL,
+      item_name   VARCHAR(120),
+      unit        VARCHAR(20),
+      qty         NUMERIC(14,4) NOT NULL,
+      unit_price  NUMERIC(12,4) DEFAULT 0,
+      total       NUMERIC(12,2)
+    )`,
     // ── Waste / Spoilage logging ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS inventory_waste (
       id          SERIAL PRIMARY KEY,

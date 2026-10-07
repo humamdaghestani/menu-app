@@ -1560,6 +1560,152 @@ async function deductStockForOrder(tenantId, orderId, userId) {
   }
 }
 
+// ── Goods Returns / Debit Notes ───────────────────────────────────
+router.get('/returns', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [returnsRes, suppRes] = await Promise.all([
+      db.query(`SELECT pr.*, u.name AS created_by_name
+                FROM purchase_returns pr LEFT JOIN users u ON u.id=pr.created_by
+                WHERE pr.tenant_id=$1 ORDER BY pr.created_at DESC LIMIT 50`, [tid]),
+      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/returns', {
+      tenant: req.tenant, currentUser: req.user,
+      returns: returnsRes.rows, suppliers: suppRes.rows,
+      success: req.query.success ? decodeURIComponent(req.query.success) : null,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.get('/returns/new', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [itemsRes, suppRes] = await Promise.all([
+      db.query(`SELECT id, name, unit, avg_cost FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/return-new', {
+      tenant: req.tenant, currentUser: req.user,
+      items: itemsRes.rows, suppliers: suppRes.rows,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.post('/returns', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { supplier_id, supplier_name, return_date, reference_no, reason, notes,
+          'item_id[]': rawItemIds, 'qty[]': rawQtys, 'unit_price[]': rawPrices } = req.body;
+  const itemIds   = [].concat(rawItemIds  || []);
+  const qtys      = [].concat(rawQtys     || []);
+  const unitPrices= [].concat(rawPrices   || []);
+  try {
+    const retRes = await db.query(
+      `INSERT INTO purchase_returns (tenant_id,supplier_id,supplier_name,return_date,reference_no,reason,notes,created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      [tid, supplier_id||null, supplier_name||null, return_date||new Date().toISOString().slice(0,10),
+       reference_no||null, reason||null, notes||null, req.user.userId]
+    );
+    const retId = retRes.rows[0].id;
+    let total = 0;
+    for (let i = 0; i < itemIds.length; i++) {
+      if (!itemIds[i]) continue;
+      const qty   = parseFloat(qtys[i])       || 0;
+      const price = parseFloat(unitPrices[i]) || 0;
+      const lineTotal = qty * price;
+      total += lineTotal;
+      const item = (await db.query('SELECT name, unit FROM inventory_items WHERE id=$1 AND tenant_id=$2', [itemIds[i], tid])).rows[0];
+      if (!item) continue;
+      await db.query(
+        `INSERT INTO purchase_return_lines (return_id,item_id,item_name,unit,qty,unit_price,total)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [retId, itemIds[i], item.name, item.unit, qty, price, lineTotal]
+      );
+      // Deduct from stock
+      await db.query('UPDATE inventory_items SET stock_qty=stock_qty-$1 WHERE id=$2 AND tenant_id=$3', [qty, itemIds[i], tid]);
+      await db.query(
+        `INSERT INTO inventory_transactions (tenant_id,item_id,type,qty_change,reference_id,reference_type,notes,created_by)
+         VALUES ($1,$2,'return',$3,$4,'purchase_return','Goods return',$5)`,
+        [tid, itemIds[i], -qty, retId, req.user.userId]
+      );
+    }
+    await db.query('UPDATE purchase_returns SET total=$1 WHERE id=$2', [total, retId]);
+    res.redirect('/inventory/returns/' + retId + '?success=Return+recorded');
+  } catch(err){ console.error(err); res.redirect('/inventory/returns/new?error=' + encodeURIComponent(err.message)); }
+});
+
+router.get('/returns/:id', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [retRes, linesRes] = await Promise.all([
+      db.query(`SELECT pr.*, u.name AS created_by_name
+                FROM purchase_returns pr LEFT JOIN users u ON u.id=pr.created_by
+                WHERE pr.id=$1 AND pr.tenant_id=$2`, [req.params.id, tid]),
+      db.query('SELECT * FROM purchase_return_lines WHERE return_id=$1 ORDER BY id', [req.params.id]),
+    ]);
+    if (!retRes.rows[0]) return res.redirect('/inventory/returns');
+    res.render('inventory/return-view', {
+      tenant: req.tenant, currentUser: req.user,
+      ret: retRes.rows[0], lines: linesRes.rows,
+      success: req.query.success ? decodeURIComponent(req.query.success) : null,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+// ── Ingredient Price History ───────────────────────────────────────
+router.get('/price-history', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const pricesRes = await db.query(`
+      WITH ranked AS (
+        SELECT
+          prl.item_id, prl.unit_price,
+          pr.receipt_date, pr.supplier_name,
+          ROW_NUMBER() OVER (PARTITION BY prl.item_id ORDER BY pr.receipt_date DESC, prl.id DESC) AS rn
+        FROM purchase_receipt_lines prl
+        JOIN purchase_receipts pr ON pr.id = prl.receipt_id
+        WHERE pr.tenant_id=$1 AND prl.item_id IS NOT NULL
+      )
+      SELECT
+        ii.id, ii.name, ii.unit, ii.avg_cost::float,
+        p1.unit_price::float AS latest_price,
+        p1.receipt_date      AS latest_date,
+        p1.supplier_name,
+        p2.unit_price::float AS prev_price,
+        CASE WHEN p2.unit_price > 0
+             THEN ROUND((p1.unit_price - p2.unit_price) / p2.unit_price * 100, 1)
+             ELSE NULL END::float AS change_pct
+      FROM inventory_items ii
+      JOIN ranked p1 ON p1.item_id = ii.id AND p1.rn = 1
+      LEFT JOIN ranked p2 ON p2.item_id = ii.id AND p2.rn = 2
+      WHERE ii.tenant_id=$1 AND ii.is_active=true
+      ORDER BY ABS(COALESCE((p1.unit_price - p2.unit_price) / NULLIF(p2.unit_price, 0), 0)) DESC
+    `, [tid]);
+
+    // Per-item history (last 10 purchases) for selected item
+    const selItemId = req.query.item ? parseInt(req.query.item) : null;
+    let itemHistory = [];
+    if (selItemId) {
+      const histRes = await db.query(`
+        SELECT prl.unit_price::float, prl.qty::float, pr.receipt_date, pr.supplier_name
+        FROM purchase_receipt_lines prl
+        JOIN purchase_receipts pr ON pr.id=prl.receipt_id
+        WHERE pr.tenant_id=$1 AND prl.item_id=$2
+        ORDER BY pr.receipt_date DESC, prl.id DESC LIMIT 20
+      `, [tid, selItemId]);
+      itemHistory = histRes.rows;
+    }
+
+    res.render('inventory/price-history', {
+      tenant: req.tenant, currentUser: req.user,
+      items: pricesRes.rows,
+      selItemId,
+      itemHistory,
+      selItemName: selItemId ? (pricesRes.rows.find(i=>i.id===selItemId)||{}).name : null,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
 // ── Auto-Reorder Report ────────────────────────────────────────────
 router.get('/reorder', requireAuth, requireInventory, async (req, res) => {
   const tid = req.user.tenantId;

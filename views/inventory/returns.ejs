@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Goods Returns — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{background:#6a4daa}
+    .main{padding:24px;max-width:1000px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .toast{background:#1e3a2e;border:1px solid #00b894;color:#00b894;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden}
+    .card-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:11px 16px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .empty{text-align:center;padding:48px;color:#333;font-size:.9rem}
+    .a-link{color:#7c5cbf;text-decoration:none;font-weight:600}.a-link:hover{color:#9d7de0}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Goods Returns</span>
+  </div>
+  <a href="/inventory/returns/new" class="btn btn-primary">+ New Return</a>
+</div>
+
+<div class="main">
+  <div class="page-title">↩️ Goods Returns / Debit Notes</div>
+
+  <% if (success) { %><div class="toast">✅ <%= success %></div><% } %>
+
+  <div class="card">
+    <div class="card-head">
+      All Returns (<%= returns.length %>)
+    </div>
+    <% if (!returns.length) { %>
+      <div class="empty">No returns recorded yet.</div>
+    <% } else { %>
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Supplier</th><th>Ref No.</th><th>Reason</th><th>Total</th><th></th></tr>
+      </thead>
+      <tbody>
+      <% returns.forEach(r => { %>
+      <tr>
+        <td style="white-space:nowrap;color:#888"><%= new Date(r.return_date).toLocaleDateString() %></td>
+        <td style="color:#ddd;font-weight:500"><%= r.supplier_name || '—' %></td>
+        <td style="color:#666;font-size:.78rem"><%= r.reference_no || '—' %></td>
+        <td style="color:#888"><%= r.reason || '—' %></td>
+        <td style="font-weight:600;color:#e74c3c"><%= (tenant.currency||'') %><%= parseFloat(r.total||0).toLocaleString(undefined,{maximumFractionDigits:2}) %></td>
+        <td><a href="/inventory/returns/<%= r.id %>" class="a-link">View →</a></td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Balance Sheet — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:700px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .page-sub{font-size:.85rem;color:#555;margin-bottom:20px}
+    .date-row{display:flex;gap:10px;align-items:center;margin-bottom:28px;flex-wrap:wrap}
+    .date-row input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    .section{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:14px}
+    .section-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+    .line{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .line:last-child{border-bottom:none}
+    .line-label{font-size:.85rem;color:#aaa}
+    .line-sub{font-size:.72rem;color:#444;margin-top:2px}
+    .line-val{font-size:.9rem;font-weight:600;color:#fff}
+    .subtotal{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;background:rgba(255,255,255,.03);border-top:1px solid #2a2a3e}
+    .subtotal-label{font-size:.82rem;font-weight:700;text-transform:uppercase;color:#666;letter-spacing:.4px}
+    .subtotal-val{font-size:1.05rem;font-weight:800}
+    .green{color:#00b894}.red{color:#e74c3c}.blue{color:#3498db}.yellow{color:#f39c12}
+    .equity-box{background:linear-gradient(135deg,rgba(124,92,191,.2),rgba(52,152,219,.1));border-radius:14px;border:1.5px solid #7c5cbf50;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+    .eq-label{font-size:.72rem;font-weight:700;text-transform:uppercase;color:#7c5cbf;letter-spacing:.4px;margin-bottom:6px}
+    .eq-val{font-size:1.8rem;font-weight:900;line-height:1}
+    .note{font-size:.72rem;color:#333;text-align:center;padding:12px 0}
+    @media print{.topbar,.date-row{display:none}.section{border:1px solid #ddd}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/accounting" class="btn btn-ghost">Accounting</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Balance Sheet</span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">🏛️ Balance Sheet</div>
+  <div class="page-sub"><%= tenant.name %></div>
+
+  <form method="GET" action="/accounting/balance-sheet" class="date-row">
+    <label style="color:#555;font-size:.82rem">As of</label>
+    <input type="date" name="date" value="<%= asOf %>" />
+    <button type="submit" class="btn btn-primary">Update</button>
+    <span style="font-size:.82rem;color:#333"><%= new Date(asOf).toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'long',day:'numeric'}) %></span>
+  </form>
+
+  <!-- ASSETS -->
+  <div class="section">
+    <div class="section-head">📦 Assets</div>
+    <div class="line">
+      <div>
+        <div class="line-label">Inventory Value</div>
+        <div class="line-sub"><%= inventoryItems %> active items at avg cost</div>
+      </div>
+      <div class="line-val green"><%= (tenant.currency||'') %><%= inventoryValue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="line">
+      <div>
+        <div class="line-label">Bank / Cash Balance</div>
+        <div class="line-sub">from recorded cash flow entries</div>
+      </div>
+      <div class="line-val green"><%= (tenant.currency||'') %><%= bankBalance.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="line">
+      <div>
+        <div class="line-label">Customer Receivables</div>
+        <div class="line-sub">outstanding customer balances</div>
+      </div>
+      <div class="line-val green"><%= (tenant.currency||'') %><%= receivables.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="subtotal">
+      <div class="subtotal-label">Total Assets</div>
+      <div class="subtotal-val green"><%= (tenant.currency||'') %><%= totalAssets.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+  </div>
+
+  <!-- LIABILITIES -->
+  <div class="section">
+    <div class="section-head">💳 Liabilities</div>
+    <div class="line">
+      <div>
+        <div class="line-label">Supplier Payable</div>
+        <div class="line-sub">total purchased − paid − goods returned</div>
+      </div>
+      <div class="line-val red"><%= (tenant.currency||'') %><%= supplierPayable.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="subtotal">
+      <div class="subtotal-label">Total Liabilities</div>
+      <div class="subtotal-val red"><%= (tenant.currency||'') %><%= totalLiabilities.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+  </div>
+
+  <!-- EQUITY -->
+  <div class="equity-box">
+    <div>
+      <div class="eq-label">Owner's Equity</div>
+      <div style="font-size:.75rem;color:#555;margin-top:2px">Assets − Liabilities</div>
+    </div>
+    <div class="eq-val <%= equity >= 0 ? 'green' : 'red' %>">
+      <%= (tenant.currency||'') %><%= equity.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %>
+    </div>
+  </div>
+
+  <div class="note">Simplified balance sheet. Inventory value uses current avg cost. Bank balance from cash flow module.</div>
+</div>
+</body>
+</html>

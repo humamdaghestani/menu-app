@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EOD Report — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1000px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .page-sub{font-size:.85rem;color:#555;margin-bottom:20px}
+    .date-nav{display:flex;gap:8px;align-items:center;margin-bottom:24px;flex-wrap:wrap}
+    .date-nav input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:24px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px}
+    .kpi-label{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:7px}
+    .kpi-val{font-size:1.45rem;font-weight:800;line-height:1}
+    .kpi-sub{font-size:.7rem;color:#444;margin-top:4px}
+    .green{color:#00b894}.red{color:#e74c3c}.yellow{color:#f39c12}.white{color:#fff}
+
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+    @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:8px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:9px 16px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .empty{text-align:center;padding:28px;color:#333;font-size:.85rem}
+
+    /* Hour chart */
+    .hour-chart{display:flex;align-items:flex-end;gap:3px;height:80px;padding:8px 16px 14px}
+    .hr-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end}
+    .hr-bar{width:100%;border-radius:3px 3px 0 0;background:#7c5cbf;min-height:2px}
+    .hr-lbl{font-size:.55rem;color:#333}
+
+    /* Payment method row */
+    .pay-row{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .pay-row:last-child{border-bottom:none}
+
+    @media print{body{background:#fff;color:#000}.topbar,.date-nav{display:none}.card{border:1px solid #ddd}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/reports" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Reports</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ EOD Summary</span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">📋 End-of-Day Summary</div>
+  <div class="page-sub"><%= tenant.name %></div>
+
+  <form method="GET" action="/reports/eod" class="date-nav">
+    <a href="/reports/eod?date=<%= new Date(new Date(date).getTime()-86400000).toISOString().slice(0,10) %>" class="btn btn-ghost">← Prev</a>
+    <input type="date" name="date" value="<%= date %>" onchange="this.form.submit()" />
+    <a href="/reports/eod?date=<%= new Date(new Date(date).getTime()+86400000).toISOString().slice(0,10) %>" class="btn btn-ghost">Next →</a>
+    <span style="font-size:.85rem;color:#555"><%= new Date(date).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'}) %></span>
+  </form>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi" style="border-color:<%= revenue > 0 ? '#00b89440' : '' %>">
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-val green"><%= revenue.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= tenant.currency || '' %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Orders</div>
+      <div class="kpi-val white"><%= orders %></div>
+      <div class="kpi-sub">paid orders</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg Check</div>
+      <div class="kpi-val yellow"><%= avgCheck.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">per order</div>
+    </div>
+    <div class="kpi" style="<%= voids > 0 ? 'border-color:rgba(231,76,60,.4)' : '' %>">
+      <div class="kpi-label">Voids</div>
+      <div class="kpi-val <%= voids > 0 ? 'red' : 'white' %>"><%= voids %></div>
+      <div class="kpi-sub">voided orders</div>
+    </div>
+    <div class="kpi" style="<%= totalDisc > 0 ? 'border-color:rgba(241,196,15,.3)' : '' %>">
+      <div class="kpi-label">Discounts</div>
+      <div class="kpi-val yellow"><%= totalDisc.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= discOrders %> orders discounted</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Net Revenue</div>
+      <div class="kpi-val green" style="font-size:1.3rem"><%= (revenue - totalDisc).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">after discounts</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Sales by hour -->
+    <div class="card">
+      <div class="card-head">⏰ Revenue by Hour</div>
+      <% const maxH = Math.max(...hourly.map(h=>parseFloat(h.revenue)||0),1); %>
+      <div class="hour-chart">
+        <% for(let h=0;h<24;h++){
+             const hd = hourly.find(x=>parseInt(x.hour)===h);
+             const rev = hd ? parseFloat(hd.revenue) : 0;
+             const pct = Math.round(rev/maxH*100);
+             const lbl = h===0?'12a':h<12?h+'a':h===12?'12p':(h-12)+'p';
+        %>
+        <div class="hr-col">
+          <div class="hr-bar" style="height:<%= pct %>%" title="<%= lbl %>: <%= rev.toLocaleString(undefined,{maximumFractionDigits:0}) %>"></div>
+          <div class="hr-lbl"><%= lbl %></div>
+        </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Payment methods -->
+    <div class="card">
+      <div class="card-head">💳 Payment Methods</div>
+      <% if (!payMethods.length) { %>
+        <div class="empty">No payment data</div>
+      <% } else { %>
+        <% const pmTotal = payMethods.reduce((s,p)=>s+parseFloat(p.total),0); %>
+        <% payMethods.forEach(p => { const pct = pmTotal>0?Math.round(parseFloat(p.total)/pmTotal*100):0; %>
+        <div class="pay-row">
+          <div>
+            <div style="font-size:.85rem;font-weight:600;color:#ddd;text-transform:capitalize"><%= p.method %></div>
+            <div style="font-size:.72rem;color:#444;margin-top:2px"><%= p.cnt %> transactions</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;color:#fff"><%= parseFloat(p.total).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+            <div style="font-size:.72rem;color:#555"><%= pct %>%</div>
+          </div>
+        </div>
+        <% }); %>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Top Items -->
+    <div class="card">
+      <div class="card-head">🔥 Top Items</div>
+      <% if (!topItems.length) { %><div class="empty">No sales today</div>
+      <% } else { %>
+        <% const maxRev = Math.max(...topItems.map(i=>parseFloat(i.revenue)||0),1); %>
+        <table>
+          <thead><tr><th>Item</th><th>Qty</th><th>Revenue</th></tr></thead>
+          <tbody>
+          <% topItems.forEach(i => { %>
+          <tr>
+            <td style="color:#ddd;font-weight:500"><%= i.name %></td>
+            <td><%= i.qty %></td>
+            <td style="color:#00b894;font-weight:600"><%= parseFloat(i.revenue).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+          </tr>
+          <% }); %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <!-- By category -->
+    <div class="card">
+      <div class="card-head">📂 Revenue by Category</div>
+      <% if (!categories.length) { %><div class="empty">No data</div>
+      <% } else {
+           const catTotal = categories.reduce((s,c)=>s+parseFloat(c.revenue),0);
+      %>
+      <% categories.forEach(c => { const pct = catTotal>0?Math.round(parseFloat(c.revenue)/catTotal*100):0; %>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+          <div style="font-size:.85rem;color:#ddd"><%= c.cat %></div>
+          <div style="text-align:right">
+            <div style="font-weight:600;color:#fff"><%= parseFloat(c.revenue).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+            <div style="font-size:.7rem;color:#444"><%= pct %>%</div>
+          </div>
+        </div>
+      <% }); %>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Staff performance -->
+  <% if (staff.length) { %>
+  <div class="card">
+    <div class="card-head">👥 Staff Performance</div>
+    <table>
+      <thead><tr><th>Staff</th><th>Orders</th><th>Revenue</th><th>Avg Check</th></tr></thead>
+      <tbody>
+      <% staff.forEach(s => { %>
+      <tr>
+        <td style="color:#ddd;font-weight:500"><%= s.name || 'Unknown' %></td>
+        <td><%= s.orders %></td>
+        <td style="color:#00b894;font-weight:600"><%= parseFloat(s.revenue).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+        <td style="color:#888"><%= (s.orders > 0 ? parseFloat(s.revenue)/s.orders : 0).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Break-even — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:760px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:28px}
+    .filter-row input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .result-banner{border-radius:14px;padding:28px 30px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .result-banner.below{background:linear-gradient(135deg,rgba(0,184,148,.15),rgba(52,152,219,.08));border:1.5px solid #00b89440}
+    .result-banner.above{background:linear-gradient(135deg,rgba(231,76,60,.12),rgba(192,57,43,.08));border:1.5px solid rgba(231,76,60,.4)}
+    .result-banner.na{background:#1a1a2e;border:1px solid #2a2a3e}
+    .be-label{font-size:.72rem;font-weight:700;text-transform:uppercase;color:#555;letter-spacing:.4px;margin-bottom:6px}
+    .be-val{font-size:2rem;font-weight:900;line-height:1.1}
+    .be-sub{font-size:.8rem;color:#444;margin-top:4px}
+    .green{color:#00b894}.red{color:#e74c3c}.yellow{color:#f39c12}.blue{color:#3498db}
+    .metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+    .metric{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px}
+    .metric-label{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:7px}
+    .metric-val{font-size:1.3rem;font-weight:800;line-height:1}
+    .metric-sub{font-size:.7rem;color:#444;margin-top:4px}
+    .breakdown{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .breakdown-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff}
+    .bk-row{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .bk-row:last-child{border-bottom:none}
+    .bk-label{font-size:.85rem;color:#aaa}
+    .bk-val{font-size:.9rem;font-weight:600}
+    .bk-total{background:rgba(255,255,255,.03);border-top:1px solid #2a2a3e}
+    .bk-total .bk-label{font-weight:700;text-transform:uppercase;color:#666;font-size:.78rem}
+    .bk-total .bk-val{font-size:1.05rem;font-weight:800}
+    .note{font-size:.72rem;color:#333;text-align:center;padding:10px 0;margin-top:4px}
+    .daily-target-box{border-radius:12px;background:rgba(124,92,191,.1);border:1.5px solid rgba(124,92,191,.3);padding:20px 22px;text-align:center}
+    .dt-label{font-size:.72rem;font-weight:700;text-transform:uppercase;color:#7c5cbf;letter-spacing:.4px;margin-bottom:8px}
+    .dt-val{font-size:2rem;font-weight:900;color:#fff;line-height:1}
+    .dt-sub{font-size:.78rem;color:#555;margin-top:5px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+    @media(max-width:600px){.grid2{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/accounting" class="btn btn-ghost">Accounting</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Break-even</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">⚖️ Break-even Calculator</div>
+
+  <form method="GET" action="/accounting/breakeven" class="filter-row">
+    <input type="date" name="from" value="<%= from %>" />
+    <span style="color:#444">→</span>
+    <input type="date" name="to" value="<%= to %>" />
+    <button type="submit" class="btn btn-primary">Calculate</button>
+    <span style="font-size:.78rem;color:#333"><%= daysCovered %> days</span>
+  </form>
+
+  <%
+    const cu = tenant.currency || '';
+    const isAbove = revenue >= breakEvenRev;
+    const noData  = revenue === 0;
+    const bannerCls = noData ? 'na' : isAbove ? 'below' : 'above';
+    const statusText = noData ? 'No data' : isAbove ? '✅ Above break-even' : '⚠️ Below break-even';
+  %>
+
+  <!-- Main result banner -->
+  <div class="result-banner <%= bannerCls %>">
+    <div>
+      <div class="be-label">Break-even Revenue</div>
+      <div class="be-val <%= noData ? '' : isAbove ? 'green' : 'red' %>">
+        <%= noData ? '—' : cu + breakEvenRev.toLocaleString(undefined,{maximumFractionDigits:0}) %>
+      </div>
+      <div class="be-sub"><%= breakEvenOrders > 0 ? breakEvenOrders + ' orders needed to break even' : 'Enter data above' %></div>
+    </div>
+    <div style="text-align:right">
+      <div class="be-label">Status</div>
+      <div style="font-size:1.2rem;font-weight:800"><%= statusText %></div>
+      <% if (!noData) { %>
+      <div class="be-sub">Actual: <%= cu %><%= revenue.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Input breakdown -->
+  <div class="breakdown" style="margin-bottom:24px">
+    <div class="breakdown-head">📊 Inputs (from <%= from %> to <%= to %>)</div>
+    <div class="bk-row">
+      <div class="bk-label">Total Revenue</div>
+      <div class="bk-val green"><%= cu %><%= revenue.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+    </div>
+    <div class="bk-row">
+      <div class="bk-label">COGS (variable cost)</div>
+      <div class="bk-val red"><%= cu %><%= cogs.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+    </div>
+    <div class="bk-row">
+      <div class="bk-label">COGS Ratio</div>
+      <div class="bk-val"><%= (cogsRatio*100).toFixed(1) %>%</div>
+    </div>
+    <div class="bk-row bk-total">
+      <div class="bk-label">Contribution Margin Ratio</div>
+      <div class="bk-val blue"><%= (cmRatio*100).toFixed(1) %>%</div>
+    </div>
+    <div class="bk-row">
+      <div class="bk-label">Fixed Expenses</div>
+      <div class="bk-val red"><%= cu %><%= expenses.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+    </div>
+    <div class="bk-row">
+      <div class="bk-label">Total Orders</div>
+      <div class="bk-val"><%= orders %></div>
+    </div>
+    <div class="bk-row">
+      <div class="bk-label">Avg Check</div>
+      <div class="bk-val"><%= cu %><%= avgCheck.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+    </div>
+  </div>
+
+  <!-- Daily targets -->
+  <% if (!noData && cmRatio > 0) { %>
+  <div class="grid2">
+    <div class="daily-target-box">
+      <div class="dt-label">Daily Revenue Target</div>
+      <div class="dt-val"><%= cu %><%= dailyRevTarget.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      <div class="dt-sub">per day to break even over <%= daysCovered %> days</div>
+    </div>
+    <div class="daily-target-box">
+      <div class="dt-label">Daily Orders Target</div>
+      <div class="dt-val"><%= dailyTarget %></div>
+      <div class="dt-sub">orders/day needed (avg check: <%= cu %><%= avgCheck.toLocaleString(undefined,{maximumFractionDigits:0}) %>)</div>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="note">Break-even = Fixed Expenses ÷ Contribution Margin Ratio. COGS from inventory transactions.</div>
+</div>
+</body>
+</html>

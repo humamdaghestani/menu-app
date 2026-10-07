@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>New Return — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{background:#6a4daa}
+    .btn-danger{background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.3)}
+    .main{padding:24px;max-width:760px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:20px}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;padding:24px;margin-bottom:16px}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+    .form-row-1{margin-bottom:14px}
+    label{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:5px}
+    input,select,textarea{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#e0e0e0;padding:9px 12px;border-radius:8px;font-family:inherit;font-size:.87rem;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#7c5cbf}
+    select option{background:#1a1a2e}
+    .section-title{font-size:.88rem;font-weight:700;color:#fff;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #2a2a3e}
+    .lines-table{width:100%;border-collapse:collapse;margin-bottom:12px}
+    .lines-table th{font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:6px 8px;border-bottom:1px solid #2a2a3e}
+    .lines-table td{padding:6px 4px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .lines-table input,.lines-table select{padding:6px 8px;font-size:.82rem}
+    .btn-add{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(124,92,191,.12);border:1px solid rgba(124,92,191,.3);color:#7c5cbf;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;margin-bottom:14px}
+    .total-display{text-align:right;font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:16px}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/returns" class="btn btn-ghost">Returns</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ New Return</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">↩️ Record Goods Return</div>
+
+  <form method="POST" action="/inventory/returns" id="returnForm">
+    <div class="card">
+      <div class="form-row">
+        <div>
+          <label>Return Date</label>
+          <input type="date" name="return_date" value="<%= new Date().toISOString().slice(0,10) %>" required />
+        </div>
+        <div>
+          <label>Supplier</label>
+          <select name="supplier_id">
+            <option value="">— Select or type name below —</option>
+            <% suppliers.forEach(s => { %><option value="<%= s.id %>"><%= s.name %></option><% }); %>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Supplier Name (if not in list)</label>
+          <input type="text" name="supplier_name" placeholder="Enter supplier name" />
+        </div>
+        <div>
+          <label>Reference / DN No.</label>
+          <input type="text" name="reference_no" placeholder="e.g. DN-2026-001" />
+        </div>
+      </div>
+      <div class="form-row-1">
+        <label>Reason</label>
+        <input type="text" name="reason" placeholder="e.g. Damaged goods, wrong item, expired..." />
+      </div>
+      <div class="form-row-1">
+        <label>Notes</label>
+        <textarea name="notes" rows="2" placeholder="Additional details..."></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Return Items</div>
+      <table class="lines-table" id="linesTable">
+        <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th>Total</th><th></th></tr></thead>
+        <tbody id="linesBody">
+          <tr class="line-row">
+            <td>
+              <select name="item_id[]" class="item-sel" onchange="fillUnit(this)">
+                <option value="">— Select item —</option>
+                <% items.forEach(i => { %><option value="<%= i.id %>" data-unit="<%= i.unit %>" data-cost="<%= i.avg_cost %>"><%= i.name %></option><% }); %>
+              </select>
+            </td>
+            <td><input type="number" name="qty[]" class="qty-in" step="0.001" min="0" placeholder="0" onchange="calcLine(this)" /></td>
+            <td><input type="text" name="unit[]" class="unit-in" placeholder="unit" style="max-width:70px" /></td>
+            <td><input type="number" name="unit_price[]" class="price-in" step="0.01" min="0" placeholder="0.00" onchange="calcLine(this)" /></td>
+            <td class="line-total" style="font-weight:600;color:#e74c3c">—</td>
+            <td><button type="button" onclick="removeLine(this)" class="btn btn-danger" style="padding:4px 8px;font-size:.75rem">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <button type="button" class="btn-add" onclick="addLine()">+ Add Item</button>
+      <div class="total-display">Total: <span id="grandTotal"><%= tenant.currency||'' %>0.00</span></div>
+      <input type="hidden" name="total" id="totalInput" value="0" />
+      <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;font-size:.95rem;justify-content:center">Save Return</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const items = <%- JSON.stringify(items.map(i=>({id:i.id,unit:i.unit,cost:parseFloat(i.avg_cost)||0}))) %>;
+
+function fillUnit(sel){
+  const row = sel.closest('tr');
+  const opt = sel.options[sel.selectedIndex];
+  const unitEl = row.querySelector('.unit-in');
+  const priceEl = row.querySelector('.price-in');
+  unitEl.value = opt.dataset.unit || '';
+  if (!priceEl.value || parseFloat(priceEl.value)===0) {
+    const item = items.find(i=>i.id==sel.value);
+    if (item) priceEl.value = item.cost.toFixed(4);
+  }
+  calcLine(sel);
+}
+
+function calcLine(el){
+  const row = el.closest('tr');
+  const qty = parseFloat(row.querySelector('.qty-in').value)||0;
+  const price = parseFloat(row.querySelector('.price-in').value)||0;
+  const tot = qty*price;
+  row.querySelector('.line-total').textContent = tot>0 ? (tot.toFixed(2)) : '—';
+  updateTotal();
+}
+
+function updateTotal(){
+  let sum = 0;
+  document.querySelectorAll('.line-total').forEach(el=>{
+    const v = parseFloat(el.textContent);
+    if (!isNaN(v)) sum+=v;
+  });
+  const cu = '<%= tenant.currency||"" %>';
+  document.getElementById('grandTotal').textContent = cu + sum.toFixed(2);
+  document.getElementById('totalInput').value = sum.toFixed(2);
+}
+
+function addLine(){
+  const tbody = document.getElementById('linesBody');
+  const first = tbody.querySelector('tr.line-row');
+  const clone = first.cloneNode(true);
+  clone.querySelectorAll('input').forEach(i=>i.value='');
+  clone.querySelector('.line-total').textContent='—';
+  clone.querySelector('.item-sel').value='';
+  tbody.appendChild(clone);
+}
+
+function removeLine(btn){
+  const tbody = document.getElementById('linesBody');
+  if (tbody.querySelectorAll('tr.line-row').length <= 1) return;
+  btn.closest('tr').remove();
+  updateTotal();
+}
+</script>
+</body>
+</html>
