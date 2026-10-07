@@ -75,12 +75,15 @@
   </div>
   <nav class="sidebar-nav">
     <a href="/admin"><span class="icon">🏠</span>Home</a>
-    <a href="/admin/dashboard"><span class="icon">📊</span>Dashboard</a>
-    <a href="/admin/items"><span class="icon">🍽️</span>Menu Items</a>
-    <a href="/inventory"><span class="icon">📦</span>Inventory</a>
-    <a href="/pos"><span class="icon">🖥️</span>POS</a>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
     <a href="/admin/settings"><span class="icon">⚙️</span>Settings</a>
+    <a href="/admin/menu-settings"><span class="icon">🎨</span>Menu Settings</a>
+    <a href="/admin/users"><span class="icon">👥</span>Users</a>
+    <a href="/admin/workspace"><span class="icon">🔐</span>Team & Access</a>
     <a href="/admin/audit" class="active"><span class="icon">🔍</span>Audit Log</a>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;color:#aaa;background:none;border:none;cursor:pointer;width:100%;font-size:.88rem;font-family:inherit"><span class="icon">🚪</span>Logout</button>
+    </form>
   </nav>
 </div>
 

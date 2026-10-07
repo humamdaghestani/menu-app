@@ -94,18 +94,16 @@
     </div>
   </div>
   <nav class="sidebar-nav">
-    <a href="/admin" title="All Modules"><span class="icon">🏠</span><span>All Modules</span></a>
-    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
     <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
-    <% if (_can('items')) { %><a href="/admin/dashboard"><span class="icon">📊</span><span>Dashboard</span></a><% } %>
-    <% if (_can('items')) { %><a href="/admin/items"><span class="icon">🍽️</span><span>Items</span></a><% } %>
-    <% if (_can('orders') && tenant && tenant.feat_orders !== false) { %><a href="/admin/orders"><span class="icon">📋</span><span>Orders</span></a><% } %>
-    <% if (_can('feedback') && tenant && tenant.feat_feedback !== false) { %><a href="/admin/feedback"><span class="icon">💬</span><span>Feedback</span></a><% } %>
-    <% if (_can('import') && tenant && tenant.feat_import !== false) { %><a href="/admin/import"><span class="icon">📥</span><span>Import</span></a><% } %>
-    <a href="/admin/qrcode"><span class="icon">📱</span><span>QR Code</span></a>
-    <% if (tenant.feat_pos) { %><a href="/pos"><span class="icon">🖥️</span><span>POS</span></a><% } %>
+    <a href="/admin"><span class="icon">🏠</span><span>Home</span></a>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
+    <a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a>
+    <a href="/admin/menu-settings"><span class="icon">🎨</span><span>Menu Settings</span></a>
+    <% if (_isAdmin) { %>
     <a href="/admin/users" class="active"><span class="icon">👥</span><span>Users</span></a>
-    <% if (_isAdmin) { %><a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a><% } %>
+    <a href="/admin/workspace"><span class="icon">🔐</span><span>Team & Access</span></a>
+    <a href="/admin/audit"><span class="icon">🔍</span><span>Audit Log</span></a>
+    <% } %>
     <form method="POST" action="/admin/logout" style="margin-top:auto">
       <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
     </form>
