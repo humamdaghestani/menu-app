@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu Settings — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --accent: <%= tenant.theme_color || '#e94560' %>; --sidebar-w: 240px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f5f7; color: #222; display: flex; min-height: 100vh; }
+
+    .sidebar { width: var(--sidebar-w); background: #1a1a2e; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; padding: 0 0 24px; }
+    .sidebar-brand { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 12px; }
+    .sidebar-brand img { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: #fff; flex-shrink: 0; }
+    .sidebar-brand .brand-emoji { font-size: 1.6rem; }
+    .sidebar-brand-text h2 { color: #fff; font-size: .95rem; font-weight: 700; line-height: 1.2; }
+    .sidebar-brand-text span { color: #aaa; font-size: .75rem; }
+    .sidebar-nav { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+    .sidebar-nav a, .sidebar-nav button { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; color: #aaa; text-decoration: none; font-size: .9rem; background: none; border: none; cursor: pointer; width: 100%; transition: background .15s, color .15s; font-family: inherit; }
+    .sidebar-nav a:hover, .sidebar-nav button:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .sidebar-nav a.active { background: var(--accent); color: #fff; font-weight: 600; }
+    .sidebar-nav .icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer { padding: 0 12px; }
+    .view-menu-btn { display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.07); color: #ccc; padding: 10px; border-radius: 10px; text-decoration: none; font-size: .85rem; transition: background .15s, color .15s; }
+    .view-menu-btn:hover { background: rgba(255,255,255,.14); color: #fff; }
+
+    .main { margin-left: var(--sidebar-w); flex: 1; padding: 32px; max-width: 820px; }
+    .page-header { margin-bottom: 28px; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; }
+    .page-header p { color: #888; font-size: .9rem; margin-top: 4px; }
+
+    .card { background: #fff; border-radius: 14px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    .card h2 { font-size: 1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label { font-size: .8rem; font-weight: 600; color: #555; }
+    input, textarea { padding: 10px 12px; border: 1.5px solid #e8e8e8; border-radius: 8px; font-size: .9rem; outline: none; font-family: inherit; background: #fafafa; transition: border-color .2s; }
+    input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+    textarea { resize: vertical; min-height: 80px; }
+
+    .color-row { display: flex; align-items: center; gap: 12px; }
+    .color-row input[type="color"] { width: 44px; height: 44px; padding: 2px; border-radius: 8px; cursor: pointer; }
+    .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+    .swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform .15s, border-color .15s; }
+    .swatch:hover { transform: scale(1.2); }
+    .swatch.active { border-color: #1a1a2e; }
+
+    .preview-wrap { margin-top: 10px; }
+    .img-preview { width: 120px; height: 80px; object-fit: cover; border-radius: 10px; border: 1.5px dashed #ddd; display: none; }
+    .img-preview.show { display: block; }
+    .img-row { display: flex; gap: 8px; align-items: center; }
+    .img-row input[type="url"] { flex: 1; }
+    .btn-upload { background: #f0f0f0; color: #444; border: 1.5px solid #e0e0e0; font-size: .82rem; padding: 8px 12px; cursor: pointer; }
+    .btn-upload:hover { background: #e4e4e4; }
+    .upload-lbl { display: inline-flex; align-items: center; white-space: nowrap; }
+
+    .form-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+    .btn { padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: .9rem; font-weight: 600; font-family: inherit; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-sm { padding: 7px 16px; font-size: .82rem; }
+
+    #toast { position: fixed; bottom: 28px; right: 28px; background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 10px; font-size: .88rem; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.2); transform: translateY(80px); opacity: 0; transition: transform .3s, opacity .3s; z-index: 999; }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-left: 4px solid #00b894; }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .toggle-info { flex: 1; }
+    .toggle-title { font-size: .95rem; font-weight: 600; color: #1a1a2e; margin-bottom: 4px; }
+    .toggle-desc { font-size: .82rem; color: #888; line-height: 1.5; }
+    .toggle-switch { position: relative; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-track { display: block; width: 50px; height: 28px; border-radius: 14px; background: #ddd; cursor: pointer; transition: background .2s; position: relative; }
+    .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+    .toggle-thumb { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+    .toggle-switch input:checked + .toggle-track .toggle-thumb { transform: translateX(22px); }
+
+    .back-link { display: inline-flex; align-items: center; gap: 6px; color: #888; text-decoration: none; font-size: .82rem; margin-bottom: 20px; }
+    .back-link:hover { color: #1a1a2e; }
+
+    .splash-mode-btn { padding: 7px 16px; border: 1.5px solid #e8e8e8; border-radius: 8px; background: #fafafa; cursor: pointer; font-size: .82rem; font-family: inherit; transition: all .15s; }
+    .splash-mode-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .theme-swatch { transition: border-color .15s; }
+    .theme-active { border-color: #1a1a2e !important; }
+    .layout-active { border-color: var(--accent) !important; color: var(--accent); }
+
+    @media(max-width:768px){ .sidebar{width:64px;} .sidebar-brand-text,.sidebar-nav span:not(.icon){display:none;} .main{margin-left:64px;padding:20px 16px;} .form-grid{grid-template-columns:1fr;} .form-group.full{grid-column:1;} }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %><img src="<%= tenant.logo_url %>" alt="<%= tenant.name %>" /><% } else { %><span class="brand-emoji">🍽️</span><% } %>
+    <div class="sidebar-brand-text"><h2><%= tenant.name %></h2><span>Admin Panel</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin"><span class="icon">🏠</span><span>Home</span></a>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
+    <% const _isAdmin = currentUser && currentUser.role === 'admin'; const _perms = (currentUser && currentUser.permissions) || []; const _can = p => _isAdmin || _perms.includes(p); %>
+    <% if (_isAdmin || _can('access_menu')) { %><a href="/admin/dashboard" class="active"><span class="icon">🍽️</span><span>Menu</span></a><% } %>
+    <% if (tenant.feat_pos && (_isAdmin || _can('access_pos'))) { %><a href="/pos"><span class="icon">🖥️</span><span>Point of Sale</span></a><% } %>
+    <% if (tenant.feat_inventory && (_isAdmin || _can('access_inventory'))) { %>
+    <a href="/inventory"><span class="icon">📦</span><span>Inventory</span></a>
+    <a href="/inventory/purchases"><span class="icon">🧾</span><span>Purchases</span></a>
+    <% } %>
+    <% if (tenant.feat_accounting && (_isAdmin || _can('access_accounting'))) { %><a href="/accounting"><span class="icon">📒</span><span>Accounting</span></a><% } %>
+    <% if (tenant.feat_reports && _isAdmin) { %><a href="/reports"><span class="icon">📊</span><span>Reports</span></a><% } %>
+    <% if (tenant.feat_hr && _isAdmin) { %><a href="/hr"><span class="icon">👤</span><span>HR & Payroll</span></a><% } %>
+    <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
+    <% if (_isAdmin) { %>
+    <a href="/admin/workspace"><span class="icon">👥</span><span>Team & Access</span></a>
+    <a href="/admin/audit"><span class="icon">🔍</span><span>Audit Log</span></a>
+    <% } %>
+    <a href="/admin/settings"><span class="icon">⚙️</span><span>Settings</span></a>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn"><span>🔗</span><span>View Menu</span></a>
+  </div>
+</aside>
+
+<div class="main">
+  <a href="/admin/settings" class="back-link">← Back to General Settings</a>
+  <div class="page-header">
+    <h1>🎨 Menu & Branding Settings</h1>
+    <p>Logo, theme color, opening hours, menu appearance, and customer-facing customization</p>
+  </div>
+
+  <form method="POST" action="/admin/menu-settings" enctype="multipart/form-data">
+
+    <!-- Branding -->
+    <div class="card">
+      <h2>🖼️ Branding</h2>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Logo</label>
+          <div class="img-row">
+            <input type="url" name="logo_url" value="<%= tenant.logo_url || '' %>" id="logoInput" oninput="previewImg(this,'logoPreview')" placeholder="https://... or upload →" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="logoUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'logoInput','logoPreview','logoUploadTxt')" />
+            </label>
+          </div>
+          <div class="preview-wrap">
+            <img id="logoPreview" class="img-preview <%= tenant.logo_url ? 'show' : '' %>" src="<%= tenant.logo_url || '' %>" />
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Background Image <small style="color:#aaa;font-weight:400">(shown behind the menu)</small></label>
+          <div class="img-row">
+            <input type="url" name="cover_image" value="<%= tenant.cover_image || '' %>" id="coverInput" oninput="previewImg(this,'coverPreview')" placeholder="https://... or upload →" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="coverUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none" onchange="uploadImg(this,'coverInput','coverPreview','coverUploadTxt')" />
+            </label>
+          </div>
+          <div class="preview-wrap">
+            <img id="coverPreview" class="img-preview <%= tenant.cover_image ? 'show' : '' %>" src="<%= tenant.cover_image || '' %>" style="width:200px;height:100px" />
+          </div>
+        </div>
+        <div class="form-group full">
+          <label>Background Video URL <small style="color:#aaa;font-weight:400">(mp4 — overrides image if set)</small></label>
+          <input type="url" name="bg_video" value="<%= tenant.bg_video || '' %>" placeholder="https://example.com/video.mp4" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Opening Hours -->
+    <div class="card">
+      <h2>🕐 Opening Hours</h2>
+      <div class="toggle-row" style="margin-bottom:20px">
+        <div class="toggle-info">
+          <div class="toggle-title">Always Open</div>
+          <div class="toggle-desc">When enabled, no closed banner is shown on the menu. Disable to set specific hours.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" name="is_always_open" value="1" id="alwaysOpenChk"
+            <%= (tenant.is_always_open !== false) ? 'checked' : '' %>
+            onchange="document.getElementById('hoursFields').style.display = this.checked ? 'none' : 'flex'" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div id="hoursFields" style="display:<%= (tenant.is_always_open !== false) ? 'none' : 'flex' %>;gap:20px;flex-wrap:wrap">
+        <div class="form-group">
+          <label>Opening Time</label>
+          <input type="time" name="open_time" value="<%= tenant.open_time ? String(tenant.open_time).substring(0,5) : '' %>" style="max-width:160px" />
+        </div>
+        <div class="form-group">
+          <label>Closing Time</label>
+          <input type="time" name="close_time" value="<%= tenant.close_time ? String(tenant.close_time).substring(0,5) : '' %>" style="max-width:160px" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Valet Service -->
+    <% if (tenant.feat_valet !== false) { %>
+    <div class="card">
+      <h2>🚗 Valet Service</h2>
+      <div class="toggle-row" style="margin-bottom:20px">
+        <div class="toggle-info">
+          <div class="toggle-title">Enable Valet Button</div>
+          <div class="toggle-desc">Shows a 🚗 car icon in the menu header. Customers tap it, enter their ticket number, and send a WhatsApp request to the valet.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" name="valet_enabled" value="1" <%= tenant.valet_enabled ? 'checked' : '' %> />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+      <div class="form-group" style="max-width:320px">
+        <label>Valet WhatsApp Number <small style="color:#aaa;font-weight:400">(leave empty to use main WhatsApp)</small></label>
+        <input type="text" name="valet_whatsapp" value="<%= tenant.valet_whatsapp || '' %>" placeholder="9647501234567" />
+      </div>
+      <% if (tenant.valet_enabled) { %>
+      <div style="margin-top:18px;padding:14px 16px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:.85rem;font-weight:700;color:#166534">🖥️ Valet Staff Screen</div>
+          <div style="font-size:.78rem;color:#15803d;margin-top:2px">Open this on the valet stand tablet — it shows incoming requests live.</div>
+        </div>
+        <a href="/valet-desk?tenant=<%= tenant.subdomain %>" target="_blank" style="background:#16a34a;color:#fff;padding:9px 18px;border-radius:8px;text-decoration:none;font-size:.85rem;font-weight:700;white-space:nowrap">Open Valet Desk →</a>
+      </div>
+      <% } %>
+    </div>
+    <% } %>
+
+    <!-- Cart Feature -->
+    <% if (tenant.feat_cart !== false) { %>
+    <div class="card">
+      <h2>🛒 Cart Feature</h2>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-title">Enable Shopping Cart</div>
+          <div class="toggle-desc">When enabled, customers can add items to a cart and place their order via WhatsApp. When disabled, the cart button is hidden from the menu.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" name="cart_enabled" value="1" <%= (tenant.cart_enabled !== false) ? 'checked' : '' %> />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Theme Color -->
+    <div class="card">
+      <h2>🎨 Theme Color</h2>
+      <div class="color-row">
+        <input type="color" name="theme_color" id="colorPicker" value="<%= tenant.theme_color || '#e94560' %>" onchange="setColor(this.value)" />
+        <div class="color-swatches">
+          <% const swatches = ['#e94560','#6c63ff','#00b894','#f5a623','#0984e3','#fd79a8','#d63031','#2d3436'] %>
+          <% swatches.forEach(c => { %>
+            <div class="swatch <%= (tenant.theme_color || '#e94560') === c ? 'active' : '' %>"
+                 style="background:<%= c %>" onclick="setColor('<%= c %>')"></div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Bar Style -->
+    <div class="card">
+      <h2>🔝 Navigation Bar Style</h2>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="margin-bottom:0">
+          <label style="margin-bottom:8px;display:block">Background Color</label>
+          <input type="color" name="nav_bg_color" id="navColorPicker" value="<%= tenant.nav_bg_color || '#0f1117' %>"
+            style="width:56px;height:40px;border-radius:8px;border:1.5px solid #e8e8e8;cursor:pointer;padding:2px"
+            oninput="updateNavPreview()" />
+        </div>
+        <div class="form-group" style="flex:1;min-width:180px;margin-bottom:0">
+          <label style="margin-bottom:8px;display:block">Transparency — <span id="opacityLabel"><%= tenant.nav_bg_opacity != null ? tenant.nav_bg_opacity : 90 %>%</span></label>
+          <input type="range" name="nav_bg_opacity" id="navOpacity" min="0" max="100" value="<%= tenant.nav_bg_opacity != null ? tenant.nav_bg_opacity : 90 %>"
+            style="width:100%;accent-color:var(--accent)"
+            oninput="document.getElementById('opacityLabel').textContent=this.value+'%'; updateNavPreview()" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label style="margin-bottom:8px;display:block">Category Text Color</label>
+          <input type="color" name="category_text_color" value="<%= tenant.category_text_color || '#ffffff' %>"
+            style="width:56px;height:40px;border-radius:8px;border:1.5px solid #e8e8e8;cursor:pointer;padding:2px" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label style="margin-bottom:8px;display:block">Sub-category Text Color</label>
+          <input type="color" name="subcategory_text_color" value="<%= tenant.subcategory_text_color || '#ffffff' %>"
+            style="width:56px;height:40px;border-radius:8px;border:1.5px solid #e8e8e8;cursor:pointer;padding:2px" />
+        </div>
+        <div style="margin-bottom:0">
+          <label style="margin-bottom:8px;display:block;font-size:.8rem;color:#aaa">Preview</label>
+          <div id="navPreview" style="width:120px;height:36px;border-radius:10px;border:1px solid #eee;transition:background .2s"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Menu Appearance -->
+    <div class="card">
+      <h2>✨ Menu Appearance</h2>
+
+      <div class="form-group" style="margin-bottom:24px">
+        <label style="margin-bottom:12px;display:block">Color Theme</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <% [['dark','🌑 Dark','#0f1117'],['light','☀️ Light','#f5f6fa'],['warm','🍂 Warm','#faf8f3']].forEach(([val,label,bg]) => { %>
+          <label style="cursor:pointer;text-align:center">
+            <input type="radio" name="menu_style" value="<%= val %>" <%= (tenant.menu_style||'dark')===val?'checked':'' %> style="display:none" class="theme-radio" />
+            <div class="theme-swatch <%= (tenant.menu_style||'dark')===val?'theme-active':'' %>" style="width:80px;height:52px;border-radius:10px;background:<%= bg %>;border:3px solid transparent;margin-bottom:6px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
+              <% if (val==='dark') { %><span style="color:#fff;font-size:.6rem;font-weight:700;opacity:.5">Aa</span><% } else if (val==='warm') { %><span style="color:#3b2a0e;font-size:.6rem;font-weight:700;opacity:.5">Aa</span><% } else { %><span style="color:#1a1a2e;font-size:.6rem;font-weight:700;opacity:.5">Aa</span><% } %>
+            </div>
+            <div style="font-size:.8rem;font-weight:600;color:#555"><%= label %></div>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:24px">
+        <label style="margin-bottom:12px;display:block">Card Layout</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <% [['grid','▦ Grid','2-column cards'],['list','☰ List','Horizontal rows'],['large','▬ Large','Full-width cards']].forEach(([val,icon,desc]) => { %>
+          <label style="cursor:pointer">
+            <input type="radio" name="menu_layout" value="<%= val %>" <%= (tenant.menu_layout||'grid')===val?'checked':'' %> style="display:none" />
+            <div class="layout-option <%= (tenant.menu_layout||'grid')===val?'layout-active':'' %>" style="padding:12px 16px;border:2px solid #e8e8e8;border-radius:10px;text-align:center;min-width:100px;transition:all .15s">
+              <div style="font-size:.95rem;font-weight:700;color:#1a1a2e"><%= icon %></div>
+              <div style="font-size:.72rem;color:#888;margin-top:2px"><%= desc %></div>
+            </div>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label style="margin-bottom:12px;display:block">Font Style</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <% [['default','Default','Clean & modern'],['elegant','Elegant','Serif / luxurious'],['rounded','Rounded','Friendly & casual']].forEach(([val,name,desc]) => { %>
+          <label style="cursor:pointer">
+            <input type="radio" name="menu_font" value="<%= val %>" <%= (tenant.menu_font||'default')===val?'checked':'' %> style="display:none" />
+            <div class="font-option <%= (tenant.menu_font||'default')===val?'layout-active':'' %>" style="padding:12px 16px;border:2px solid #e8e8e8;border-radius:10px;text-align:center;min-width:100px;transition:all .15s">
+              <div style="font-size:.9rem;font-weight:700;color:#1a1a2e"><%= name %></div>
+              <div style="font-size:.72rem;color:#888;margin-top:2px"><%= desc %></div>
+            </div>
+          </label>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Questions -->
+    <% if (tenant.feat_feedback !== false) { %>
+    <div class="card">
+      <h2>💬 Feedback Questions</h2>
+      <p style="color:#888;font-size:.85rem;margin-bottom:20px">The 5 questions shown to customers in the feedback form. Leave blank to use the default text.</p>
+      <div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:10px;align-items:center">
+        <div></div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-align:center">🇬🇧 English</div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-align:center">🇸🇦 Arabic</div>
+        <div style="font-size:.75rem;font-weight:700;color:#888;text-align:center">🏴 Kurdish</div>
+        <% const fbDefaults = [
+          { en:'Food Quality', ar:'جودة الطعام', ku:'چێژی خواردن', icon:'🍽️' },
+          { en:'Service', ar:'الخدمة', ku:'خزمەتگوزاری', icon:'🙋' },
+          { en:'Atmosphere', ar:'الأجواء', ku:'ژینگەکە', icon:'🏡' },
+          { en:'Value for Money', ar:'القيمة مقابل السعر', ku:'کار لە بەرانبەر نرخ', icon:'💰' },
+          { en:'Overall Experience', ar:'التجربة العامة', ku:'کۆی ئەزموون', icon:'⭐' },
+        ]; %>
+        <% fbDefaults.forEach((d, i) => { const n = i+1; %>
+        <div style="font-size:.88rem;font-weight:600;color:#555;white-space:nowrap"><%= d.icon %> Q<%= n %></div>
+        <input type="text" name="fb_q<%= n %>_en" value="<%= tenant['fb_q'+n+'_en'] || '' %>" placeholder="<%= d.en %>" style="padding:8px 10px;border:1.5px solid #e8e8e8;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+        <input type="text" name="fb_q<%= n %>_ar" value="<%= tenant['fb_q'+n+'_ar'] || '' %>" placeholder="<%= d.ar %>" dir="rtl" style="padding:8px 10px;border:1.5px solid #e8e8e8;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+        <input type="text" name="fb_q<%= n %>_ku" value="<%= tenant['fb_q'+n+'_ku'] || '' %>" placeholder="<%= d.ku %>" dir="rtl" style="padding:8px 10px;border:1.5px solid #e8e8e8;border-radius:8px;font-size:.85rem;font-family:inherit;outline:none" />
+        <% }) %>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Splash Screen -->
+    <% if (tenant.feat_splash_custom !== false) { %>
+    <div class="card">
+      <h2>🖼️ Splash Screen Style</h2>
+      <p style="color:#888;font-size:.85rem;margin-bottom:20px">Customize the welcome screen customers see when they first open your menu.</p>
+
+      <div class="form-group full" style="margin-bottom:20px">
+        <label style="margin-bottom:10px;display:block">Background Type</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <% [['color','🎨 Color'],['image','🖼️ Image'],['video','🎬 Video']].forEach(([val,lbl]) => { %>
+            <button type="button" class="splash-mode-btn <%= (tenant.splash_bg_type||'color')===val?'active':'' %>"
+              data-mode="<%= val %>" onclick="setSplashMode('<%= val %>')"><%= lbl %></button>
+          <% }) %>
+        </div>
+        <input type="hidden" name="splash_bg_type" id="splashBgType" value="<%= tenant.splash_bg_type || 'color' %>" />
+      </div>
+
+      <div class="form-grid">
+        <div id="splashColorSection" class="form-group">
+          <label>Background Color</label>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input type="color" name="splash_color_value" id="splashColorPicker"
+              value="<%= (tenant.splash_bg_type||'color')==='color' ? (tenant.splash_bg_value||'#ffffff') : '#ffffff' %>"
+              style="width:48px;height:36px;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;padding:2px" />
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <% ['#ffffff','#0f0f1a','#1a1a2e','#f5f0e8','#111827','#fdf6ec'].forEach(c => { %>
+                <div onclick="document.getElementById('splashColorPicker').value='<%= c %>'"
+                  title="<%= c %>"
+                  style="width:28px;height:28px;border-radius:6px;background:<%= c %>;border:2px solid #ccc;cursor:pointer"></div>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+
+        <div id="splashImageSection" class="form-group full" style="display:none">
+          <label>Splash Background Image</label>
+          <div class="img-row">
+            <input type="url" name="splash_image_value" id="splashImageUrl"
+              value="<%= (tenant.splash_bg_type||'color')==='image' ? (tenant.splash_bg_value||'') : '' %>"
+              placeholder="https://... or upload →"
+              oninput="previewImg(this,'splashImgPreview')" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="splashUploadTxt">📷 Upload</span>
+              <input type="file" accept="image/*" style="display:none"
+                onchange="uploadImg(this,'splashImageUrl','splashImgPreview','splashUploadTxt')" />
+            </label>
+          </div>
+          <img id="splashImgPreview" class="img-preview <%= (tenant.splash_bg_type==='image'&&tenant.splash_bg_value)?'show':'' %>"
+            src="<%= (tenant.splash_bg_type==='image'&&tenant.splash_bg_value) ? tenant.splash_bg_value : '' %>" style="width:200px;height:110px" />
+        </div>
+
+        <div id="splashVideoSection" class="form-group full" style="display:none">
+          <label>Splash Background Video <small style="color:#aaa">(mp4 — upload or paste URL)</small></label>
+          <div class="img-row">
+            <input type="url" name="splash_video_value" id="splashVideoUrl"
+              value="<%= (tenant.splash_bg_type||'color')==='video' ? (tenant.splash_bg_value||'') : '' %>"
+              placeholder="https://example.com/background.mp4" />
+            <label class="btn btn-upload btn-sm upload-lbl">
+              <span id="splashVideoUploadTxt">🎬 Upload</span>
+              <input type="file" accept="video/mp4,video/webm,video/*" style="display:none"
+                onchange="uploadVideo(this)" />
+            </label>
+          </div>
+          <div style="color:#aaa;font-size:.78rem;margin-top:4px">Max 50 MB — use a short loop (5–15 sec) for best results</div>
+        </div>
+
+        <div id="splashOverlaySection" class="form-group" style="<%= (tenant.splash_bg_type&&tenant.splash_bg_type!=='color')?'':'display:none' %>">
+          <label>Dark Overlay — <span id="overlayValLabel"><%= tenant.splash_overlay_opacity || 0 %>%</span></label>
+          <input type="range" name="splash_overlay_opacity" min="0" max="80" step="5"
+            value="<%= tenant.splash_overlay_opacity || 0 %>"
+            oninput="document.getElementById('overlayValLabel').textContent=this.value+'%'"
+            style="width:100%;margin-top:6px" />
+          <div style="color:#aaa;font-size:.78rem;margin-top:4px">Makes text easier to read over busy backgrounds</div>
+        </div>
+
+        <div class="form-group">
+          <label>Text & Button Color <small style="color:#aaa">(defaults to theme color)</small></label>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input type="color" id="splashTextColorPicker"
+              value="<%= tenant.splash_text_color || tenant.theme_color || '#e94560' %>"
+              style="width:48px;height:36px;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;padding:2px"
+              oninput="document.getElementById('splashTextColorVal').value=this.value" />
+            <input type="hidden" name="splash_text_color" id="splashTextColorVal" value="<%= tenant.splash_text_color || '' %>" />
+            <button type="button"
+              onclick="document.getElementById('splashTextColorVal').value=''"
+              style="font-size:.78rem;padding:5px 12px;background:#f0f0f0;border:1.5px solid #e0e0e0;border-radius:7px;cursor:pointer;font-family:inherit">
+              Reset to theme color
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Custom CSS -->
+    <% if (tenant.feat_custom_css !== false) { %>
+    <div class="card">
+      <h2>🎨 Custom CSS</h2>
+      <p style="color:#888;font-size:.85rem;margin-bottom:16px">Add custom CSS to fully control how your menu looks. Changes apply to the customer menu only.</p>
+      <div class="form-group full">
+        <textarea name="custom_css" rows="10"
+          placeholder="/* Example: change card corners */&#10;.card { border-radius: 0; }&#10;&#10;/* Example: dark background */&#10;body { background: #111; }&#10;.card { background: #1e1e1e; color: #fff; }"
+          style="font-family:monospace;font-size:.85rem;resize:vertical"><%= tenant.custom_css || '' %></textarea>
+      </div>
+    </div>
+    <% } %>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Save Menu Settings</button>
+    </div>
+  </form>
+</div>
+
+<div id="toast"></div>
+<script>
+function showT(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = (type === 'error' ? '✗ ' : '✓ ') + msg;
+  t.className = 'show' + (type !== 'error' ? ' success' : '');
+  setTimeout(() => t.className = '', 3500);
+}
+const _p = new URLSearchParams(location.search);
+if (_p.get('success')) showT(decodeURIComponent(_p.get('success')), 'success');
+if (_p.get('error'))   showT(decodeURIComponent(_p.get('error')), 'error');
+
+function previewImg(inp, previewId) {
+  const img = document.getElementById(previewId);
+  if (!img) return;
+  if (inp.value) { img.src = inp.value; img.classList.add('show'); }
+  else img.classList.remove('show');
+}
+
+function setColor(hex) {
+  document.getElementById('colorPicker').value = hex;
+  document.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.style.background === hex || s.style.backgroundColor === hex));
+}
+
+function wireRadios(name, activeClass) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+    r.addEventListener('change', () => {
+      document.querySelectorAll(`input[name="${name}"]`).forEach(x => {
+        x.closest('label').querySelector(`.${activeClass}`)?.classList.remove(activeClass === 'theme-swatch' ? 'theme-active' : 'layout-active');
+      });
+      r.closest('label').querySelector(`.${activeClass}`)?.classList.add(activeClass === 'theme-swatch' ? 'theme-active' : 'layout-active');
+    });
+  });
+}
+wireRadios('menu_style', 'theme-swatch');
+wireRadios('menu_layout', 'layout-option');
+wireRadios('menu_font', 'font-option');
+
+function updateNavPreview() {
+  const color = document.getElementById('navColorPicker').value;
+  const opacity = parseInt(document.getElementById('navOpacity').value) / 100;
+  const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+  document.getElementById('navPreview').style.background = `rgba(${r},${g},${b},${opacity})`;
+}
+updateNavPreview();
+document.getElementById('navColorPicker').addEventListener('input', updateNavPreview);
+
+function setSplashMode(mode) {
+  document.getElementById('splashBgType').value = mode;
+  document.querySelectorAll('.splash-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('splashColorSection').style.display = mode === 'color' ? '' : 'none';
+  document.getElementById('splashImageSection').style.display = mode === 'image' ? '' : 'none';
+  document.getElementById('splashVideoSection').style.display = mode === 'video' ? '' : 'none';
+  document.getElementById('splashOverlaySection').style.display = mode !== 'color' ? '' : 'none';
+}
+setSplashMode(document.getElementById('splashBgType').value);
+
+async function uploadImg(input, urlFieldId, previewId, btnTxtId) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById(btnTxtId).textContent = '⏳ Uploading…';
+  const fd = new FormData();
+  fd.append('image', file);
+  try {
+    const res = await fetch('/admin/upload-image', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.url) {
+      document.getElementById(urlFieldId).value = data.url;
+      const img = document.getElementById(previewId);
+      if (img) { img.src = data.url; img.classList.add('show'); }
+      document.getElementById(btnTxtId).textContent = '✓ Uploaded';
+    } else {
+      document.getElementById(btnTxtId).textContent = '✗ Failed';
+    }
+  } catch(e) {
+    document.getElementById(btnTxtId).textContent = '✗ Error';
+  }
+}
+
+async function uploadVideo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('splashVideoUploadTxt').textContent = '⏳ Uploading…';
+  const fd = new FormData();
+  fd.append('video', file);
+  try {
+    const res = await fetch('/admin/upload-video', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.url) {
+      document.getElementById('splashVideoUrl').value = data.url;
+      document.getElementById('splashVideoUploadTxt').textContent = '✓ Uploaded';
+    } else {
+      document.getElementById('splashVideoUploadTxt').textContent = '✗ Failed';
+    }
+  } catch(e) {
+    document.getElementById('splashVideoUploadTxt').textContent = '✗ Error';
+  }
+}
+</script>
+</body>
+</html>

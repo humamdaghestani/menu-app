@@ -429,26 +429,67 @@ router.post('/settings/password', requireAuth, requireAdmin, async (req, res) =>
 });
 
 router.post('/settings', requireAuth, requireAdmin, bust, async (req, res) => {
-  const { name, description, logo_url, cover_image, theme_color, bg_video, whatsapp, cart_enabled, currency, is_always_open, open_time, close_time, valet_enabled, valet_whatsapp, menu_style, menu_layout, menu_font, nav_bg_color, nav_bg_opacity,
-    fb_q1_en, fb_q1_ar, fb_q1_ku, fb_q2_en, fb_q2_ar, fb_q2_ku, fb_q3_en, fb_q3_ar, fb_q3_ku, fb_q4_en, fb_q4_ar, fb_q4_ku, fb_q5_en, fb_q5_ar, fb_q5_ku, custom_css,
-    splash_bg_type, splash_color_value, splash_image_value, splash_video_value, splash_overlay_opacity, splash_text_color, subcategory_text_color, category_text_color } = req.body;
+  const { name, description, whatsapp, currency } = req.body;
+  try {
+    await db.query(
+      `UPDATE tenants SET name=$1, description=$2, whatsapp=$3, currency=$4 WHERE id=$5`,
+      [name, description || null, whatsapp || null, currency || '$', req.user.tenantId]
+    );
+    res.redirect('/admin/settings?success=Settings+saved');
+  } catch (err) {
+    console.error(err);
+    res.redirect('/admin/settings?error=Failed+to+save+settings');
+  }
+});
+
+// ── Menu appearance settings ──────────────────────────────────────────────────
+router.get('/menu-settings', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [tenantRes, userRes] = await Promise.all([
+      db.query('SELECT * FROM tenants WHERE id=$1', [req.user.tenantId]),
+      db.query('SELECT id, email FROM users WHERE id=$1', [req.user.userId]),
+    ]);
+    res.render('admin/menu-settings', {
+      tenant: tenantRes.rows[0], user: userRes.rows[0], currentUser: req.user,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/menu-settings', requireAuth, requireAdmin, bust, async (req, res) => {
+  const { logo_url, cover_image, theme_color, bg_video, cart_enabled, is_always_open, open_time, close_time,
+    valet_enabled, valet_whatsapp, menu_style, menu_layout, menu_font, nav_bg_color, nav_bg_opacity,
+    fb_q1_en, fb_q1_ar, fb_q1_ku, fb_q2_en, fb_q2_ar, fb_q2_ku, fb_q3_en, fb_q3_ar, fb_q3_ku,
+    fb_q4_en, fb_q4_ar, fb_q4_ku, fb_q5_en, fb_q5_ar, fb_q5_ku, custom_css,
+    splash_bg_type, splash_color_value, splash_image_value, splash_video_value,
+    splash_overlay_opacity, splash_text_color, subcategory_text_color, category_text_color } = req.body;
   const _sbt = splash_bg_type || 'color';
   const _sbv = _sbt === 'image' ? (splash_image_value || '') : _sbt === 'video' ? (splash_video_value || '') : (splash_color_value || '#ffffff');
   try {
     await db.query(
-      `UPDATE tenants SET name=$1, description=$2, logo_url=$3, cover_image=$4, theme_color=$5, bg_video=$6, whatsapp=$7, cart_enabled=$8, currency=$9, is_always_open=$10, open_time=$11, close_time=$12, valet_enabled=$13, valet_whatsapp=$14, menu_style=$15, menu_layout=$16, menu_font=$17, nav_bg_color=$18, nav_bg_opacity=$19,
-       fb_q1_en=$20, fb_q1_ar=$21, fb_q1_ku=$22, fb_q2_en=$23, fb_q2_ar=$24, fb_q2_ku=$25, fb_q3_en=$26, fb_q3_ar=$27, fb_q3_ku=$28, fb_q4_en=$29, fb_q4_ar=$30, fb_q4_ku=$31, fb_q5_en=$32, fb_q5_ar=$33, fb_q5_ku=$34, custom_css=$35,
-       splash_bg_type=$36, splash_bg_value=$37, splash_overlay_opacity=$38, splash_text_color=$39, subcategory_text_color=$40, category_text_color=$41
-       WHERE id=$42`,
-      [name, description, logo_url, cover_image, theme_color, bg_video || null, whatsapp || null, cart_enabled === '1', currency || '$', is_always_open === '1', open_time || null, close_time || null, valet_enabled === '1', valet_whatsapp || null, menu_style || 'dark', menu_layout || 'grid', menu_font || 'default', nav_bg_color || null, nav_bg_opacity != null ? parseInt(nav_bg_opacity) : 90,
-       fb_q1_en||null, fb_q1_ar||null, fb_q1_ku||null, fb_q2_en||null, fb_q2_ar||null, fb_q2_ku||null, fb_q3_en||null, fb_q3_ar||null, fb_q3_ku||null, fb_q4_en||null, fb_q4_ar||null, fb_q4_ku||null, fb_q5_en||null, fb_q5_ar||null, fb_q5_ku||null, custom_css||null,
-       _sbt, _sbv, splash_overlay_opacity ? parseInt(splash_overlay_opacity) : 0, splash_text_color || null, subcategory_text_color || null, category_text_color || null,
+      `UPDATE tenants SET logo_url=$1, cover_image=$2, theme_color=$3, bg_video=$4, cart_enabled=$5,
+       is_always_open=$6, open_time=$7, close_time=$8, valet_enabled=$9, valet_whatsapp=$10,
+       menu_style=$11, menu_layout=$12, menu_font=$13, nav_bg_color=$14, nav_bg_opacity=$15,
+       fb_q1_en=$16, fb_q1_ar=$17, fb_q1_ku=$18, fb_q2_en=$19, fb_q2_ar=$20, fb_q2_ku=$21,
+       fb_q3_en=$22, fb_q3_ar=$23, fb_q3_ku=$24, fb_q4_en=$25, fb_q4_ar=$26, fb_q4_ku=$27,
+       fb_q5_en=$28, fb_q5_ar=$29, fb_q5_ku=$30, custom_css=$31,
+       splash_bg_type=$32, splash_bg_value=$33, splash_overlay_opacity=$34,
+       splash_text_color=$35, subcategory_text_color=$36, category_text_color=$37
+       WHERE id=$38`,
+      [logo_url||null, cover_image||null, theme_color||'#e94560', bg_video||null, cart_enabled==='1',
+       is_always_open==='1', open_time||null, close_time||null, valet_enabled==='1', valet_whatsapp||null,
+       menu_style||'dark', menu_layout||'grid', menu_font||'default', nav_bg_color||null,
+       nav_bg_opacity!=null ? parseInt(nav_bg_opacity) : 90,
+       fb_q1_en||null, fb_q1_ar||null, fb_q1_ku||null, fb_q2_en||null, fb_q2_ar||null, fb_q2_ku||null,
+       fb_q3_en||null, fb_q3_ar||null, fb_q3_ku||null, fb_q4_en||null, fb_q4_ar||null, fb_q4_ku||null,
+       fb_q5_en||null, fb_q5_ar||null, fb_q5_ku||null, custom_css||null,
+       _sbt, _sbv, splash_overlay_opacity ? parseInt(splash_overlay_opacity) : 0,
+       splash_text_color||null, subcategory_text_color||null, category_text_color||null,
        req.user.tenantId]
     );
-    res.redirect('/admin/settings?success=Settings+saved+successfully');
+    res.redirect('/admin/menu-settings?success=Menu+settings+saved');
   } catch (err) {
     console.error(err);
-    res.redirect('/admin/settings?error=Failed+to+save+settings');
+    res.redirect('/admin/menu-settings?error=Failed+to+save');
   }
 });
 
