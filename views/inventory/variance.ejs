@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Variance Report — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1000px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+    .fg{display:flex;flex-direction:column;gap:4px}
+    .fl{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#555}
+    input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px}
+    .kpi-label{font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px}
+    .kpi-val{font-size:1.4rem;font-weight:800}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .empty{text-align:center;padding:48px;color:#333;font-size:.9rem}
+    .bar{height:6px;border-radius:3px;display:inline-block;vertical-align:middle}
+    .var-pos{color:#e74c3c}
+    .var-neg{color:#00b894}
+    .var-ok{color:#555}
+    .badge{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block}
+    .badge-waste{background:rgba(231,76,60,.15);color:#e74c3c}
+    .badge-ok{background:rgba(0,184,148,.1);color:#00b894}
+    .badge-small{background:rgba(241,196,15,.1);color:#f1c40f}
+    .info-box{background:rgba(231,76,60,.06);border:1px solid rgba(231,76,60,.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#888;line-height:1.6}
+    .info-box strong{color:#e74c3c}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Variance Report</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">🔍 Theoretical vs Actual Variance</div>
+  <div class="page-sub">Compare what the recipes say should have been used vs what actually left the inventory. The gap = waste + theft + portioning errors.</div>
+
+  <form method="GET" action="/inventory/variance" class="filter-row">
+    <div class="fg"><div class="fl">From</div><input type="date" name="from" value="<%= from %>" /></div>
+    <div class="fg"><div class="fl">To</div><input type="date" name="to" value="<%= to %>" /></div>
+    <button type="submit" class="btn btn-primary">Generate</button>
+  </form>
+
+  <% if (totalVarianceCost > 0) { %>
+  <div class="info-box">
+    ⚠️ Total unaccounted waste/loss: <strong><%= (tenant.currency||'') %><%= totalVarianceCost.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></strong>
+    — This is the cost of ingredients consumed beyond what the recipes required for the sales made.
+    Check items marked <span style="color:#e74c3c;font-weight:700">OVER</span> first.
+  </div>
+  <% } %>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Items Tracked</div>
+      <div class="kpi-val" style="color:#fff"><%= rows.length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Over-consumed (waste)</div>
+      <div class="kpi-val" style="color:#e74c3c"><%= rows.filter(r=>r.variance>0.01).length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Under-consumed</div>
+      <div class="kpi-val" style="color:#00b894"><%= rows.filter(r=>r.variance<-0.01).length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Waste Cost</div>
+      <div class="kpi-val" style="color:#e74c3c"><%= (tenant.currency||'') %><%= totalVarianceCost.toLocaleString(undefined,{maximumFractionDigits:2}) %></div>
+    </div>
+  </div>
+
+  <% if (!rows.length) { %>
+  <div class="card"><div class="empty">No data for this period.<br/><span style="font-size:.78rem;margin-top:6px;display:block">Make sure items have recipes and sales exist for this period.</span></div></div>
+  <% } else { %>
+  <div class="card">
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>Ingredient</th>
+          <th>Theoretical (recipe)</th>
+          <th>Actual (from inventory)</th>
+          <th>Variance</th>
+          <th>Variance Cost</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% rows.forEach(r => {
+        const absPct = r.theo > 0 ? Math.abs(r.variance / r.theo * 100) : 0;
+        const status = r.variance > 0.01 ? 'OVER' : r.variance < -0.01 ? 'UNDER' : 'OK';
+      %>
+      <tr>
+        <td style="color:#ddd;font-weight:600"><%= r.name %> <span style="color:#444;font-size:.74rem;font-weight:400">(<%= r.unit %>)</span></td>
+        <td><%= (parseFloat(r.theo)||0).toLocaleString(undefined,{maximumFractionDigits:3}) %> <span style="color:#444;font-size:.74rem"><%= r.unit %></span></td>
+        <td><%= (parseFloat(r.actual)||0).toLocaleString(undefined,{maximumFractionDigits:3}) %> <span style="color:#444;font-size:.74rem"><%= r.unit %></span></td>
+        <td class="<%= status==='OVER' ? 'var-pos' : status==='UNDER' ? 'var-neg' : 'var-ok' %>" style="font-weight:700">
+          <%= r.variance > 0 ? '+' : '' %><%= r.variance.toLocaleString(undefined,{maximumFractionDigits:3}) %> <%= r.unit %>
+          <% if (absPct > 0.1) { %><span style="font-size:.72rem;opacity:.7;font-weight:400">(<%= absPct.toFixed(1) %>%)</span><% } %>
+        </td>
+        <td style="font-weight:700;color:<%= r.variance > 0 ? '#e74c3c' : '#555' %>">
+          <%= r.variance > 0 ? (tenant.currency||'') + r.varianceCost.toLocaleString(undefined,{maximumFractionDigits:2}) : '—' %>
+        </td>
+        <td>
+          <% if (status==='OVER') { %><span class="badge badge-waste">OVER</span>
+          <% } else if (status==='UNDER') { %><span class="badge badge-ok">UNDER</span>
+          <% } else { %><span class="badge badge-small">OK</span><% } %>
+        </td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+  <div style="font-size:.72rem;color:#333;text-align:center;padding:10px;margin-top:4px">
+    OVER = more consumed than recipes require → investigate waste, theft, or incorrect portioning<br/>
+    UNDER = less consumed than expected → check if recipes are accurate or if stock deduction is configured
+  </div>
+  <% } %>
+</div>
+</body>
+</html>

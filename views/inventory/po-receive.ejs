@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Receive Goods — PO #<%= po.id %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .btn-green{background:rgba(0,184,148,.15);color:#00b894;border:1px solid rgba(0,184,148,.3)}
+    .btn-green:hover{background:rgba(0,184,148,.25)}
+    .main{padding:24px;max-width:900px;margin:0 auto}
+    .page-title{font-size:1.25rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .error-box{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:#e74c3c;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem}
+    .po-meta{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 20px;margin-bottom:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+    .meta-label{font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:4px}
+    .meta-val{font-size:.9rem;color:#ddd;font-weight:600}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    input[type=number],input[type=date],input[type=text]{background:#0f0f1a;border:1.5px solid #2a2a3e;color:#e0e0e0;padding:7px 10px;border-radius:7px;font-family:inherit;font-size:.83rem;outline:none;width:100%}
+    input:focus{border-color:#7c5cbf}
+    .form-footer{padding:16px 18px;border-top:1px solid #2a2a3e;display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end}
+    label{display:block;font-size:.68rem;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:4px}
+    .diff-ok{color:#00b894}
+    .diff-warn{color:#f39c12}
+    .diff-short{color:#e74c3c}
+    .pending-badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(241,196,15,.15);color:#f1c40f;display:inline-block}
+    .status-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:10px;display:inline-block}
+    .s-partial{background:rgba(243,156,18,.15);color:#f39c12}
+    .s-draft{background:rgba(149,165,166,.15);color:#95a5a6}
+    .s-sent{background:rgba(52,152,219,.15);color:#3498db}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/purchase-orders" class="btn btn-ghost">Purchase Orders</a>
+    <a href="/inventory/purchase-orders/<%= po.id %>" class="btn btn-ghost">PO #<%= po.id %></a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Receive Goods</span>
+  </div>
+  <span class="status-badge s-<%= po.status %>"><%= po.status.toUpperCase() %></span>
+</div>
+
+<div class="main">
+  <div class="page-title">📦 Receive Goods — PO #<%= po.id %></div>
+  <div class="page-sub">Enter actual quantities received. Any difference from ordered qty is flagged as a discrepancy.</div>
+
+  <% if (error) { %><div class="error-box">⚠️ <%= error %></div><% } %>
+
+  <div class="po-meta">
+    <div><div class="meta-label">Supplier</div><div class="meta-val"><%= po.supplier_obj_name || po.supplier_name || '—' %></div></div>
+    <div><div class="meta-label">PO Date</div><div class="meta-val"><%= po.created_at ? new Date(po.created_at).toLocaleDateString() : '—' %></div></div>
+    <div><div class="meta-label">PO Total</div><div class="meta-val"><%= (tenant.currency||'') %><%= parseFloat(po.total_amount||0).toFixed(2) %></div></div>
+    <div><div class="meta-label">Status</div><div class="meta-val"><span class="status-badge s-<%= po.status %>"><%= po.status.toUpperCase() %></span></div></div>
+  </div>
+
+  <form method="POST" action="/inventory/purchase-orders/<%= po.id %>/receive-goods">
+    <div class="card">
+      <div class="card-head">Line Items — Enter Actual Qty Received</div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Ordered</th>
+            <th>Already Received</th>
+            <th>Pending</th>
+            <th>Actual Qty *</th>
+            <th>Unit Price</th>
+            <th>Expiry Date</th>
+          </tr>
+        </thead>
+        <tbody>
+        <% lines.forEach((l, i) => {
+          const pending = parseFloat(l.pending_qty) || 0;
+          const orderedQty = parseFloat(l.ordered_qty) || 0;
+          const receivedQty = parseFloat(l.received_qty) || 0;
+        %>
+        <tr>
+          <input type="hidden" name="item_id" value="<%= l.item_id %>" />
+          <td style="color:#ddd;font-weight:600">
+            <%= l.item_name || '—' %>
+            <div style="font-size:.72rem;color:#444"><%= l.item_unit || l.unit || '' %></div>
+          </td>
+          <td style="color:#888"><%= orderedQty.toLocaleString(undefined,{maximumFractionDigits:3}) %> <%= l.item_unit||'' %></td>
+          <td style="color:<%= receivedQty > 0 ? '#00b894' : '#555' %>"><%= receivedQty.toLocaleString(undefined,{maximumFractionDigits:3}) %></td>
+          <td>
+            <% if (pending > 0.001) { %>
+            <span class="pending-badge"><%= pending.toLocaleString(undefined,{maximumFractionDigits:3}) %> <%= l.item_unit||'' %></span>
+            <% } else { %>
+            <span style="color:#00b894;font-size:.78rem">✓ Done</span>
+            <% } %>
+          </td>
+          <td style="min-width:110px">
+            <input type="number" name="actual_qty" value="<%= pending > 0 ? pending.toFixed(3) : '' %>"
+                   step="0.001" min="0" placeholder="0" onchange="calcTotal()" oninput="calcTotal()" />
+          </td>
+          <td style="min-width:110px">
+            <input type="number" name="unit_price" value="<%= parseFloat(l.unit_price||0).toFixed(4) %>"
+                   step="0.0001" min="0" onchange="calcTotal()" oninput="calcTotal()" />
+          </td>
+          <td style="min-width:130px">
+            <input type="date" name="expiry_date" />
+          </td>
+        </tr>
+        <% }); %>
+        </tbody>
+      </table>
+      </div>
+
+      <div class="form-footer">
+        <div>
+          <label>Receipt Date</label>
+          <input type="date" name="receipt_date" value="<%= new Date().toISOString().slice(0,10) %>" required />
+        </div>
+        <div>
+          <label>Invoice No.</label>
+          <input type="text" name="invoice_no" placeholder="Optional" />
+        </div>
+        <div>
+          <label>Store At Location</label>
+          <select name="location_id" style="background:#0f0f1a;border:1.5px solid #2a2a3e;color:#e0e0e0;padding:7px 10px;border-radius:7px;font-family:inherit;font-size:.83rem;outline:none;width:100%">
+            <option value="">— Global —</option>
+            <% locations.forEach(l => { %><option value="<%= l.id %>"><%= l.name %></option><% }); %>
+          </select>
+        </div>
+        <div style="padding-bottom:1px">
+          <button type="submit" class="btn btn-green" style="padding:8px 18px">✅ Confirm Receipt</button>
+        </div>
+      </div>
+    </div>
+    <input type="hidden" name="notes" value="Received against PO #<%= po.id %>" />
+  </form>
+
+  <div style="background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px;margin-top:8px">
+    <div style="font-size:.78rem;font-weight:700;color:#555;margin-bottom:8px">RECEIVING TOTAL</div>
+    <div id="receiveTotal" style="font-size:1.5rem;font-weight:800;color:#00b894"><%= tenant.currency||'' %>0.00</div>
+  </div>
+</div>
+
+<script>
+function calcTotal() {
+  const qtyInputs   = document.querySelectorAll('input[name=actual_qty]');
+  const priceInputs = document.querySelectorAll('input[name=unit_price]');
+  let total = 0;
+  for (let i = 0; i < qtyInputs.length; i++) {
+    const q = parseFloat(qtyInputs[i].value) || 0;
+    const p = parseFloat(priceInputs[i].value) || 0;
+    total += q * p;
+  }
+  document.getElementById('receiveTotal').textContent =
+    '<%= tenant.currency||"" %>' + total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+calcTotal();
+</script>
+</body>
+</html>

@@ -312,6 +312,23 @@ router.get('/items/:id/recipe', requireAuth, requireInventory, async (req, res) 
     ]);
     if (!itemRes.rows[0]) return res.status(404).send('Item not found');
     const totalCost = recipeRes.rows.reduce((s, r) => s + parseFloat(r.line_cost), 0);
+    const menuItemId = itemRes.rows[0].menu_item_id || 0;
+    const ovRes = await db.query(`
+      SELECT
+        COALESCE((SELECT SUM(salary) FROM hr_employees WHERE tenant_id=$1 AND active=true AND salary_type='monthly'),0) AS monthly_payroll,
+        COALESCE((SELECT SUM(amount) FROM expenses WHERE tenant_id=$1 AND expense_date >= CURRENT_DATE - INTERVAL '30 days'),0) AS monthly_expenses,
+        COALESCE((SELECT SUM(poi.quantity) FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE po.tenant_id=$1 AND poi.menu_item_id=$2 AND po.paid_at >= CURRENT_DATE - INTERVAL '30 days' AND po.status='paid'),0) AS item_portions,
+        COALESCE((SELECT SUM(poi.quantity) FROM pos_order_items poi JOIN pos_orders po ON po.id=poi.order_id WHERE po.tenant_id=$1 AND po.paid_at >= CURRENT_DATE - INTERVAL '30 days' AND po.status='paid'),1) AS total_portions,
+        COALESCE((SELECT price::numeric FROM menu_items WHERE id=$2 AND tenant_id=$1 LIMIT 1),0) AS sell_price
+    `, [tid, menuItemId]);
+    const ov = ovRes.rows[0];
+    const overhead = {
+      monthlyPayroll:  parseFloat(ov.monthly_payroll)  || 0,
+      monthlyExpenses: parseFloat(ov.monthly_expenses) || 0,
+      itemPortions:    parseFloat(ov.item_portions)    || 0,
+      totalPortions:   parseFloat(ov.total_portions)   || 1,
+      sellPrice:       parseFloat(ov.sell_price)       || 0,
+    };
     res.render('inventory/recipe', {
       tenant: req.tenant,
       currentUser: req.user,
@@ -320,6 +337,7 @@ router.get('/items/:id/recipe', requireAuth, requireInventory, async (req, res) 
       ingredients: ingredientsRes.rows,
       locations: locsRes.rows,
       totalCost,
+      overhead,
       success: req.query.success || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -2116,6 +2134,202 @@ router.get('/suppliers/:id/catalog.json', requireAuth, requireInventory, async (
     );
     res.json(rows.rows);
   } catch (err) { res.json([]); }
+});
+
+// ── Theoretical vs Actual Variance ────────────────────────────────────────────
+router.get('/variance', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const from = req.query.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const to   = req.query.to   || new Date().toISOString().slice(0, 10);
+  try {
+    const [theoRes, actualRes] = await Promise.all([
+      db.query(`
+        SELECT ing.id AS item_id, ing.name, ing.unit, ing.avg_cost::float,
+               SUM(poi.quantity * ir.quantity)::float AS theoretical_qty,
+               SUM(poi.quantity * ir.quantity * ing.avg_cost)::float AS theoretical_cost
+        FROM pos_order_items poi
+        JOIN pos_orders po ON po.id=poi.order_id AND po.tenant_id=$1 AND po.status='paid'
+          AND po.paid_at::date BETWEEN $2 AND $3
+        JOIN menu_items mi ON mi.id=poi.menu_item_id AND mi.tenant_id=$1
+        JOIN inventory_items ii ON ii.menu_item_id=mi.id AND ii.tenant_id=$1
+        JOIN inventory_recipes ir ON ir.item_id=ii.id
+        JOIN inventory_items ing ON ing.id=ir.ingredient_id AND ing.tenant_id=$1
+        GROUP BY ing.id, ing.name, ing.unit, ing.avg_cost
+        ORDER BY SUM(poi.quantity * ir.quantity * ing.avg_cost) DESC
+      `, [tid, from, to]),
+      db.query(`
+        SELECT item_id, SUM(ABS(qty_change))::float AS actual_qty
+        FROM inventory_transactions
+        WHERE tenant_id=$1 AND type='sale' AND created_at::date BETWEEN $2 AND $3
+        GROUP BY item_id
+      `, [tid, from, to]),
+    ]);
+    const actualMap = {};
+    actualRes.rows.forEach(r => { actualMap[r.item_id] = parseFloat(r.actual_qty) || 0; });
+    const rows = theoRes.rows.map(r => {
+      const theo   = parseFloat(r.theoretical_qty)  || 0;
+      const actual = actualMap[r.item_id]            || 0;
+      const variance      = actual - theo;
+      const varianceCost  = Math.abs(variance) * (parseFloat(r.avg_cost) || 0);
+      return { ...r, theo, actual, variance, varianceCost };
+    }).sort((a, b) => b.varianceCost - a.varianceCost);
+    const totalVarianceCost = rows.reduce((s, r) => s + (r.variance > 0 ? r.varianceCost : 0), 0);
+    res.render('inventory/variance', { tenant: req.tenant, currentUser: req.user, from, to, rows, totalVarianceCost });
+  } catch (err) { console.error(err); res.status(500).send('Server error: ' + err.message); }
+});
+
+// ── Food Cost % Dashboard ─────────────────────────────────────────────────────
+router.get('/food-cost', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const from = req.query.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const to   = req.query.to   || new Date().toISOString().slice(0, 10);
+  const target = parseFloat(req.query.target) || 30;
+  try {
+    const itemsRes = await db.query(`
+      SELECT
+        mi.id, mi.name, mi.price::numeric AS sell_price,
+        COALESCE(SUM(poi.quantity), 0)::float AS qty_sold,
+        COALESCE(SUM(poi.quantity * poi.price), 0)::float AS revenue,
+        COALESCE((
+          SELECT SUM(ir.quantity * ing.avg_cost)
+          FROM inventory_items ii2
+          JOIN inventory_recipes ir ON ir.item_id=ii2.id
+          JOIN inventory_items ing ON ing.id=ir.ingredient_id AND ing.tenant_id=$1
+          WHERE ii2.tenant_id=$1 AND ii2.menu_item_id=mi.id
+        ), 0)::float AS bom_cost_per_portion
+      FROM menu_items mi
+      LEFT JOIN pos_order_items poi ON poi.menu_item_id=mi.id
+      LEFT JOIN pos_orders po ON po.id=poi.order_id AND po.tenant_id=$1
+        AND po.status='paid' AND po.paid_at::date BETWEEN $2 AND $3
+      WHERE mi.tenant_id=$1
+      GROUP BY mi.id, mi.name, mi.price
+      ORDER BY COALESCE(SUM(poi.quantity * poi.price), 0) DESC
+    `, [tid, from, to]);
+    const rows = itemsRes.rows.map(r => {
+      const qty   = parseFloat(r.qty_sold) || 0;
+      const rev   = parseFloat(r.revenue) || 0;
+      const bom   = parseFloat(r.bom_cost_per_portion) || 0;
+      const cogs  = bom * qty;
+      const fcPct = rev > 0 ? (cogs / rev * 100) : 0;
+      return { ...r, qty, rev, bom, cogs, fcPct };
+    }).filter(r => r.qty > 0 || r.bom > 0);
+    const totalRev  = rows.reduce((s, r) => s + r.rev, 0);
+    const totalCogs = rows.reduce((s, r) => s + r.cogs, 0);
+    const overallFcPct = totalRev > 0 ? (totalCogs / totalRev * 100) : 0;
+    res.render('inventory/food-cost', { tenant: req.tenant, currentUser: req.user, from, to, target, rows, totalRev, totalCogs, overallFcPct });
+  } catch (err) { console.error(err); res.status(500).send('Server error: ' + err.message); }
+});
+
+// ── PO Receiving with Discrepancy ─────────────────────────────────────────────
+router.get('/purchase-orders/:id/receive', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [poRes, linesRes, locsRes] = await Promise.all([
+      db.query(`SELECT po.*, s.name AS supplier_obj_name FROM purchase_orders po LEFT JOIN suppliers s ON s.id=po.supplier_id WHERE po.id=$1 AND po.tenant_id=$2`, [req.params.id, tid]),
+      db.query(`
+        SELECT pol.*, ii.name AS item_name, ii.unit AS item_unit,
+               pol.ordered_qty - pol.received_qty AS pending_qty
+        FROM purchase_order_lines pol
+        LEFT JOIN inventory_items ii ON ii.id=pol.item_id
+        WHERE pol.order_id=$1 ORDER BY pol.id
+      `, [req.params.id]),
+      db.query(`SELECT id, name FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY name`, [tid]),
+    ]);
+    if (!poRes.rows[0]) return res.redirect('/inventory/purchase-orders');
+    const po = poRes.rows[0];
+    if (po.status === 'cancelled') return res.redirect('/inventory/purchase-orders/' + req.params.id + '?error=PO+is+cancelled');
+    res.render('inventory/po-receive', {
+      tenant: req.tenant, currentUser: req.user,
+      po, lines: linesRes.rows, locations: locsRes.rows,
+      error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/purchase-orders/:id/receive-goods', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const poId = parseInt(req.params.id);
+  const { receipt_date, invoice_no, notes, location_id, actual_qty, item_id, unit_price, expiry_date } = req.body;
+  const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
+  const itemIds    = toArr(item_id);
+  const actualQtys = toArr(actual_qty);
+  const prices     = toArr(unit_price);
+  const expiries   = toArr(expiry_date);
+  const locId      = parseInt(location_id) || null;
+
+  const lines = itemIds.map((iid, i) => ({
+    item_id:     parseInt(iid),
+    actual_qty:  parseFloat(actualQtys[i]) || 0,
+    unit_price:  parseFloat(prices[i])     || 0,
+    expiry_date: expiries[i]?.trim()       || null,
+  })).filter(l => l.actual_qty > 0);
+
+  if (!lines.length) return res.redirect('/inventory/purchase-orders/' + poId + '/receive?error=No+quantities+entered');
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const poRes = await client.query(`SELECT supplier_id, supplier_name FROM purchase_orders WHERE id=$1 AND tenant_id=$2`, [poId, tid]);
+    if (!poRes.rows[0]) throw new Error('PO not found');
+    const total = lines.reduce((s, l) => s + l.actual_qty * l.unit_price, 0);
+    const rr = await client.query(
+      `INSERT INTO purchase_receipts (tenant_id, supplier_id, supplier_name, invoice_no, receipt_date, total, notes, location_id, po_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      [tid, poRes.rows[0].supplier_id || null, poRes.rows[0].supplier_name || null,
+       invoice_no?.trim() || null, receipt_date || new Date().toISOString().slice(0, 10),
+       total, notes?.trim() || null, locId, poId, req.user.userId]
+    );
+    const receiptId = rr.rows[0].id;
+    for (const l of lines) {
+      const cur = await client.query(`SELECT stock_qty, avg_cost, name, unit FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [l.item_id, tid]);
+      if (!cur.rows[0]) continue;
+      const oldQty  = parseFloat(cur.rows[0].stock_qty) || 0;
+      const oldCost = parseFloat(cur.rows[0].avg_cost)  || 0;
+      const newQty  = oldQty + l.actual_qty;
+      const newCost = newQty > 0 ? (oldQty * oldCost + l.actual_qty * l.unit_price) / newQty : l.unit_price;
+      await client.query(`UPDATE inventory_items SET stock_qty=$1, avg_cost=$2 WHERE id=$3`, [newQty, newCost, l.item_id]);
+      await client.query(
+        `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, unit_cost, reference_id, reference_type, notes, created_by)
+         VALUES ($1,$2,'purchase',$3,$4,$5,'purchase_receipt',$6,$7)`,
+        [tid, l.item_id, l.actual_qty, l.unit_price, receiptId, 'PO #' + poId + ' receiving', req.user.userId]
+      );
+      if (locId) {
+        await client.query(
+          `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity) VALUES ($1,$2,$3,$4)
+           ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity + $4`,
+          [tid, l.item_id, locId, l.actual_qty]
+        );
+      }
+      if (l.expiry_date) {
+        await client.query(
+          `INSERT INTO inventory_batches (tenant_id, item_id, location_id, receipt_id, expiry_date, initial_qty, quantity)
+           VALUES ($1,$2,$3,$4,$5,$6,$6)`,
+          [tid, l.item_id, locId, receiptId, l.expiry_date, l.actual_qty]
+        );
+      }
+      await client.query(
+        `UPDATE purchase_order_lines SET received_qty = received_qty + $1 WHERE order_id=$2 AND item_id=$3`,
+        [l.actual_qty, poId, l.item_id]
+      );
+      await client.query(
+        `INSERT INTO purchase_receipt_lines (receipt_id, item_id, item_name, unit, quantity, unit_price, total, expiry_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [receiptId, l.item_id, cur.rows[0].name, cur.rows[0].unit, l.actual_qty, l.unit_price, l.actual_qty * l.unit_price, l.expiry_date || null]
+      );
+    }
+    const poCheck = await client.query(
+      `SELECT COUNT(*) FILTER (WHERE received_qty >= ordered_qty) AS done, COUNT(*) AS total FROM purchase_order_lines WHERE order_id=$1`, [poId]
+    );
+    const { done, total: ptotal } = poCheck.rows[0];
+    const newStatus = parseInt(done) >= parseInt(ptotal) ? 'received' : 'partial';
+    await client.query(`UPDATE purchase_orders SET status=$1 WHERE id=$2`, [newStatus, poId]);
+    await client.query('COMMIT');
+    res.redirect('/inventory/purchases/' + receiptId + '?success=Goods+received');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.redirect('/inventory/purchase-orders/' + poId + '/receive?error=' + encodeURIComponent(err.message));
+  } finally { client.release(); }
 });
 
 module.exports = router;

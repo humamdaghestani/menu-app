@@ -138,6 +138,74 @@
     <% } %>
   </div>
 
+  <!-- True Cost Analysis -->
+  <%
+    const payrollPerPortion  = overhead.totalPortions > 0 ? overhead.monthlyPayroll  / overhead.totalPortions : 0;
+    const expensePerPortion  = overhead.totalPortions > 0 ? overhead.monthlyExpenses / overhead.totalPortions : 0;
+    const trueTotal          = totalCost + payrollPerPortion + expensePerPortion;
+    const sellPrice          = overhead.sellPrice || 0;
+    const trueProfit         = sellPrice - trueTotal;
+    const trueMarginPct      = sellPrice > 0 ? (trueProfit / sellPrice * 100) : 0;
+    const foodCostPct        = sellPrice > 0 ? (totalCost / sellPrice * 100) : 0;
+    const hasSell            = sellPrice > 0;
+    const cur                = tenant.currency || '$';
+  %>
+  <div class="card" style="border-color:rgba(0,184,148,.3)">
+    <div class="card-title" style="color:#00b894">📊 True Cost per Portion (last 30 days)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+      <div style="background:#0f0f1a;border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px">🧪 Ingredient Cost</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#a78bdf"><%= cur %><%= totalCost.toFixed(4) %></div>
+        <div style="font-size:.72rem;color:#555;margin-top:3px">BOM / recipe cost</div>
+      </div>
+      <div style="background:#0f0f1a;border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px">👥 Labor per Portion</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#3498db"><%= cur %><%= payrollPerPortion.toFixed(4) %></div>
+        <div style="font-size:.72rem;color:#555;margin-top:3px">
+          <% if (overhead.monthlyPayroll > 0) { %>
+          <%= cur %><%= overhead.monthlyPayroll.toLocaleString(undefined,{maximumFractionDigits:0}) %> salary ÷ <%= overhead.totalPortions.toLocaleString(undefined,{maximumFractionDigits:0}) %> portions
+          <% } else { %>No payroll data<% } %>
+        </div>
+      </div>
+      <div style="background:#0f0f1a;border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px">🏢 Fixed Overhead</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#e67e22"><%= cur %><%= expensePerPortion.toFixed(4) %></div>
+        <div style="font-size:.72rem;color:#555;margin-top:3px">
+          <% if (overhead.monthlyExpenses > 0) { %>
+          Rent + expenses ÷ <%= overhead.totalPortions.toLocaleString(undefined,{maximumFractionDigits:0}) %> portions
+          <% } else { %>No expense data<% } %>
+        </div>
+      </div>
+      <div style="background:linear-gradient(135deg,rgba(0,184,148,.12),rgba(0,184,148,.04));border:1px solid rgba(0,184,148,.3);border-radius:10px;padding:14px">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#00b894;font-weight:700;margin-bottom:6px">= TRUE COST</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#00b894"><%= cur %><%= trueTotal.toFixed(4) %></div>
+        <div style="font-size:.72rem;color:#555;margin-top:3px">Full cost per portion</div>
+      </div>
+    </div>
+    <% if (hasSell) { %>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding-top:12px;border-top:1px solid #2a2a3e">
+      <div style="text-align:center">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:4px">Sell Price</div>
+        <div style="font-size:1.2rem;font-weight:800;color:#fff"><%= cur %><%= sellPrice.toFixed(2) %></div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:4px">True Profit</div>
+        <div style="font-size:1.2rem;font-weight:800;color:<%= trueProfit >= 0 ? '#00b894' : '#e74c3c' %>"><%= cur %><%= trueProfit.toFixed(2) %></div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:4px">True Margin</div>
+        <div style="font-size:1.2rem;font-weight:800;color:<%= trueMarginPct >= 50 ? '#00b894' : trueMarginPct >= 30 ? '#f39c12' : '#e74c3c' %>"><%= trueMarginPct.toFixed(1) %>%</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid #1a1a2e;font-size:.75rem;color:#555">
+      <span>Food cost only: <strong style="color:<%= foodCostPct <= 30 ? '#00b894' : '#e74c3c' %>"><%= foodCostPct.toFixed(1) %>%</strong></span>
+      <span style="margin-left:auto;color:#333">True cost includes labor + overhead allocation from last 30 days</span>
+    </div>
+    <% } else { %>
+    <div style="font-size:.78rem;color:#444;padding-top:10px;border-top:1px solid #2a2a3e">Link this item to a menu item to see sell price and margin analysis.</div>
+    <% } %>
+  </div>
+
   <!-- Add ingredient -->
   <div class="card">
     <div class="card-title">➕ Add Ingredient</div>

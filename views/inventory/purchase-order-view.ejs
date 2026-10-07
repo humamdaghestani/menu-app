@@ -54,7 +54,7 @@
     </form>
     <% } %>
     <% if (po.status !== 'cancelled' && po.status !== 'received') { %>
-    <a href="/inventory/purchases/new?po=<%= po.id %>" class="btn btn-success btn-sm">📥 Receive Goods</a>
+    <a href="/inventory/purchase-orders/<%= po.id %>/receive" class="btn btn-success btn-sm">📥 Receive Goods</a>
     <% } %>
     <% if (po.status !== 'received') { %>
     <form method="POST" action="/inventory/purchase-orders/<%= po.id %>/cancel" style="display:inline"
