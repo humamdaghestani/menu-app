@@ -854,6 +854,41 @@ const pool = new Pool({
     )`,
     // ── Enable key feature flags for all tenants ──────────────────────
     `UPDATE tenants SET feat_hr=true, feat_loyalty=true, feat_modifiers=true, feat_reservations=true WHERE true`,
+    // ── Sales Quotations (عرض سعر) ───────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS quotations (
+      id               SERIAL PRIMARY KEY,
+      tenant_id        INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      quotation_no     VARCHAR(50),
+      customer_name    VARCHAR(200),
+      customer_phone   VARCHAR(50),
+      quotation_date   DATE DEFAULT CURRENT_DATE,
+      valid_until      DATE,
+      status           VARCHAR(20) DEFAULT 'draft',
+      items            JSONB DEFAULT '[]',
+      subtotal         NUMERIC(12,2) DEFAULT 0,
+      discount_pct     NUMERIC(5,2) DEFAULT 0,
+      tax_pct          NUMERIC(5,2) DEFAULT 0,
+      total            NUMERIC(12,2) DEFAULT 0,
+      notes            TEXT,
+      created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    // ── Sales Returns (مرتجع مبيعات) ─────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS sales_returns (
+      id             SERIAL PRIMARY KEY,
+      tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      return_no      VARCHAR(50),
+      return_date    DATE DEFAULT CURRENT_DATE,
+      pos_order_id   INTEGER,
+      customer_name  VARCHAR(200),
+      items          JSONB DEFAULT '[]',
+      total          NUMERIC(12,2) DEFAULT 0,
+      reason         TEXT,
+      refund_method  VARCHAR(20) DEFAULT 'cash',
+      status         VARCHAR(20) DEFAULT 'completed',
+      created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )`,
     // ── Waste / Spoilage logging ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS inventory_waste (
       id          SERIAL PRIMARY KEY,

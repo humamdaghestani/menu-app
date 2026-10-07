@@ -965,4 +965,151 @@ router.get('/pl', requireAuth, requireAccounting, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
 });
 
+// ── Quotations (عرض سعر) ──────────────────────────────────────────
+router.get('/quotations', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { from, to } = dateRange(req.query);
+  const status = req.query.status || '';
+  try {
+    let q = `SELECT q.*, u.email AS created_by_name FROM quotations q
+             LEFT JOIN users u ON u.id = q.created_by
+             WHERE q.tenant_id=$1 AND q.quotation_date BETWEEN $2 AND $3`;
+    const params = [tid, from, to];
+    if (status) { q += ` AND q.status=$${params.length+1}`; params.push(status); }
+    q += ` ORDER BY q.created_at DESC`;
+    const [quotRes, menuRes] = await Promise.all([
+      db.query(q, params),
+      db.query(`SELECT id, name, price::numeric FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+    ]);
+    res.render('accounting/quotations', {
+      tenant: req.tenant, currentUser: req.user,
+      quotations: quotRes.rows, menuItems: menuRes.rows,
+      from, to, status,
+      success: req.query.success, error: req.query.error,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.post('/quotations', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { customer_name, customer_phone, quotation_date, valid_until, discount_pct, tax_pct, notes } = req.body;
+  try {
+    const items = [];
+    const names = [].concat(req.body['item_name[]'] || []);
+    const qtys  = [].concat(req.body['item_qty[]']  || []);
+    const prices= [].concat(req.body['item_price[]']|| []);
+    for (let i = 0; i < names.length; i++) {
+      if (!names[i]) continue;
+      items.push({ name: names[i], qty: parseFloat(qtys[i])||1, price: parseFloat(prices[i])||0 });
+    }
+    const subtotal = items.reduce((s,it) => s + it.qty*it.price, 0);
+    const disc     = parseFloat(discount_pct)||0;
+    const tax      = parseFloat(tax_pct)||0;
+    const total    = subtotal * (1 - disc/100) * (1 + tax/100);
+    const countRes = await db.query(`SELECT COUNT(*)+1 AS n FROM quotations WHERE tenant_id=$1`, [tid]);
+    const qNo = `QT-${String(countRes.rows[0].n).padStart(4,'0')}`;
+    await db.query(`INSERT INTO quotations (tenant_id,quotation_no,customer_name,customer_phone,quotation_date,valid_until,items,subtotal,discount_pct,tax_pct,total,notes,created_by)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [tid, qNo, customer_name, customer_phone, quotation_date||new Date().toISOString().slice(0,10),
+       valid_until||null, JSON.stringify(items), subtotal.toFixed(2), disc, tax, total.toFixed(2), notes, req.user.userId]);
+    res.redirect('/accounting/quotations?success=Quotation+created');
+  } catch(err){ console.error(err); res.redirect('/accounting/quotations?error='+encodeURIComponent(err.message)); }
+});
+
+router.get('/quotations/:id', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [qRes, menuRes] = await Promise.all([
+      db.query(`SELECT q.*, u.email AS created_by_name FROM quotations q LEFT JOIN users u ON u.id=q.created_by WHERE q.id=$1 AND q.tenant_id=$2`, [req.params.id, tid]),
+      db.query(`SELECT id, name, price::numeric FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+    ]);
+    if (!qRes.rows.length) return res.redirect('/accounting/quotations');
+    res.render('accounting/quotation-view', {
+      tenant: req.tenant, currentUser: req.user,
+      q: qRes.rows[0], menuItems: menuRes.rows,
+      success: req.query.success, error: req.query.error,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.post('/quotations/:id/status', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { status } = req.body;
+  try {
+    await db.query(`UPDATE quotations SET status=$1 WHERE id=$2 AND tenant_id=$3`, [status, req.params.id, tid]);
+    res.redirect(`/accounting/quotations/${req.params.id}?success=Status+updated`);
+  } catch(err){ res.redirect(`/accounting/quotations/${req.params.id}?error=Failed`); }
+});
+
+router.post('/quotations/:id/delete', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    await db.query(`DELETE FROM quotations WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    res.redirect('/accounting/quotations?success=Deleted');
+  } catch(err){ res.redirect('/accounting/quotations?error=Failed'); }
+});
+
+// ── Sales Returns (مرتجع مبيعات) ──────────────────────────────────
+router.get('/sales-returns', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { from, to } = dateRange(req.query);
+  try {
+    const [retRes, ordersRes] = await Promise.all([
+      db.query(`SELECT r.*, u.email AS created_by_name FROM sales_returns r
+                LEFT JOIN users u ON u.id=r.created_by
+                WHERE r.tenant_id=$1 AND r.return_date BETWEEN $2 AND $3
+                ORDER BY r.created_at DESC`, [tid, from, to]),
+      db.query(`SELECT po.id, po.table_name, po.paid_at, po.total,
+                       json_agg(json_build_object('name',mi.name,'qty',poi.quantity,'price',poi.price)) AS items
+                FROM pos_orders po
+                JOIN pos_order_items poi ON poi.order_id=po.id
+                JOIN menu_items mi ON mi.id=poi.menu_item_id
+                WHERE po.tenant_id=$1 AND po.status='paid'
+                GROUP BY po.id ORDER BY po.paid_at DESC LIMIT 100`, [tid]),
+    ]);
+    const kpi = {
+      total: retRes.rows.reduce((s,r)=>s+parseFloat(r.total||0),0),
+      count: retRes.rows.length,
+    };
+    res.render('accounting/sales-returns', {
+      tenant: req.tenant, currentUser: req.user,
+      returns: retRes.rows, recentOrders: ordersRes.rows,
+      from, to, kpi,
+      success: req.query.success, error: req.query.error,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.post('/sales-returns', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { customer_name, return_date, pos_order_id, reason, refund_method } = req.body;
+  try {
+    const items = [];
+    const names  = [].concat(req.body['item_name[]']  || []);
+    const qtys   = [].concat(req.body['item_qty[]']   || []);
+    const prices = [].concat(req.body['item_price[]'] || []);
+    for (let i = 0; i < names.length; i++) {
+      if (!names[i]) continue;
+      items.push({ name: names[i], qty: parseFloat(qtys[i])||1, price: parseFloat(prices[i])||0 });
+    }
+    const total = items.reduce((s,it) => s + it.qty*it.price, 0);
+    const countRes = await db.query(`SELECT COUNT(*)+1 AS n FROM sales_returns WHERE tenant_id=$1`, [tid]);
+    const rNo = `SR-${String(countRes.rows[0].n).padStart(4,'0')}`;
+    await db.query(`INSERT INTO sales_returns (tenant_id,return_no,return_date,pos_order_id,customer_name,items,total,reason,refund_method,created_by)
+                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [tid, rNo, return_date||new Date().toISOString().slice(0,10),
+       pos_order_id||null, customer_name, JSON.stringify(items),
+       total.toFixed(2), reason, refund_method||'cash', req.user.userId]);
+    res.redirect('/accounting/sales-returns?success=Return+recorded');
+  } catch(err){ console.error(err); res.redirect('/accounting/sales-returns?error='+encodeURIComponent(err.message)); }
+});
+
+router.post('/sales-returns/:id/delete', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    await db.query(`DELETE FROM sales_returns WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    res.redirect('/accounting/sales-returns?success=Deleted');
+  } catch(err){ res.redirect('/accounting/sales-returns?error=Failed'); }
+});
+
 module.exports = router;

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sales Returns — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-danger{background:rgba(231,76,60,.15);color:#e74c3c}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .main{padding:24px;max-width:1200px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .filter-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+    .fg{display:flex;flex-direction:column;gap:4px}
+    .fl{font-size:.67rem;font-weight:700;text-transform:uppercase;color:#555;letter-spacing:.3px}
+    input[type=date],select{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px}
+    .kpi-label{font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px}
+    .kpi-val{font-size:1.4rem;font-weight:800}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .empty{text-align:center;padding:60px 24px;color:#444;font-size:.9rem}
+    .badge-refund{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:700}
+    .cash{background:rgba(0,184,148,.12);color:#00b894}
+    .credit{background:rgba(124,92,191,.15);color:#a78bdf}
+    .store_credit{background:rgba(241,196,15,.12);color:#f1c40f}
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal{background:#1a1a2e;border-radius:16px;border:1px solid #2a2a3e;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:28px}
+    .modal h2{font-size:1.05rem;font-weight:700;color:#fff;margin-bottom:20px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .form-group.full{grid-column:1/-1}
+    label{font-size:.75rem;font-weight:600;color:#666}
+    input[type=text],input[type=number],textarea,input[type=date],select.form-select{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    input:focus,textarea:focus,select.form-select:focus{border-color:#7c5cbf}
+    textarea{resize:vertical;min-height:60px}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+    .items-table th{font-size:.68rem;color:#555;padding:4px 6px;text-align:left}
+    .items-table td{padding:4px 6px}
+    .items-table input{padding:6px 8px;font-size:.82rem;width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;border-radius:6px;font-family:inherit;outline:none}
+    .rm-btn{background:rgba(231,76,60,.15);color:#e74c3c;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.75rem}
+    .total-display{text-align:right;font-size:.95rem;color:#aaa;padding:8px 0}
+    .total-display strong{color:#e74c3c;font-size:1.1rem}
+    /* Order picker */
+    .order-card{background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:10px;padding:10px 14px;cursor:pointer;transition:border-color .15s;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .order-card:hover,.order-card.sel{border-color:#7c5cbf}
+    .order-card.sel{background:rgba(124,92,191,.1)}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/accounting" class="btn btn-ghost">📒 Accounting</a>
+    <span style="font-weight:700;color:#fff">↩️ Sales Returns</span>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('newModal').classList.add('open')">+ New Return</button>
+</div>
+
+<div class="main">
+  <div class="page-title">↩️ مرتجع مبيعات — Sales Returns</div>
+  <div class="page-sub">Record returned items and issue refunds to customers.</div>
+
+  <% if (locals.success) { %><div style="background:rgba(0,184,148,.12);border:1px solid rgba(0,184,148,.3);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#00b894;margin-bottom:16px">✓ <%= success %></div><% } %>
+  <% if (locals.error) { %><div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#e74c3c;margin-bottom:16px">✗ <%= error %></div><% } %>
+
+  <form method="GET" action="/accounting/sales-returns" class="filter-bar">
+    <div class="fg"><div class="fl">From</div><input type="date" name="from" value="<%= from %>" /></div>
+    <div class="fg"><div class="fl">To</div><input type="date" name="to" value="<%= to %>" /></div>
+    <button type="submit" class="btn btn-primary">Apply</button>
+    <a href="/accounting/sales-returns" class="btn btn-ghost">Reset</a>
+  </form>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total Returns</div>
+      <div class="kpi-val" style="color:#e74c3c"><%= kpi.count %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Refunded</div>
+      <div class="kpi-val" style="color:#e74c3c"><%= tenant.currency||'' %><%= kpi.total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Cash Refunds</div>
+      <div class="kpi-val" style="color:#00b894"><%= returns.filter(r=>r.refund_method==='cash').length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Store Credit</div>
+      <div class="kpi-val" style="color:#f1c40f"><%= returns.filter(r=>r.refund_method==='store_credit').length %></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">All Returns <span style="font-size:.72rem;color:#444;font-weight:400"><%= returns.length %> records</span></div>
+    <% if (!returns.length) { %>
+    <div class="empty">No returns recorded yet.</div>
+    <% } else { %>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>No.</th><th>Customer</th><th>Date</th><th>Items</th><th>Total</th><th>Refund Method</th><th>Reason</th><th>By</th><th></th></tr></thead>
+      <tbody>
+      <% returns.forEach(r => {
+           const items = Array.isArray(r.items) ? r.items : JSON.parse(r.items||'[]');
+      %>
+      <tr>
+        <td style="color:#a78bdf;font-weight:700"><%= r.return_no %></td>
+        <td style="color:#fff;font-weight:600"><%= r.customer_name || '—' %><% if (r.pos_order_id) { %><br/><span style="font-size:.7rem;color:#555">PO #<%= r.pos_order_id %></span><% } %></td>
+        <td><%= new Date(r.return_date).toLocaleDateString() %></td>
+        <td style="color:#888"><%= items.map(i=>i.name+' ×'+i.qty).join(', ') %></td>
+        <td style="color:#e74c3c;font-weight:700">- <%= tenant.currency||'' %><%= parseFloat(r.total||0).toFixed(2) %></td>
+        <td><span class="badge-refund <%= r.refund_method %>"><%= r.refund_method==='store_credit'?'Store Credit':r.refund_method.charAt(0).toUpperCase()+r.refund_method.slice(1) %></span></td>
+        <td style="color:#555;font-size:.78rem;max-width:160px"><%= r.reason||'—' %></td>
+        <td style="color:#555;font-size:.75rem"><%= r.created_by_name||'—' %></td>
+        <td>
+          <form method="POST" action="/accounting/sales-returns/<%= r.id %>/delete" onsubmit="return confirm('Delete this return?')">
+            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+      <tfoot>
+        <tr style="border-top:2px solid #2a2a3e">
+          <td colspan="4" style="font-weight:700;color:#fff">Total Refunded</td>
+          <td style="color:#e74c3c;font-weight:800">- <%= tenant.currency||'' %><%= kpi.total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
+          <td colspan="4"></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- New Return Modal -->
+<div class="modal-overlay" id="newModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h2>↩️ New Sales Return — مرتجع مبيعات</h2>
+    <form method="POST" action="/accounting/sales-returns">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Customer Name</label>
+          <input type="text" name="customer_name" placeholder="Customer or walk-in" />
+        </div>
+        <div class="form-group">
+          <label>Return Date</label>
+          <input type="date" name="return_date" value="<%= new Date().toISOString().slice(0,10) %>" />
+        </div>
+
+        <div class="form-group full">
+          <label style="margin-bottom:6px;display:block">Link to POS Order (optional)</label>
+          <select name="pos_order_id" class="form-select" onchange="fillFromOrder(this)">
+            <option value="">— No linked order —</option>
+            <% recentOrders.forEach(o => { %>
+            <option value="<%= o.id %>" data-items='<%= JSON.stringify(Array.isArray(o.items)?o.items:JSON.parse(o.items||"[]")) %>'>
+              #<%= o.id %> — <%= o.table_name || 'Table' %> — <%= new Date(o.paid_at).toLocaleDateString() %> — <%= tenant.currency||'' %><%= parseFloat(o.total||0).toFixed(2) %>
+            </option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group full">
+          <label style="margin-bottom:8px;display:block">Returned Items</label>
+          <table class="items-table">
+            <thead><tr><th style="width:45%">Item Name</th><th style="width:20%">Qty</th><th style="width:25%">Unit Price</th><th></th></tr></thead>
+            <tbody id="retItemsBody">
+              <tr>
+                <td><input type="text" name="item_name[]" placeholder="Item name" /></td>
+                <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcRetTotal()" /></td>
+                <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcRetTotal()" /></td>
+                <td><button type="button" class="rm-btn" onclick="removeRetRow(this)">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="button" onclick="addRetRow()" class="btn btn-ghost btn-sm" style="margin-top:6px">+ Add Item</button>
+          <div class="total-display">Refund Total: <strong id="retTotalVal"><%= tenant.currency||'' %>0.00</strong></div>
+        </div>
+
+        <div class="form-group">
+          <label>Refund Method</label>
+          <select name="refund_method" class="form-select">
+            <option value="cash">💵 Cash</option>
+            <option value="credit">💳 Credit / Bank</option>
+            <option value="store_credit">🎟 Store Credit</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>&nbsp;</label>
+        </div>
+
+        <div class="form-group full">
+          <label>Reason for Return</label>
+          <textarea name="reason" rows="2" placeholder="e.g. Wrong item, quality issue, customer changed mind..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('newModal').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Record Return</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const cur = '<%= tenant.currency || "" %>';
+
+function calcRetTotal() {
+  let total = 0;
+  document.querySelectorAll('#retItemsBody tr').forEach(tr => {
+    const qty   = parseFloat(tr.querySelector('[name="item_qty[]"]')?.value) || 0;
+    const price = parseFloat(tr.querySelector('[name="item_price[]"]')?.value) || 0;
+    total += qty * price;
+  });
+  document.getElementById('retTotalVal').textContent = cur + total.toFixed(2);
+}
+
+function addRetRow() {
+  const tbody = document.getElementById('retItemsBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" name="item_name[]" placeholder="Item name" /></td>
+    <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcRetTotal()" /></td>
+    <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcRetTotal()" /></td>
+    <td><button type="button" class="rm-btn" onclick="removeRetRow(this)">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function removeRetRow(btn) {
+  if (document.querySelectorAll('#retItemsBody tr').length > 1) { btn.closest('tr').remove(); calcRetTotal(); }
+}
+
+function fillFromOrder(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt.dataset.items) return;
+  try {
+    const items = JSON.parse(opt.dataset.items);
+    const tbody = document.getElementById('retItemsBody');
+    tbody.innerHTML = '';
+    items.forEach(it => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" name="item_name[]" value="${it.name||''}" /></td>
+        <td><input type="number" name="item_qty[]" value="${it.qty||1}" min="0.01" step="0.01" oninput="calcRetTotal()" /></td>
+        <td><input type="number" name="item_price[]" value="${parseFloat(it.price||0).toFixed(2)}" min="0" step="0.01" oninput="calcRetTotal()" /></td>
+        <td><button type="button" class="rm-btn" onclick="removeRetRow(this)">✕</button></td>`;
+      tbody.appendChild(tr);
+    });
+    calcRetTotal();
+  } catch(e){}
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quotations — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-danger{background:rgba(231,76,60,.15);color:#e74c3c}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .main{padding:24px;max-width:1200px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .filter-bar{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+    .fg{display:flex;flex-direction:column;gap:4px}
+    .fl{font-size:.67rem;font-weight:700;text-transform:uppercase;color:#555;letter-spacing:.3px}
+    input[type=date],select{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px 18px}
+    .kpi-label{font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px}
+    .kpi-val{font-size:1.4rem;font-weight:800}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr.clickable:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+    .empty{text-align:center;padding:60px 24px;color:#444;font-size:.9rem}
+    .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:700}
+    .b-draft{background:rgba(255,255,255,.07);color:#888}
+    .b-sent{background:rgba(241,196,15,.15);color:#f1c40f}
+    .b-accepted{background:rgba(0,184,148,.15);color:#00b894}
+    .b-rejected{background:rgba(231,76,60,.15);color:#e74c3c}
+    .b-expired{background:rgba(149,165,166,.15);color:#95a5a6}
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal{background:#1a1a2e;border-radius:16px;border:1px solid #2a2a3e;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:28px}
+    .modal h2{font-size:1.05rem;font-weight:700;color:#fff;margin-bottom:20px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .form-group.full{grid-column:1/-1}
+    label{font-size:.75rem;font-weight:600;color:#666}
+    input[type=text],input[type=number],textarea,input[type=date]{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    input:focus,textarea:focus{border-color:#7c5cbf}
+    textarea{resize:vertical;min-height:60px}
+    .items-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+    .items-table th{font-size:.68rem;color:#555;padding:4px 6px;text-align:left}
+    .items-table td{padding:4px 6px}
+    .items-table input{padding:6px 8px;font-size:.82rem}
+    .rm-btn{background:rgba(231,76,60,.15);color:#e74c3c;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.75rem}
+    .total-row{display:flex;justify-content:flex-end;gap:20px;padding:10px 0;font-size:.85rem;color:#aaa}
+    .total-row strong{color:#fff;font-size:1rem}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/accounting" class="btn btn-ghost">📒 Accounting</a>
+    <span style="font-weight:700;color:#fff">📄 Quotations</span>
+  </div>
+  <button class="btn btn-primary" onclick="document.getElementById('newModal').classList.add('open')">+ New Quotation</button>
+</div>
+
+<div class="main">
+  <div class="page-title">📄 عرض سعر — Quotations</div>
+  <div class="page-sub">Price quotations for customers. Create, send, and track acceptance.</div>
+
+  <% if (locals.success) { %><div style="background:rgba(0,184,148,.12);border:1px solid rgba(0,184,148,.3);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#00b894;margin-bottom:16px">✓ <%= success %></div><% } %>
+  <% if (locals.error) { %><div style="background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#e74c3c;margin-bottom:16px">✗ <%= error %></div><% } %>
+
+  <form method="GET" action="/accounting/quotations" class="filter-bar">
+    <div class="fg"><div class="fl">From</div><input type="date" name="from" value="<%= from %>" /></div>
+    <div class="fg"><div class="fl">To</div><input type="date" name="to" value="<%= to %>" /></div>
+    <div class="fg">
+      <div class="fl">Status</div>
+      <select name="status">
+        <option value="">All</option>
+        <% ['draft','sent','accepted','rejected','expired'].forEach(s => { %>
+        <option value="<%= s %>" <%= status===s?'selected':'' %>><%= s.charAt(0).toUpperCase()+s.slice(1) %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Apply</button>
+    <a href="/accounting/quotations" class="btn btn-ghost">Reset</a>
+  </form>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total Quotations</div>
+      <div class="kpi-val" style="color:#7c5cbf"><%= quotations.length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Accepted</div>
+      <div class="kpi-val" style="color:#00b894"><%= quotations.filter(q=>q.status==='accepted').length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Pending</div>
+      <div class="kpi-val" style="color:#f1c40f"><%= quotations.filter(q=>q.status==='sent').length %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Value (Accepted)</div>
+      <div class="kpi-val" style="color:#fff"><%= tenant.currency||'' %><%= quotations.filter(q=>q.status==='accepted').reduce((s,q)=>s+parseFloat(q.total||0),0).toLocaleString(undefined,{maximumFractionDigits:2}) %></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">All Quotations <span style="font-size:.72rem;color:#444;font-weight:400"><%= quotations.length %> records</span></div>
+    <% if (!quotations.length) { %>
+    <div class="empty">No quotations yet.<br/><button onclick="document.getElementById('newModal').classList.add('open')" class="btn btn-primary" style="margin-top:14px">+ Create First Quotation</button></div>
+    <% } else { %>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>No.</th><th>Customer</th><th>Date</th><th>Valid Until</th><th>Total</th><th>Status</th><th>By</th><th></th></tr></thead>
+      <tbody>
+      <% quotations.forEach(q => { %>
+      <tr class="clickable" onclick="window.location='/accounting/quotations/<%= q.id %>'">
+        <td style="color:#a78bdf;font-weight:700"><%= q.quotation_no %></td>
+        <td style="color:#fff;font-weight:600"><%= q.customer_name || '—' %><% if (q.customer_phone) { %><br/><span style="font-size:.72rem;color:#555"><%= q.customer_phone %></span><% } %></td>
+        <td><%= new Date(q.quotation_date).toLocaleDateString() %></td>
+        <td style="color:<%= q.valid_until && new Date(q.valid_until) < new Date() && q.status==='sent' ? '#e74c3c' : '#888' %>"><%= q.valid_until ? new Date(q.valid_until).toLocaleDateString() : '—' %></td>
+        <td style="color:#fff;font-weight:700"><%= tenant.currency||'' %><%= parseFloat(q.total||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
+        <td><span class="badge b-<%= q.status %>"><%= q.status %></span></td>
+        <td style="color:#555;font-size:.75rem"><%= q.created_by_name || '—' %></td>
+        <td onclick="event.stopPropagation()">
+          <form method="POST" action="/accounting/quotations/<%= q.id %>/delete" onsubmit="return confirm('Delete this quotation?')">
+            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- New Quotation Modal -->
+<div class="modal-overlay" id="newModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h2>📄 New Quotation — عرض سعر جديد</h2>
+    <form method="POST" action="/accounting/quotations">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Customer Name *</label>
+          <input type="text" name="customer_name" required placeholder="e.g. Khalid Restaurant" />
+        </div>
+        <div class="form-group">
+          <label>Customer Phone</label>
+          <input type="text" name="customer_phone" placeholder="07..." />
+        </div>
+        <div class="form-group">
+          <label>Quotation Date</label>
+          <input type="date" name="quotation_date" value="<%= new Date().toISOString().slice(0,10) %>" />
+        </div>
+        <div class="form-group">
+          <label>Valid Until</label>
+          <input type="date" name="valid_until" />
+        </div>
+
+        <div class="form-group full">
+          <label style="margin-bottom:8px;display:block">Items</label>
+          <table class="items-table" id="itemsTable">
+            <thead><tr><th style="width:40%">Item Name</th><th style="width:20%">Qty</th><th style="width:25%">Unit Price (<%= tenant.currency||'' %>)</th><th></th></tr></thead>
+            <tbody id="itemsBody">
+              <tr>
+                <td>
+                  <input type="text" name="item_name[]" list="menuList" placeholder="Item name" />
+                </td>
+                <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcTotal()" /></td>
+                <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcTotal()" /></td>
+                <td><button type="button" class="rm-btn" onclick="removeRow(this)">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="button" onclick="addRow()" class="btn btn-ghost btn-sm" style="margin-top:6px">+ Add Item</button>
+          <datalist id="menuList">
+            <% menuItems.forEach(m => { %><option value="<%= m.name %>" data-price="<%= m.price %>"><% }) %>
+          </datalist>
+        </div>
+
+        <div class="form-group">
+          <label>Discount %</label>
+          <input type="number" name="discount_pct" id="discPct" value="0" min="0" max="100" step="0.1" oninput="calcTotal()" />
+        </div>
+        <div class="form-group">
+          <label>Tax %</label>
+          <input type="number" name="tax_pct" id="taxPct" value="0" min="0" max="100" step="0.1" oninput="calcTotal()" />
+        </div>
+
+        <div class="form-group full">
+          <div class="total-row">
+            <span>Subtotal: <strong id="subtotalVal"><%= tenant.currency||'' %>0.00</strong></span>
+            <span>After Discount: <strong id="afterDiscVal"><%= tenant.currency||'' %>0.00</strong></span>
+            <span>Total: <strong id="totalVal" style="color:#7c5cbf;font-size:1.1rem"><%= tenant.currency||'' %>0.00</strong></span>
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>Notes</label>
+          <textarea name="notes" rows="3" placeholder="Terms, payment conditions, delivery notes..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('newModal').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Quotation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const cur = '<%= tenant.currency || "" %>';
+
+function calcTotal() {
+  let sub = 0;
+  document.querySelectorAll('#itemsBody tr').forEach(tr => {
+    const qty   = parseFloat(tr.querySelector('[name="item_qty[]"]')?.value) || 0;
+    const price = parseFloat(tr.querySelector('[name="item_price[]"]')?.value) || 0;
+    sub += qty * price;
+  });
+  const disc  = parseFloat(document.getElementById('discPct').value) || 0;
+  const tax   = parseFloat(document.getElementById('taxPct').value)  || 0;
+  const afterDisc = sub * (1 - disc/100);
+  const total = afterDisc * (1 + tax/100);
+  document.getElementById('subtotalVal').textContent  = cur + sub.toFixed(2);
+  document.getElementById('afterDiscVal').textContent = cur + afterDisc.toFixed(2);
+  document.getElementById('totalVal').textContent     = cur + total.toFixed(2);
+}
+
+function addRow() {
+  const tbody = document.getElementById('itemsBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" name="item_name[]" list="menuList" placeholder="Item name" onchange="fillPrice(this)" /></td>
+    <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcTotal()" /></td>
+    <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcTotal()" /></td>
+    <td><button type="button" class="rm-btn" onclick="removeRow(this)">✕</button></td>`;
+  tbody.appendChild(tr);
+}
+
+function removeRow(btn) {
+  const tr = btn.closest('tr');
+  if (document.querySelectorAll('#itemsBody tr').length > 1) { tr.remove(); calcTotal(); }
+}
+
+function fillPrice(input) {
+  const opt = document.querySelector(`#menuList option[value="${input.value}"]`);
+  if (opt) {
+    const priceInput = input.closest('tr').querySelector('[name="item_price[]"]');
+    if (priceInput) { priceInput.value = parseFloat(opt.dataset.price)||0; calcTotal(); }
+  }
+}
+
+// Wire existing first row for price fill
+document.querySelector('[name="item_name[]"]').addEventListener('change', function(){ fillPrice(this); });
+</script>
+</body>
+</html>
