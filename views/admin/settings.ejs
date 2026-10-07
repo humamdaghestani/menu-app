@@ -76,6 +76,7 @@
     <div style="height:1px;background:rgba(255,255,255,.06);margin:4px 0 6px"></div>
     <% if (_isAdmin) { %>
     <a href="/admin/workspace"><span class="icon">👥</span><span>Team & Access</span></a>
+    <a href="/admin/users"><span class="icon">👤</span><span>Users</span></a>
     <a href="/admin/audit"><span class="icon">🔍</span><span>Audit Log</span></a>
     <% } %>
     <a href="/admin/settings" class="active"><span class="icon">⚙️</span><span>Settings</span></a>
@@ -94,12 +95,20 @@
     <p>System-wide configuration — restaurant identity, currency, security</p>
   </div>
 
-  <!-- Shortcut to Menu Settings -->
+  <!-- Shortcut cards -->
   <a href="/admin/menu-settings" class="shortcut-card">
     <div class="shortcut-icon">🎨</div>
     <div>
       <div class="shortcut-title">Menu & Branding Settings</div>
-      <div class="shortcut-desc">Logo, theme color, opening hours, menu appearance, custom CSS → go to Menu Settings</div>
+      <div class="shortcut-desc">Logo, theme color, opening hours, menu appearance, custom CSS</div>
+    </div>
+    <span style="margin-left:auto;font-size:1.3rem;color:#555">→</span>
+  </a>
+  <a href="/admin/users" class="shortcut-card">
+    <div class="shortcut-icon">👥</div>
+    <div>
+      <div class="shortcut-title">Users</div>
+      <div class="shortcut-desc">Manage staff accounts, roles, and permissions</div>
     </div>
     <span style="margin-left:auto;font-size:1.3rem;color:#555">→</span>
   </a>
