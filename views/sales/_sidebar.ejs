@@ -1,0 +1,22 @@
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %><img src="<%= tenant.logo_url %>" alt="" /><% } else { %><span class="brand-emoji">💼</span><% } %>
+    <div class="brand-text"><h2><%= tenant.name %></h2><span>Sales</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin"><span class="icon">🏠</span><span>Home</span></a>
+    <div class="divider"></div>
+    <a href="/sales" <%= locals.activePage==='home'?'class="active"':'' %>><span class="icon">📊</span><span>Dashboard</span></a>
+    <a href="/sales/quotations" <%= locals.activePage==='quotations'?'class="active"':'' %>><span class="icon">📄</span><span>Quotations</span></a>
+    <a href="/sales/invoices" <%= locals.activePage==='invoices'?'class="active"':'' %>><span class="icon">🧾</span><span>Invoices</span></a>
+    <a href="/sales/returns" <%= locals.activePage==='returns'?'class="active"':'' %>><span class="icon">↩️</span><span>Sales Returns</span></a>
+    <a href="/sales/customers" <%= locals.activePage==='customers'?'class="active"':'' %>><span class="icon">👥</span><span>Customers</span></a>
+    <div class="divider"></div>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn"><span>🔗</span><span>View Menu</span></a>
+  </div>
+</aside>

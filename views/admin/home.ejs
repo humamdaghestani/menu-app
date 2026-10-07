@@ -123,6 +123,18 @@
     </a>
     <% } %>
 
+    <!-- Sales -->
+    <% if (_isAdmin) { %>
+    <a href="/sales" class="module-card" style="--accent:#2563eb">
+      <div class="module-icon">💼</div>
+      <div>
+        <div class="module-name">Sales</div>
+        <div class="module-desc">Quotations, invoices, sales returns, and customer management</div>
+      </div>
+      <span class="module-badge" style="background:rgba(37,99,235,.15);color:#60a5fa">Active</span>
+    </a>
+    <% } %>
+
     <!-- Accounting -->
     <% if (tenant.feat_accounting && (_isAdmin || _can('access_accounting'))) { %>
     <a href="/accounting" class="module-card" style="--accent:#00b894">

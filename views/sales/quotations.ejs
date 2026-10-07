@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quotations — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh;display:flex}
+    .sidebar{width:220px;background:#1a1a2e;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;padding:0 0 20px}
+    .sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px}
+    .sidebar-brand img{width:36px;height:36px;border-radius:8px;object-fit:cover}
+    .brand-emoji{font-size:1.4rem}
+    .brand-text h2{color:#fff;font-size:.88rem;font-weight:700;line-height:1.2}
+    .brand-text span{color:#555;font-size:.72rem}
+    .sidebar-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+    .sidebar-nav a,.sidebar-nav button{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:9px;color:#888;text-decoration:none;font-size:.85rem;background:none;border:none;cursor:pointer;width:100%;transition:background .15s,color .15s;font-family:inherit}
+    .sidebar-nav a:hover,.sidebar-nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+    .sidebar-nav a.active{background:#2563eb;color:#fff;font-weight:600}
+    .sidebar-nav .icon{font-size:1rem;width:18px;text-align:center;flex-shrink:0}
+    .sidebar-nav .divider{height:1px;background:rgba(255,255,255,.06);margin:4px 0}
+    .sidebar-footer{padding:0 10px}
+    .view-menu-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.06);color:#666;padding:9px;border-radius:9px;text-decoration:none;font-size:.8rem;transition:background .15s}
+    .view-menu-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+    .main{margin-left:220px;flex:1;padding:28px}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-danger{background:rgba(231,76,60,.12);color:#e74c3c}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .filter-bar{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+    .fg{display:flex;flex-direction:column;gap:3px}
+    .fl{font-size:.65rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.3px}
+    input[type=date],select{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:6px 10px;border-radius:8px;font-family:inherit;font-size:.8rem;outline:none}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:20px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:15px 16px}
+    .kpi-label{font-size:.65rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px}
+    .kpi-val{font-size:1.35rem;font-weight:800}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr.row:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+    .empty{text-align:center;padding:60px 24px;color:#444}
+    .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:700}
+    .b-draft{background:rgba(255,255,255,.07);color:#666}
+    .b-sent{background:rgba(37,99,235,.15);color:#60a5fa}
+    .b-accepted{background:rgba(0,184,148,.12);color:#00b894}
+    .b-rejected{background:rgba(231,76,60,.12);color:#e74c3c}
+    .b-expired{background:rgba(149,165,166,.12);color:#95a5a6}
+    .alert{border-radius:10px;padding:10px 16px;font-size:.85rem;margin-bottom:16px}
+    .alert-ok{background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.25);color:#00b894}
+    .alert-err{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.25);color:#e74c3c}
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.open{display:flex}
+    .modal{background:#1a1a2e;border-radius:16px;border:1px solid #2a2a3e;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:28px}
+    .modal h2{font-size:1rem;font-weight:700;color:#fff;margin-bottom:20px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group{display:flex;flex-direction:column;gap:5px}
+    .form-group.full{grid-column:1/-1}
+    label{font-size:.75rem;font-weight:600;color:#555}
+    input[type=text],input[type=number],textarea,input[type=date].form-input{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    input:focus,textarea:focus{border-color:#2563eb}
+    textarea{resize:vertical;min-height:60px}
+    .items-tbl{width:100%;border-collapse:collapse;margin-bottom:8px}
+    .items-tbl th{font-size:.68rem;color:#444;padding:4px 6px;text-align:left}
+    .items-tbl td{padding:4px 6px}
+    .items-tbl input{padding:6px 8px;font-size:.82rem;width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;border-radius:6px;font-family:inherit;outline:none}
+    .rm-btn{background:rgba(231,76,60,.12);color:#e74c3c;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.75rem;white-space:nowrap}
+    .totals-row{display:flex;justify-content:flex-end;gap:20px;padding:8px 0;font-size:.85rem;color:#555}
+    .totals-row strong{color:#2563eb;font-size:1rem}
+    @media(max-width:768px){.sidebar{width:56px}.brand-text,.sidebar-nav span:not(.icon){display:none}.main{margin-left:56px;padding:16px}}
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %><img src="<%= tenant.logo_url %>" alt="" /><% } else { %><span class="brand-emoji">💼</span><% } %>
+    <div class="brand-text"><h2><%= tenant.name %></h2><span>Sales</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin"><span class="icon">🏠</span><span>Home</span></a>
+    <div class="divider"></div>
+    <a href="/sales"><span class="icon">📊</span><span>Dashboard</span></a>
+    <a href="/sales/quotations" class="active"><span class="icon">📄</span><span>Quotations</span></a>
+    <a href="/sales/invoices"><span class="icon">🧾</span><span>Invoices</span></a>
+    <a href="/sales/returns"><span class="icon">↩️</span><span>Sales Returns</span></a>
+    <a href="/sales/customers"><span class="icon">👥</span><span>Customers</span></a>
+    <div class="divider"></div>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn"><span>🔗</span><span>View Menu</span></a>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="page-title">📄 Quotations — عرض سعر</div>
+  <div class="page-sub">Price quotations sent to customers. Track acceptance and convert to invoices.</div>
+
+  <% if (locals.success) { %><div class="alert alert-ok">✓ <%= success %></div><% } %>
+  <% if (locals.error)   { %><div class="alert alert-err">✗ <%= error %></div><% } %>
+
+  <form method="GET" action="/sales/quotations" class="filter-bar">
+    <div class="fg"><div class="fl">From</div><input type="date" name="from" value="<%= from %>" /></div>
+    <div class="fg"><div class="fl">To</div><input type="date" name="to" value="<%= to %>" /></div>
+    <div class="fg">
+      <div class="fl">Status</div>
+      <select name="status">
+        <option value="">All</option>
+        <% ['draft','sent','accepted','rejected','expired'].forEach(s => { %>
+        <option value="<%= s %>" <%= status===s?'selected':'' %>><%= s.charAt(0).toUpperCase()+s.slice(1) %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a href="/sales/quotations" class="btn btn-ghost">Reset</a>
+    <button type="button" class="btn btn-primary" style="margin-left:auto" onclick="document.getElementById('newModal').classList.add('open')">+ New Quotation</button>
+  </form>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-val" style="color:#60a5fa"><%= quotations.length %></div></div>
+    <div class="kpi"><div class="kpi-label">Accepted</div><div class="kpi-val" style="color:#00b894"><%= quotations.filter(q=>q.status==='accepted').length %></div></div>
+    <div class="kpi"><div class="kpi-label">Pending (Sent)</div><div class="kpi-val" style="color:#f1c40f"><%= quotations.filter(q=>q.status==='sent').length %></div></div>
+    <div class="kpi">
+      <div class="kpi-label">Accepted Value</div>
+      <div class="kpi-val" style="color:#fff"><%= tenant.currency||'' %><%= quotations.filter(q=>q.status==='accepted').reduce((s,q)=>s+parseFloat(q.total||0),0).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">All Quotations <span style="font-size:.72rem;color:#444;font-weight:400"><%= quotations.length %> records</span></div>
+    <% if (!quotations.length) { %>
+    <div class="empty">No quotations found.<br/><button onclick="document.getElementById('newModal').classList.add('open')" class="btn btn-primary btn-sm" style="margin-top:12px">+ New Quotation</button></div>
+    <% } else { %>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>No.</th><th>Customer</th><th>Date</th><th>Valid Until</th><th>Total</th><th>Status</th><th>Created By</th><th></th></tr></thead>
+      <tbody>
+      <% quotations.forEach(q => { %>
+      <tr class="row" onclick="window.location='/sales/quotations/<%= q.id %>'">
+        <td style="color:#60a5fa;font-weight:700"><%= q.quotation_no %></td>
+        <td style="color:#fff;font-weight:600"><%= q.customer_name||'—' %><% if(q.customer_phone){%><br/><span style="font-size:.72rem;color:#444"><%= q.customer_phone %></span><%}%></td>
+        <td><%= new Date(q.quotation_date).toLocaleDateString() %></td>
+        <td style="color:<%= q.valid_until&&new Date(q.valid_until)<new Date()&&q.status==='sent'?'#e74c3c':'#666' %>"><%= q.valid_until?new Date(q.valid_until).toLocaleDateString():'—' %></td>
+        <td style="font-weight:700;color:#fff"><%= tenant.currency||'' %><%= parseFloat(q.total||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
+        <td><span class="badge b-<%= q.status %>"><%= q.status %></span></td>
+        <td style="color:#444;font-size:.75rem"><%= q.created_by_name||'—' %></td>
+        <td onclick="event.stopPropagation()">
+          <form method="POST" action="/sales/quotations/<%= q.id %>/delete" onsubmit="return confirm('Delete?')">
+            <button class="btn btn-danger btn-sm" type="submit">Del</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+  </div>
+</div>
+
+<!-- New Quotation Modal -->
+<div class="modal-overlay" id="newModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal">
+    <h2>📄 New Quotation</h2>
+    <form method="POST" action="/sales/quotations">
+      <div class="form-grid">
+        <div class="form-group"><label>Customer Name *</label><input type="text" name="customer_name" required placeholder="e.g. Al Rashid Co." /></div>
+        <div class="form-group"><label>Phone</label><input type="text" name="customer_phone" placeholder="07..." /></div>
+        <div class="form-group"><label>Quotation Date</label><input type="date" class="form-input" name="quotation_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+        <div class="form-group"><label>Valid Until</label><input type="date" class="form-input" name="valid_until" /></div>
+        <div class="form-group full">
+          <label style="margin-bottom:6px;display:block">Items</label>
+          <table class="items-tbl">
+            <thead><tr><th style="width:42%">Item</th><th style="width:18%">Qty</th><th style="width:25%">Unit Price</th><th></th></tr></thead>
+            <tbody id="qtItemsBody">
+              <tr>
+                <td><input type="text" name="item_name[]" list="menuList" placeholder="Item name" onchange="fillQtPrice(this)" /></td>
+                <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcQtTotal()" /></td>
+                <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcQtTotal()" /></td>
+                <td><button type="button" class="rm-btn" onclick="removeQtRow(this)">✕</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <button type="button" onclick="addQtRow()" class="btn btn-ghost btn-sm">+ Add Item</button>
+          <datalist id="menuList">
+            <% menuItems.forEach(m => { %><option value="<%= m.name %>" data-price="<%= m.price %>"><% }) %>
+          </datalist>
+        </div>
+        <div class="form-group"><label>Discount %</label><input type="number" name="discount_pct" id="qtDisc" value="0" min="0" max="100" step="0.1" oninput="calcQtTotal()" /></div>
+        <div class="form-group"><label>Tax %</label><input type="number" name="tax_pct" id="qtTax" value="0" min="0" max="100" step="0.1" oninput="calcQtTotal()" /></div>
+        <div class="form-group full">
+          <div class="totals-row">
+            <span>Subtotal: <strong id="qtSub">0.00</strong></span>
+            <span>Total: <strong id="qtTotal" style="font-size:1.1rem">0.00</strong></span>
+          </div>
+        </div>
+        <div class="form-group full"><label>Notes</label><textarea name="notes" rows="3" placeholder="Terms, delivery info..."></textarea></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('newModal').classList.remove('open')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create Quotation</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+const cur='<%= tenant.currency||"" %>';
+function calcQtTotal(){
+  let sub=0;
+  document.querySelectorAll('#qtItemsBody tr').forEach(tr=>{
+    sub+=(parseFloat(tr.querySelector('[name="item_qty[]"]')?.value)||0)*(parseFloat(tr.querySelector('[name="item_price[]"]')?.value)||0);
+  });
+  const disc=parseFloat(document.getElementById('qtDisc').value)||0;
+  const tax=parseFloat(document.getElementById('qtTax').value)||0;
+  const total=sub*(1-disc/100)*(1+tax/100);
+  document.getElementById('qtSub').textContent=cur+sub.toFixed(2);
+  document.getElementById('qtTotal').textContent=cur+total.toFixed(2);
+}
+function addQtRow(){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="text" name="item_name[]" list="menuList" placeholder="Item name" onchange="fillQtPrice(this)"/></td><td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcQtTotal()"/></td><td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcQtTotal()"/></td><td><button type="button" class="rm-btn" onclick="removeQtRow(this)">✕</button></td>`;
+  document.getElementById('qtItemsBody').appendChild(tr);
+}
+function removeQtRow(btn){if(document.querySelectorAll('#qtItemsBody tr').length>1){btn.closest('tr').remove();calcQtTotal();}}
+function fillQtPrice(inp){const opt=document.querySelector(`#menuList option[value="${inp.value}"]`);if(opt){const pi=inp.closest('tr').querySelector('[name="item_price[]"]');if(pi){pi.value=parseFloat(opt.dataset.price)||0;calcQtTotal();}}}
+document.querySelector('[name="item_name[]"]').addEventListener('change',function(){fillQtPrice(this);});
+</script>
+</body>
+</html>

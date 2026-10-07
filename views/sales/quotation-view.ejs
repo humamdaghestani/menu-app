@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quotation <%= q.quotation_no %> — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-success{background:#00b894;color:#fff}
+    .btn-warning{background:rgba(241,196,15,.2);color:#f1c40f}
+    .btn-danger{background:rgba(231,76,60,.15);color:#e74c3c}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .main{padding:24px;max-width:860px;margin:0 auto}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:.75rem;font-weight:700}
+    .b-draft{background:rgba(255,255,255,.07);color:#888}
+    .b-sent{background:rgba(241,196,15,.15);color:#f1c40f}
+    .b-accepted{background:rgba(0,184,148,.15);color:#00b894}
+    .b-rejected{background:rgba(231,76,60,.15);color:#e74c3c}
+    .b-expired{background:rgba(149,165,166,.15);color:#95a5a6}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.72rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 20px;border-bottom:1px solid #2a2a3e}
+    td{padding:11px 20px;font-size:.85rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+
+    /* Print styles */
+    @media print {
+      body{background:#fff;color:#000}
+      .topbar,.no-print{display:none!important}
+      .card{background:#fff;border:1px solid #ddd;page-break-inside:avoid}
+      th{color:#666}
+      td{color:#333;border-bottom:1px solid #eee}
+      .print-doc{background:#fff!important;color:#000!important;border:none!important;box-shadow:none!important}
+      .doc-header{border-bottom:2px solid #1a1a2e!important}
+    }
+    .doc-header{padding:28px 32px;border-bottom:1px solid #2a2a3e;display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
+    .doc-title{font-size:1.6rem;font-weight:800;color:#fff;letter-spacing:-0.5px}
+    .doc-no{font-size:1rem;color:#7c5cbf;font-weight:700;margin-top:4px}
+    .doc-meta{font-size:.8rem;color:#555;margin-top:6px;line-height:1.6}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0 32px}
+    .meta-cell{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .meta-label{font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:4px}
+    .meta-val{font-size:.88rem;color:#ccc;font-weight:500}
+    .totals-section{padding:16px 32px;border-top:1px solid #2a2a3e}
+    .total-line{display:flex;justify-content:flex-end;gap:0;margin-bottom:6px;font-size:.85rem;color:#888}
+    .total-line span:first-child{min-width:160px;text-align:right;padding-right:20px}
+    .total-line span:last-child{min-width:100px;text-align:right;color:#ccc}
+    .grand-total{font-size:1.1rem;font-weight:800;color:#fff;border-top:2px solid #2a2a3e;padding-top:10px;margin-top:4px}
+    .grand-total span:last-child{color:#7c5cbf}
+  </style>
+</head>
+<body>
+<div class="topbar no-print">
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/sales/quotations" class="btn btn-ghost">← Quotations</a>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <% if (q.status === 'draft') { %>
+    <form method="POST" action="/sales/quotations/<%= q.id %>/status" style="display:inline">
+      <input type="hidden" name="status" value="sent" />
+      <button class="btn btn-warning btn-sm">📤 Mark as Sent</button>
+    </form>
+    <% } %>
+    <% if (q.status === 'sent') { %>
+    <form method="POST" action="/sales/quotations/<%= q.id %>/status" style="display:inline">
+      <input type="hidden" name="status" value="accepted" />
+      <button class="btn btn-success btn-sm">✓ Mark Accepted</button>
+    </form>
+    <form method="POST" action="/sales/quotations/<%= q.id %>/status" style="display:inline">
+      <input type="hidden" name="status" value="rejected" />
+      <button class="btn btn-danger btn-sm">✗ Mark Rejected</button>
+    </form>
+    <% } %>
+    <% if (q.status === 'sent' || q.status === 'draft') { %>
+    <form method="POST" action="/sales/quotations/<%= q.id %>/status" style="display:inline">
+      <input type="hidden" name="status" value="expired" />
+      <button class="btn btn-ghost btn-sm">⏱ Mark Expired</button>
+    </form>
+    <% } %>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print / PDF</button>
+    <form method="POST" action="/sales/quotations/<%= q.id %>/delete" onsubmit="return confirm('Delete this quotation?')" style="display:inline">
+      <button class="btn btn-danger btn-sm">🗑 Delete</button>
+    </form>
+  </div>
+</div>
+
+<div class="main">
+  <% if (locals.success) { %><div style="background:rgba(0,184,148,.12);border:1px solid rgba(0,184,148,.3);border-radius:10px;padding:10px 16px;font-size:.85rem;color:#00b894;margin-bottom:16px no-print">✓ <%= success %></div><% } %>
+
+  <div class="card print-doc">
+    <!-- Header -->
+    <div class="doc-header">
+      <div>
+        <div class="doc-title">PRICE QUOTATION</div>
+        <div style="font-size:.85rem;color:#888;margin-top:2px">عرض سعر</div>
+        <div class="doc-no"><%= q.quotation_no %></div>
+        <div class="doc-meta">
+          Date: <%= new Date(q.quotation_date).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) %><br/>
+          <% if (q.valid_until) { %>Valid until: <%= new Date(q.valid_until).toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) %><% } %>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:1.1rem;font-weight:800;color:#fff"><%= tenant.name %></div>
+        <% if (tenant.whatsapp) { %><div style="font-size:.82rem;color:#555;margin-top:4px">📱 <%= tenant.whatsapp %></div><% } %>
+        <div style="margin-top:12px"><span class="badge b-<%= q.status %>"><%= q.status.toUpperCase() %></span></div>
+      </div>
+    </div>
+
+    <!-- Customer info -->
+    <div class="meta-grid">
+      <div class="meta-cell">
+        <div class="meta-label">Bill To / إلى</div>
+        <div class="meta-val" style="font-size:1rem;color:#fff;font-weight:700"><%= q.customer_name || '—' %></div>
+        <% if (q.customer_phone) { %><div class="meta-val" style="margin-top:2px">📱 <%= q.customer_phone %></div><% } %>
+      </div>
+      <div class="meta-cell">
+        <div class="meta-label">Prepared By</div>
+        <div class="meta-val"><%= q.created_by_name || '—' %></div>
+        <div style="font-size:.75rem;color:#444;margin-top:4px">Created <%= new Date(q.created_at).toLocaleString() %></div>
+      </div>
+    </div>
+
+    <!-- Items table -->
+    <table>
+      <thead><tr>
+        <th style="width:5%">#</th>
+        <th>Item / البند</th>
+        <th style="width:12%;text-align:center">Qty</th>
+        <th style="width:18%;text-align:right">Unit Price</th>
+        <th style="width:18%;text-align:right">Total</th>
+      </tr></thead>
+      <tbody>
+      <% const items = Array.isArray(q.items) ? q.items : JSON.parse(q.items||'[]');
+         items.forEach((it, i) => { %>
+      <tr>
+        <td style="color:#444"><%= i+1 %></td>
+        <td style="color:#fff;font-weight:600"><%= it.name %></td>
+        <td style="text-align:center"><%= it.qty %></td>
+        <td style="text-align:right"><%= tenant.currency||'' %><%= parseFloat(it.price||0).toFixed(2) %></td>
+        <td style="text-align:right;font-weight:600"><%= tenant.currency||'' %><%= (parseFloat(it.qty||0)*parseFloat(it.price||0)).toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+
+    <!-- Totals -->
+    <div class="totals-section">
+      <% const sub = parseFloat(q.subtotal||0); const disc = parseFloat(q.discount_pct||0); const tax = parseFloat(q.tax_pct||0); %>
+      <div class="total-line"><span>Subtotal</span><span><%= tenant.currency||'' %><%= sub.toFixed(2) %></span></div>
+      <% if (disc > 0) { %><div class="total-line"><span>Discount (<%= disc %>%)</span><span style="color:#e74c3c">- <%= tenant.currency||'' %><%= (sub*disc/100).toFixed(2) %></span></div><% } %>
+      <% if (tax > 0) { %><div class="total-line"><span>Tax (<%= tax %>%)</span><span><%= tenant.currency||'' %><%= (sub*(1-disc/100)*tax/100).toFixed(2) %></span></div><% } %>
+      <div class="total-line grand-total"><span>TOTAL</span><span><%= tenant.currency||'' %><%= parseFloat(q.total||0).toFixed(2) %></span></div>
+    </div>
+
+    <% if (q.notes) { %>
+    <div style="padding:16px 32px;border-top:1px solid #2a2a3e">
+      <div style="font-size:.72rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px">Notes / ملاحظات</div>
+      <div style="font-size:.85rem;color:#888;line-height:1.6;white-space:pre-wrap"><%= q.notes %></div>
+    </div>
+    <% } %>
+
+    <div style="padding:14px 32px;border-top:1px solid rgba(255,255,255,.04);font-size:.75rem;color:#444;text-align:center">
+      This quotation is valid until <%= q.valid_until ? new Date(q.valid_until).toLocaleDateString('en-GB') : 'further notice' %>.
+    </div>
+  </div>
+</div>
+</body>
+</html>

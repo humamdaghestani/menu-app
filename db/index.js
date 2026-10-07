@@ -854,6 +854,26 @@ const pool = new Pool({
     )`,
     // ── Enable key feature flags for all tenants ──────────────────────
     `UPDATE tenants SET feat_hr=true, feat_loyalty=true, feat_modifiers=true, feat_reservations=true WHERE true`,
+    // ── Sales Invoices (فاتورة مبيعات) ───────────────────────────────
+    `CREATE TABLE IF NOT EXISTS sales_invoices (
+      id             SERIAL PRIMARY KEY,
+      tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      invoice_no     VARCHAR(50),
+      customer_name  VARCHAR(200),
+      customer_phone VARCHAR(50),
+      invoice_date   DATE DEFAULT CURRENT_DATE,
+      due_date       DATE,
+      status         VARCHAR(20) DEFAULT 'draft',
+      items          JSONB DEFAULT '[]',
+      subtotal       NUMERIC(12,2) DEFAULT 0,
+      discount_pct   NUMERIC(5,2) DEFAULT 0,
+      tax_pct        NUMERIC(5,2) DEFAULT 0,
+      total          NUMERIC(12,2) DEFAULT 0,
+      paid_amount    NUMERIC(12,2) DEFAULT 0,
+      notes          TEXT,
+      created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )`,
     // ── Sales Quotations (عرض سعر) ───────────────────────────────────
     `CREATE TABLE IF NOT EXISTS quotations (
       id               SERIAL PRIMARY KEY,
