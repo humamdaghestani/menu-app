@@ -389,23 +389,63 @@ router.post('/items/:id/recipe/:lineId/delete', requireAuth, requireInventory, a
 // ── Purchase receipts ──────────────────────────────────────────────────────────
 router.get('/purchases', requireAuth, requireInventory, async (req, res) => {
   try {
-    const receipts = await db.query(
-      `SELECT pr.*, u.name AS created_by_name,
-              COUNT(prl.id) AS line_count
-       FROM purchase_receipts pr
-       LEFT JOIN users u ON u.id=pr.created_by
-       LEFT JOIN purchase_receipt_lines prl ON prl.receipt_id=pr.id
-       WHERE pr.tenant_id=$1
-       GROUP BY pr.id, u.name
-       ORDER BY pr.created_at DESC`,
-      [req.user.tenantId]
-    );
+    const tid = req.user.tenantId;
+    const from = req.query.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+    const to   = req.query.to   || new Date().toISOString().slice(0, 10);
+    const selSupplier = req.query.supplier || '';
+
+    const [receiptsRes, suppliersRes, kpiRes, bySupplierRes, topItemsRes] = await Promise.all([
+      db.query(
+        `SELECT pr.*, u.name AS created_by_name, COUNT(prl.id)::int AS line_count
+         FROM purchase_receipts pr
+         LEFT JOIN users u ON u.id=pr.created_by
+         LEFT JOIN purchase_receipt_lines prl ON prl.receipt_id=pr.id
+         WHERE pr.tenant_id=$1
+           AND pr.receipt_date::date BETWEEN $2 AND $3
+           ${selSupplier ? "AND (pr.supplier_name=$4 OR pr.supplier_id::text=$4)" : ''}
+         GROUP BY pr.id, u.name
+         ORDER BY pr.receipt_date DESC, pr.id DESC`,
+        selSupplier ? [tid, from, to, selSupplier] : [tid, from, to]
+      ),
+      db.query(`SELECT DISTINCT supplier_name FROM purchase_receipts WHERE tenant_id=$1 AND supplier_name IS NOT NULL ORDER BY supplier_name`, [tid]),
+      db.query(`
+        SELECT
+          COALESCE(SUM(CASE WHEN status='active' THEN total ELSE 0 END),0)::float AS total_active,
+          COALESCE(SUM(CASE WHEN status='voided' THEN total ELSE 0 END),0)::float AS total_voided,
+          COUNT(CASE WHEN status='active' THEN 1 END)::int AS count_active,
+          COUNT(CASE WHEN status='voided' THEN 1 END)::int AS count_voided
+        FROM purchase_receipts
+        WHERE tenant_id=$1 AND receipt_date::date BETWEEN $2 AND $3`, [tid, from, to]),
+      db.query(`
+        SELECT COALESCE(pr.supplier_name,'Unknown') AS supplier,
+               COUNT(*)::int AS receipt_count,
+               SUM(pr.total)::float AS total
+        FROM purchase_receipts pr
+        WHERE pr.tenant_id=$1 AND pr.status='active' AND pr.receipt_date::date BETWEEN $2 AND $3
+        GROUP BY pr.supplier_name ORDER BY total DESC LIMIT 8`, [tid, from, to]),
+      db.query(`
+        SELECT prl.item_name, prl.unit,
+               SUM(prl.quantity)::float AS total_qty,
+               SUM(prl.total)::float AS total_cost,
+               COUNT(DISTINCT pr.id)::int AS receipt_count
+        FROM purchase_receipt_lines prl
+        JOIN purchase_receipts pr ON pr.id=prl.receipt_id AND pr.tenant_id=$1 AND pr.status='active'
+          AND pr.receipt_date::date BETWEEN $2 AND $3
+        WHERE prl.item_name IS NOT NULL AND prl.item_name != ''
+        GROUP BY prl.item_name, prl.unit
+        ORDER BY total_cost DESC LIMIT 10`, [tid, from, to]),
+    ]);
+
     res.render('inventory/purchases', {
-      tenant: req.tenant,
-      currentUser: req.user,
-      receipts: receipts.rows,
+      tenant: req.tenant, currentUser: req.user,
+      receipts: receiptsRes.rows,
+      suppliers: suppliersRes.rows,
+      kpi: kpiRes.rows[0] || {},
+      bySupplier: bySupplierRes.rows,
+      topItems: topItemsRes.rows,
+      from, to, selSupplier,
     });
-  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+  } catch (err) { console.error(err); res.status(500).send('Server error: ' + err.message); }
 });
 
 router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => {

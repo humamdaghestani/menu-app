@@ -7,67 +7,207 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
-    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
     .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
     .btn-primary { background: #7c5cbf; color: #fff; }
     .btn-primary:hover { opacity: .88; }
-    .main { padding: 24px; max-width: 1100px; margin: 0 auto; }
-    .page-title { font-size: 1.3rem; font-weight: 800; color: #fff; margin-bottom: 24px; }
 
-    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .page-title { font-size: 1.3rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .page-sub { font-size: .82rem; color: #555; margin-bottom: 20px; }
+
+    /* Filter bar */
+    .filter-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
+    .fg { display: flex; flex-direction: column; gap: 4px; }
+    .fl { font-size: .67rem; font-weight: 700; text-transform: uppercase; color: #555; letter-spacing: .3px; }
+    input[type=date], select { background: #1a1a2e; border: 1.5px solid #2a2a3e; color: #fff; padding: 7px 10px; border-radius: 8px; font-family: inherit; font-size: .82rem; outline: none; }
+    select { min-width: 160px; }
+
+    /* KPI row */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .kpi { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a3e; padding: 16px 18px; }
+    .kpi-label { font-size: .67rem; text-transform: uppercase; color: #444; font-weight: 700; margin-bottom: 6px; }
+    .kpi-val { font-size: 1.45rem; font-weight: 800; }
+    .kpi-sub { font-size: .72rem; color: #444; margin-top: 4px; }
+
+    /* Two-col layout */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media(max-width:820px){ .grid2 { grid-template-columns: 1fr; } }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    .card-head { padding: 13px 18px; border-bottom: 1px solid #2a2a3e; font-size: .88rem; font-weight: 700; color: #fff; }
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid #2a2a3e; }
-    td { padding: 12px 16px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
+    th { text-align: left; font-size: .67rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 9px 14px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 14px; font-size: .83rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,.02); cursor: pointer; }
-    .empty-state { text-align: center; padding: 80px 24px; color: #444; }
+    tr.clickable:hover td { background: rgba(255,255,255,.02); cursor: pointer; }
+    .empty-state { text-align: center; padding: 60px 24px; color: #444; font-size: .9rem; }
     .badge-voided { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .7rem; font-weight: 700; background: rgba(231,76,60,.15); color: #e74c3c; }
     .badge-active { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: .7rem; font-weight: 700; background: rgba(0,184,148,.12); color: #00b894; }
+
+    /* Supplier bar chart */
+    .sup-row { display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .sup-row:last-child { border-bottom: none; }
+    .sup-name { font-size: .82rem; color: #ddd; min-width: 120px; font-weight: 600; flex-shrink: 0; }
+    .sup-bar-wrap { flex: 1; height: 8px; background: #2a2a3e; border-radius: 4px; overflow: hidden; }
+    .sup-bar { height: 100%; border-radius: 4px; background: #7c5cbf; }
+    .sup-total { font-size: .82rem; color: #a78bdf; font-weight: 700; min-width: 80px; text-align: right; flex-shrink: 0; }
+    .sup-cnt { font-size: .7rem; color: #444; min-width: 40px; text-align: right; flex-shrink: 0; }
+
+    /* Totals row */
+    .totals-row td { font-weight: 700; color: #fff; border-top: 2px solid #2a2a3e; border-bottom: none; }
   </style>
 </head>
 <body>
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:12px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem;font-weight:600;flex-shrink:0">Inventory</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
     <span style="font-weight:700;color:#fff">🧾 Purchase Receipts</span>
   </div>
   <a href="/inventory/purchases/new" class="btn btn-primary">+ New Receipt</a>
 </div>
 
 <div class="main">
-  <% if (receipts.length === 0) { %>
-  <div class="empty-state">
-    <div style="font-size:3rem">🧾</div>
-    <div style="margin-top:12px;font-size:.9rem">No purchase receipts yet.</div>
-    <a href="/inventory/purchases/new" class="btn btn-primary" style="margin-top:16px">Add first receipt</a>
+  <div class="page-title">🧾 Purchase Report</div>
+  <div class="page-sub">All goods received from suppliers in the selected period.</div>
+
+  <!-- Filters -->
+  <form method="GET" action="/inventory/purchases" class="filter-bar">
+    <div class="fg">
+      <div class="fl">From</div>
+      <input type="date" name="from" value="<%= from %>" />
+    </div>
+    <div class="fg">
+      <div class="fl">To</div>
+      <input type="date" name="to" value="<%= to %>" />
+    </div>
+    <div class="fg">
+      <div class="fl">Supplier</div>
+      <select name="supplier">
+        <option value="">All Suppliers</option>
+        <% suppliers.forEach(s => { %>
+        <option value="<%= s.supplier_name %>" <%= selSupplier === s.supplier_name ? 'selected' : '' %>><%= s.supplier_name %></option>
+        <% }); %>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Apply</button>
+    <a href="/inventory/purchases" class="btn btn-ghost">Reset</a>
+  </form>
+
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Total Purchased</div>
+      <div class="kpi-val" style="color:#7c5cbf"><%= tenant.currency||'' %><%= (parseFloat(kpi.total_active)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+      <div class="kpi-sub"><%= kpi.count_active || 0 %> receipts</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Voided</div>
+      <div class="kpi-val" style="color:#e74c3c"><%= tenant.currency||'' %><%= (parseFloat(kpi.total_voided)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+      <div class="kpi-sub"><%= kpi.count_voided || 0 %> voided receipts</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Net Received</div>
+      <div class="kpi-val" style="color:#00b894"><%= tenant.currency||'' %><%= ((parseFloat(kpi.total_active)||0) - (parseFloat(kpi.total_voided)||0)).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+      <div class="kpi-sub">active receipts only</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Suppliers</div>
+      <div class="kpi-val" style="color:#fff"><%= bySupplier.length %></div>
+      <div class="kpi-sub">with active receipts</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg per Receipt</div>
+      <% const avgReceipt = (kpi.count_active > 0) ? (parseFloat(kpi.total_active)||0) / kpi.count_active : 0; %>
+      <div class="kpi-val" style="color:#fff"><%= tenant.currency||'' %><%= avgReceipt.toLocaleString(undefined,{maximumFractionDigits:2}) %></div>
+      <div class="kpi-sub">active receipts</div>
+    </div>
   </div>
-  <% } else { %>
-  <div class="table-wrap">
+
+  <!-- Supplier breakdown + Top items -->
+  <% if (bySupplier.length || topItems.length) { %>
+  <div class="grid2">
+    <% if (bySupplier.length) { %>
+    <div class="card">
+      <div class="card-head">By Supplier</div>
+      <% const maxSup = Math.max(...bySupplier.map(s => parseFloat(s.total)||0), 1); %>
+      <% bySupplier.forEach(s => { %>
+      <div class="sup-row">
+        <div class="sup-name"><%= s.supplier %></div>
+        <div class="sup-bar-wrap"><div class="sup-bar" style="width:<%= Math.round((parseFloat(s.total)||0)/maxSup*100) %>%"></div></div>
+        <div class="sup-total"><%= tenant.currency||'' %><%= (parseFloat(s.total)||0).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+        <div class="sup-cnt"><%= s.receipt_count %> rcpt</div>
+      </div>
+      <% }); %>
+    </div>
+    <% } %>
+    <% if (topItems.length) { %>
+    <div class="card">
+      <div class="card-head">Top Items by Cost</div>
+      <table>
+        <thead><tr><th>Item</th><th>Qty</th><th>Total Cost</th></tr></thead>
+        <tbody>
+        <% topItems.forEach(i => { %>
+        <tr>
+          <td style="color:#ddd;font-weight:600"><%= i.item_name %> <span style="color:#444;font-size:.73rem">(<%= i.unit||'—' %>)</span></td>
+          <td style="color:#888"><%= (parseFloat(i.total_qty)||0).toLocaleString(undefined,{maximumFractionDigits:2}) %></td>
+          <td style="color:#a78bdf;font-weight:700"><%= tenant.currency||'' %><%= (parseFloat(i.total_cost)||0).toLocaleString(undefined,{maximumFractionDigits:2}) %></td>
+        </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+  <% } %>
+
+  <!-- Receipts table -->
+  <div class="card">
+    <div class="card-head">
+      All Receipts
+      <span style="font-size:.72rem;color:#444;font-weight:400;margin-left:8px"><%= receipts.length %> records</span>
+    </div>
+    <% if (receipts.length === 0) { %>
+    <div class="empty-state">
+      No purchase receipts for this period.<br/>
+      <a href="/inventory/purchases/new" class="btn btn-primary" style="margin-top:16px;display:inline-flex">+ Add Receipt</a>
+    </div>
+    <% } else { %>
+    <div style="overflow-x:auto">
     <table>
       <thead>
-        <tr><th>Date</th><th>Supplier</th><th>Invoice #</th><th>Items</th><th>Total</th><th>Status</th><th>Created By</th></tr>
+        <tr><th>Date</th><th>Supplier</th><th>Invoice #</th><th>Items</th><th>Total</th><th>Status</th><th>By</th></tr>
       </thead>
       <tbody>
       <% receipts.forEach(r => { %>
-      <tr onclick="window.location.href='/inventory/purchases/<%= r.id %>'">
-        <td><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
+      <tr class="clickable" onclick="window.location.href='/inventory/purchases/<%= r.id %>'">
+        <td style="white-space:nowrap"><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
         <td style="color:#fff;font-weight:600"><%= r.supplier_name || '—' %></td>
         <td style="color:#555"><%= r.invoice_no || '—' %></td>
         <td style="color:#666"><%= r.line_count %> item<%= r.line_count != 1 ? 's' : '' %></td>
-        <td style="color:<%= (r.status||'active')==='voided'?'#666':'#fff' %>;font-weight:700;text-decoration:<%= (r.status||'active')==='voided'?'line-through':'none' %>"><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
-        <td><span class="badge-<%= r.status || 'active' %>"><%= r.status || 'active' %></span></td>
+        <td style="color:<%= (r.status||'active')==='voided'?'#555':'#fff' %>;font-weight:700;text-decoration:<%= (r.status||'active')==='voided'?'line-through':'none' %>">
+          <%= tenant.currency||'' %><%= parseFloat(r.total).toFixed(2) %>
+        </td>
+        <td><span class="badge-<%= r.status||'active' %>"><%= r.status||'active' %></span></td>
         <td style="color:#555"><%= r.created_by_name || '—' %></td>
       </tr>
-      <% }) %>
+      <% }); %>
       </tbody>
+      <tfoot>
+        <tr class="totals-row">
+          <td colspan="4">Total (<%= receipts.filter(r=>(r.status||'active')==='active').length %> active)</td>
+          <td><%= tenant.currency||'' %><%= receipts.filter(r=>(r.status||'active')==='active').reduce((s,r)=>s+parseFloat(r.total||0),0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
     </table>
+    </div>
+    <% } %>
   </div>
-  <% } %>
 </div>
 </body>
 </html>
