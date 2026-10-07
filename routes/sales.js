@@ -285,7 +285,7 @@ router.get('/customers', requireAuth, requireSales, async (req, res) => {
         FROM sales_invoices WHERE tenant_id=$1 GROUP BY customer_name
       ) inv ON inv.customer_name = c.name
       LEFT JOIN (
-        SELECT customer_id, SUM(GREATEST(amount-paid,0)) AS credit_balance
+        SELECT customer_id, SUM(GREATEST(amount-amount_paid,0)) AS credit_balance
         FROM customer_credits WHERE tenant_id=$1 GROUP BY customer_id
       ) cc ON cc.customer_id = c.id
       WHERE c.tenant_id=$1 ORDER BY c.name`, [tid]);
