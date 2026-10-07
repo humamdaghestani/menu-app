@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Location Consumption — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:1200px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:28px}
+    .filter-row input[type=date]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    .filter-row select{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 12px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+
+    /* Summary chips */
+    .summary-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+    .loc-chip{border-radius:10px;border:1.5px solid;padding:14px 18px;min-width:170px;flex:0 0 auto}
+    .loc-chip-name{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+    .loc-chip-rev{font-size:1.25rem;font-weight:800;color:#fff;margin-bottom:2px}
+    .loc-chip-sub{font-size:.72rem;color:#555}
+
+    .section{margin-bottom:32px}
+    .section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid}
+    .section-title{font-size:1rem;font-weight:800;color:#fff}
+    .section-dot{width:12px;height:12px;border-radius:50%}
+
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+    .card{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;overflow:hidden}
+    .card-head{padding:11px 16px;border-bottom:1px solid #2a2a3e;font-size:.82rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.65rem;text-transform:uppercase;color:#444;font-weight:700;padding:8px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:9px 14px;font-size:.82rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .empty{text-align:center;padding:32px;color:#333;font-size:.85rem}
+    .total-row td{font-weight:700;color:#fff;border-top:1px solid #2a2a3e;background:rgba(255,255,255,.03)}
+    .green{color:#00b894}.red{color:#e74c3c}.yellow{color:#f39c12}
+    .tip{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:10px;padding:14px 18px;font-size:.8rem;color:#555;margin-bottom:24px;line-height:1.5}
+    .tip strong{color:#888}
+    @media print{.topbar,.filter-row{display:none}body{background:#fff;color:#000}.card{border:1px solid #ddd}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Location Consumption</span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">📍 Location Consumption Report</div>
+  <div class="page-sub">Sales → BOM → Raw material used per production station</div>
+
+  <form method="GET" action="/inventory/location-report" class="filter-row">
+    <input type="date" name="from" value="<%= from %>" />
+    <span style="color:#444">→</span>
+    <input type="date" name="to" value="<%= to %>" />
+    <select name="location">
+      <option value="">All Locations</option>
+      <% locations.forEach(l => { %>
+      <option value="<%= l.id %>" <%= selLoc == l.id ? 'selected' : '' %>><%= l.name %></option>
+      <% }); %>
+    </select>
+    <button type="submit" class="btn btn-primary">Apply</button>
+    <a href="/inventory/location-report?from=<%= new Date().toISOString().slice(0,8)+'01' %>&to=<%= new Date().toISOString().slice(0,10) %>" class="btn btn-ghost" style="font-size:.78rem">This Month</a>
+    <a href="/inventory/location-report?from=<%= new Date().toISOString().slice(0,10) %>&to=<%= new Date().toISOString().slice(0,10) %>" class="btn btn-ghost" style="font-size:.78rem">Today</a>
+  </form>
+
+  <% if (!summary.length) { %>
+  <div class="tip">
+    <strong>No sales data found for this period.</strong><br/>
+    Make sure: (1) Sales are recorded and marked as paid in POS. (2) Menu items have a BOM (recipe) linked via the Inventory → Items → Recipe page. (3) Each item's recipe page has a Production Location selected.
+  </div>
+  <% } %>
+
+  <!-- Location summary chips -->
+  <% if (summary.length) { %>
+  <div class="summary-row">
+    <% summary.forEach(s => { %>
+    <div class="loc-chip" style="border-color:<%= s.location_color %>40;background:<%= s.location_color %>08">
+      <div class="loc-chip-name" style="color:<%= s.location_color %>"><%= s.location_name %></div>
+      <div class="loc-chip-rev"><%= (tenant.currency||'') %><%= parseFloat(s.revenue).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      <div class="loc-chip-sub"><%= parseFloat(s.total_qty).toLocaleString(undefined,{maximumFractionDigits:0}) %> units · <%= s.distinct_items %> items</div>
+    </div>
+    <% }); %>
+    <div class="loc-chip" style="border-color:#2a2a3e;background:rgba(255,255,255,.02)">
+      <div class="loc-chip-name" style="color:#555">Total RM Cost</div>
+      <div class="loc-chip-rev red"><%= (tenant.currency||'') %><%= totalCost.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      <div class="loc-chip-sub">all ingredients consumed</div>
+    </div>
+  </div>
+  <% } %>
+
+  <%
+    // Build unique location list from byLocation + unassigned
+    const locKeys = Object.keys(byLocation);
+  %>
+
+  <% if (!locKeys.length) { %>
+  <div class="tip">
+    <strong>No ingredient consumption data.</strong><br/>
+    Items were sold but either have no BOM (recipe) set up, or their inventory items are not linked to a menu item.<br/>
+    Go to <a href="/inventory/items" style="color:#7c5cbf">Inventory → Items</a>, open each item, set its Menu Item link and build the Recipe (BOM).
+  </div>
+  <% } %>
+
+  <!-- Per-location sections -->
+  <% locKeys.forEach(key => {
+    const loc = byLocation[key];
+    const sold = soldByLocation[key] || [];
+    const totalLocCost = loc.ingredients.reduce((s, i) => s + i.cost_consumed, 0);
+    const color = loc.location_color || '#7c5cbf';
+  %>
+  <div class="section">
+    <div class="section-head" style="border-color:<%= color %>40">
+      <div class="section-dot" style="background:<%= color %>"></div>
+      <div class="section-title"><%= loc.location_name %></div>
+      <span style="font-size:.75rem;color:#555;margin-left:auto">RM Cost: <strong style="color:<%= color %>"><%= (tenant.currency||'') %><%= totalLocCost.toLocaleString(undefined,{maximumFractionDigits:2}) %></strong></span>
+    </div>
+
+    <div class="grid2">
+      <!-- Items sold at this location -->
+      <div class="card">
+        <div class="card-head">🛒 Items Sold</div>
+        <% if (!sold.length) { %><div class="empty">No sales</div>
+        <% } else { %>
+        <table>
+          <thead><tr><th>Menu Item</th><th>Qty Sold</th><th>Revenue</th></tr></thead>
+          <tbody>
+          <% sold.forEach(s => { %>
+          <tr>
+            <td style="color:#ddd;font-weight:500"><%= s.item_name %></td>
+            <td><%= parseFloat(s.qty_sold).toLocaleString(undefined,{maximumFractionDigits:1}) %></td>
+            <td class="green" style="font-weight:600"><%= (tenant.currency||'') %><%= parseFloat(s.revenue).toLocaleString(undefined,{maximumFractionDigits:0}) %></td>
+          </tr>
+          <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+
+      <!-- Raw materials consumed -->
+      <div class="card">
+        <div class="card-head">🧪 Raw Materials Consumed</div>
+        <% if (!loc.ingredients.length) { %><div class="empty">No BOM data</div>
+        <% } else { %>
+        <table>
+          <thead><tr><th>Ingredient</th><th>Unit</th><th>Qty Used</th><th>Cost</th></tr></thead>
+          <tbody>
+          <% loc.ingredients.forEach(ing => { %>
+          <tr>
+            <td style="color:#ddd;font-weight:500"><%= ing.ingredient_name %></td>
+            <td style="color:#555"><%= ing.unit %></td>
+            <td style="font-weight:600"><%= parseFloat(ing.qty_consumed).toLocaleString(undefined,{maximumFractionDigits:3}) %></td>
+            <td class="red"><%= (tenant.currency||'') %><%= parseFloat(ing.cost_consumed).toLocaleString(undefined,{maximumFractionDigits:2}) %></td>
+          </tr>
+          <% }); %>
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="3">Total RM Cost</td>
+              <td class="red"><%= (tenant.currency||'') %><%= totalLocCost.toLocaleString(undefined,{maximumFractionDigits:2}) %></td>
+            </tr>
+          </tfoot>
+        </table>
+        <% } %>
+      </div>
+    </div>
+  </div>
+  <% }); %>
+
+</div>
+</body>
+</html>

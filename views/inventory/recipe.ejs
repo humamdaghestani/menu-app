@@ -67,6 +67,10 @@
 
 <div class="main">
 
+  <% if (success === 'location_saved') { %>
+  <div style="background:#1e3a2e;border:1px solid #00b894;color:#00b894;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem">✅ Production location saved.</div>
+  <% } %>
+
   <!-- Cost banner -->
   <div class="cost-banner">
     <div>
@@ -83,6 +87,20 @@
       <div class="cost-label">Ingredients</div>
       <div style="font-size:1rem;font-weight:700;color:#fff;margin-top:4px"><%= recipe.length %> lines</div>
     </div>
+    <% if (item.menu_item_id && locations.length) { %>
+    <div style="border-left:1px solid rgba(124,92,191,.3);padding-left:24px">
+      <div class="cost-label" style="margin-bottom:8px">Production Location</div>
+      <form method="POST" action="/inventory/items/<%= item.id %>/set-location" style="display:flex;gap:8px;align-items:center">
+        <select name="production_location_id" class="form-input" style="min-width:150px;padding:6px 10px;font-size:.82rem">
+          <option value="">— None —</option>
+          <% locations.forEach(l => { %>
+          <option value="<%= l.id %>" <%= item.production_location_id == l.id ? 'selected' : '' %>><%= l.name %></option>
+          <% }); %>
+        </select>
+        <button type="submit" class="btn btn-primary" style="padding:6px 12px;font-size:.78rem">Save</button>
+      </form>
+    </div>
+    <% } %>
   </div>
 
   <!-- Current recipe -->

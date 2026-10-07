@@ -276,8 +276,13 @@ router.post('/items/:id/adjust', requireAuth, requireInventory, async (req, res)
 router.get('/items/:id/recipe', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
-    const [itemRes, recipeRes, ingredientsRes] = await Promise.all([
-      db.query(`SELECT ii.*, mi.name AS menu_item_name FROM inventory_items ii LEFT JOIN menu_items mi ON mi.id=ii.menu_item_id WHERE ii.id=$1 AND ii.tenant_id=$2`, [req.params.id, tid]),
+    const [itemRes, recipeRes, ingredientsRes, locsRes] = await Promise.all([
+      db.query(`
+        SELECT ii.*, mi.name AS menu_item_name, mi.production_location_id
+        FROM inventory_items ii
+        LEFT JOIN menu_items mi ON mi.id = ii.menu_item_id
+        WHERE ii.id=$1 AND ii.tenant_id=$2
+      `, [req.params.id, tid]),
       db.query(`
         SELECT ir.*, ii.name AS ingredient_name, ii.unit, ii.avg_cost,
                ROUND(ir.quantity * ii.avg_cost, 4) AS line_cost
@@ -286,6 +291,7 @@ router.get('/items/:id/recipe', requireAuth, requireInventory, async (req, res) 
         WHERE ir.item_id=$1 ORDER BY ii.name
       `, [req.params.id]),
       db.query(`SELECT id, name, unit, avg_cost FROM inventory_items WHERE tenant_id=$1 AND is_active=true AND id != $2 ORDER BY name`, [tid, req.params.id]),
+      db.query(`SELECT id, name, color FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY name`, [tid]),
     ]);
     if (!itemRes.rows[0]) return res.status(404).send('Item not found');
     const totalCost = recipeRes.rows.reduce((s, r) => s + parseFloat(r.line_cost), 0);
@@ -295,9 +301,24 @@ router.get('/items/:id/recipe', requireAuth, requireInventory, async (req, res) 
       item: itemRes.rows[0],
       recipe: recipeRes.rows,
       ingredients: ingredientsRes.rows,
+      locations: locsRes.rows,
       totalCost,
+      success: req.query.success || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+// Set production location for a menu item via the recipe page
+router.post('/items/:id/set-location', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const tid = req.user.tenantId;
+    const { production_location_id } = req.body;
+    const itemRes = await db.query(`SELECT menu_item_id FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    if (!itemRes.rows[0]?.menu_item_id) return res.redirect('/inventory/items/' + req.params.id + '/recipe?success=no_menu_item');
+    const locId = parseInt(production_location_id) || null;
+    await db.query(`UPDATE menu_items SET production_location_id=$1 WHERE id=$2`, [locId, itemRes.rows[0].menu_item_id]);
+    res.redirect('/inventory/items/' + req.params.id + '/recipe?success=location_saved');
+  } catch (err) { console.error(err); res.redirect('/inventory/items/' + req.params.id + '/recipe'); }
 });
 
 // Add recipe line
@@ -1518,23 +1539,33 @@ async function deductStockForOrder(tenantId, orderId, userId) {
     const items = await db.query(`SELECT * FROM pos_order_items WHERE order_id=$1`, [orderId]);
     for (const oi of items.rows) {
       if (!oi.menu_item_id) continue;
-      // Find inventory product linked to this menu item
+      // Find inventory product + production location linked to this menu item
       const invRes = await db.query(
-        `SELECT id FROM inventory_items WHERE tenant_id=$1 AND menu_item_id=$2 AND is_active=true LIMIT 1`,
+        `SELECT ii.id, mi.production_location_id
+         FROM inventory_items ii
+         JOIN menu_items mi ON mi.id = ii.menu_item_id
+         WHERE ii.tenant_id=$1 AND ii.menu_item_id=$2 AND ii.is_active=true LIMIT 1`,
         [tenantId, oi.menu_item_id]
       );
       if (!invRes.rows[0]) continue;
       const invItemId = invRes.rows[0].id;
+      const locationId = invRes.rows[0].production_location_id || null;
 
       // Get recipe
       const recipe = await db.query(`SELECT * FROM inventory_recipes WHERE item_id=$1`, [invItemId]);
       if (recipe.rows.length === 0) {
-        // No recipe — deduct the sellable item directly (quantity ordered)
         const deduct = parseInt(oi.quantity);
         await db.query(
           `UPDATE inventory_items SET stock_qty = stock_qty - $1 WHERE id=$2 AND tenant_id=$3`,
           [deduct, invItemId, tenantId]
         );
+        if (locationId) {
+          await db.query(
+            `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity) VALUES ($1,$2,$3,-$4)
+             ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity - $4`,
+            [tenantId, invItemId, locationId, deduct]
+          );
+        }
         await db.query(
           `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, reference_id, reference_type, created_by)
            VALUES ($1,$2,'sale',$3,$4,'pos_order',$5)`,
@@ -1547,6 +1578,13 @@ async function deductStockForOrder(tenantId, orderId, userId) {
             `UPDATE inventory_items SET stock_qty = stock_qty - $1 WHERE id=$2 AND tenant_id=$3`,
             [deduct, r.ingredient_id, tenantId]
           );
+          if (locationId) {
+            await db.query(
+              `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity) VALUES ($1,$2,$3,-$4)
+               ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity - $4`,
+              [tenantId, r.ingredient_id, locationId, deduct]
+            );
+          }
           await db.query(
             `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, reference_id, reference_type, created_by)
              VALUES ($1,$2,'sale',$3,$4,'pos_order',$5)`,
@@ -1795,6 +1833,114 @@ router.post('/reorder/create-po', requireAuth, requireInventory, async (req, res
 
     res.redirect('/inventory/purchase-orders/' + poId);
   } catch (err) { console.error(err); res.redirect('/inventory/reorder?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Location Consumption Report ────────────────────────────────────
+router.get('/location-report', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const from = req.query.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
+  const to   = req.query.to   || new Date().toISOString().slice(0, 10);
+  const selLoc = req.query.location || '';
+
+  try {
+    const [locsRes, summaryRes, ingredientsRes, soldItemsRes] = await Promise.all([
+      // All locations
+      db.query(`SELECT id, name, color FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY name`, [tid]),
+
+      // Per-location summary: items sold, revenue
+      db.query(`
+        SELECT
+          COALESCE(il.name, 'Unassigned') AS location_name,
+          il.id AS location_id,
+          COALESCE(il.color, '#888') AS location_color,
+          COUNT(DISTINCT poi.menu_item_id) AS distinct_items,
+          SUM(poi.quantity)::float AS total_qty,
+          COALESCE(SUM(poi.price * poi.quantity), 0)::float AS revenue
+        FROM pos_orders po
+        JOIN pos_order_items poi ON poi.order_id = po.id AND poi.menu_item_id IS NOT NULL
+        JOIN menu_items mi ON mi.id = poi.menu_item_id
+        LEFT JOIN inventory_locations il ON il.id = mi.production_location_id
+        WHERE po.tenant_id=$1 AND po.status='paid'
+          AND po.paid_at::date BETWEEN $2 AND $3
+          ${selLoc ? 'AND (mi.production_location_id=$4 OR ($4::int IS NULL AND mi.production_location_id IS NULL))' : ''}
+        GROUP BY il.id, il.name, il.color
+        ORDER BY revenue DESC
+      `, selLoc ? [tid, from, to, parseInt(selLoc) || null] : [tid, from, to]),
+
+      // Ingredient consumption per location
+      db.query(`
+        SELECT
+          COALESCE(il.name, 'Unassigned') AS location_name,
+          il.id AS location_id,
+          COALESCE(il.color, '#888') AS location_color,
+          ii_ing.id AS ingredient_id,
+          ii_ing.name AS ingredient_name,
+          ii_ing.unit,
+          ii_ing.avg_cost::float,
+          SUM(poi.quantity * ir.quantity)::float AS qty_consumed,
+          SUM(poi.quantity * ir.quantity * ii_ing.avg_cost)::float AS cost_consumed
+        FROM pos_orders po
+        JOIN pos_order_items poi ON poi.order_id = po.id AND poi.menu_item_id IS NOT NULL
+        JOIN menu_items mi ON mi.id = poi.menu_item_id
+        JOIN inventory_items ii_prod ON ii_prod.menu_item_id = mi.id AND ii_prod.tenant_id = $1 AND ii_prod.is_active = true
+        JOIN inventory_recipes ir ON ir.item_id = ii_prod.id
+        JOIN inventory_items ii_ing ON ii_ing.id = ir.ingredient_id AND ii_ing.tenant_id = $1
+        LEFT JOIN inventory_locations il ON il.id = mi.production_location_id
+        WHERE po.tenant_id=$1 AND po.status='paid'
+          AND po.paid_at::date BETWEEN $2 AND $3
+          ${selLoc ? 'AND (mi.production_location_id=$4 OR ($4::int IS NULL AND mi.production_location_id IS NULL))' : ''}
+        GROUP BY il.id, il.name, il.color, ii_ing.id, ii_ing.name, ii_ing.unit, ii_ing.avg_cost
+        ORDER BY il.name NULLS LAST, cost_consumed DESC
+      `, selLoc ? [tid, from, to, parseInt(selLoc) || null] : [tid, from, to]),
+
+      // Items sold per location (for sold items breakdown)
+      db.query(`
+        SELECT
+          COALESCE(il.name, 'Unassigned') AS location_name,
+          il.id AS location_id,
+          mi.name AS item_name,
+          SUM(poi.quantity)::float AS qty_sold,
+          COALESCE(SUM(poi.price * poi.quantity), 0)::float AS revenue
+        FROM pos_orders po
+        JOIN pos_order_items poi ON poi.order_id = po.id AND poi.menu_item_id IS NOT NULL
+        JOIN menu_items mi ON mi.id = poi.menu_item_id
+        LEFT JOIN inventory_locations il ON il.id = mi.production_location_id
+        WHERE po.tenant_id=$1 AND po.status='paid'
+          AND po.paid_at::date BETWEEN $2 AND $3
+          ${selLoc ? 'AND (mi.production_location_id=$4 OR ($4::int IS NULL AND mi.production_location_id IS NULL))' : ''}
+        GROUP BY il.id, il.name, mi.id, mi.name
+        ORDER BY il.name NULLS LAST, qty_sold DESC
+      `, selLoc ? [tid, from, to, parseInt(selLoc) || null] : [tid, from, to]),
+    ]);
+
+    // Group ingredients by location
+    const byLocation = {};
+    for (const row of ingredientsRes.rows) {
+      const key = row.location_id || 'unassigned';
+      if (!byLocation[key]) byLocation[key] = { location_name: row.location_name, location_color: row.location_color, ingredients: [] };
+      byLocation[key].ingredients.push(row);
+    }
+
+    // Group sold items by location
+    const soldByLocation = {};
+    for (const row of soldItemsRes.rows) {
+      const key = row.location_id || 'unassigned';
+      if (!soldByLocation[key]) soldByLocation[key] = [];
+      soldByLocation[key].push(row);
+    }
+
+    const totalCost = ingredientsRes.rows.reduce((s, r) => s + (r.cost_consumed || 0), 0);
+
+    res.render('inventory/location-report', {
+      tenant: req.tenant, currentUser: req.user,
+      from, to, selLoc,
+      locations: locsRes.rows,
+      summary: summaryRes.rows,
+      byLocation,
+      soldByLocation,
+      totalCost,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
 });
 
 module.exports = router;

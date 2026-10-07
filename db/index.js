@@ -828,6 +828,8 @@ const pool = new Pool({
       unit_price  NUMERIC(12,4) DEFAULT 0,
       total       NUMERIC(12,2)
     )`,
+    // ── Production location on menu items ────────────────────────────
+    `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS production_location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL`,
     // ── Waste / Spoilage logging ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS inventory_waste (
       id          SERIAL PRIMARY KEY,
