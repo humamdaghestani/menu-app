@@ -136,7 +136,7 @@
         <td style="font-weight:700;color:#fff"><%= tenant.currency||'' %><%= parseFloat(c.total_billed||0).toFixed(2) %></td>
         <td style="color:#00b894"><%= tenant.currency||'' %><%= parseFloat(c.total_paid||0).toFixed(2) %></td>
         <td>
-          <span style="color:<%= owed>0?'#f1c40f':'#444';font-weight:700 %>"><%= tenant.currency||'' %><%= owed.toFixed(2) %></span>
+          <span style="color:<%= owed>0?'#f1c40f':'#444' %>;font-weight:700"><%= tenant.currency||'' %><%= owed.toFixed(2) %></span>
           <% if(parseFloat(c.total_billed||0)>0){const pct=Math.min(100,Math.round(parseFloat(c.total_paid||0)/parseFloat(c.total_billed||0)*100));%>
           <div class="credit-bar"><div class="credit-fill" style="width:<%= pct %>%"></div></div>
           <%}%>
