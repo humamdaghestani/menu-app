@@ -1510,5 +1510,96 @@ async function deductStockForOrder(tenantId, orderId, userId) {
   }
 }
 
+// ── Auto-Reorder Report ────────────────────────────────────────────
+router.get('/reorder', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const showAll = req.query.all === '1';
+
+  try {
+    const whereClause = showAll
+      ? ''
+      : `AND (ii.stock_qty <= ii.reorder_level OR (u.daily_usage > 0 AND ii.stock_qty / u.daily_usage < 14))`;
+
+    const itemsRes = await db.query(`
+      SELECT
+        ii.id, ii.name, ii.unit,
+        ii.stock_qty::float           AS stock_qty,
+        ii.reorder_level::float       AS reorder_level,
+        ii.avg_cost::float            AS avg_cost,
+        COALESCE(u.daily_usage, 0)    AS avg_daily_usage,
+        CASE WHEN COALESCE(u.daily_usage, 0) > 0
+             THEN FLOOR(ii.stock_qty / u.daily_usage)::int
+             ELSE NULL END            AS days_remaining,
+        CASE WHEN COALESCE(u.daily_usage, 0) > 0
+             THEN GREATEST(0, CEIL(30.0 * u.daily_usage - ii.stock_qty))
+             ELSE GREATEST(0, ii.reorder_level * 2 - ii.stock_qty) END AS suggested_qty
+      FROM inventory_items ii
+      LEFT JOIN (
+        SELECT item_id, SUM(ABS(qty_change)) / 30.0 AS daily_usage
+        FROM inventory_transactions
+        WHERE tenant_id=$1 AND type='sale'
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY item_id
+      ) u ON u.item_id = ii.id
+      WHERE ii.tenant_id=$1 AND ii.is_active = true ${whereClause}
+      ORDER BY
+        CASE WHEN ii.stock_qty <= ii.reorder_level THEN 0 ELSE 1 END,
+        CASE WHEN u.daily_usage > 0 THEN ii.stock_qty / u.daily_usage ELSE 9999 END
+    `, [tid]);
+
+    const totalCount = (await db.query(
+      'SELECT COUNT(*) AS cnt FROM inventory_items WHERE tenant_id=$1 AND is_active=true', [tid]
+    )).rows[0].cnt;
+
+    res.render('inventory/reorder', {
+      tenant: req.tenant, currentUser: req.user,
+      items: itemsRes.rows,
+      showAll,
+      totalItems: parseInt(totalCount) || 0,
+      error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/reorder/create-po', requireAuth, requireInventory, async (req, res) => {
+  const tid     = req.user.tenantId;
+  const itemIds = [].concat(req.body.item_ids || []);
+  const qtys    = [].concat(req.body.qtys     || []);
+
+  if (!itemIds.length) return res.redirect('/inventory/reorder?error=No+items+selected');
+
+  try {
+    const poRes = await db.query(
+      `INSERT INTO purchase_orders (tenant_id, status, notes, created_by)
+       VALUES ($1, 'draft', 'Auto-generated from Reorder Report', $2) RETURNING id`,
+      [tid, req.user.userId]
+    );
+    const poId = poRes.rows[0].id;
+
+    for (let i = 0; i < itemIds.length; i++) {
+      if (!itemIds[i]) continue;
+      const item = (await db.query(
+        'SELECT name, unit, avg_cost FROM inventory_items WHERE id=$1 AND tenant_id=$2', [itemIds[i], tid]
+      )).rows[0];
+      if (!item) continue;
+      const qty = Math.max(parseFloat(qtys[i]) || 1, 0.001);
+      await db.query(
+        `INSERT INTO purchase_order_lines (order_id, item_id, item_name, unit, ordered_qty, unit_price, total)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [poId, itemIds[i], item.name, item.unit, qty, item.avg_cost || 0,
+         qty * (parseFloat(item.avg_cost) || 0)]
+      );
+    }
+
+    // Update PO total
+    await db.query(
+      'UPDATE purchase_orders SET total=(SELECT COALESCE(SUM(total),0) FROM purchase_order_lines WHERE order_id=$1) WHERE id=$1',
+      [poId]
+    );
+
+    res.redirect('/inventory/purchase-orders/' + poId);
+  } catch (err) { console.error(err); res.redirect('/inventory/reorder?error=' + encodeURIComponent(err.message)); }
+});
+
 module.exports = router;
 module.exports.deductStockForOrder = deductStockForOrder;

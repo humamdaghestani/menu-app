@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reorder Report — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-warning{background:#e67e22;color:#fff}.btn-warning:hover{opacity:.88}
+    .btn-sm{padding:5px 12px;font-size:.75rem}
+    .main{padding:24px;max-width:1100px;margin:0 auto}
+    .page-title{font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+
+    .toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+    .toolbar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.7rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 14px;border-bottom:1px solid #2a2a3e;white-space:nowrap}
+    td{padding:11px 14px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+
+    .days-badge{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:10px;display:inline-block;white-space:nowrap}
+    .days-critical{background:rgba(231,76,60,.2);color:#e74c3c}
+    .days-low{background:rgba(231,76,60,.1);color:#c0392b}
+    .days-warn{background:rgba(241,196,15,.12);color:#f1c40f}
+    .days-ok{background:rgba(0,184,148,.1);color:#00b894}
+    .days-none{background:rgba(255,255,255,.05);color:#555}
+
+    .stock-val{font-weight:700}
+    .stock-critical{color:#e74c3c}
+    .stock-warn{color:#f39c12}
+    .stock-ok{color:#00b894}
+
+    .select-all-row{display:flex;align-items:center;gap:8px;font-size:.82rem;color:#888;padding:10px 14px;border-bottom:1px solid #2a2a3e;background:rgba(255,255,255,.02)}
+    input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#7c5cbf}
+
+    .qty-input{width:80px;padding:5px 8px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:6px;color:#fff;font-size:.83rem;font-family:inherit;text-align:right}
+    .qty-input:focus{border-color:#7c5cbf;outline:none}
+
+    .empty{text-align:center;padding:60px;color:#444;font-size:.9rem}
+    .toast{position:fixed;top:64px;right:20px;z-index:999;padding:12px 20px;border-radius:10px;font-size:.85rem;font-weight:600;background:#e74c3c;color:#fff}
+
+    .stats-chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+    .chip{background:#1a1a2e;border:1px solid #2a2a3e;border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:600;color:#888;display:flex;align-items:center;gap:6px}
+    .chip-val{color:#fff;font-size:.88rem;font-weight:800}
+    .chip.danger{border-color:rgba(231,76,60,.4)}.chip.danger .chip-val{color:#e74c3c}
+    .chip.warn{border-color:rgba(241,196,15,.4)}.chip.warn .chip-val{color:#f1c40f}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Reorder Report</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/inventory/purchase-orders/new" class="btn btn-ghost btn-sm">+ New PO</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">🔁 Auto-Reorder Report</div>
+  <div class="page-sub">Items that need ordering — based on current stock vs. 30-day average daily usage.</div>
+
+  <% if (error) { %><div class="toast" id="toast"><%= error %></div><% } %>
+
+  <%
+    const belowReorder = items.filter(it => parseFloat(it.stock_qty) <= parseFloat(it.reorder_level || 0));
+    const criticalDays = items.filter(it => it.days_remaining !== null && it.days_remaining <= 3);
+    const warnDays     = items.filter(it => it.days_remaining !== null && it.days_remaining > 3 && it.days_remaining <= 7);
+  %>
+
+  <div class="stats-chips">
+    <div class="chip danger">
+      <span class="chip-val"><%= belowReorder.length %></span> below reorder level
+    </div>
+    <div class="chip danger">
+      <span class="chip-val"><%= criticalDays.length %></span> &lt;3 days remaining
+    </div>
+    <div class="chip warn">
+      <span class="chip-val"><%= warnDays.length %></span> &lt;7 days remaining
+    </div>
+    <div class="chip">
+      <span class="chip-val"><%= items.length %></span> items shown
+      <span style="color:#444">/</span> <%= totalItems %> total
+    </div>
+  </div>
+
+  <form method="POST" action="/inventory/reorder/create-po" id="poForm">
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <a href="/inventory/reorder<%= showAll ? '' : '?all=1' %>" class="btn btn-ghost btn-sm">
+        <%= showAll ? '📋 Show Urgent Only' : '👁 Show All Items' %>
+      </a>
+      <span style="font-size:.78rem;color:#555">Select items below then create a draft PO</span>
+    </div>
+    <button type="submit" class="btn btn-primary" id="createPoBtn" disabled>
+      📋 Create Draft PO (<span id="selCount">0</span> items)
+    </button>
+  </div>
+
+  <div class="card">
+    <% if (!items.length) { %>
+      <div class="empty">
+        <div style="font-size:2.5rem;margin-bottom:12px">✅</div>
+        <% if (showAll) { %>No inventory items found.<% } else { %>
+        All items are well-stocked! No reorders needed right now.
+        <a href="/inventory/reorder?all=1" style="color:#7c5cbf;margin-left:4px">View all items →</a>
+        <% } %>
+      </div>
+    <% } else { %>
+    <div class="select-all-row">
+      <input type="checkbox" id="selectAll" onchange="toggleAll(this)" />
+      <label for="selectAll" style="cursor:pointer">Select all <%= items.length %> items</label>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px"></th>
+          <th>Item</th>
+          <th>Current Stock</th>
+          <th>Reorder At</th>
+          <th>Avg Daily Use</th>
+          <th>Days Left</th>
+          <th>Suggested Qty</th>
+          <th>Est. Cost</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% items.forEach((item, idx) => {
+           const stock     = parseFloat(item.stock_qty);
+           const reorder   = parseFloat(item.reorder_level) || 0;
+           const dailyUse  = parseFloat(item.avg_daily_usage) || 0;
+           const days      = item.days_remaining;
+           const suggested = Math.max(0, parseFloat(item.suggested_qty) || 0);
+           const avgCost   = parseFloat(item.avg_cost) || 0;
+           const estCost   = suggested * avgCost;
+
+           let stockCls = 'stock-ok';
+           if (stock <= reorder) stockCls = 'stock-critical';
+           else if (reorder > 0 && stock <= reorder * 1.5) stockCls = 'stock-warn';
+
+           let daysBadgeCls = 'days-none', daysLabel = '—';
+           if (days !== null) {
+             if (days <= 0)  { daysBadgeCls = 'days-critical'; daysLabel = 'OUT'; }
+             else if (days <= 3) { daysBadgeCls = 'days-critical'; daysLabel = days + 'd'; }
+             else if (days <= 7) { daysBadgeCls = 'days-low';      daysLabel = days + 'd'; }
+             else if (days <= 14){ daysBadgeCls = 'days-warn';     daysLabel = days + 'd'; }
+             else                { daysBadgeCls = 'days-ok';       daysLabel = days + 'd'; }
+           } else if (dailyUse === 0) {
+             daysLabel = 'No usage';
+           }
+      %>
+        <tr>
+          <td>
+            <input type="checkbox" name="item_ids[]" value="<%= item.id %>"
+                   class="item-cb" onchange="updateCount()"
+                   <% if (stock <= reorder && suggested > 0) { %>checked<% } %> />
+            <input type="hidden" name="qtys[]" value="<%= suggested.toFixed(3) %>" id="qty_hidden_<%= idx %>" />
+          </td>
+          <td>
+            <div style="color:#fff;font-weight:600"><%= item.name %></div>
+            <div style="font-size:.72rem;color:#555;margin-top:2px"><%= item.unit %></div>
+          </td>
+          <td>
+            <span class="stock-val <%= stockCls %>"><%= stock.toFixed(2) %></span>
+            <span style="color:#444;font-size:.75rem"> <%= item.unit %></span>
+            <% if (stock <= reorder) { %>
+            <span style="font-size:.68rem;color:#e74c3c;margin-left:4px">⚠ below min</span>
+            <% } %>
+          </td>
+          <td style="color:#555"><%= reorder > 0 ? reorder.toFixed(2) + ' ' + item.unit : '—' %></td>
+          <td>
+            <% if (dailyUse > 0) { %>
+            <span style="color:#ccc"><%= dailyUse.toFixed(3) %></span>
+            <span style="color:#444;font-size:.75rem"> <%= item.unit %>/day</span>
+            <% } else { %><span style="color:#444">No data</span><% } %>
+          </td>
+          <td><span class="days-badge <%= daysBadgeCls %>"><%= daysLabel %></span></td>
+          <td>
+            <% if (suggested > 0) { %>
+            <input type="number" class="qty-input" value="<%= suggested.toFixed(3) %>"
+                   min="0.001" step="any"
+                   onchange="document.getElementById('qty_hidden_<%= idx %>').value=this.value;updateCost(<%= idx %>,this.value,<%= avgCost %>)"
+                   id="qty_display_<%= idx %>" />
+            <span style="font-size:.72rem;color:#555"> <%= item.unit %></span>
+            <% } else { %>
+            <span style="color:#444">—</span>
+            <% } %>
+          </td>
+          <td style="color:#888;font-size:.82rem" id="cost_<%= idx %>">
+            <% if (suggested > 0 && avgCost > 0) { %>
+            <%= (estCost).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %>
+            <% } else { %><span style="color:#333">—</span><% } %>
+          </td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+  </div>
+  </form>
+</div>
+
+<script>
+function updateCount() {
+  const checked = document.querySelectorAll('.item-cb:checked').length;
+  document.getElementById('selCount').textContent = checked;
+  document.getElementById('createPoBtn').disabled = checked === 0;
+  const allCbs = document.querySelectorAll('.item-cb');
+  document.getElementById('selectAll').checked = checked === allCbs.length;
+  document.getElementById('selectAll').indeterminate = checked > 0 && checked < allCbs.length;
+}
+
+function toggleAll(cb) {
+  document.querySelectorAll('.item-cb').forEach(c => c.checked = cb.checked);
+  updateCount();
+}
+
+function updateCost(idx, qty, avgCost) {
+  const cost = parseFloat(qty) * avgCost;
+  const el = document.getElementById('cost_' + idx);
+  if (el) el.textContent = avgCost > 0 ? cost.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) : '—';
+}
+
+// Initialize count
+updateCount();
+
+// Warn if creating PO with 0 selected
+document.getElementById('poForm').addEventListener('submit', function(e) {
+  const checked = document.querySelectorAll('.item-cb:checked').length;
+  if (checked === 0) { e.preventDefault(); alert('Please select at least one item.'); }
+});
+
+setTimeout(() => { const t = document.getElementById('toast'); if(t) t.style.opacity='0'; }, 3500);
+</script>
+</body>
+</html>

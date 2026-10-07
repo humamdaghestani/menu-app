@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>P&L Statement — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50;gap:12px;flex-wrap:wrap}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .main{padding:24px;max-width:860px;margin:0 auto}
+    .page-title{font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+
+    /* Date bar */
+    .date-bar{display:flex;align-items:center;gap:8px;margin-bottom:24px;flex-wrap:wrap}
+    .date-bar input[type=date]{padding:7px 10px;background:#1a1a2e;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-family:inherit;font-size:.85rem;outline:none}
+    .date-bar input[type=date]:focus{border-color:#7c5cbf}
+    .pbtn{padding:6px 14px;border-radius:20px;border:1.5px solid #2a2a3e;background:none;color:#666;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit}
+    .pbtn:hover,.pbtn.active{background:#7c5cbf;border-color:#7c5cbf;color:#fff}
+
+    /* P&L table */
+    .pl-card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;margin-bottom:20px;overflow:hidden}
+    .pl-head{padding:14px 24px;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;justify-content:space-between}
+    .pl-head-title{font-size:.92rem;font-weight:700;color:#fff}
+    .pl-body{padding:0 24px}
+
+    .pl-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:.88rem}
+    .pl-row:last-child{border-bottom:none}
+    .pl-row.section-header{padding-top:16px;padding-bottom:6px;border-bottom:none}
+    .pl-row.subtotal{padding:10px 0;margin-top:2px}
+    .pl-row.total{border-top:2px solid #2a2a3e;padding-top:14px;margin-top:4px;border-bottom:none}
+    .pl-label{color:#aaa}
+    .pl-label.bold{color:#fff;font-weight:700}
+    .pl-label.indent{padding-left:20px;color:#666;font-size:.83rem}
+    .pl-label.section{color:#7c5cbf;font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+    .pl-amount{font-weight:600;font-size:.9rem;white-space:nowrap}
+    .green{color:#00b894}.red{color:#e74c3c}.yellow{color:#f39c12}.white{color:#fff}.purple{color:#7c5cbf}
+
+    .divider{height:1px;background:#2a2a3e;margin:4px 0}
+
+    /* KPI row */
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+    .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:16px}
+    .kpi-label{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:6px}
+    .kpi-val{font-size:1.4rem;font-weight:800;line-height:1}
+    .kpi-sub{font-size:.7rem;color:#444;margin-top:4px}
+
+    /* Comparison table */
+    .cmp-table{width:100%;border-collapse:collapse;font-size:.83rem}
+    .cmp-table th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:8px 12px;border-bottom:1px solid #2a2a3e}
+    .cmp-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);color:#ccc}
+    .cmp-table tr:last-child td{border-bottom:none}
+    .cmp-table th:not(:first-child),.cmp-table td:not(:first-child){text-align:right}
+    .change-pos{color:#00b894;font-weight:700}.change-neg{color:#e74c3c;font-weight:700}
+
+    /* Print */
+    @media print{
+      body{background:#fff;color:#000}
+      .topbar,.date-bar,.no-print{display:none!important}
+      .pl-card{border:1px solid #ddd;break-inside:avoid}
+      .pl-head{border-bottom:1px solid #ddd}
+      .green{color:#007a4d}.red{color:#c0392b}.yellow{color:#e67e22}
+      .pl-label{color:#444}.pl-label.bold{color:#000}.pl-label.indent{color:#888}
+      .kpi{border:1px solid #ddd}
+      .kpi-label{color:#888}.kpi-sub{color:#888}
+    }
+  </style>
+</head>
+<body>
+<div class="topbar no-print">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/accounting" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Accounting</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ P&amp;L Statement</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/accounting/expenses" class="btn btn-ghost">💸 Expenses</a>
+    <a href="/accounting/suppliers" class="btn btn-ghost">🏭 Suppliers</a>
+    <button onclick="window.print()" class="btn btn-primary">🖨️ Print</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">📈 Profit &amp; Loss Statement</div>
+  <div class="page-sub">
+    <%= tenant.name %> &nbsp;·&nbsp;
+    <%= new Date(dateFrom).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) %>
+    — <%= new Date(dateTo).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) %>
+  </div>
+
+  <!-- Date filter -->
+  <form method="GET" action="/accounting/pl" id="dateForm" class="no-print">
+    <div class="date-bar">
+      <button type="button" class="pbtn" onclick="setPeriod('today')">Today</button>
+      <button type="button" class="pbtn" onclick="setPeriod('week')">This Week</button>
+      <button type="button" class="pbtn" onclick="setPeriod('month')">This Month</button>
+      <button type="button" class="pbtn" onclick="setPeriod('last-month')">Last Month</button>
+      <button type="button" class="pbtn" onclick="setPeriod('quarter')">This Quarter</button>
+      <button type="button" class="pbtn" onclick="setPeriod('year')">This Year</button>
+      <input type="date" name="from" id="fromDate" value="<%= dateFrom %>" onchange="this.form.submit()" />
+      <span style="color:#444">→</span>
+      <input type="date" name="to" id="toDate" value="<%= dateTo %>" onchange="this.form.submit()" />
+    </div>
+  </form>
+
+  <!-- KPI summary row -->
+  <div class="kpi-row">
+    <div class="kpi" style="border-color:#00b89440">
+      <div class="kpi-label">Revenue</div>
+      <div class="kpi-val green"><%= revenue.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= orderCount %> POS orders</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Gross Profit</div>
+      <div class="kpi-val <%= gross >= 0 ? 'green' : 'red' %>"><%= gross.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= revenue > 0 ? (gross/revenue*100).toFixed(1) : '0.0' %>% margin</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Expenses</div>
+      <div class="kpi-val red"><%= totalExp.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= expenseCount %> entries</div>
+    </div>
+    <div class="kpi" style="border-color:<%= net >= 0 ? '#00b89440' : '#e74c3c40' %>">
+      <div class="kpi-label">Net Profit</div>
+      <div class="kpi-val <%= net >= 0 ? 'green' : 'red' %>" style="font-size:1.55rem"><%= net.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub"><%= revenue > 0 ? (net/revenue*100).toFixed(1) : '0.0' %>% net margin</div>
+    </div>
+  </div>
+
+  <!-- Income Statement -->
+  <div class="pl-card">
+    <div class="pl-head">
+      <div class="pl-head-title">📊 Income Statement</div>
+      <div style="font-size:.75rem;color:#555"><%= tenant.currency || 'IQD' %></div>
+    </div>
+    <div class="pl-body">
+
+      <!-- Revenue -->
+      <div class="pl-row section-header">
+        <span class="pl-label section">Revenue</span>
+      </div>
+      <div class="pl-row">
+        <span class="pl-label indent">POS Sales (<%= orderCount %> orders)</span>
+        <span class="pl-amount green">+ <%= revenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% if (revByCat && revByCat.length > 1) { revByCat.forEach(rc => { %>
+      <div class="pl-row" style="padding:5px 0">
+        <span class="pl-label indent" style="padding-left:36px;font-size:.78rem;color:#444"><%= rc.cat || 'Uncategorised' %></span>
+        <span class="pl-amount" style="font-size:.78rem;color:#555"><%= parseFloat(rc.total).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></span>
+      </div>
+      <% }); } %>
+      <div class="pl-row subtotal">
+        <span class="pl-label bold">Total Revenue</span>
+        <span class="pl-amount green" style="font-weight:800"><%= revenue.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- COGS -->
+      <div class="pl-row section-header">
+        <span class="pl-label section">Cost of Goods Sold</span>
+      </div>
+      <div class="pl-row">
+        <span class="pl-label indent">Inventory Usage (from sales)</span>
+        <span class="pl-amount yellow">− <%= cogs.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% if (waste > 0) { %>
+      <div class="pl-row">
+        <span class="pl-label indent">Waste &amp; Spoilage (<%= wasteCount %> entries)</span>
+        <span class="pl-amount yellow">− <%= waste.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% } %>
+      <div class="pl-row subtotal">
+        <span class="pl-label bold">Total COGS</span>
+        <span class="pl-amount yellow" style="font-weight:800">− <%= (cogs + waste).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Gross Profit -->
+      <div class="pl-row" style="padding:14px 0;border-bottom:1px solid #2a2a3e">
+        <span class="pl-label" style="color:#fff;font-size:1rem;font-weight:800">Gross Profit</span>
+        <div style="text-align:right">
+          <div class="pl-amount <%= gross >= 0 ? 'green' : 'red' %>" style="font-size:1.05rem;font-weight:800"><%= gross.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></div>
+          <div style="font-size:.72rem;color:#555;margin-top:2px"><%= revenue > 0 ? (gross/revenue*100).toFixed(1) : '0.0' %>% gross margin</div>
+        </div>
+      </div>
+
+      <!-- Operating Expenses -->
+      <% if (totalExp > 0) { %>
+      <div class="pl-row section-header" style="margin-top:4px">
+        <span class="pl-label section">Operating Expenses</span>
+      </div>
+      <% if (expByCat.length > 0) { expByCat.forEach(cat => { %>
+      <div class="pl-row">
+        <span class="pl-label indent"><%= cat.name || 'Uncategorised' %></span>
+        <span class="pl-amount red">− <%= parseFloat(cat.total).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% }); } else { %>
+      <div class="pl-row">
+        <span class="pl-label indent">Expenses (<%= expenseCount %> entries)</span>
+        <span class="pl-amount red">− <%= totalExp.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <% } %>
+      <div class="pl-row subtotal">
+        <span class="pl-label bold">Total Operating Expenses</span>
+        <span class="pl-amount red" style="font-weight:800">− <%= totalExp.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></span>
+      </div>
+      <div class="divider"></div>
+      <% } %>
+
+      <!-- Net Profit -->
+      <div class="pl-row total">
+        <span class="pl-label" style="color:#fff;font-size:1.05rem;font-weight:800">Net Profit / (Loss)</span>
+        <div style="text-align:right">
+          <div class="pl-amount <%= net >= 0 ? 'green' : 'red' %>" style="font-size:1.15rem;font-weight:800">
+            <%= net >= 0 ? '' : '(' %><%= Math.abs(net).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %><%= net < 0 ? ')' : '' %>
+          </div>
+          <div style="font-size:.72rem;color:#555;margin-top:2px"><%= revenue > 0 ? (net/revenue*100).toFixed(1) : '0.0' %>% net margin &nbsp;·&nbsp; <%= tenant.currency || 'IQD' %></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Period Comparison -->
+  <div class="pl-card">
+    <div class="pl-head">
+      <div class="pl-head-title">📅 Period Comparison</div>
+      <div style="font-size:.73rem;color:#555">
+        vs <%= new Date(prevFrom).toLocaleDateString(undefined,{month:'short',day:'numeric'}) %> – <%= new Date(prevTo).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) %>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th style="width:50%">Metric</th>
+          <th>This Period</th>
+          <th>Last Period</th>
+          <th>Change</th>
+        </tr>
+      </thead>
+      <tbody>
+      <%
+        function fmt(v){return v.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0})}
+        function chg(cur,prev){
+          if(prev===0) return cur > 0 ? '<span class="change-pos">NEW</span>' : '—';
+          const p=((cur-prev)/Math.abs(prev)*100).toFixed(1);
+          const cls=parseFloat(p)>=0?'change-pos':'change-neg';
+          return '<span class="'+cls+'">'+(parseFloat(p)>0?'+':'')+p+'%</span>';
+        }
+      %>
+      <tr><td style="color:#ccc">Revenue</td><td class="green"><%= fmt(revenue) %></td><td style="color:#555"><%= fmt(pRev) %></td><td><%- chg(revenue,pRev) %></td></tr>
+      <tr><td style="color:#ccc">COGS (Inventory)</td><td class="yellow"><%= fmt(cogs) %></td><td style="color:#555"><%= fmt(pCogs) %></td><td><%- chg(cogs,pCogs) %></td></tr>
+      <% if (waste > 0 || pWaste > 0) { %>
+      <tr><td style="color:#ccc">Waste / Spoilage</td><td class="red"><%= fmt(waste) %></td><td style="color:#555"><%= fmt(pWaste) %></td><td><%- chg(waste,pWaste) %></td></tr>
+      <% } %>
+      <tr><td style="color:#fff;font-weight:600">Gross Profit</td><td class="<%= gross>=0?'green':'red' %>"><%= fmt(gross) %></td><td style="color:#555"><%= fmt(pGross) %></td><td><%- chg(gross,pGross) %></td></tr>
+      <tr><td style="color:#ccc">Operating Expenses</td><td class="red"><%= fmt(totalExp) %></td><td style="color:#555"><%= fmt(pExp) %></td><td><%- chg(totalExp,pExp) %></td></tr>
+      <tr><td style="color:#fff;font-weight:800">Net Profit</td><td class="<%= net>=0?'green':'red' %>" style="font-weight:700"><%= fmt(net) %></td><td style="color:#555"><%= fmt(pNet) %></td><td><%- chg(net,pNet) %></td></tr>
+      </tbody>
+    </table>
+    </div>
+  </div>
+
+  <!-- Gross margin note -->
+  <div style="font-size:.73rem;color:#444;text-align:center;padding:8px 0">
+    COGS is computed from inventory transactions × avg unit cost at the time of this report.
+    For a more precise figure, record unit cost on each purchase receipt.
+  </div>
+</div>
+
+<script>
+function setPeriod(p) {
+  const now = new Date();
+  let from, to;
+  if (p === 'today') {
+    from = to = now.toISOString().slice(0,10);
+  } else if (p === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - d.getDay() + 1);
+    from = d.toISOString().slice(0,10);
+    to   = now.toISOString().slice(0,10);
+  } else if (p === 'month') {
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+  } else if (p === 'last-month') {
+    from = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0,10);
+  } else if (p === 'quarter') {
+    const q = Math.floor(now.getMonth() / 3);
+    from = new Date(now.getFullYear(), q*3, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), q*3+3, 0).toISOString().slice(0,10);
+  } else if (p === 'year') {
+    from = new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10);
+    to   = new Date(now.getFullYear(), 11, 31).toISOString().slice(0,10);
+  }
+  document.getElementById('fromDate').value = from;
+  document.getElementById('toDate').value   = to;
+  document.getElementById('dateForm').submit();
+}
+</script>
+</body>
+</html>

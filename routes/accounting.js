@@ -753,4 +753,113 @@ router.post('/budgets/:id/lines/:lid/delete', requireAuth, requireAccounting, as
   } catch (err) { console.error(err); res.redirect('/accounting/budgets/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
 });
 
+// ── P&L Statement ─────────────────────────────────────────────────
+router.get('/pl', requireAuth, requireAccounting, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { from, to } = dateRange(req.query);
+
+  // Previous period: same length, immediately before current period
+  const d0   = new Date(from), d1 = new Date(to);
+  const span = Math.round((d1 - d0) / 86400000) + 1;
+  const prevTo   = new Date(d0); prevTo.setDate(prevTo.getDate() - 1);
+  const prevFrom = new Date(prevTo); prevFrom.setDate(prevFrom.getDate() - span + 1);
+  const pf = prevFrom.toISOString().slice(0, 10);
+  const pt = prevTo.toISOString().slice(0, 10);
+
+  try {
+    const [revRes, cogsRes, wasteRes, expRes, expByCatRes,
+           pRevRes, pCogsRes, pWasteRes, pExpRes, revByCatRes] = await Promise.all([
+
+      // Revenue
+      db.query(`SELECT COALESCE(SUM(total),0) AS total, COUNT(*) AS cnt
+                FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+
+      // Real COGS: inventory consumed by sales × avg_cost at time of query
+      db.query(`SELECT COALESCE(SUM(ABS(it.qty_change) * ii.avg_cost),0) AS total
+                FROM inventory_transactions it
+                JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=it.tenant_id
+                WHERE it.tenant_id=$1 AND it.type='sale'
+                  AND it.created_at::date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+
+      // Waste cost
+      db.query(`SELECT COALESCE(SUM(cost_impact),0) AS total, COUNT(*) AS cnt
+                FROM inventory_waste WHERE tenant_id=$1 AND waste_date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+
+      // Operating expenses
+      db.query(`SELECT COALESCE(SUM(amount),0) AS total, COUNT(*) AS cnt
+                FROM expenses WHERE tenant_id=$1 AND expense_date BETWEEN $2 AND $3`,
+        [tid, from, to]),
+
+      // Expenses by category
+      db.query(`SELECT ec.name, ec.color, COALESCE(SUM(e.amount),0) AS total
+                FROM expenses e LEFT JOIN expense_categories ec ON ec.id=e.category_id
+                WHERE e.tenant_id=$1 AND e.expense_date BETWEEN $2 AND $3
+                GROUP BY ec.name, ec.color ORDER BY total DESC`,
+        [tid, from, to]),
+
+      // Previous period: revenue
+      db.query(`SELECT COALESCE(SUM(total),0) AS total
+                FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3`,
+        [tid, pf, pt]),
+
+      // Previous period: COGS
+      db.query(`SELECT COALESCE(SUM(ABS(it.qty_change) * ii.avg_cost),0) AS total
+                FROM inventory_transactions it
+                JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=it.tenant_id
+                WHERE it.tenant_id=$1 AND it.type='sale'
+                  AND it.created_at::date BETWEEN $2 AND $3`,
+        [tid, pf, pt]),
+
+      // Previous period: waste
+      db.query(`SELECT COALESCE(SUM(cost_impact),0) AS total
+                FROM inventory_waste WHERE tenant_id=$1 AND waste_date BETWEEN $2 AND $3`,
+        [tid, pf, pt]),
+
+      // Previous period: expenses
+      db.query(`SELECT COALESCE(SUM(amount),0) AS total
+                FROM expenses WHERE tenant_id=$1 AND expense_date BETWEEN $2 AND $3`,
+        [tid, pf, pt]),
+
+      // Revenue breakdown by menu category
+      db.query(`SELECT mc.name AS cat, COALESCE(SUM(oi.price * oi.qty),0) AS total
+                FROM pos_order_items oi
+                JOIN pos_orders po ON po.id=oi.order_id
+                JOIN menu_items mi ON mi.id=oi.item_id
+                LEFT JOIN menu_categories mc ON mc.id=mi.category_id
+                WHERE po.tenant_id=$1 AND po.status='paid' AND po.paid_at::date BETWEEN $2 AND $3
+                GROUP BY mc.name ORDER BY total DESC`,
+        [tid, from, to]),
+    ]);
+
+    const revenue  = parseFloat(revRes.rows[0].total)   || 0;
+    const cogs     = parseFloat(cogsRes.rows[0].total)  || 0;
+    const waste    = parseFloat(wasteRes.rows[0].total) || 0;
+    const totalExp = parseFloat(expRes.rows[0].total)   || 0;
+    const gross    = revenue - cogs - waste;
+    const net      = gross - totalExp;
+
+    const pRev   = parseFloat(pRevRes.rows[0].total)   || 0;
+    const pCogs  = parseFloat(pCogsRes.rows[0].total)  || 0;
+    const pWaste = parseFloat(pWasteRes.rows[0].total) || 0;
+    const pExp   = parseFloat(pExpRes.rows[0].total)   || 0;
+    const pGross = pRev - pCogs - pWaste;
+    const pNet   = pGross - pExp;
+
+    res.render('accounting/pl', {
+      tenant: req.tenant, currentUser: req.user,
+      dateFrom: from, dateTo: to, prevFrom: pf, prevTo: pt,
+      revenue, cogs, waste, totalExp, gross, net,
+      orderCount:   parseInt(revRes.rows[0].cnt)   || 0,
+      wasteCount:   parseInt(wasteRes.rows[0].cnt) || 0,
+      expenseCount: parseInt(expRes.rows[0].cnt)   || 0,
+      expByCat: expByCatRes.rows,
+      revByCat: revByCatRes.rows,
+      pRev, pCogs, pWaste, pExp, pGross, pNet,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
 module.exports = router;
