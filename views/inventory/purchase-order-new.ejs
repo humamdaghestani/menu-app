@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Purchase Order — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07)}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-danger{background:rgba(231,76,60,.2);color:#e74c3c;border:none;cursor:pointer;border-radius:6px;padding:4px 9px;font-size:.78rem}
+    .main{padding:24px;max-width:920px;margin:0 auto}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;padding:20px;margin-bottom:20px}
+    .card-title{font-size:.9rem;font-weight:700;color:#fff;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+    .form-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+    .form-group{display:flex;flex-direction:column;gap:6px}
+    .form-label{font-size:.72rem;font-weight:700;color:#555;text-transform:uppercase}
+    .form-input{padding:9px 12px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-size:.9rem;font-family:inherit;outline:none;width:100%}
+    .form-input:focus{border-color:#7c5cbf}
+    select.form-input option{background:#1a1a2e}
+    .lines-table{width:100%;border-collapse:collapse}
+    .lines-table th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:6px 8px;border-bottom:1px solid #2a2a3e;white-space:nowrap}
+    .lines-table td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03);vertical-align:top}
+    .line-input{width:100%;padding:7px 10px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:7px;color:#fff;font-size:.85rem;font-family:inherit;outline:none}
+    .line-input:focus{border-color:#7c5cbf}
+    .item-picker{position:relative}
+    .item-search{width:100%;padding:7px 10px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:7px;color:#fff;font-size:.85rem;font-family:inherit;outline:none}
+    .item-search:focus{border-color:#7c5cbf}
+    .picker-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:#1a1a2e;border:1.5px solid #7c5cbf;border-radius:8px;z-index:200;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+    .picker-dropdown.open{display:block}
+    .picker-opt{padding:8px 12px;font-size:.85rem;color:#ccc;cursor:pointer}
+    .picker-opt:hover,.picker-opt.focused{background:rgba(124,92,191,.2);color:#fff}
+    .picker-opt .unit-tag{font-size:.7rem;color:#555;background:#0f0f1a;padding:1px 6px;border-radius:4px;margin-left:auto;float:right}
+    .total-row{display:flex;justify-content:flex-end;align-items:center;gap:16px;padding:14px 8px 4px;border-top:1px solid #2a2a3e;margin-top:8px}
+    .error-banner{background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:#e74c3c;font-size:.85rem}
+    .supp-wrap{position:relative}
+    .supp-drop{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:#1a1a2e;border:1.5px solid #7c5cbf;border-radius:8px;z-index:200;max-height:180px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+    .supp-drop.open{display:block}
+    .supp-opt{padding:8px 12px;font-size:.88rem;color:#ccc;cursor:pointer}
+    .supp-opt:hover{background:rgba(124,92,191,.2);color:#fff}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/purchase-orders" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">← POs</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ New Purchase Order</span>
+  </div>
+</div>
+
+<div class="main">
+  <% if (error) { %><div class="error-banner">⚠️ <%= error %></div><% } %>
+  <form method="POST" action="/inventory/purchase-orders">
+
+    <div class="card">
+      <div class="card-title">Order Details</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Supplier</label>
+          <input type="hidden" name="supplier_id" id="suppIdField" />
+          <div class="supp-wrap">
+            <input type="text" name="supplier_name" id="supplierInput" class="form-input" placeholder="Search or type name…" autocomplete="off"
+              oninput="suppFilter(this.value)" onfocus="suppFilter(this.value)" />
+            <div class="supp-drop" id="suppDrop"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">PO Number</label>
+          <input type="text" name="po_number" class="form-input" placeholder="auto if blank" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Order Date</label>
+          <input type="date" name="order_date" class="form-input" value="<%= new Date().toISOString().slice(0,10) %>" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Expected Delivery</label>
+          <input type="date" name="expected_date" class="form-input" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label class="form-label">Notes</label>
+        <input type="text" name="notes" class="form-input" placeholder="optional…" />
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>📦 Items to Order</span>
+        <button type="button" class="btn btn-ghost" style="padding:5px 12px;font-size:.78rem" onclick="addLine()">+ Add Row</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="lines-table">
+          <thead><tr>
+            <th style="width:40%">Item</th>
+            <th style="width:12%">Unit</th>
+            <th style="width:15%">Qty</th>
+            <th style="width:18%">Unit Price</th>
+            <th style="width:11%">Total</th>
+            <th style="width:4%"></th>
+          </tr></thead>
+          <tbody id="linesBody"></tbody>
+        </table>
+      </div>
+      <div class="total-row">
+        <span style="font-size:.82rem;color:#555">Order Total</span>
+        <span style="font-size:1.3rem;font-weight:800;color:#fff" id="grandTotal"><%= tenant.currency || 'IQD' %> 0.00</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:12px">
+      <a href="/inventory/purchase-orders" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">✓ Create Purchase Order</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const CUR = '<%= tenant.currency || "IQD" %>';
+const INV_ITEMS = <%- JSON.stringify(invItems) %>;
+const SUPPLIERS = <%- JSON.stringify(suppliers) %>;
+let idx = 0;
+
+function suppFilter(q) {
+  const drop = document.getElementById('suppDrop');
+  const ql = (q||'').toLowerCase();
+  const m = SUPPLIERS.filter(s => s.name.toLowerCase().includes(ql));
+  if (!m.length && !q) { drop.classList.remove('open'); return; }
+  drop.innerHTML = (m.length ? m : [{id:null,name:'(type name freely)'}])
+    .map(s => `<div class="supp-opt" onclick="suppSel(${s.id||'null'},'${s.name.replace(/'/g,"\\'")}')"> ${s.name}</div>`).join('');
+  drop.classList.add('open');
+}
+function suppSel(id, name) {
+  document.getElementById('supplierInput').value = name;
+  document.getElementById('suppIdField').value = id || '';
+  document.getElementById('suppDrop').classList.remove('open');
+}
+document.addEventListener('click', e => { if (!e.target.closest('.supp-wrap')) document.getElementById('suppDrop').classList.remove('open'); });
+
+function addLine() {
+  const tbody = document.getElementById('linesBody');
+  const i = idx++;
+  const opts = INV_ITEMS.map(it => `<option value="${it.id}" data-unit="${it.unit||'pcs'}">${it.name}</option>`).join('');
+  const tr = document.createElement('tr');
+  tr.id = 'poline_' + i;
+  tr.innerHTML = `
+    <td><div class="item-picker" id="picker_${i}">
+      <input type="hidden" name="item_id" id="item_id_${i}" />
+      <input type="text" class="item-search" id="search_${i}" placeholder="Search item…" autocomplete="off"
+        onfocus="renderDrop(${i},this.value);document.getElementById('drop_${i}').classList.add('open')"
+        oninput="renderDrop(${i},this.value);document.getElementById('drop_${i}').classList.add('open')" />
+      <div class="picker-dropdown" id="drop_${i}"></div>
+    </div></td>
+    <td><input type="text" name="unit" id="unit_${i}" class="line-input" placeholder="pcs" style="width:70px" /></td>
+    <td><input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" oninput="recalc(${i})" style="width:90px" required /></td>
+    <td><input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" oninput="recalc(${i})" style="width:110px" /></td>
+    <td><span id="lt_${i}" style="font-size:.84rem;color:#888">${CUR} 0.00</span></td>
+    <td><button type="button" class="btn-danger" onclick="document.getElementById('poline_${i}').remove();recalcTotal()">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  document.getElementById('search_' + i).focus();
+}
+
+function renderDrop(i, q) {
+  const drop = document.getElementById('drop_' + i);
+  q = (q||'').toLowerCase().trim();
+  const filtered = INV_ITEMS.filter(it => it.name.toLowerCase().includes(q));
+  drop.innerHTML = filtered.map(it =>
+    `<div class="picker-opt" onclick="selItem(${i},${it.id},'${it.name.replace(/'/g,"\\'")}','${it.unit||'pcs'}')">
+      ${it.name}<span class="unit-tag">${it.unit||'pcs'}</span>
+    </div>`
+  ).join('') || `<div class="picker-opt" style="color:#555;cursor:default">No match</div>`;
+  document.addEventListener('click', e => { if (!e.target.closest('#picker_' + i)) drop.classList.remove('open'); }, { once: true });
+}
+
+function selItem(i, id, name, unit) {
+  document.getElementById('item_id_' + i).value = id;
+  document.getElementById('search_'  + i).value = name;
+  document.getElementById('unit_'    + i).value = unit;
+  document.getElementById('drop_'    + i).classList.remove('open');
+}
+
+function recalc(i) {
+  const q = parseFloat(document.getElementById('qty_'+i)?.value)||0;
+  const p = parseFloat(document.getElementById('price_'+i)?.value)||0;
+  const el = document.getElementById('lt_'+i);
+  if (el) el.textContent = CUR + ' ' + (q*p).toFixed(2);
+  recalcTotal();
+}
+function recalcTotal() {
+  let sum=0;
+  document.querySelectorAll('[id^="lt_"]').forEach(el=>{sum+=parseFloat(el.textContent.replace(CUR,'').trim())||0;});
+  document.getElementById('grandTotal').textContent = CUR + ' ' + sum.toFixed(2);
+}
+addLine();
+</script>
+</body></html>

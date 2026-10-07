@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expiring Items — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .main{padding:24px;max-width:1000px;margin:0 auto}
+    .page-title{font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .page-sub{font-size:.85rem;color:#555;margin-bottom:24px}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .card-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;justify-content:space-between}
+    .card-head-title{font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.72rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:11px 16px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .empty{text-align:center;padding:48px;color:#444;font-size:.9rem}
+    .days-badge{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block}
+    .days-expired{background:rgba(231,76,60,.2);color:#e74c3c}
+    .days-urgent{background:rgba(231,76,60,.12);color:#e74c3c}
+    .days-warning{background:rgba(241,196,15,.12);color:#f1c40f}
+    .days-ok{background:rgba(0,184,148,.1);color:#00b894}
+    .loc-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+    .filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Expiring Items</span>
+  </div>
+  <div class="filter-row">
+    <% [7,14,30,60,90].forEach(d => { %>
+    <a href="/inventory/expiring?days=<%= d %>" class="btn btn-ghost btn-sm" style="<%= days == d ? 'background:#7c5cbf;color:#fff' : '' %>"><%= d %>d</a>
+    <% }); %>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">📅 Expiring Batches</div>
+  <div class="page-sub">Batches expiring within the next <strong style="color:#fff"><%= days %> days</strong>. Use "Receive Goods" on a purchase to log batch numbers and expiry dates.</div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-title">⚠️ Expiring Soon (<%= batches.length %>)</div>
+    </div>
+    <% if (!batches.length) { %>
+      <div class="empty">
+        <div style="font-size:2rem;margin-bottom:10px">✅</div>
+        No batches expiring in the next <%= days %> days.
+      </div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Item</th><th>Batch #</th><th>Location</th><th>Qty Left</th><th>Expiry Date</th><th>Days Left</th></tr></thead>
+      <tbody>
+      <% batches.forEach(b => {
+           const today = new Date(); today.setHours(0,0,0,0);
+           const exp = new Date(b.expiry_date);
+           const daysLeft = Math.round((exp - today) / 86400000);
+           let cls = 'days-ok';
+           if (daysLeft < 0) cls = 'days-expired';
+           else if (daysLeft <= 3) cls = 'days-urgent';
+           else if (daysLeft <= 10) cls = 'days-warning';
+      %>
+        <tr>
+          <td style="color:#fff;font-weight:600"><%= b.item_name %></td>
+          <td style="color:#888"><%= b.batch_no || '—' %></td>
+          <td>
+            <% if (b.loc_name) { %>
+            <span class="loc-dot" style="background:<%= b.loc_color %>"></span><%= b.loc_name %>
+            <% } else { %><span style="color:#444">—</span><% } %>
+          </td>
+          <td><strong style="color:<%= daysLeft < 0 ? '#e74c3c' : '#ccc' %>"><%= parseFloat(b.quantity).toFixed(3) %></strong> <span style="color:#555;font-size:.75rem"><%= b.unit %></span></td>
+          <td><%= new Date(b.expiry_date).toLocaleDateString() %></td>
+          <td>
+            <span class="days-badge <%= cls %>">
+              <%= daysLeft < 0 ? 'Expired ' + Math.abs(daysLeft) + 'd ago' : daysLeft === 0 ? 'Today!' : daysLeft + ' days' %>
+            </span>
+          </td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+</body></html>

@@ -761,6 +761,65 @@ const pool = new Pool({
       unit        VARCHAR(20)
     )`,
     `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL`,
+    // ── Purchase Orders ───────────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS purchase_orders (
+      id            SERIAL PRIMARY KEY,
+      tenant_id     INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      supplier_id   INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+      supplier_name VARCHAR(120),
+      po_number     VARCHAR(60),
+      order_date    DATE DEFAULT CURRENT_DATE,
+      expected_date DATE,
+      status        VARCHAR(20) DEFAULT 'draft',
+      notes         TEXT,
+      total         NUMERIC(12,2) DEFAULT 0,
+      created_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at    TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS purchase_order_lines (
+      id           SERIAL PRIMARY KEY,
+      order_id     INTEGER REFERENCES purchase_orders(id) ON DELETE CASCADE,
+      item_id      INTEGER REFERENCES inventory_items(id) ON DELETE SET NULL,
+      item_name    VARCHAR(120),
+      unit         VARCHAR(20),
+      ordered_qty  NUMERIC(14,4) NOT NULL,
+      received_qty NUMERIC(14,4) DEFAULT 0,
+      unit_price   NUMERIC(12,4) DEFAULT 0,
+      total        NUMERIC(12,2)
+    )`,
+    `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS po_id INTEGER REFERENCES purchase_orders(id) ON DELETE SET NULL`,
+    // ── Batch / Expiry tracking ───────────────────────────────────────
+    `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS batch_no    VARCHAR(60)`,
+    `ALTER TABLE purchase_receipt_lines ADD COLUMN IF NOT EXISTS expiry_date DATE`,
+    `CREATE TABLE IF NOT EXISTS inventory_batches (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL,
+      receipt_id  INTEGER REFERENCES purchase_receipts(id) ON DELETE SET NULL,
+      batch_no    VARCHAR(60),
+      expiry_date DATE,
+      initial_qty NUMERIC(14,4) DEFAULT 0,
+      quantity    NUMERIC(14,4) DEFAULT 0,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_inventory_batches_expiry ON inventory_batches(tenant_id, expiry_date) WHERE expiry_date IS NOT NULL`,
+    // ── Waste / Spoilage logging ──────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS inventory_waste (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE SET NULL,
+      item_name   VARCHAR(120),
+      location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL,
+      qty         NUMERIC(14,4) NOT NULL,
+      unit        VARCHAR(20),
+      reason      VARCHAR(60) DEFAULT 'other',
+      waste_date  DATE DEFAULT CURRENT_DATE,
+      cost_impact NUMERIC(12,2) DEFAULT 0,
+      notes       TEXT,
+      created_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

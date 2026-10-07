@@ -57,10 +57,13 @@
   </div>
   <div class="nav-links">
     <a href="/inventory/items" class="btn btn-ghost">📋 Items</a>
-    <a href="/inventory/purchases" class="btn btn-ghost">🧾 Purchases</a>
+    <a href="/inventory/purchase-orders" class="btn btn-ghost">📋 POs</a>
+    <a href="/inventory/purchases" class="btn btn-ghost">🧾 Receipts</a>
     <a href="/inventory/suppliers" class="btn btn-ghost">🏢 Suppliers</a>
     <a href="/inventory/locations" class="btn btn-ghost">📍 Locations</a>
     <a href="/inventory/transfers" class="btn btn-ghost">🔄 Transfers</a>
+    <a href="/inventory/waste" class="btn btn-ghost">🗑️ Waste</a>
+    <a href="/inventory/expiring" class="btn btn-ghost">📅 Expiry</a>
     <a href="/inventory/adjustments" class="btn btn-ghost">📝 Adjustments</a>
     <a href="/inventory/stocktake" class="btn btn-ghost">📋 Stock Take</a>
     <a href="/inventory/reports" class="btn btn-ghost">📊 Reports</a>
@@ -87,10 +90,20 @@
       <div class="stat-val" style="color:<%= lowStock.length > 0 ? '#e74c3c' : '#00b894' %>"><%= lowStock.length %></div>
       <div class="stat-sub">items below reorder level</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Recent Purchases</div>
-      <div class="stat-val"><%= recentPurchases.length %></div>
-      <div class="stat-sub">last 5 receipts</div>
+    <div class="stat-card" onclick="window.location='/inventory/purchase-orders'" style="cursor:pointer">
+      <div class="stat-label">Pending POs</div>
+      <div class="stat-val" style="color:<%= pendingPOs > 0 ? '#f1c40f' : '#00b894' %>"><%= pendingPOs %></div>
+      <div class="stat-sub">draft / sent / partial</div>
+    </div>
+    <div class="stat-card" onclick="window.location='/inventory/expiring'" style="cursor:pointer">
+      <div class="stat-label">Expiring (30d)</div>
+      <div class="stat-val" style="color:<%= expiringCount > 0 ? '#e74c3c' : '#00b894' %>"><%= expiringCount %></div>
+      <div class="stat-sub">batches expiring soon</div>
+    </div>
+    <div class="stat-card" onclick="window.location='/inventory/waste'" style="cursor:pointer">
+      <div class="stat-label">Waste This Month</div>
+      <div class="stat-val" style="color:#e74c3c"><%= tenant.currency || '$' %><%= wasteThisMonth.toFixed(0) %></div>
+      <div class="stat-sub">cost of waste logged</div>
     </div>
   </div>
 

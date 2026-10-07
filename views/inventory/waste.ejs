@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Waste Log — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-danger{background:#e74c3c;color:#fff}.btn-danger:hover{opacity:.88}
+    .main{padding:24px;max-width:1100px;margin:0 auto}
+    .page-title{font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:24px}
+    .grid2{display:grid;grid-template-columns:360px 1fr;gap:20px;align-items:start}
+    @media(max-width:800px){.grid2{grid-template-columns:1fr}}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden}
+    .card-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff}
+    .form-body{padding:18px 20px}
+    .frow{margin-bottom:14px}
+    .flabel{display:block;font-size:.72rem;font-weight:700;color:#555;text-transform:uppercase;margin-bottom:5px}
+    .finput{width:100%;padding:9px 12px;background:#0f0f1a;border:1.5px solid #2a2a3e;border-radius:8px;color:#fff;font-size:.88rem;font-family:inherit;outline:none}
+    .finput:focus{border-color:#e74c3c}
+    select.finput{appearance:none;cursor:pointer}
+    .reasons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+    .reason-btn{padding:8px 10px;border-radius:8px;border:1.5px solid #2a2a3e;background:#0f0f1a;color:#888;font-size:.78rem;font-weight:600;cursor:pointer;text-align:center;font-family:inherit;transition:all .15s}
+    .reason-btn.active{border-color:#e74c3c;background:rgba(231,76,60,.15);color:#e74c3c}
+    .reason-input{display:none}
+    .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:16px 20px;border-bottom:1px solid #2a2a3e}
+    .stat-mini{text-align:center}
+    .stat-mini-val{font-size:1.2rem;font-weight:800;color:#e74c3c}
+    .stat-mini-label{font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;margin-top:2px}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.72rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 16px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    .reason-tag{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(231,76,60,.12);color:#e74c3c;display:inline-block}
+    .loc-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;flex-shrink:0}
+    .empty{text-align:center;padding:32px;color:#444;font-size:.9rem}
+    .toast{position:fixed;top:64px;right:20px;z-index:999;padding:12px 20px;border-radius:10px;font-size:.85rem;font-weight:600}
+    .toast-ok{background:#00b894;color:#fff}.toast-err{background:#e74c3c;color:#fff}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Waste Log</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">🗑️ Waste & Spoilage Log</div>
+  <% if (success) { %><div class="toast toast-ok" id="toast"><%= success %></div><% } %>
+  <% if (error)   { %><div class="toast toast-err" id="toast"><%= error %></div><% } %>
+
+  <div class="grid2">
+    <!-- Entry form -->
+    <div class="card">
+      <div class="card-head">➕ Record Waste</div>
+      <div class="form-body">
+        <form method="POST" action="/inventory/waste">
+          <div class="frow">
+            <label class="flabel">Item *</label>
+            <select class="finput" name="item_id" required>
+              <option value="">— Select item —</option>
+              <% items.forEach(it => { %>
+              <option value="<%= it.id %>"><%= it.name %> (<%= it.unit %>)</option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="frow">
+            <label class="flabel">Quantity Lost *</label>
+            <input type="number" class="finput" name="qty" min="0.001" step="any" placeholder="0" required />
+          </div>
+          <div class="frow">
+            <label class="flabel">Reason</label>
+            <div class="reasons">
+              <% [['expired','🗓 Expired'],['spoiled','🤢 Spoiled'],['dropped','💧 Dropped'],['overcooked','🔥 Overcooked'],['damaged','📦 Damaged'],['other','❓ Other']].forEach(([val,label]) => { %>
+              <button type="button" class="reason-btn" data-val="<%= val %>" onclick="setReason('<%= val %>')"><%= label %></button>
+              <% }); %>
+            </div>
+            <input type="hidden" name="reason" id="reasonInput" value="other" />
+          </div>
+          <% if (locations.length) { %>
+          <div class="frow">
+            <label class="flabel">From Location</label>
+            <select class="finput" name="location_id">
+              <option value="">— Any location —</option>
+              <% locations.forEach(l => { %>
+              <option value="<%= l.id %>"><%= l.name %></option>
+              <% }); %>
+            </select>
+          </div>
+          <% } %>
+          <div class="frow">
+            <label class="flabel">Date</label>
+            <input type="date" class="finput" name="waste_date" value="<%= new Date().toISOString().slice(0,10) %>" />
+          </div>
+          <div class="frow">
+            <label class="flabel">Notes</label>
+            <input type="text" class="finput" name="notes" placeholder="optional details…" />
+          </div>
+          <button type="submit" class="btn btn-danger" style="width:100%;justify-content:center;padding:10px">🗑️ Record Waste</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Log + stats -->
+    <div>
+      <!-- This month summary -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="stats-row">
+          <div class="stat-mini">
+            <div class="stat-mini-val"><%= parseInt(monthSummary.entries) || 0 %></div>
+            <div class="stat-mini-label">Entries This Month</div>
+          </div>
+          <div class="stat-mini">
+            <div class="stat-mini-val"><%= parseFloat(monthSummary.total_qty||0).toFixed(1) %></div>
+            <div class="stat-mini-label">Total Qty Wasted</div>
+          </div>
+          <div class="stat-mini">
+            <div class="stat-mini-val"><%= tenant.currency || '$' %><%= parseFloat(monthSummary.total_cost||0).toFixed(2) %></div>
+            <div class="stat-mini-label">Cost This Month</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent log -->
+      <div class="card">
+        <div class="card-head">📋 Recent Waste (<%= wasteLog.length %>)</div>
+        <% if (!wasteLog.length) { %>
+          <div class="empty">No waste recorded yet.</div>
+        <% } else { %>
+        <table>
+          <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Reason</th><th>Cost</th><th>By</th></tr></thead>
+          <tbody>
+          <% wasteLog.forEach(w => { %>
+            <tr>
+              <td style="white-space:nowrap"><%= new Date(w.waste_date).toLocaleDateString() %></td>
+              <td>
+                <span style="color:#fff;font-weight:600"><%= w.item_name %></span>
+                <% if (w.loc_name) { %>
+                <br><span style="font-size:.72rem;color:#555"><span class="loc-dot" style="background:<%= w.loc_color %>"></span><%= w.loc_name %></span>
+                <% } %>
+              </td>
+              <td><span style="color:#e74c3c;font-weight:700">-<%= parseFloat(w.qty).toFixed(3) %></span> <span style="color:#555;font-size:.75rem"><%= w.unit %></span></td>
+              <td><span class="reason-tag"><%= w.reason %></span></td>
+              <td style="color:#e74c3c"><%= tenant.currency || '$' %><%= parseFloat(w.cost_impact||0).toFixed(2) %></td>
+              <td style="color:#555"><%= w.created_by_name || '—' %></td>
+            </tr>
+          <% }); %>
+          </tbody>
+        </table>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function setReason(val) {
+  document.querySelectorAll('.reason-btn').forEach(b => b.classList.toggle('active', b.dataset.val === val));
+  document.getElementById('reasonInput').value = val;
+}
+setReason('other');
+setTimeout(()=>{const t=document.getElementById('toast');if(t)t.style.opacity='0'},3000);
+</script>
+</body></html>

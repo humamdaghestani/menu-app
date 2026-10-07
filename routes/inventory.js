@@ -25,11 +25,14 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
 
-    const [stockRes, lowStockRes, purchasesRes, recentTxRes] = await Promise.all([
+    const [stockRes, lowStockRes, purchasesRes, recentTxRes, expiringRes, wasteRes, pendingPORes] = await Promise.all([
       db.query(`SELECT COUNT(*) AS cnt, SUM(stock_qty * avg_cost) AS total_value FROM inventory_items WHERE tenant_id=$1 AND is_active=true`, [tid]),
       db.query(`SELECT * FROM inventory_items WHERE tenant_id=$1 AND is_active=true AND reorder_level > 0 AND stock_qty <= reorder_level ORDER BY (stock_qty - reorder_level) ASC LIMIT 10`, [tid]),
       db.query(`SELECT pr.*, u.name AS created_by_name FROM purchase_receipts pr LEFT JOIN users u ON u.id=pr.created_by WHERE pr.tenant_id=$1 ORDER BY pr.created_at DESC LIMIT 5`, [tid]),
       db.query(`SELECT it.*, ii.name AS item_name, ii.unit FROM inventory_transactions it LEFT JOIN inventory_items ii ON ii.id=it.item_id WHERE it.tenant_id=$1 ORDER BY it.created_at DESC LIMIT 15`, [tid]),
+      db.query(`SELECT COUNT(*) AS cnt FROM inventory_batches WHERE tenant_id=$1 AND expiry_date IS NOT NULL AND quantity > 0 AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'`, [tid]),
+      db.query(`SELECT COALESCE(SUM(cost_impact),0) AS total FROM inventory_waste WHERE tenant_id=$1 AND waste_date >= date_trunc('month', CURRENT_DATE)`, [tid]),
+      db.query(`SELECT COUNT(*) AS cnt FROM purchase_orders WHERE tenant_id=$1 AND status IN ('draft','sent','partial')`, [tid]),
     ]);
 
     res.render('inventory/home', {
@@ -40,6 +43,9 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
       lowStock: lowStockRes.rows,
       recentPurchases: purchasesRes.rows,
       recentTx: recentTxRes.rows,
+      expiringCount: parseInt(expiringRes.rows[0].cnt) || 0,
+      wasteThisMonth: parseFloat(wasteRes.rows[0].total) || 0,
+      pendingPOs: parseInt(pendingPORes.rows[0].cnt) || 0,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
@@ -323,6 +329,19 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
         supplier: r.last_supplier || null,
       };
     });
+
+    // Pre-fill from PO if ?po= query param provided
+    let prefillPO = null;
+    if (req.query.po) {
+      const [poR, poLinesR] = await Promise.all([
+        db.query(`SELECT * FROM purchase_orders WHERE id=$1 AND tenant_id=$2`, [req.query.po, tid]),
+        db.query(`SELECT * FROM purchase_order_lines WHERE order_id=$1`, [req.query.po]),
+      ]);
+      if (poR.rows[0] && poR.rows[0].status !== 'cancelled') {
+        prefillPO = { ...poR.rows[0], lines: poLinesR.rows };
+      }
+    }
+
     res.render('inventory/purchase-new', {
       tenant: req.tenant,
       currentUser: req.user,
@@ -330,6 +349,7 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
       suppliers: suppliersRes.rows,
       lastPrices,
       locations: locsRes.rows,
+      prefillPO,
       error: req.query.error || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -360,9 +380,11 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 
 // Save new purchase receipt
 router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
-  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, bill_image, location_id, item_id, new_item_name, unit, quantity, unit_price } = req.body;
+  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, bill_image, location_id, po_id,
+          item_id, new_item_name, unit, quantity, unit_price, batch_no, expiry_date } = req.body;
   const tid = req.user.tenantId;
   const locId = parseInt(location_id) || null;
+  const poId  = parseInt(po_id) || null;
 
   const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
   const itemIds     = toArr(item_id);
@@ -370,6 +392,8 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
   const units       = toArr(unit);
   const qtys        = toArr(quantity);
   const prices      = toArr(unit_price);
+  const batchNos    = toArr(batch_no);
+  const expiryDates = toArr(expiry_date);
 
   const lines = itemIds.map((iid, i) => ({
     item_id:       iid,
@@ -377,6 +401,8 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
     unit:          units[i]?.trim() || 'pcs',
     quantity:      parseFloat(qtys[i]),
     unit_price:    parseFloat(prices[i]),
+    batch_no:      batchNos[i]?.trim() || null,
+    expiry_date:   expiryDates[i]?.trim() || null,
   })).filter(l => !isNaN(l.quantity) && l.quantity > 0 && !isNaN(l.unit_price) && l.unit_price >= 0
               && (l.item_id !== 'new' || l.new_item_name));
 
@@ -388,11 +414,11 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
     await client.query('BEGIN');
 
     const rr = await client.query(
-      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, bill_image, location_id, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, bill_image, location_id, po_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
       [tid, supplier_name?.trim() || null, parseInt(supplier_id)||null, invoice_no?.trim() || null,
        receipt_date || new Date().toISOString().slice(0, 10), total,
-       notes?.trim() || null, bill_image || null, locId, req.user.userId]
+       notes?.trim() || null, bill_image || null, locId, poId, req.user.userId]
     );
     const receiptId = rr.rows[0].id;
 
@@ -447,10 +473,39 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
 
       const lineTotal = l.quantity * l.unit_price;
       await client.query(
-        `INSERT INTO purchase_receipt_lines (receipt_id, item_id, item_name, unit, quantity, unit_price, total)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-        [receiptId, resolvedItemId || null, resolvedName || '', l.unit, l.quantity, l.unit_price, lineTotal]
+        `INSERT INTO purchase_receipt_lines (receipt_id, item_id, item_name, unit, quantity, unit_price, total, batch_no, expiry_date)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [receiptId, resolvedItemId || null, resolvedName || '', l.unit, l.quantity, l.unit_price, lineTotal,
+         l.batch_no || null, l.expiry_date || null]
       );
+      // Insert batch record if expiry date provided
+      if (resolvedItemId && l.expiry_date) {
+        await client.query(
+          `INSERT INTO inventory_batches (tenant_id, item_id, location_id, receipt_id, batch_no, expiry_date, initial_qty, quantity)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$7)`,
+          [tid, resolvedItemId, locId, receiptId, l.batch_no||null, l.expiry_date, l.quantity]
+        );
+      }
+      // Update PO line received_qty if linked to a PO
+      if (poId && resolvedItemId) {
+        await client.query(
+          `UPDATE purchase_order_lines SET received_qty = received_qty + $1
+           WHERE order_id=$2 AND item_id=$3`,
+          [l.quantity, poId, resolvedItemId]
+        );
+      }
+    }
+
+    // Update PO status after all lines processed
+    if (poId) {
+      const poCheck = await client.query(
+        `SELECT COUNT(*) FILTER (WHERE received_qty >= ordered_qty) AS done,
+                COUNT(*) AS total
+         FROM purchase_order_lines WHERE order_id=$1`, [poId]
+      );
+      const { done, total } = poCheck.rows[0];
+      const newStatus = parseInt(done) >= parseInt(total) ? 'received' : 'partial';
+      await client.query(`UPDATE purchase_orders SET status=$1 WHERE id=$2`, [newStatus, poId]);
     }
 
     await client.query('COMMIT');
@@ -719,6 +774,130 @@ router.post('/purchases/:id/image/delete', requireAuth, requireInventory, async 
   } catch (err) { console.error(err); res.redirect(`/inventory/purchases/${req.params.id}?error=` + encodeURIComponent(err.message)); }
 });
 
+// ── Purchase Orders ────────────────────────────────────────────────────────────
+router.get('/purchase-orders', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [ordRes, suppRes] = await Promise.all([
+      db.query(`
+        SELECT po.*, s.name AS supplier_name_obj, u.name AS created_by_name,
+               (SELECT COUNT(*) FROM purchase_order_lines WHERE order_id=po.id)::int AS line_count,
+               (SELECT COUNT(*) FROM purchase_receipts WHERE po_id=po.id)::int AS receipt_count
+        FROM purchase_orders po
+        LEFT JOIN suppliers s ON s.id=po.supplier_id
+        LEFT JOIN users u ON u.id=po.created_by
+        WHERE po.tenant_id=$1
+        ORDER BY po.created_at DESC LIMIT 100
+      `, [tid]),
+      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/purchase-orders', {
+      tenant: req.tenant, currentUser: req.user,
+      orders: ordRes.rows, suppliers: suppRes.rows,
+      success: req.query.success || null, error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.get('/purchase-orders/new', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [itemsRes, suppRes] = await Promise.all([
+      db.query(`SELECT id, name, unit FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/purchase-order-new', {
+      tenant: req.tenant, currentUser: req.user,
+      invItems: itemsRes.rows, suppliers: suppRes.rows,
+      error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/purchase-orders', requireAuth, requireInventory, async (req, res) => {
+  const { supplier_name, supplier_id, po_number, order_date, expected_date, notes, item_id, unit, quantity, unit_price } = req.body;
+  const tid = req.user.tenantId;
+  const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
+  const itemIds = toArr(item_id), units = toArr(unit), qtys = toArr(quantity), prices = toArr(unit_price);
+
+  const lines = itemIds.map((id, i) => ({
+    item_id: id, unit: units[i] || 'pcs',
+    ordered_qty: parseFloat(qtys[i]) || 0,
+    unit_price: parseFloat(prices[i]) || 0,
+  })).filter(l => l.ordered_qty > 0);
+
+  if (!lines.length) return res.redirect('/inventory/purchase-orders/new?error=Add+at+least+one+item');
+
+  const total = lines.reduce((s, l) => s + l.ordered_qty * l.unit_price, 0);
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    const poRes = await client.query(
+      `INSERT INTO purchase_orders (tenant_id, supplier_id, supplier_name, po_number, order_date, expected_date, notes, total, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [tid, parseInt(supplier_id)||null, supplier_name?.trim()||null,
+       po_number?.trim()||null, order_date||new Date().toISOString().slice(0,10),
+       expected_date||null, notes?.trim()||null, total, req.user.userId]
+    );
+    const poId = poRes.rows[0].id;
+    for (const l of lines) {
+      let name = null;
+      if (l.item_id && l.item_id !== 'new') {
+        const r = await client.query(`SELECT name FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [l.item_id, tid]);
+        name = r.rows[0]?.name || null;
+      }
+      await client.query(
+        `INSERT INTO purchase_order_lines (order_id, item_id, item_name, unit, ordered_qty, unit_price, total)
+         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        [poId, parseInt(l.item_id)||null, name, l.unit, l.ordered_qty, l.unit_price, l.ordered_qty * l.unit_price]
+      );
+    }
+    await client.query('COMMIT');
+    res.redirect('/inventory/purchase-orders/' + poId + '?success=PO+created');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.redirect('/inventory/purchase-orders/new?error=' + encodeURIComponent(err.message));
+  } finally { client.release(); }
+});
+
+router.get('/purchase-orders/:id', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [poRes, linesRes, receiptsRes] = await Promise.all([
+      db.query(`
+        SELECT po.*, u.name AS created_by_name, s.name AS supplier_obj_name
+        FROM purchase_orders po
+        LEFT JOIN users u ON u.id=po.created_by
+        LEFT JOIN suppliers s ON s.id=po.supplier_id
+        WHERE po.id=$1 AND po.tenant_id=$2
+      `, [req.params.id, tid]),
+      db.query(`SELECT * FROM purchase_order_lines WHERE order_id=$1 ORDER BY id`, [req.params.id]),
+      db.query(`SELECT id, receipt_date, total, status FROM purchase_receipts WHERE po_id=$1 ORDER BY created_at DESC`, [req.params.id]),
+    ]);
+    if (!poRes.rows[0]) return res.redirect('/inventory/purchase-orders');
+    res.render('inventory/purchase-order-view', {
+      tenant: req.tenant, currentUser: req.user,
+      po: poRes.rows[0], lines: linesRes.rows, receipts: receiptsRes.rows,
+      success: req.query.success || null, error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/purchase-orders/:id/send', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`UPDATE purchase_orders SET status='sent' WHERE id=$1 AND tenant_id=$2 AND status='draft'`, [req.params.id, req.user.tenantId]);
+    res.redirect('/inventory/purchase-orders/' + req.params.id + '?success=PO+marked+as+sent');
+  } catch (err) { res.redirect('/inventory/purchase-orders/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/purchase-orders/:id/cancel', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`UPDATE purchase_orders SET status='cancelled' WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+    res.redirect('/inventory/purchase-orders/' + req.params.id + '?success=PO+cancelled');
+  } catch (err) { res.redirect('/inventory/purchase-orders/' + req.params.id + '?error=' + encodeURIComponent(err.message)); }
+});
+
 // ── Locations ─────────────────────────────────────────────────────────────────
 router.get('/locations', requireAuth, requireInventory, async (req, res) => {
   const tid = req.user.tenantId;
@@ -923,6 +1102,96 @@ router.post('/transfers', requireAuth, requireInventory, async (req, res) => {
     console.error(err);
     res.redirect('/inventory/transfers/new?error=' + encodeURIComponent(err.message));
   } finally { client.release(); }
+});
+
+// ── Waste / Spoilage ──────────────────────────────────────────────────────────
+router.get('/waste', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [wasteRes, itemsRes, locsRes] = await Promise.all([
+      db.query(`
+        SELECT w.*, l.name AS loc_name, l.color AS loc_color, u.name AS created_by_name
+        FROM inventory_waste w
+        LEFT JOIN inventory_locations l ON l.id=w.location_id
+        LEFT JOIN users u ON u.id=w.created_by
+        WHERE w.tenant_id=$1
+        ORDER BY w.waste_date DESC, w.created_at DESC
+        LIMIT 100
+      `, [tid]),
+      db.query(`SELECT id, name, unit, avg_cost FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name, color FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY name`, [tid]),
+    ]);
+    // This month summary
+    const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+    const monthWaste = await db.query(
+      `SELECT COALESCE(SUM(cost_impact),0) AS total_cost, COALESCE(SUM(qty),0) AS total_qty, COUNT(*)::int AS entries
+       FROM inventory_waste WHERE tenant_id=$1 AND waste_date >= $2`,
+      [tid, monthStart.toISOString().slice(0,10)]
+    );
+    res.render('inventory/waste', {
+      tenant: req.tenant, currentUser: req.user,
+      wasteLog: wasteRes.rows, items: itemsRes.rows, locations: locsRes.rows,
+      monthSummary: monthWaste.rows[0],
+      success: req.query.success || null, error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/waste', requireAuth, requireInventory, async (req, res) => {
+  const { item_id, qty, reason, waste_date, location_id, notes } = req.body;
+  const tid = req.user.tenantId;
+  const quantity = parseFloat(qty);
+  if (!item_id || isNaN(quantity) || quantity <= 0) return res.redirect('/inventory/waste?error=Invalid+entry');
+  try {
+    const itemRes = await db.query(`SELECT name, unit, avg_cost FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [item_id, tid]);
+    if (!itemRes.rows[0]) return res.redirect('/inventory/waste?error=Item+not+found');
+    const { name, unit, avg_cost } = itemRes.rows[0];
+    const costImpact = quantity * parseFloat(avg_cost || 0);
+    await db.query(
+      `INSERT INTO inventory_waste (tenant_id, item_id, item_name, location_id, qty, unit, reason, waste_date, cost_impact, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [tid, item_id, name, parseInt(location_id)||null, quantity, unit,
+       reason || 'other', waste_date || new Date().toISOString().slice(0,10),
+       costImpact, notes?.trim()||null, req.user.userId]
+    );
+    await db.query(`UPDATE inventory_items SET stock_qty = stock_qty - $1 WHERE id=$2 AND tenant_id=$3`, [quantity, item_id, tid]);
+    await db.query(
+      `INSERT INTO inventory_transactions (tenant_id, item_id, type, qty_change, notes, created_by) VALUES ($1,$2,'waste',$3,$4,$5)`,
+      [tid, item_id, -quantity, (reason || 'waste') + (notes ? ': ' + notes : ''), req.user.userId]
+    );
+    if (parseInt(location_id)) {
+      await db.query(
+        `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity) VALUES ($1,$2,$3,-$4)
+         ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity - $4`,
+        [tid, item_id, location_id, quantity]
+      );
+    }
+    res.redirect('/inventory/waste?success=Waste+recorded');
+  } catch (err) { console.error(err); res.redirect('/inventory/waste?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Expiring batches ───────────────────────────────────────────────────────────
+router.get('/expiring', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const days = parseInt(req.query.days) || 30;
+  try {
+    const [batchRes, locsRes] = await Promise.all([
+      db.query(`
+        SELECT b.*, ii.name AS item_name, ii.unit, l.name AS loc_name, l.color AS loc_color
+        FROM inventory_batches b
+        JOIN inventory_items ii ON ii.id=b.item_id
+        LEFT JOIN inventory_locations l ON l.id=b.location_id
+        WHERE b.tenant_id=$1 AND b.expiry_date IS NOT NULL AND b.quantity > 0
+          AND b.expiry_date <= CURRENT_DATE + ($2 || ' days')::INTERVAL
+        ORDER BY b.expiry_date ASC
+      `, [tid, days]),
+      db.query(`SELECT id, name FROM inventory_locations WHERE tenant_id=$1 ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/expiring', {
+      tenant: req.tenant, currentUser: req.user,
+      batches: batchRes.rows, locations: locsRes.rows, days,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
 
 // ── Inventory Reports ──────────────────────────────────────────────────────────

@@ -100,7 +100,15 @@
   <div class="error-banner">⚠ Error: <%= error %></div>
   <% } %>
 
+  <% if (prefillPO) { %>
+  <div style="background:rgba(124,92,191,.1);border:1px solid rgba(124,92,191,.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:10px;font-size:.85rem">
+    📋 <strong style="color:#a78bfa">Receiving against PO <%= prefillPO.po_number || '#'+prefillPO.id %></strong>
+    <span style="color:#555">— <%= prefillPO.supplier_name || '' %></span>
+    <a href="/inventory/purchase-orders/<%= prefillPO.id %>" style="color:#7c5cbf;margin-left:auto;font-size:.78rem">View PO →</a>
+  </div>
+  <% } %>
   <form method="POST" action="/inventory/purchases">
+  <% if (prefillPO) { %><input type="hidden" name="po_id" value="<%= prefillPO.id %>" /><% } %>
 
     <div class="card">
       <div class="card-title">Receipt Info</div>
@@ -179,11 +187,13 @@
       <table class="lines-table">
         <thead>
           <tr>
-            <th style="width:30%">Item</th>
-            <th style="width:9%">Unit</th>
-            <th style="width:12%">Qty</th>
-            <th style="width:20%">Unit Price (<%= tenant.currency || 'IQD' %>)</th>
-            <th style="width:17%">Last Price</th>
+            <th style="width:26%">Item</th>
+            <th style="width:7%">Unit</th>
+            <th style="width:9%">Qty</th>
+            <th style="width:13%">Unit Price (<%= tenant.currency || 'IQD' %>)</th>
+            <th style="width:13%">Last Price</th>
+            <th style="width:10%">Batch #</th>
+            <th style="width:10%">Expiry</th>
             <th style="width:8%">Total</th>
             <th style="width:4%"></th>
           </tr>
@@ -455,13 +465,15 @@ function addLine() {
   const tdQty   = mkTd(`<input type="number" name="quantity" id="qty_${i}" class="line-input" step="0.001" min="0.001" placeholder="0" required />`);
   const tdPrice = mkTd(`<input type="number" name="unit_price" id="price_${i}" class="line-input" step="0.0001" min="0" placeholder="0.00" required />`);
   const tdLast  = mkTd(`<div id="last_${i}" style="font-size:.78rem;line-height:1.5;color:#555">—</div>`);
+  const tdBatch = mkTd(`<input type="text" name="batch_no" id="batch_${i}" class="line-input" placeholder="LOT#" style="width:80px;font-size:.78rem" />`);
+  const tdExp   = mkTd(`<input type="date" name="expiry_date" id="exp_${i}" class="line-input" style="width:110px;font-size:.78rem" />`);
   const tdTotal = mkTd(`<span class="line-total" id="lt_${i}">${CUR} 0.00</span>`);
   const tdDel   = mkTd(`<button type="button" class="btn-remove">✕</button>`);
   tdDel.querySelector('button').onclick = () => removeLine(i);
   tdQty.querySelector('input').oninput   = () => recalc(i);
   tdPrice.querySelector('input').oninput = () => recalc(i);
 
-  tr.append(tdItem, tdUnit, tdQty, tdPrice, tdLast, tdTotal, tdDel);
+  tr.append(tdItem, tdUnit, tdQty, tdPrice, tdLast, tdBatch, tdExp, tdTotal, tdDel);
   tbody.appendChild(tr);
   document.getElementById('search_' + i).focus();
 }
@@ -508,7 +520,39 @@ function removeLine(i) {
   recalcTotal();
 }
 
+// ── Pre-fill from Purchase Order ───────────────────────────────────
+<% if (prefillPO) { %>
+const PO_PREFILL = <%- JSON.stringify(prefillPO) %>;
+(function prefillFromPO() {
+  // Pre-select supplier
+  if (PO_PREFILL.supplier_name) {
+    const si = document.getElementById('supplierInput');
+    if (si) si.value = PO_PREFILL.supplier_name;
+    const sf = document.getElementById('suppIdField');
+    if (sf && PO_PREFILL.supplier_id) sf.value = PO_PREFILL.supplier_id;
+  }
+  // Add one line per PO line
+  (PO_PREFILL.lines || []).forEach(line => {
+    addLine();
+    const i = idx - 1;
+    if (line.item_id) {
+      selectItem(i, line.item_id, line.item_name, line.unit);
+    }
+    setTimeout(() => {
+      const qtyEl   = document.getElementById('qty_'   + i);
+      const priceEl = document.getElementById('price_' + i);
+      const unitEl  = document.getElementById('unit_'  + i);
+      const remaining = parseFloat(line.ordered_qty) - parseFloat(line.received_qty || 0);
+      if (qtyEl && remaining > 0) { qtyEl.value = remaining.toFixed(3); }
+      if (priceEl && parseFloat(line.unit_price) > 0) { priceEl.value = parseFloat(line.unit_price).toFixed(4); }
+      if (unitEl && line.unit) { unitEl.value = line.unit; }
+      recalc(i);
+    }, 60);
+  });
+})();
+<% } else { %>
 addLine();
+<% } %>
 
 // ── Bill image: client-side resize & compress ──────────────────────
 const MAX_PX = 1200;

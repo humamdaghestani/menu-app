@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Purchase Orders — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .main{padding:24px;max-width:1100px;margin:0 auto}
+    .page-title{font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:24px}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden}
+    .card-head{padding:14px 20px;border-bottom:1px solid #2a2a3e;display:flex;align-items:center;justify-content:space-between}
+    .card-head-title{font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.72rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:11px 16px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02);cursor:pointer}
+    .empty{text-align:center;padding:48px;color:#444;font-size:.9rem}
+    .status{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;display:inline-block;text-transform:uppercase}
+    .s-draft{background:rgba(255,255,255,.08);color:#888}
+    .s-sent{background:rgba(241,196,15,.15);color:#f1c40f}
+    .s-partial{background:rgba(52,152,219,.15);color:#3498db}
+    .s-received{background:rgba(0,184,148,.15);color:#00b894}
+    .s-cancelled{background:rgba(231,76,60,.1);color:#e74c3c;text-decoration:line-through}
+    .toast{position:fixed;top:64px;right:20px;z-index:999;padding:12px 20px;border-radius:10px;font-size:.85rem;font-weight:600}
+    .toast-ok{background:#00b894;color:#fff}.toast-err{background:#e74c3c;color:#fff}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <a href="/inventory/purchases" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Receipts</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Purchase Orders</span>
+  </div>
+  <a href="/inventory/purchase-orders/new" class="btn btn-primary">+ New PO</a>
+</div>
+
+<div class="main">
+  <div class="page-title">📋 Purchase Orders</div>
+  <% if (success) { %><div class="toast toast-ok" id="toast"><%= success %></div><% } %>
+  <% if (error)   { %><div class="toast toast-err" id="toast"><%= error %></div><% } %>
+
+  <div class="card">
+    <div class="card-head"><div class="card-head-title">All POs (<%= orders.length %>)</div></div>
+    <% if (!orders.length) { %>
+      <div class="empty">No purchase orders yet. Create one to start a formal procurement flow.</div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>PO #</th><th>Date</th><th>Supplier</th><th>Expected</th><th>Items</th><th>Total</th><th>Status</th><th>Receipts</th></tr></thead>
+      <tbody>
+      <% orders.forEach(o => { %>
+        <tr onclick="window.location='/inventory/purchase-orders/<%= o.id %>'">
+          <td style="color:#fff;font-weight:700"><%= o.po_number || '#'+o.id %></td>
+          <td style="white-space:nowrap"><%= new Date(o.order_date).toLocaleDateString() %></td>
+          <td><%= o.supplier_name || '—' %></td>
+          <td style="color:<%= o.expected_date && new Date(o.expected_date) < new Date() && o.status !== 'received' ? '#e74c3c' : '#ccc' %>">
+            <%= o.expected_date ? new Date(o.expected_date).toLocaleDateString() : '—' %>
+          </td>
+          <td><%= o.line_count %></td>
+          <td style="color:#fff;font-weight:600"><%= tenant.currency || '$' %><%= parseFloat(o.total).toFixed(2) %></td>
+          <td><span class="status s-<%= o.status %>"><%= o.status %></span></td>
+          <td><%= o.receipt_count %></td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+<script>setTimeout(()=>{const t=document.getElementById('toast');if(t)t.style.opacity='0'},3000)</script>
+</body></html>

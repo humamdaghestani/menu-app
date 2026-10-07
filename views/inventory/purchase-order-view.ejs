@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PO <%= po.po_number || '#'+po.id %> — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 16px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-success{background:#00b894;color:#fff}.btn-success:hover{opacity:.88}
+    .btn-warning{background:rgba(241,196,15,.2);color:#f1c40f}
+    .btn-danger{background:rgba(231,76,60,.15);color:#e74c3c}
+    .btn-sm{padding:4px 12px;font-size:.75rem}
+    .main{padding:24px;max-width:900px;margin:0 auto}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:20px}
+    .card-head{padding:18px 22px;border-bottom:1px solid #2a2a3e;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .card-title{font-size:1.1rem;font-weight:800;color:#fff}
+    .card-sub{font-size:.82rem;color:#555;margin-top:4px}
+    .meta-row{display:flex;flex-wrap:wrap;gap:24px;padding:16px 22px;border-bottom:1px solid #2a2a3e}
+    .meta-label{font-size:.7rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:4px}
+    .meta-val{font-size:.88rem;color:#ccc;font-weight:600}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.72rem;text-transform:uppercase;color:#444;font-weight:700;padding:10px 20px;border-bottom:1px solid #2a2a3e}
+    td{padding:11px 20px;font-size:.85rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .status{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:10px;display:inline-block;text-transform:uppercase}
+    .s-draft{background:rgba(255,255,255,.08);color:#888}
+    .s-sent{background:rgba(241,196,15,.15);color:#f1c40f}
+    .s-partial{background:rgba(52,152,219,.15);color:#3498db}
+    .s-received{background:rgba(0,184,148,.15);color:#00b894}
+    .s-cancelled{background:rgba(231,76,60,.1);color:#e74c3c}
+    .progress-bar{height:4px;background:#2a2a3e;border-radius:2px;overflow:hidden;margin-top:4px;min-width:80px}
+    .progress-fill{height:100%;background:#00b894;border-radius:2px}
+    .toast{position:fixed;top:64px;right:20px;z-index:999;padding:12px 20px;border-radius:10px;font-size:.85rem;font-weight:600}
+    .toast-ok{background:#00b894;color:#fff}.toast-err{background:#e74c3c;color:#fff}
+    .overdue{color:#e74c3c}
+    @media print{.topbar,.btn{display:none!important}.card{border:1px solid #ccc}body{background:#fff;color:#000}}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/purchase-orders" class="btn btn-ghost">← POs</a>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <% if (po.status === 'draft') { %>
+    <form method="POST" action="/inventory/purchase-orders/<%= po.id %>/send" style="display:inline">
+      <button class="btn btn-warning btn-sm">📤 Mark as Sent</button>
+    </form>
+    <% } %>
+    <% if (po.status !== 'cancelled' && po.status !== 'received') { %>
+    <a href="/inventory/purchases/new?po=<%= po.id %>" class="btn btn-success btn-sm">📥 Receive Goods</a>
+    <% } %>
+    <% if (po.status !== 'received') { %>
+    <form method="POST" action="/inventory/purchase-orders/<%= po.id %>/cancel" style="display:inline"
+          onsubmit="return confirm('Cancel this PO?')">
+      <button class="btn btn-danger btn-sm">✕ Cancel</button>
+    </form>
+    <% } %>
+    <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+  </div>
+</div>
+
+<div class="main">
+  <% if (success) { %><div class="toast toast-ok" id="toast"><%= success %></div><% } %>
+  <% if (error)   { %><div class="toast toast-err" id="toast"><%= error %></div><% } %>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">📋 Purchase Order <%= po.po_number || '#'+po.id %></div>
+        <div class="card-sub">Created <%= new Date(po.created_at).toLocaleDateString() %> by <%= po.created_by_name || '—' %></div>
+      </div>
+      <span class="status s-<%= po.status %>"><%= po.status %></span>
+    </div>
+
+    <div class="meta-row">
+      <div>
+        <div class="meta-label">Supplier</div>
+        <div class="meta-val"><%= po.supplier_name || '—' %></div>
+      </div>
+      <div>
+        <div class="meta-label">Order Date</div>
+        <div class="meta-val"><%= new Date(po.order_date).toLocaleDateString() %></div>
+      </div>
+      <div>
+        <div class="meta-label">Expected Delivery</div>
+        <div class="meta-val <%= po.expected_date && new Date(po.expected_date) < new Date() && po.status !== 'received' ? 'overdue' : '' %>">
+          <%= po.expected_date ? new Date(po.expected_date).toLocaleDateString() : '—' %>
+          <% if (po.expected_date && new Date(po.expected_date) < new Date() && po.status !== 'received') { %>
+          <span style="font-size:.72rem;font-weight:700"> ⚠ Overdue</span>
+          <% } %>
+        </div>
+      </div>
+      <div>
+        <div class="meta-label">Order Total</div>
+        <div class="meta-val" style="color:#fff"><%= tenant.currency || '$' %><%= parseFloat(po.total).toFixed(2) %></div>
+      </div>
+      <% if (po.notes) { %>
+      <div style="flex-basis:100%">
+        <div class="meta-label">Notes</div>
+        <div class="meta-val" style="color:#888"><%= po.notes %></div>
+      </div>
+      <% } %>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>#</th><th>Item</th><th>Unit</th>
+        <th>Ordered</th><th>Received</th><th>Remaining</th>
+        <th>Unit Price</th><th>Total</th>
+      </tr></thead>
+      <tbody>
+      <% lines.forEach((l, i) => {
+           const remaining = parseFloat(l.ordered_qty) - parseFloat(l.received_qty);
+           const pct = Math.min(100, Math.round(parseFloat(l.received_qty) / parseFloat(l.ordered_qty) * 100));
+      %>
+        <tr>
+          <td style="color:#444"><%= i+1 %></td>
+          <td style="color:#fff;font-weight:600"><%= l.item_name %></td>
+          <td style="color:#666"><%= l.unit %></td>
+          <td><%= parseFloat(l.ordered_qty).toFixed(3) %></td>
+          <td>
+            <span style="color:<%= parseFloat(l.received_qty) > 0 ? '#00b894' : '#555' %>"><%= parseFloat(l.received_qty).toFixed(3) %></span>
+            <div class="progress-bar"><div class="progress-fill" style="width:<%= pct %>%"></div></div>
+          </td>
+          <td style="color:<%= remaining > 0 ? '#f1c40f' : '#00b894' %>">
+            <%= remaining > 0 ? remaining.toFixed(3) : '✓ Done' %>
+          </td>
+          <td><%= tenant.currency || '$' %><%= parseFloat(l.unit_price).toFixed(4) %></td>
+          <td style="color:#fff"><%= tenant.currency || '$' %><%= parseFloat(l.total||0).toFixed(2) %></td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (receipts.length) { %>
+  <div class="card">
+    <div style="padding:14px 20px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff">
+      📄 Linked Receipts (<%= receipts.length %>)
+    </div>
+    <table>
+      <thead><tr><th>Receipt ID</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>
+      <% receipts.forEach(r => { %>
+        <tr onclick="window.location='/inventory/purchases/<%= r.id %>'" style="cursor:pointer">
+          <td style="color:#7c5cbf">#<%= r.id %></td>
+          <td><%= new Date(r.receipt_date).toLocaleDateString() %></td>
+          <td><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
+          <td><span class="status" style="background:rgba(0,184,148,.1);color:#00b894"><%= r.status %></span></td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+<script>setTimeout(()=>{const t=document.getElementById('toast');if(t)t.style.opacity='0'},3500)</script>
+</body></html>
