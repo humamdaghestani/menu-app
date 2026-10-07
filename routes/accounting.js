@@ -21,13 +21,14 @@ function dateRange(query) {
   return { from, to };
 }
 
-// ── Dashboard / P&L ───────────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────────
 router.get('/', requireAuth, requireAccounting, async (req, res) => {
   const tid = req.user.tenantId;
   const { from, to } = dateRange(req.query);
 
   const [revenueRes, cogsRes, expensesRes, expByCatRes, revByDayRes,
-         payableRes, receivableRes, cashInRes, cashOutRes, recentExpRes] = await Promise.all([
+         payableRes, receivableRes, cashInRes, cashOutRes, recentExpRes,
+         todayRes, yesterdayRes, weekChartRes] = await Promise.all([
 
     db.query(`SELECT COALESCE(SUM(total),0) AS total, COUNT(*) AS cnt
               FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3`,
@@ -50,34 +51,46 @@ router.get('/', requireAuth, requireAccounting, async (req, res) => {
               FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date BETWEEN $2 AND $3
               GROUP BY paid_at::date ORDER BY day`, [tid, from, to]),
 
-    // Total payable to suppliers (all time)
     db.query(`SELECT
                 COALESCE((SELECT SUM(total) FROM purchase_receipts WHERE tenant_id=$1),0) AS purchased,
                 COALESCE((SELECT SUM(amount) FROM supplier_payments WHERE tenant_id=$1),0) AS paid`,
       [tid]),
 
-    // Total receivable from customers (open credits)
     db.query(`SELECT COALESCE(SUM(amount - amount_paid),0) AS total
               FROM customer_credits WHERE tenant_id=$1 AND status != 'paid'`, [tid]),
 
-    // Cash in this period (POS cash payments + credit payments received)
     db.query(`SELECT COALESCE(SUM(pp.amount_paid),0) AS total
               FROM pos_payments pp
               JOIN pos_orders po ON po.id=pp.order_id
               WHERE po.tenant_id=$1 AND pp.method='cash' AND pp.created_at::date BETWEEN $2 AND $3`,
       [tid, from, to]),
 
-    // Cash out this period (expenses + supplier payments)
     db.query(`SELECT
                 COALESCE((SELECT SUM(amount) FROM expenses WHERE tenant_id=$1 AND expense_date BETWEEN $2 AND $3),0) +
                 COALESCE((SELECT SUM(amount) FROM supplier_payments WHERE tenant_id=$1 AND payment_date BETWEEN $2 AND $3),0)
                 AS total`, [tid, from, to]),
 
-    // Recent expenses
     db.query(`SELECT e.*, ec.name AS cat_name, ec.color AS cat_color
               FROM expenses e LEFT JOIN expense_categories ec ON ec.id=e.category_id
               WHERE e.tenant_id=$1 AND e.expense_date BETWEEN $2 AND $3
               ORDER BY e.expense_date DESC, e.id DESC LIMIT 8`, [tid, from, to]),
+
+    // Today's revenue and orders — always current regardless of date filter
+    db.query(`SELECT COALESCE(SUM(total),0) AS revenue, COUNT(*) AS orders
+              FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date=CURRENT_DATE`,
+      [tid]),
+
+    // Yesterday (for comparison)
+    db.query(`SELECT COALESCE(SUM(total),0) AS revenue, COUNT(*) AS orders
+              FROM pos_orders WHERE tenant_id=$1 AND status='paid' AND paid_at::date=CURRENT_DATE-1`,
+      [tid]),
+
+    // Last 14 days for sparkline chart
+    db.query(`SELECT d.day::date AS day, COALESCE(SUM(po.total),0) AS revenue
+              FROM generate_series(CURRENT_DATE - INTERVAL '13 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
+              LEFT JOIN pos_orders po ON po.paid_at::date=d.day AND po.tenant_id=$1 AND po.status='paid'
+              GROUP BY d.day ORDER BY d.day`,
+      [tid]),
   ]);
 
   const revenue  = parseFloat(revenueRes.rows[0].total)  || 0;
@@ -103,6 +116,10 @@ router.get('/', requireAuth, requireAccounting, async (req, res) => {
     revByDay: revByDayRes.rows,
     totalPayable, totalReceivable, cashIn, cashOut,
     recentExp: recentExpRes.rows,
+    todayRevenue:  parseFloat(todayRes.rows[0].revenue)    || 0,
+    todayOrders:   parseInt(todayRes.rows[0].orders)       || 0,
+    yestRevenue:   parseFloat(yesterdayRes.rows[0].revenue)|| 0,
+    weekChart:     weekChartRes.rows,
   });
 });
 

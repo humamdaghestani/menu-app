@@ -7,173 +7,342 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
-    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
-    .topbar-brand { font-weight: 700; color: #fff; font-size: 1rem; }
-    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; gap: 10px; flex-wrap: wrap; }
+    .btn { padding: 7px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: .8rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
     .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
     .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
     .btn-primary { background: #7c5cbf; color: #fff; }
     .btn-primary:hover { opacity: .88; }
+    .btn-orange { background: #e67e22; color: #fff; }
+    .btn-orange:hover { opacity: .88; }
+
     .main { padding: 24px; max-width: 1200px; margin: 0 auto; }
-    .page-title { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 24px; }
+    .page-title { font-size: 1.35rem; font-weight: 800; color: #fff; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
 
-    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
-    .stat-card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 20px; }
-    .stat-label { font-size: .72rem; text-transform: uppercase; font-weight: 700; color: #444; letter-spacing: .5px; margin-bottom: 8px; }
-    .stat-val { font-size: 1.6rem; font-weight: 800; color: #fff; }
-    .stat-sub { font-size: .75rem; color: #555; margin-top: 4px; }
+    /* KPI grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .kpi { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 18px 20px; position: relative; overflow: hidden; }
+    .kpi-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; color: #444; letter-spacing: .5px; margin-bottom: 8px; }
+    .kpi-val { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+    .kpi-sub { font-size: .72rem; color: #444; margin-top: 6px; }
+    .kpi-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.8rem; opacity: .12; }
+    .green { color: #00b894; } .red { color: #e74c3c; } .yellow { color: #f39c12; } .blue { color: #3498db; } .purple { color: #9b59b6; }
 
-    .section-title { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-    .section { margin-bottom: 32px; }
+    /* Quick actions */
+    .actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px; }
 
-    .alert-list { display: flex; flex-direction: column; gap: 8px; }
-    .alert-row { background: rgba(231,76,60,.08); border: 1px solid rgba(231,76,60,.25); border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
-    .alert-name { font-size: .88rem; font-weight: 600; color: #e74c3c; }
-    .alert-detail { font-size: .78rem; color: #777; margin-top: 2px; }
-    .alert-stock { font-size: .88rem; font-weight: 700; color: #e74c3c; }
+    /* Two column layout */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
 
+    /* Cards */
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    .card-head { padding: 14px 20px; border-bottom: 1px solid #2a2a3e; display: flex; align-items: center; justify-content: space-between; }
+    .card-head-title { font-size: .88rem; font-weight: 700; color: #fff; }
+    .card-body { padding: 16px 20px; }
+
+    /* Tables */
     table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 8px 12px; border-bottom: 1px solid #2a2a3e; }
-    td { padding: 10px 12px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
-    tr:hover td { background: rgba(255,255,255,.02); }
-    .table-wrap { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    th { text-align: left; font-size: .68rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 9px 16px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 10px 16px; font-size: .83rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); cursor: pointer; }
+    .empty-row td { text-align: center; color: #333; padding: 32px; }
 
-    .tx-type { font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; }
-    .tx-purchase { background: rgba(0,184,148,.15); color: #00b894; }
-    .tx-sale     { background: rgba(231,76,60,.15); color: #e74c3c; }
-    .tx-adjustment { background: rgba(241,196,15,.15); color: #f1c40f; }
-    .tx-waste    { background: rgba(149,165,166,.15); color: #95a5a6; }
+    /* Mini chart */
+    .chart-wrap { display: flex; align-items: flex-end; gap: 4px; height: 72px; padding: 8px 20px 14px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; gap: 3px; }
+    .bar-in  { width: 100%; border-radius: 3px 3px 0 0; background: #00b894; min-height: 2px; }
+    .bar-out { width: 100%; border-radius: 3px 3px 0 0; background: #e74c3c; min-height: 2px; opacity: .7; }
+    .bar-day { font-size: .56rem; color: #333; white-space: nowrap; }
 
-    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; }
+    /* Low stock alert */
+    .alert-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,.03); }
+    .alert-item:last-child { border-bottom: none; }
+    .alert-name { font-size: .85rem; font-weight: 600; color: #e74c3c; }
+    .alert-detail { font-size: .73rem; color: #555; margin-top: 2px; }
+    .alert-qty { font-size: .88rem; font-weight: 700; color: #e74c3c; }
+
+    /* TX type badges */
+    .tx-badge { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .tx-purchase  { background: rgba(0,184,148,.15);  color: #00b894; }
+    .tx-sale      { background: rgba(231,76,60,.15);   color: #e74c3c; }
+    .tx-adjustment{ background: rgba(241,196,15,.15);  color: #f1c40f; }
+    .tx-waste     { background: rgba(149,165,166,.15); color: #95a5a6; }
+
+    /* Today strip */
+    .today-strip { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid #2a2a3e; border-radius: 14px; padding: 16px 20px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+    .today-kpi { }
+    .today-label { font-size: .65rem; text-transform: uppercase; font-weight: 700; color: #444; letter-spacing: .5px; margin-bottom: 5px; }
+    .today-val { font-size: 1.15rem; font-weight: 800; color: #fff; }
+    .today-sub { font-size: .68rem; color: #444; margin-top: 3px; }
+
+    /* Top items bar */
+    .item-bar-row { display: flex; align-items: center; gap: 10px; padding: 9px 20px; border-bottom: 1px solid rgba(255,255,255,.04); }
+    .item-bar-row:last-child { border-bottom: none; }
+    .item-bar-name { font-size: .83rem; color: #ccc; width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .item-bar-bg { flex: 1; height: 6px; background: #2a2a3e; border-radius: 4px; }
+    .item-bar-fill { height: 6px; border-radius: 4px; background: #7c5cbf; }
+    .item-bar-val { font-size: .78rem; color: #888; width: 80px; text-align: right; flex-shrink: 0; }
+
+    /* Month summary */
+    .month-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: .85rem; }
+    .month-row:last-child { border-bottom: none; }
+    .month-label { color: #888; }
+    .month-val { font-weight: 600; }
   </style>
 </head>
 <body>
 
 <div class="topbar">
   <div style="display:flex;align-items:center;gap:8px">
-    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem;flex-shrink:0" title="All Modules">🏠</a>
-    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem;font-weight:600;flex-shrink:0">Inventory</a>
-    <div class="topbar-brand">📦 Inventory — <%= tenant.name %></div>
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem" title="Home">🏠</a>
+    <span style="color:#f39c12;font-weight:700;font-size:.9rem">📦 Inventory</span>
   </div>
-  <div class="nav-links">
-    <a href="/inventory/items" class="btn btn-ghost">📋 Items</a>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <a href="/inventory/items"          class="btn btn-ghost">📋 Items</a>
     <a href="/inventory/purchase-orders" class="btn btn-ghost">📋 POs</a>
-    <a href="/inventory/purchases" class="btn btn-ghost">🧾 Receipts</a>
-    <a href="/inventory/suppliers" class="btn btn-ghost">🏢 Suppliers</a>
-    <a href="/inventory/locations" class="btn btn-ghost">📍 Locations</a>
-    <a href="/inventory/transfers" class="btn btn-ghost">🔄 Transfers</a>
-    <a href="/inventory/waste" class="btn btn-ghost">🗑️ Waste</a>
-    <a href="/inventory/expiring" class="btn btn-ghost">📅 Expiry</a>
-    <a href="/inventory/adjustments" class="btn btn-ghost">📝 Adjustments</a>
-    <a href="/inventory/stocktake" class="btn btn-ghost">📋 Stock Take</a>
-    <a href="/inventory/reorder" class="btn btn-ghost">🔁 Reorder</a>
-    <a href="/inventory/reports" class="btn btn-ghost">📊 Reports</a>
-    <button onclick="history.back()" class="btn btn-ghost">← Back</button>
+    <a href="/inventory/purchases"      class="btn btn-ghost">🧾 Receipts</a>
+    <a href="/inventory/suppliers"      class="btn btn-ghost">🏢 Suppliers</a>
+    <a href="/inventory/locations"      class="btn btn-ghost">📍 Locations</a>
+    <a href="/inventory/transfers"      class="btn btn-ghost">🔄 Transfers</a>
+    <a href="/inventory/waste"          class="btn btn-ghost">🗑️ Waste</a>
+    <a href="/inventory/expiring"       class="btn btn-ghost">📅 Expiry</a>
+    <a href="/inventory/reorder"        class="btn btn-ghost">🔁 Reorder</a>
+    <a href="/inventory/adjustments"    class="btn btn-ghost">📝 Adj.</a>
+    <a href="/inventory/stocktake"      class="btn btn-ghost">📋 Stocktake</a>
+    <a href="/inventory/reports"        class="btn btn-ghost">📊 Reports</a>
   </div>
 </div>
 
 <div class="main">
-  <div class="page-title">📦 Inventory Dashboard</div>
+  <div class="page-title">
+    📦 Inventory Dashboard
+    <span style="font-size:.75rem;font-weight:400;color:#555;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:20px;padding:3px 12px"><%= tenant.name %></span>
+  </div>
 
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-label">Total Items</div>
-      <div class="stat-val"><%= totalItems %></div>
-      <div class="stat-sub">active inventory items</div>
+  <!-- Quick Actions -->
+  <div class="actions-row">
+    <a href="/inventory/purchases/new" class="btn btn-primary">+ Receive Goods</a>
+    <a href="/inventory/purchase-orders/new" class="btn btn-ghost">📋 New PO</a>
+    <a href="/inventory/waste" class="btn btn-ghost">🗑️ Record Waste</a>
+    <a href="/inventory/reorder" class="btn btn-orange">🔁 Reorder Report</a>
+    <a href="/inventory/stocktake" class="btn btn-ghost">📋 Stock Take</a>
+    <a href="/inventory/transfers/new" class="btn btn-ghost">🔄 Transfer Stock</a>
+  </div>
+
+  <!-- Today at a Glance -->
+  <div class="today-strip">
+    <div class="today-kpi">
+      <div class="today-label">Today — Stock In</div>
+      <div class="today-val green"><%= tenant.currency || '' %><%= todayIn.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub">value received today</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Inventory Value</div>
-      <div class="stat-val"><%= tenant.currency || '$' %><%= totalValue.toFixed(2) %></div>
-      <div class="stat-sub">at average cost</div>
+    <div class="today-kpi">
+      <div class="today-label">Today — COGS</div>
+      <div class="today-val yellow"><%= tenant.currency || '' %><%= todayCOGS.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub">inventory consumed today</div>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Low Stock Alerts</div>
-      <div class="stat-val" style="color:<%= lowStock.length > 0 ? '#e74c3c' : '#00b894' %>"><%= lowStock.length %></div>
-      <div class="stat-sub">items below reorder level</div>
+    <div class="today-kpi">
+      <div class="today-label">Today — Movements</div>
+      <div class="today-val"><%= todayTxCount %></div>
+      <div class="today-sub">stock transactions</div>
     </div>
-    <div class="stat-card" onclick="window.location='/inventory/purchase-orders'" style="cursor:pointer">
-      <div class="stat-label">Pending POs</div>
-      <div class="stat-val" style="color:<%= pendingPOs > 0 ? '#f1c40f' : '#00b894' %>"><%= pendingPOs %></div>
-      <div class="stat-sub">draft / sent / partial</div>
+    <div class="today-kpi">
+      <div class="today-label">This Month — Purchases</div>
+      <div class="today-val blue"><%= tenant.currency || '' %><%= monthPurchased.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub">from purchase receipts</div>
     </div>
-    <div class="stat-card" onclick="window.location='/inventory/expiring'" style="cursor:pointer">
-      <div class="stat-label">Expiring (30d)</div>
-      <div class="stat-val" style="color:<%= expiringCount > 0 ? '#e74c3c' : '#00b894' %>"><%= expiringCount %></div>
-      <div class="stat-sub">batches expiring soon</div>
+    <div class="today-kpi">
+      <div class="today-label">This Month — COGS</div>
+      <div class="today-val yellow"><%= tenant.currency || '' %><%= monthCOGS.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub">inventory consumed</div>
     </div>
-    <div class="stat-card" onclick="window.location='/inventory/waste'" style="cursor:pointer">
-      <div class="stat-label">Waste This Month</div>
-      <div class="stat-val" style="color:#e74c3c"><%= tenant.currency || '$' %><%= wasteThisMonth.toFixed(0) %></div>
-      <div class="stat-sub">cost of waste logged</div>
+    <div class="today-kpi">
+      <div class="today-label">This Month — Waste</div>
+      <div class="today-val red"><%= tenant.currency || '' %><%= monthWaste.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub">spoilage / waste cost</div>
     </div>
   </div>
 
-  <% if (lowStock.length > 0) { %>
-  <div class="section">
-    <div class="section-title">🔴 Low Stock Alerts</div>
-    <div class="alert-list">
-      <% lowStock.forEach(item => { %>
-      <div class="alert-row">
-        <div>
-          <div class="alert-name"><%= item.name %></div>
-          <div class="alert-detail">Reorder at <%= item.reorder_level %> <%= item.unit %></div>
+  <!-- Main KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Total Items</div>
+      <div class="kpi-val white"><%= totalItems %></div>
+      <div class="kpi-sub">active inventory items</div>
+      <div class="kpi-icon">📦</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Inventory Value</div>
+      <div class="kpi-val blue"><%= tenant.currency || '' %><%= totalValue.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">at average cost</div>
+      <div class="kpi-icon">💰</div>
+    </div>
+    <div class="kpi" style="<%= lowStock.length > 0 ? 'border-color:rgba(231,76,60,.4)' : '' %>">
+      <div class="kpi-label">Low Stock Alerts</div>
+      <div class="kpi-val <%= lowStock.length > 0 ? 'red' : 'green' %>"><%= lowStock.length %></div>
+      <div class="kpi-sub"><%= lowStock.length > 0 ? 'items need reordering' : 'all stocked up' %></div>
+      <div class="kpi-icon">⚠️</div>
+    </div>
+    <div class="kpi" onclick="location.href='/inventory/purchase-orders'" style="cursor:pointer;<%= pendingPOs > 0 ? 'border-color:rgba(241,196,15,.35)' : '' %>">
+      <div class="kpi-label">Pending POs</div>
+      <div class="kpi-val <%= pendingPOs > 0 ? 'yellow' : 'green' %>"><%= pendingPOs %></div>
+      <div class="kpi-sub">draft / sent / partial</div>
+      <div class="kpi-icon">📋</div>
+    </div>
+    <div class="kpi" onclick="location.href='/inventory/expiring'" style="cursor:pointer;<%= expiringCount > 0 ? 'border-color:rgba(231,76,60,.4)' : '' %>">
+      <div class="kpi-label">Expiring (30d)</div>
+      <div class="kpi-val <%= expiringCount > 0 ? 'red' : 'green' %>"><%= expiringCount %></div>
+      <div class="kpi-sub">batches expiring soon</div>
+      <div class="kpi-icon">📅</div>
+    </div>
+    <div class="kpi" onclick="location.href='/inventory/waste'" style="cursor:pointer">
+      <div class="kpi-label">Waste This Month</div>
+      <div class="kpi-val red"><%= tenant.currency || '' %><%= wasteThisMonth.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="kpi-sub">cost of waste logged</div>
+      <div class="kpi-icon">🗑️</div>
+    </div>
+  </div>
+
+  <!-- 7-Day Chart + Month Summary -->
+  <div class="grid2">
+
+    <!-- 7-Day Activity Chart -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">📈 7-Day Stock Activity</div>
+        <div style="display:flex;gap:10px;font-size:.72rem;color:#555">
+          <span style="color:#00b894">▬ Stock In</span>
+          <span style="color:#e74c3c">▬ Consumed</span>
         </div>
-        <div class="alert-stock"><%= parseFloat(item.stock_qty).toFixed(2) %> <%= item.unit %></div>
       </div>
-      <% }) %>
+      <%
+        const maxVal = Math.max(
+          ...chartData.map(d => Math.max(parseFloat(d.in_val)||0, parseFloat(d.out_val)||0)),
+          1
+        );
+      %>
+      <div class="chart-wrap">
+        <% chartData.forEach(d => {
+             const inH  = Math.round((parseFloat(d.in_val)||0)  / maxVal * 100);
+             const outH = Math.round((parseFloat(d.out_val)||0) / maxVal * 100);
+             const dayLabel = new Date(d.day).toLocaleDateString(undefined,{weekday:'short'}).slice(0,2);
+        %>
+        <div class="bar-col">
+          <div style="display:flex;gap:1px;align-items:flex-end;flex:1;width:100%;justify-content:center">
+            <div class="bar-in"  style="height:<%= inH  %>%;width:45%;" title="In: <%= parseFloat(d.in_val||0).toLocaleString(undefined,{maximumFractionDigits:0}) %>"></div>
+            <div class="bar-out" style="height:<%= outH %>%;width:45%;" title="Out: <%= parseFloat(d.out_val||0).toLocaleString(undefined,{maximumFractionDigits:0}) %>"></div>
+          </div>
+          <div class="bar-day"><%= dayLabel %></div>
+        </div>
+        <% }); %>
+      </div>
+    </div>
+
+    <!-- Top Consumed Items This Month -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">🔥 Top Consumed (This Month)</div>
+        <a href="/inventory/reports" style="font-size:.73rem;color:#7c5cbf;text-decoration:none">View reports →</a>
+      </div>
+      <% if (!topItems.length) { %>
+        <div style="padding:32px;text-align:center;color:#333;font-size:.85rem">No sales data this month yet.</div>
+      <% } else {
+           const maxCost = Math.max(...topItems.map(i => parseFloat(i.cost_consumed)||0), 1);
+      %>
+      <% topItems.forEach(item => {
+           const pct = Math.round((parseFloat(item.cost_consumed)||0) / maxCost * 100);
+      %>
+      <div class="item-bar-row">
+        <div class="item-bar-name"><%= item.name %></div>
+        <div class="item-bar-bg"><div class="item-bar-fill" style="width:<%= pct %>%"></div></div>
+        <div class="item-bar-val"><%= (parseFloat(item.cost_consumed)||0).toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+      </div>
+      <% }); } %>
     </div>
   </div>
-  <% } %>
 
-  <div class="section">
-    <div class="section-title">🧾 Recent Purchases</div>
-    <% if (recentPurchases.length === 0) { %>
-    <div style="color:#444;font-size:.85rem;padding:20px 0">No purchase receipts yet. <a href="/inventory/purchases/new" style="color:#7c5cbf">Add first purchase →</a></div>
-    <% } else { %>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Date</th><th>Supplier</th><th>Invoice</th><th>Total</th><th>By</th></tr></thead>
-        <tbody>
-        <% recentPurchases.forEach(r => { %>
-        <tr onclick="window.location.href='/inventory/purchases/<%= r.id %>'" style="cursor:pointer">
-          <td><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
-          <td><%= r.supplier_name || '—' %></td>
-          <td style="color:#666"><%= r.invoice_no || '—' %></td>
-          <td style="color:#fff;font-weight:700"><%= tenant.currency || '$' %><%= parseFloat(r.total).toFixed(2) %></td>
-          <td style="color:#666"><%= r.created_by_name || '—' %></td>
-        </tr>
-        <% }) %>
-        </tbody>
-      </table>
+  <!-- Low Stock + Recent Movements -->
+  <div class="grid2">
+
+    <!-- Low Stock Alerts -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">🔴 Low Stock Alerts</div>
+        <% if (lowStock.length > 0) { %>
+        <a href="/inventory/reorder" style="font-size:.73rem;color:#e74c3c;text-decoration:none">Reorder →</a>
+        <% } %>
+      </div>
+      <% if (!lowStock.length) { %>
+        <div style="padding:32px;text-align:center;color:#2a7a5a;font-size:.88rem">✅ All items are well-stocked</div>
+      <% } else { lowStock.forEach(item => { %>
+        <div class="alert-item">
+          <div>
+            <div class="alert-name"><%= item.name %></div>
+            <div class="alert-detail">Reorder at <%= parseFloat(item.reorder_level).toFixed(2) %> <%= item.unit %></div>
+          </div>
+          <div class="alert-qty"><%= parseFloat(item.stock_qty).toFixed(2) %> <%= item.unit %></div>
+        </div>
+      <% }); } %>
     </div>
-    <% } %>
-  </div>
 
-  <div class="section">
-    <div class="section-title">🔄 Recent Stock Movements</div>
-    <% if (recentTx.length === 0) { %>
-    <div style="color:#444;font-size:.85rem;padding:20px 0">No transactions yet.</div>
-    <% } else { %>
-    <div class="table-wrap">
+    <!-- Recent Movements -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">🔄 Recent Stock Movements</div>
+      </div>
+      <% if (!recentTx.length) { %>
+        <div style="padding:32px;text-align:center;color:#333;font-size:.85rem">No transactions yet.</div>
+      <% } else { %>
       <table>
-        <thead><tr><th>Time</th><th>Item</th><th>Type</th><th>Change</th><th>Notes</th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th>Change</th><th>When</th></tr></thead>
         <tbody>
         <% recentTx.forEach(tx => { %>
         <tr>
-          <td style="color:#555"><%= new Date(tx.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
-          <td><%= tx.item_name %></td>
-          <td><span class="tx-type tx-<%= tx.type %>"><%= tx.type %></span></td>
-          <td style="color:<%= parseFloat(tx.qty_change) >= 0 ? '#00b894' : '#e74c3c' %>;font-weight:700">
-            <%= parseFloat(tx.qty_change) >= 0 ? '+' : '' %><%= parseFloat(tx.qty_change).toFixed(4) %> <%= tx.unit %>
+          <td style="color:#ddd;font-weight:500"><%= tx.item_name %></td>
+          <td><span class="tx-badge tx-<%= tx.type %>"><%= tx.type %></span></td>
+          <td style="color:<%= parseFloat(tx.qty_change)>=0?'#00b894':'#e74c3c' %>;font-weight:700">
+            <%= parseFloat(tx.qty_change)>=0?'+':'' %><%= parseFloat(tx.qty_change).toFixed(3) %> <span style="color:#444;font-size:.75rem"><%= tx.unit %></span>
           </td>
-          <td style="color:#555"><%= tx.notes || '—' %></td>
+          <td style="color:#444;font-size:.78rem"><%= new Date(tx.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) %></td>
         </tr>
-        <% }) %>
+        <% }); %>
         </tbody>
       </table>
+      <% } %>
     </div>
+  </div>
+
+  <!-- Recent Purchases -->
+  <div class="card" style="margin-top:16px">
+    <div class="card-head">
+      <div class="card-head-title">🧾 Recent Purchase Receipts</div>
+      <a href="/inventory/purchases" style="font-size:.73rem;color:#7c5cbf;text-decoration:none">View all →</a>
+    </div>
+    <% if (!recentPurchases.length) { %>
+      <div style="padding:32px;text-align:center;color:#333;font-size:.85rem">
+        No purchase receipts yet. <a href="/inventory/purchases/new" style="color:#7c5cbf">Add first →</a>
+      </div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Date</th><th>Supplier</th><th>Invoice #</th><th>Total</th><th>By</th></tr></thead>
+      <tbody>
+      <% recentPurchases.forEach(r => { %>
+      <tr onclick="location.href='/inventory/purchases/<%= r.id %>'">
+        <td style="color:#888"><%= new Date(r.receipt_date || r.created_at).toLocaleDateString() %></td>
+        <td style="color:#ddd;font-weight:500"><%= r.supplier_name || '—' %></td>
+        <td style="color:#555"><%= r.invoice_no || '—' %></td>
+        <td style="color:#fff;font-weight:700"><%= tenant.currency || '' %><%= parseFloat(r.total).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></td>
+        <td style="color:#444"><%= r.created_by_name || '—' %></td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
     <% } %>
   </div>
+
 </div>
 </body>
 </html>

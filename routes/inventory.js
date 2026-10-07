@@ -25,27 +25,77 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
 
-    const [stockRes, lowStockRes, purchasesRes, recentTxRes, expiringRes, wasteRes, pendingPORes] = await Promise.all([
-      db.query(`SELECT COUNT(*) AS cnt, SUM(stock_qty * avg_cost) AS total_value FROM inventory_items WHERE tenant_id=$1 AND is_active=true`, [tid]),
+    const [
+      stockRes, lowStockRes, purchasesRes, recentTxRes,
+      expiringRes, wasteRes, pendingPORes,
+      todayRes, monthRes, chartRes, topItemsRes,
+    ] = await Promise.all([
+      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(stock_qty * avg_cost),0) AS total_value FROM inventory_items WHERE tenant_id=$1 AND is_active=true`, [tid]),
       db.query(`SELECT * FROM inventory_items WHERE tenant_id=$1 AND is_active=true AND reorder_level > 0 AND stock_qty <= reorder_level ORDER BY (stock_qty - reorder_level) ASC LIMIT 10`, [tid]),
       db.query(`SELECT pr.*, u.name AS created_by_name FROM purchase_receipts pr LEFT JOIN users u ON u.id=pr.created_by WHERE pr.tenant_id=$1 ORDER BY pr.created_at DESC LIMIT 5`, [tid]),
-      db.query(`SELECT it.*, ii.name AS item_name, ii.unit FROM inventory_transactions it LEFT JOIN inventory_items ii ON ii.id=it.item_id WHERE it.tenant_id=$1 ORDER BY it.created_at DESC LIMIT 15`, [tid]),
+      db.query(`SELECT it.*, ii.name AS item_name, ii.unit FROM inventory_transactions it LEFT JOIN inventory_items ii ON ii.id=it.item_id WHERE it.tenant_id=$1 ORDER BY it.created_at DESC LIMIT 10`, [tid]),
       db.query(`SELECT COUNT(*) AS cnt FROM inventory_batches WHERE tenant_id=$1 AND expiry_date IS NOT NULL AND quantity > 0 AND expiry_date <= CURRENT_DATE + INTERVAL '30 days'`, [tid]),
       db.query(`SELECT COALESCE(SUM(cost_impact),0) AS total FROM inventory_waste WHERE tenant_id=$1 AND waste_date >= date_trunc('month', CURRENT_DATE)`, [tid]),
       db.query(`SELECT COUNT(*) AS cnt FROM purchase_orders WHERE tenant_id=$1 AND status IN ('draft','sent','partial')`, [tid]),
+
+      // Today: purchases in, COGS out, transaction count
+      db.query(`SELECT
+          COALESCE(SUM(CASE WHEN it.qty_change > 0 THEN it.qty_change * ii.avg_cost ELSE 0 END),0) AS in_val,
+          COALESCE(SUM(CASE WHEN it.type='sale' THEN ABS(it.qty_change) * ii.avg_cost ELSE 0 END),0) AS cogs_val,
+          COUNT(*) AS tx_count
+        FROM inventory_transactions it
+        JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=it.tenant_id
+        WHERE it.tenant_id=$1 AND it.created_at::date=CURRENT_DATE`, [tid]),
+
+      // This month: purchase receipts total & COGS
+      db.query(`SELECT
+          COALESCE((SELECT SUM(total) FROM purchase_receipts WHERE tenant_id=$1 AND receipt_date >= date_trunc('month',CURRENT_DATE)),0) AS purchased,
+          COALESCE(SUM(CASE WHEN it.type='sale' THEN ABS(it.qty_change)*ii.avg_cost ELSE 0 END),0) AS cogs,
+          COALESCE(SUM(CASE WHEN it.type='waste' THEN ABS(it.qty_change)*ii.avg_cost ELSE 0 END),0) AS waste_val
+        FROM inventory_transactions it
+        JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=it.tenant_id
+        WHERE it.tenant_id=$1 AND it.created_at >= date_trunc('month',CURRENT_DATE)`, [tid]),
+
+      // Last 7 days: daily in vs out for mini chart
+      db.query(`SELECT
+          d.day::date AS day,
+          COALESCE(SUM(CASE WHEN it.qty_change > 0 THEN it.qty_change * ii.avg_cost ELSE 0 END),0) AS in_val,
+          COALESCE(SUM(CASE WHEN it.type='sale' THEN ABS(it.qty_change)*ii.avg_cost ELSE 0 END),0) AS out_val
+        FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') AS d(day)
+        LEFT JOIN inventory_transactions it ON it.created_at::date=d.day AND it.tenant_id=$1
+        LEFT JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=$1
+        GROUP BY d.day ORDER BY d.day`, [tid]),
+
+      // Top 5 items by COGS this month
+      db.query(`SELECT ii.name, ii.unit,
+          SUM(ABS(it.qty_change)) AS qty_consumed,
+          SUM(ABS(it.qty_change)*ii.avg_cost) AS cost_consumed
+        FROM inventory_transactions it
+        JOIN inventory_items ii ON ii.id=it.item_id AND ii.tenant_id=it.tenant_id
+        WHERE it.tenant_id=$1 AND it.type='sale'
+          AND it.created_at >= date_trunc('month',CURRENT_DATE)
+        GROUP BY ii.id, ii.name, ii.unit ORDER BY cost_consumed DESC LIMIT 5`, [tid]),
     ]);
 
     res.render('inventory/home', {
       tenant: req.tenant,
       currentUser: req.user,
-      totalItems: parseInt(stockRes.rows[0].cnt) || 0,
-      totalValue: parseFloat(stockRes.rows[0].total_value) || 0,
-      lowStock: lowStockRes.rows,
+      totalItems:     parseInt(stockRes.rows[0].cnt) || 0,
+      totalValue:     parseFloat(stockRes.rows[0].total_value) || 0,
+      lowStock:       lowStockRes.rows,
       recentPurchases: purchasesRes.rows,
-      recentTx: recentTxRes.rows,
-      expiringCount: parseInt(expiringRes.rows[0].cnt) || 0,
+      recentTx:       recentTxRes.rows,
+      expiringCount:  parseInt(expiringRes.rows[0].cnt) || 0,
       wasteThisMonth: parseFloat(wasteRes.rows[0].total) || 0,
-      pendingPOs: parseInt(pendingPORes.rows[0].cnt) || 0,
+      pendingPOs:     parseInt(pendingPORes.rows[0].cnt) || 0,
+      todayIn:        parseFloat(todayRes.rows[0].in_val) || 0,
+      todayCOGS:      parseFloat(todayRes.rows[0].cogs_val) || 0,
+      todayTxCount:   parseInt(todayRes.rows[0].tx_count) || 0,
+      monthPurchased: parseFloat(monthRes.rows[0].purchased) || 0,
+      monthCOGS:      parseFloat(monthRes.rows[0].cogs) || 0,
+      monthWaste:     parseFloat(monthRes.rows[0].waste_val) || 0,
+      chartData:      chartRes.rows,
+      topItems:       topItemsRes.rows,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });

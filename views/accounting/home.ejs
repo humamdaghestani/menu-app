@@ -56,6 +56,30 @@
     .bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 2px; transition: height .3s; background: #7c5cbf; }
     .bar-lbl { font-size: .6rem; color: #333; white-space: nowrap; }
 
+    /* Today strip */
+    .today-strip { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid #2a2a3e; border-radius: 14px; padding: 18px 24px; margin-bottom: 20px; display: flex; align-items: stretch; gap: 0; }
+    .today-kpi { flex: 1; padding: 0 20px; border-right: 1px solid #2a2a3e; }
+    .today-kpi:first-child { padding-left: 0; }
+    .today-kpi:last-child  { border-right: none; }
+    @media (max-width: 700px) { .today-strip { flex-direction: column; gap: 14px; } .today-kpi { border-right: none; border-bottom: 1px solid #2a2a3e; padding: 0 0 14px; } .today-kpi:last-child { border-bottom: none; padding-bottom: 0; } }
+    .today-tag  { font-size: .65rem; text-transform: uppercase; font-weight: 700; color: #444; letter-spacing: .5px; margin-bottom: 7px; }
+    .today-val  { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+    .today-sub  { font-size: .72rem; color: #555; margin-top: 5px; }
+    .today-chg  { display: inline-block; font-size: .7rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; margin-top: 4px; }
+    .chg-up   { background: rgba(0,184,148,.15); color: #00b894; }
+    .chg-down { background: rgba(231,76,60,.12);  color: #e74c3c; }
+    .chg-flat { background: rgba(255,255,255,.06); color: #555; }
+
+    /* Sparkline */
+    .spark { display: flex; align-items: flex-end; gap: 2px; height: 40px; margin-top: 8px; }
+    .spark-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; background: #7c5cbf; opacity: .7; }
+
+    /* Quick actions */
+    .actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+
+    /* Page title */
+    .page-title { font-size: 1.35rem; font-weight: 800; color: #fff; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
+
     /* Expense by category */
     .cat-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
     .cat-row:last-child { border-bottom: none; }
@@ -95,6 +119,57 @@
 </div>
 
 <div class="main">
+
+  <div class="page-title">
+    📒 Accounting Dashboard
+    <span style="font-size:.75rem;font-weight:400;color:#555;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:20px;padding:3px 12px"><%= tenant.name %></span>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="actions-row">
+    <a href="/accounting/expenses/new" class="btn btn-primary">+ Record Expense</a>
+    <a href="/accounting/pl" class="btn btn-ghost">📈 P&amp;L Statement</a>
+    <a href="/accounting/cashflow" class="btn btn-ghost">💵 Cash Flow</a>
+    <a href="/accounting/suppliers" class="btn btn-ghost">🏭 Supplier Ledger</a>
+    <a href="/accounting/budgets" class="btn btn-ghost">📊 Budgets</a>
+  </div>
+
+  <!-- Today at a Glance (always current, independent of date filter) -->
+  <%
+    const todayChgPct = yestRevenue > 0 ? ((todayRevenue - yestRevenue) / yestRevenue * 100).toFixed(1) : null;
+    const todayChgCls = todayChgPct === null ? 'chg-flat' : parseFloat(todayChgPct) >= 0 ? 'chg-up' : 'chg-down';
+    const todayChgStr = todayChgPct === null ? 'No data yesterday' : (parseFloat(todayChgPct) >= 0 ? '+' : '') + todayChgPct + '% vs yesterday';
+    const sparkMax = Math.max(...weekChart.map(d => parseFloat(d.revenue)||0), 1);
+  %>
+  <div class="today-strip">
+    <div class="today-kpi">
+      <div class="today-tag">Today's Revenue</div>
+      <div class="today-val green"><%= todayRevenue.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub"><%= todayOrders %> order<%= todayOrders !== 1 ? 's' : '' %> today</div>
+      <span class="today-chg <%= todayChgCls %>"><%= todayChgStr %></span>
+    </div>
+    <div class="today-kpi">
+      <div class="today-tag">14-Day Revenue</div>
+      <div class="spark">
+        <% weekChart.forEach(d => {
+             const h = Math.max(Math.round((parseFloat(d.revenue)||0) / sparkMax * 100), 2);
+        %>
+        <div class="spark-bar" style="height:<%= h %>%" title="<%= new Date(d.day).toLocaleDateString(undefined,{month:'short',day:'numeric'}) %>: <%= parseFloat(d.revenue||0).toLocaleString(undefined,{maximumFractionDigits:0}) %>"></div>
+        <% }); %>
+      </div>
+      <div class="today-sub" style="margin-top:4px">Last 14 days trend</div>
+    </div>
+    <div class="today-kpi">
+      <div class="today-tag">Supplier Balance</div>
+      <div class="today-val red"><%= totalPayable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub"><a href="/accounting/suppliers" style="color:#e74c3c;text-decoration:none">View ledger →</a></div>
+    </div>
+    <div class="today-kpi">
+      <div class="today-tag">Customer Receivable</div>
+      <div class="today-val green"><%= totalReceivable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
+      <div class="today-sub"><a href="/accounting/customers" style="color:#00b894;text-decoration:none">View credits →</a></div>
+    </div>
+  </div>
 
   <!-- Date filter -->
   <form method="GET" action="/accounting" id="dateForm">
@@ -140,18 +215,8 @@
     </div>
   </div>
 
-  <!-- Payable / Receivable / Cash -->
+  <!-- Cash Flow (Period) -->
   <div class="kpi-grid" style="margin-bottom:24px">
-    <div class="kpi" style="border-color:#e74c3c44">
-      <div class="kpi-label">Supplier Payable</div>
-      <div class="kpi-value red"><%= totalPayable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
-      <div class="kpi-sub"><a href="/accounting/suppliers" style="color:#e74c3c;text-decoration:none;font-size:.72rem">View ledger →</a></div>
-    </div>
-    <div class="kpi" style="border-color:#00b89444">
-      <div class="kpi-label">Customer Receivable</div>
-      <div class="kpi-value green"><%= totalReceivable.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
-      <div class="kpi-sub"><a href="/accounting/customers" style="color:#00b894;text-decoration:none;font-size:.72rem">View credits →</a></div>
-    </div>
     <div class="kpi" style="border-color:#00b89444">
       <div class="kpi-label">Cash In (Period)</div>
       <div class="kpi-value green"><%= cashIn.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}) %></div>
