@@ -119,7 +119,7 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
         ORDER BY ii.name
       `, [tid]),
       db.query(`SELECT id, name FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
-      db.query(`SELECT id, name, parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
+      db.query(`SELECT id, name, name_ar, name_ku, image_url, parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
       db.query(`SELECT * FROM inventory_categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
       db.query(`
         SELECT s.item_id, s.quantity, l.name AS loc_name, l.color AS loc_color
@@ -171,17 +171,34 @@ router.post('/categories/:id/delete', requireAuth, requireInventory, async (req,
 // Create item
 router.post('/items', requireAuth, requireInventory, async (req, res) => {
   const { name, sku, unit, reorder_level, is_raw_material, is_semi_finished, can_be_sold,
-          add_to_menu, menu_category_id, selling_price, menu_name, inv_category_id,
-          initial_stock_qty, initial_avg_cost } = req.body;
+          add_to_menu, menu_category_id, selling_price, menu_name, menu_name_ar, menu_name_ku,
+          menu_image, new_category, new_cat_name, new_cat_name_ar, new_cat_name_ku, new_cat_image,
+          inv_category_id, initial_stock_qty, initial_avg_cost } = req.body;
   try {
     let menuItemId = null;
 
     if (can_be_sold && add_to_menu === 'yes') {
+      // Create new category on the fly if requested
+      let finalCategoryId = menu_category_id || null;
+      if (new_category === 'yes' && new_cat_name?.trim()) {
+        const catRes = await db.query(
+          `INSERT INTO categories (tenant_id, name, name_ar, name_ku, image_url)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [req.user.tenantId, new_cat_name.trim(), new_cat_name_ar?.trim() || null,
+           new_cat_name_ku?.trim() || null, new_cat_image || null]
+        );
+        finalCategoryId = catRes.rows[0].id;
+      }
+
       const miRes = await db.query(
-        `INSERT INTO menu_items (tenant_id, category_id, name, price, is_available)
-         VALUES ($1, $2, $3, $4, true) RETURNING id`,
-        [req.user.tenantId, menu_category_id || null,
-         (menu_name || name).trim(), parseFloat(selling_price) || 0]
+        `INSERT INTO menu_items (tenant_id, category_id, name, name_ar, name_ku, price, image_url, is_available)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true) RETURNING id`,
+        [req.user.tenantId, finalCategoryId,
+         (menu_name || name).trim(),
+         menu_name_ar?.trim() || null,
+         menu_name_ku?.trim() || null,
+         parseFloat(selling_price) || 0,
+         menu_image || null]
       );
       menuItemId = miRes.rows[0].id;
     }

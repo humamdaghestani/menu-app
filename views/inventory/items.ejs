@@ -297,21 +297,57 @@
               <span style="font-size:.88rem;color:#e0e0e0;font-weight:600">No, just track stock</span>
             </label>
           </div>
+
           <div id="c_menuFields" style="display:none">
-            <div class="form-row">
+
+            <!-- Names in 3 languages -->
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#4a7a4a;letter-spacing:.4px;margin-bottom:8px">Item Name</div>
+            <div class="form-row" style="margin-bottom:10px">
               <div class="form-group">
-                <label class="form-label">Menu Name</label>
+                <label class="form-label">English</label>
                 <input type="text" name="menu_name" class="form-input" placeholder="Leave blank to use item name" />
               </div>
+              <div class="form-group">
+                <label class="form-label">Arabic (عربي)</label>
+                <input type="text" name="menu_name_ar" class="form-input" placeholder="الاسم بالعربي" dir="rtl" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Kurdish (کوردی)</label>
+                <input type="text" name="menu_name_ku" class="form-input" placeholder="ناوی کوردی" dir="rtl" />
+              </div>
+            </div>
+
+            <!-- Selling price + item image -->
+            <div class="form-row" style="margin-bottom:14px">
               <div class="form-group">
                 <label class="form-label">Selling Price</label>
                 <input type="number" name="selling_price" class="form-input" placeholder="0" min="0" step="0.01" />
               </div>
+              <div class="form-group">
+                <label class="form-label">Item Image</label>
+                <input type="file" accept="image/*" class="form-input" style="padding:5px;cursor:pointer" onchange="previewImg(this,'c_imgPreview','menu_image')" />
+                <input type="hidden" name="menu_image" id="menu_image" />
+                <div id="c_imgPreview" style="display:none;margin-top:6px">
+                  <img id="c_imgPreviewImg" style="max-height:60px;border-radius:6px;border:1px solid #2d4a2d" />
+                </div>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label">Menu Category</label>
+
+            <!-- Category: existing or new -->
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:#4a7a4a;letter-spacing:.4px;margin-bottom:8px">Category</div>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.83rem;color:#ccc">
+                <input type="radio" name="new_category" value="no" checked onchange="toggleNewCat(false)" style="accent-color:#6fcf97" /> Use existing
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.83rem;color:#ccc">
+                <input type="radio" name="new_category" value="yes" onchange="toggleNewCat(true)" style="accent-color:#6fcf97" /> + Create new category
+              </label>
+            </div>
+
+            <!-- Existing category select -->
+            <div id="c_existingCat" class="form-group" style="margin-bottom:14px">
               <select name="menu_category_id" class="form-input">
-                <option value="">No category</option>
+                <option value="">— No category —</option>
                 <%
                   const rootCats = categories.filter(c => !c.parent_id);
                   rootCats.forEach(cat => {
@@ -328,7 +364,35 @@
                 <% }) %>
               </select>
             </div>
-          </div>
+
+            <!-- New category fields -->
+            <div id="c_newCat" style="display:none;background:#162616;border:1px solid #2d4a2d;border-radius:8px;padding:14px;margin-bottom:14px">
+              <div style="font-size:.75rem;color:#6fcf97;font-weight:600;margin-bottom:10px">New Category</div>
+              <div class="form-row" style="margin-bottom:10px">
+                <div class="form-group">
+                  <label class="form-label">English *</label>
+                  <input type="text" name="new_cat_name" class="form-input" placeholder="Category name" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Arabic (عربي)</label>
+                  <input type="text" name="new_cat_name_ar" class="form-input" placeholder="اسم الفئة" dir="rtl" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Kurdish (کوردی)</label>
+                  <input type="text" name="new_cat_name_ku" class="form-input" placeholder="ناوی پۆل" dir="rtl" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Category Image</label>
+                <input type="file" accept="image/*" class="form-input" style="padding:5px;cursor:pointer" onchange="previewImg(this,'c_catImgPreview','new_cat_image')" />
+                <input type="hidden" name="new_cat_image" id="new_cat_image" />
+                <div id="c_catImgPreview" style="display:none;margin-top:6px">
+                  <img id="c_catImgPreviewImg" style="max-height:60px;border-radius:6px;border:1px solid #2d4a2d" />
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /c_menuFields -->
         </div>
       </div>
 
@@ -471,6 +535,23 @@ function toggleCreateMenuLink(cb) {
 }
 function toggleAddToMenu(yes) {
   document.getElementById('c_menuFields').style.display = yes ? '' : 'none';
+}
+function toggleNewCat(yes) {
+  document.getElementById('c_newCat').style.display = yes ? '' : 'none';
+  document.getElementById('c_existingCat').style.display = yes ? 'none' : '';
+}
+function previewImg(input, wrapId, hiddenId) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const b64 = e.target.result;
+    document.getElementById(hiddenId).value = b64;
+    const wrap = document.getElementById(wrapId);
+    wrap.style.display = '';
+    wrap.querySelector('img').src = b64;
+  };
+  reader.readAsDataURL(file);
 }
 
 // Edit modal
