@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Unit Conversions — <%= item.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;gap:10px;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .btn-danger{background:rgba(231,76,60,.12);color:#e74c3c;border:1px solid rgba(231,76,60,.3)}
+    .main{padding:24px;max-width:700px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .toast{background:#1e3a2e;border:1px solid #00b894;color:#00b894;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.68rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 16px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 16px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .empty{text-align:center;padding:32px;color:#333;font-size:.85rem}
+    .form-row{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;padding:16px 18px}
+    label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:5px}
+    input,select{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#e0e0e0;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    input:focus,select:focus{border-color:#7c5cbf}
+    .info-box{background:rgba(124,92,191,.08);border:1px solid rgba(124,92,191,.25);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:.82rem;color:#888;line-height:1.6}
+    .info-box strong{color:#a78bdf}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+  <a href="/inventory/items" class="btn btn-ghost">Items</a>
+  <a href="/inventory/items/<%= item.id %>/recipe" class="btn btn-ghost">Recipe</a>
+  <span style="color:#444;font-size:.85rem;font-weight:600">/ Unit Conversions</span>
+</div>
+
+<div class="main">
+  <div class="page-title">🔄 Unit Conversions</div>
+  <div class="page-sub"><%= item.name %> · Base unit: <strong style="color:#fff"><%= item.unit %></strong></div>
+
+  <% if (success) { %><div class="toast">✅ Conversion <%= success === 'deleted' ? 'deleted' : 'saved' %>.</div><% } %>
+
+  <div class="info-box">
+    Define how units convert to each other for this item.<br/>
+    Example: <strong>1 kg → 1000 g</strong> means when you buy in kg, the system knows 1 kg = 1000 g for recipe use.<br/>
+    Example: <strong>1 case → 24 bottles</strong> for bulk purchasing.<br/>
+    <strong>factor</strong> = how many "to_unit" are in 1 "from_unit".
+  </div>
+
+  <div class="card">
+    <div class="card-head">Existing Conversions</div>
+    <% if (!conversions.length) { %>
+      <div class="empty">No conversions yet.</div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>From Unit</th><th>To Unit</th><th>Factor</th><th>Meaning</th><th></th></tr></thead>
+      <tbody>
+      <% conversions.forEach(c => { %>
+      <tr>
+        <td style="color:#fff;font-weight:600"><%= c.from_unit %></td>
+        <td style="color:#7c5cbf;font-weight:600"><%= c.to_unit %></td>
+        <td><%= parseFloat(c.factor).toLocaleString(undefined,{maximumFractionDigits:6}) %></td>
+        <td style="color:#555;font-size:.78rem">1 <%= c.from_unit %> = <%= parseFloat(c.factor) %> <%= c.to_unit %></td>
+        <td>
+          <form method="POST" action="/inventory/items/<%= item.id %>/conversions/<%= c.id %>/delete" onsubmit="return confirm('Delete?')">
+            <button type="submit" class="btn btn-danger" style="padding:4px 8px;font-size:.72rem">✕</button>
+          </form>
+        </td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <div class="card-head">Add Conversion</div>
+    <form method="POST" action="/inventory/items/<%= item.id %>/conversions">
+      <div class="form-row">
+        <div>
+          <label>From Unit</label>
+          <input type="text" name="from_unit" placeholder="e.g. kg" required />
+        </div>
+        <div>
+          <label>To Unit</label>
+          <input type="text" name="to_unit" placeholder="e.g. g" required />
+        </div>
+        <div>
+          <label>Factor</label>
+          <input type="number" name="factor" placeholder="e.g. 1000" step="0.000001" min="0.000001" required />
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary" style="width:100%">Add</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

@@ -1960,5 +1960,163 @@ router.get('/location-report', requireAuth, requireInventory, async (req, res) =
   } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
 });
 
+// ── Unit Conversions ──────────────────────────────────────────────
+router.get('/items/:id/conversions', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [itemRes, convRes] = await Promise.all([
+      db.query(`SELECT * FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]),
+      db.query(`SELECT * FROM unit_conversions WHERE item_id=$1 AND tenant_id=$2 ORDER BY from_unit`, [req.params.id, tid]),
+    ]);
+    if (!itemRes.rows[0]) return res.status(404).send('Item not found');
+    res.render('inventory/unit-conversions', {
+      tenant: req.tenant, currentUser: req.user,
+      item: itemRes.rows[0], conversions: convRes.rows,
+      success: req.query.success || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/items/:id/conversions', requireAuth, requireInventory, async (req, res) => {
+  const { from_unit, to_unit, factor } = req.body;
+  const tid = req.user.tenantId;
+  try {
+    await db.query(
+      `INSERT INTO unit_conversions (tenant_id, item_id, from_unit, to_unit, factor)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (tenant_id, item_id, from_unit, to_unit) DO UPDATE SET factor=$5`,
+      [tid, req.params.id, from_unit.trim(), to_unit.trim(), parseFloat(factor)]
+    );
+    res.redirect(`/inventory/items/${req.params.id}/conversions?success=saved`);
+  } catch (err) { console.error(err); res.redirect(`/inventory/items/${req.params.id}/conversions?error=${encodeURIComponent(err.message)}`); }
+});
+
+router.post('/items/:id/conversions/:cid/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`DELETE FROM unit_conversions WHERE id=$1 AND tenant_id=$2`, [req.params.cid, req.user.tenantId]);
+    res.redirect(`/inventory/items/${req.params.id}/conversions?success=deleted`);
+  } catch (err) { console.error(err); res.redirect(`/inventory/items/${req.params.id}/conversions`); }
+});
+
+// ── Daily Prep Sheet ──────────────────────────────────────────────
+router.get('/prep-sheet', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const date = req.query.date || new Date().toISOString().slice(0, 10);
+  const multiplier = parseFloat(req.query.multiplier) || 1;
+  const selLoc = req.query.location || '';
+
+  try {
+    // Day-of-week for the target date (0=Sun…6=Sat)
+    const dow = new Date(date).getDay();
+
+    const [locsRes, prepRes] = await Promise.all([
+      db.query(`SELECT id, name, color FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY name`, [tid]),
+      // Avg daily consumption for same weekday over past 4 weeks, from sales × BOM
+      db.query(`
+        WITH sales_days AS (
+          SELECT DISTINCT po.paid_at::date AS day
+          FROM pos_orders po
+          WHERE po.tenant_id=$1 AND po.status='paid'
+            AND EXTRACT(DOW FROM po.paid_at) = $2
+            AND po.paid_at >= CURRENT_DATE - INTERVAL '28 days'
+        ),
+        consumption AS (
+          SELECT
+            ir.ingredient_id,
+            mi.production_location_id AS location_id,
+            SUM(poi.quantity * ir.quantity) AS total_qty
+          FROM pos_orders po
+          JOIN pos_order_items poi ON poi.order_id = po.id AND poi.menu_item_id IS NOT NULL
+          JOIN menu_items mi ON mi.id = poi.menu_item_id
+          JOIN inventory_items ii_prod ON ii_prod.menu_item_id = mi.id AND ii_prod.tenant_id = $1
+          JOIN inventory_recipes ir ON ir.item_id = ii_prod.id
+          WHERE po.tenant_id=$1 AND po.status='paid'
+            AND EXTRACT(DOW FROM po.paid_at) = $2
+            AND po.paid_at >= CURRENT_DATE - INTERVAL '28 days'
+            ${selLoc ? 'AND (mi.production_location_id=$3 OR ($3::int IS NULL AND mi.production_location_id IS NULL))' : ''}
+          GROUP BY ir.ingredient_id, mi.production_location_id
+        ),
+        day_count AS (SELECT GREATEST(COUNT(*),1) AS n FROM sales_days)
+        SELECT
+          ii.id, ii.name, ii.unit, ii.stock_qty::float, ii.avg_cost::float,
+          il.name AS location_name, COALESCE(il.color,'#888') AS location_color,
+          ROUND(c.total_qty / dc.n, 3)::float AS avg_daily_qty,
+          ROUND(c.total_qty / dc.n * ${ selLoc ? 4 : 3 }, 3)::float AS prep_qty
+        FROM consumption c
+        CROSS JOIN day_count dc
+        JOIN inventory_items ii ON ii.id = c.ingredient_id AND ii.tenant_id = $1
+        LEFT JOIN inventory_locations il ON il.id = c.location_id
+        ORDER BY il.name NULLS LAST, avg_daily_qty DESC
+      `, selLoc ? [tid, dow, parseInt(selLoc) || null] : [tid, dow]),
+    ]);
+
+    res.render('inventory/prep-sheet', {
+      tenant: req.tenant, currentUser: req.user,
+      date, dow, multiplier, selLoc,
+      locations: locsRes.rows,
+      items: prepRes.rows.map(r => ({ ...r, prep_qty: r.avg_daily_qty * multiplier })),
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+// ── Supplier Price Catalog ────────────────────────────────────────
+router.get('/suppliers/:id/catalog', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [suppRes, catalogRes, itemsRes] = await Promise.all([
+      db.query(`SELECT * FROM suppliers WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]),
+      db.query(`
+        SELECT sc.*, ii.name AS item_name, ii.unit AS item_unit
+        FROM supplier_catalog sc
+        JOIN inventory_items ii ON ii.id = sc.item_id
+        WHERE sc.supplier_id=$1 AND sc.tenant_id=$2
+        ORDER BY ii.name
+      `, [req.params.id, tid]),
+      db.query(`SELECT id, name, unit, avg_cost FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+    ]);
+    if (!suppRes.rows[0]) return res.redirect('/inventory/suppliers');
+    res.render('inventory/supplier-catalog', {
+      tenant: req.tenant, currentUser: req.user,
+      supplier: suppRes.rows[0],
+      catalog: catalogRes.rows,
+      items: itemsRes.rows,
+      success: req.query.success || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Error: ' + err.message); }
+});
+
+router.post('/suppliers/:id/catalog', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { item_id, unit_price, unit, notes } = req.body;
+  try {
+    await db.query(
+      `INSERT INTO supplier_catalog (tenant_id, supplier_id, item_id, unit_price, unit, notes, last_updated)
+       VALUES ($1,$2,$3,$4,$5,$6,CURRENT_DATE)
+       ON CONFLICT (tenant_id, supplier_id, item_id) DO UPDATE SET unit_price=$4, unit=$5, notes=$6, last_updated=CURRENT_DATE`,
+      [tid, req.params.id, item_id, parseFloat(unit_price) || 0, unit?.trim() || null, notes?.trim() || null]
+    );
+    res.redirect(`/inventory/suppliers/${req.params.id}/catalog?success=saved`);
+  } catch (err) { console.error(err); res.redirect(`/inventory/suppliers/${req.params.id}/catalog?error=${encodeURIComponent(err.message)}`); }
+});
+
+router.post('/suppliers/:id/catalog/:cid/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    await db.query(`DELETE FROM supplier_catalog WHERE id=$1 AND tenant_id=$2`, [req.params.cid, req.user.tenantId]);
+    res.redirect(`/inventory/suppliers/${req.params.id}/catalog`);
+  } catch (err) { console.error(err); res.redirect(`/inventory/suppliers/${req.params.id}/catalog`); }
+});
+
+// API: get catalog prices for a supplier (used when creating PO)
+router.get('/suppliers/:id/catalog.json', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT sc.item_id, sc.unit_price::float, sc.unit FROM supplier_catalog sc
+       WHERE sc.supplier_id=$1 AND sc.tenant_id=$2`,
+      [req.params.id, req.user.tenantId]
+    );
+    res.json(rows.rows);
+  } catch (err) { res.json([]); }
+});
+
 module.exports = router;
 module.exports.deductStockForOrder = deductStockForOrder;

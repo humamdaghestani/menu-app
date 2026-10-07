@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Prep Sheet — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .main{padding:24px;max-width:900px;margin:0 auto}
+    .page-title{font-size:1.35rem;font-weight:800;color:#fff;margin-bottom:6px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .filter-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:24px}
+    .filter-group{display:flex;flex-direction:column;gap:4px}
+    .filter-label{font-size:.68rem;font-weight:700;text-transform:uppercase;color:#555;letter-spacing:.3px}
+    input[type=date],select{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none}
+    input[type=number]{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:7px 10px;border-radius:8px;font-family:inherit;font-size:.82rem;outline:none;width:80px}
+    .section{margin-bottom:28px}
+    .section-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid}
+    .section-dot{width:10px;height:10px;border-radius:50%}
+    .section-title{font-size:.95rem;font-weight:800;color:#fff}
+    .card{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.66rem;text-transform:uppercase;color:#444;font-weight:700;padding:8px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.84rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:last-child td{border-bottom:none}
+    .qty-cell{font-size:1.1rem;font-weight:800;color:#fff}
+    .stock-cell{font-size:.78rem;color:#555}
+    .prep-ok{color:#00b894}
+    .prep-low{color:#f39c12}
+    .prep-zero{color:#e74c3c}
+    .check-col{width:32px;text-align:center}
+    .empty{text-align:center;padding:48px;color:#333;font-size:.9rem}
+    .dow-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:10px;background:rgba(124,92,191,.15);color:#a78bdf;display:inline-block;margin-left:8px}
+    @media print{
+      .topbar,.filter-row{display:none}
+      body{background:#fff;color:#000}
+      .card{border:1px solid #ddd}
+      th{color:#666}
+      .section-head{border-color:#ddd}
+      .section-title{color:#000}
+      .qty-cell{color:#000}
+    }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Daily Prep Sheet</span>
+  </div>
+  <button onclick="window.print()" class="btn btn-ghost">🖨️ Print</button>
+</div>
+
+<div class="main">
+  <div class="page-title">📋 Daily Prep Sheet</div>
+  <div class="page-sub">
+    <%= tenant.name %> · Based on avg sales for this weekday (last 4 weeks)
+    <span class="dow-badge"><%= ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][dow] %></span>
+  </div>
+
+  <form method="GET" action="/inventory/prep-sheet" class="filter-row">
+    <div class="filter-group">
+      <div class="filter-label">Date</div>
+      <input type="date" name="date" value="<%= date %>" />
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Location</div>
+      <select name="location">
+        <option value="">All Locations</option>
+        <% locations.forEach(l => { %><option value="<%= l.id %>" <%= selLoc == l.id ? 'selected' : '' %>><%= l.name %></option><% }); %>
+      </select>
+    </div>
+    <div class="filter-group">
+      <div class="filter-label">Multiplier</div>
+      <input type="number" name="multiplier" value="<%= multiplier %>" step="0.1" min="0.1" max="10" title="e.g. 1.2 = prep 20% more than avg" />
+    </div>
+    <button type="submit" class="btn btn-primary">Generate</button>
+  </form>
+
+  <% if (!items.length) { %>
+  <div class="card">
+    <div class="empty">
+      No prep data available.<br/>
+      <span style="font-size:.78rem;margin-top:8px;display:block">Make sure items have a BOM (recipe) and sales history for this weekday.</span>
+    </div>
+  </div>
+  <% } else { %>
+
+  <%
+    const byLoc = {};
+    items.forEach(i => {
+      const k = i.location_name || 'Unassigned';
+      if (!byLoc[k]) byLoc[k] = { color: i.location_color || '#888', items: [] };
+      byLoc[k].items.push(i);
+    });
+    const locKeys = Object.keys(byLoc);
+  %>
+
+  <% locKeys.forEach(loc => {
+    const g = byLoc[loc];
+  %>
+  <div class="section">
+    <div class="section-head" style="border-color:<%= g.color %>40">
+      <div class="section-dot" style="background:<%= g.color %>"></div>
+      <div class="section-title"><%= loc %></div>
+      <span style="font-size:.75rem;color:#555;margin-left:auto"><%= g.items.length %> ingredients</span>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th class="check-col">✓</th>
+            <th>Ingredient</th>
+            <th>Unit</th>
+            <th>Avg/Day</th>
+            <th>Prep Qty (<%= multiplier %>×)</th>
+            <th>In Stock</th>
+          </tr>
+        </thead>
+        <tbody>
+        <% g.items.forEach(i => {
+             const stock = parseFloat(i.stock_qty) || 0;
+             const prep = parseFloat(i.prep_qty) || 0;
+             const stockCls = stock >= prep ? 'prep-ok' : stock > 0 ? 'prep-low' : 'prep-zero';
+        %>
+        <tr>
+          <td class="check-col"><input type="checkbox" style="accent-color:#7c5cbf;width:16px;height:16px" /></td>
+          <td style="color:#ddd;font-weight:600"><%= i.name %></td>
+          <td style="color:#555"><%= i.unit %></td>
+          <td style="color:#888"><%= parseFloat(i.avg_daily_qty).toLocaleString(undefined,{maximumFractionDigits:3}) %></td>
+          <td class="qty-cell"><%= prep.toLocaleString(undefined,{maximumFractionDigits:3}) %> <span style="font-size:.72rem;color:#555;font-weight:400"><%= i.unit %></span></td>
+          <td class="<%= stockCls %>" style="font-size:.82rem"><%= stock.toLocaleString(undefined,{maximumFractionDigits:3}) %> <%= i.unit %></td>
+        </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <% }); %>
+  <% } %>
+
+  <div style="font-size:.72rem;color:#333;text-align:center;padding:8px;margin-top:4px">
+    Multiplier <%= multiplier %>× applied · Based on sales from last 4 identical weekdays · Stock from current inventory
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Price Catalog — <%= supplier.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+    .topbar{background:#1a1a2e;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;z-index:50}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-primary{background:#7c5cbf;color:#fff}
+    .btn-danger{background:rgba(231,76,60,.12);color:#e74c3c;border:1px solid rgba(231,76,60,.3)}
+    .btn-sm{padding:4px 9px;font-size:.72rem}
+    .main{padding:24px;max-width:900px;margin:0 auto}
+    .page-title{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:4px}
+    .page-sub{font-size:.82rem;color:#555;margin-bottom:20px}
+    .toast{background:#1e3a2e;border:1px solid #00b894;color:#00b894;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:.85rem}
+    .card{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;overflow:hidden;margin-bottom:16px}
+    .card-head{padding:13px 18px;border-bottom:1px solid #2a2a3e;font-size:.88rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:9px 14px;border-bottom:1px solid #2a2a3e}
+    td{padding:10px 14px;font-size:.83rem;color:#ccc;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:rgba(255,255,255,.02)}
+    .empty{text-align:center;padding:40px;color:#333;font-size:.85rem}
+    label{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:5px}
+    input,select{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#e0e0e0;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    input:focus,select:focus{border-color:#7c5cbf}
+    .add-form{padding:16px 18px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:end;border-top:1px solid #2a2a3e}
+    .price-cell{font-weight:700;color:#fff}
+    .updated-cell{font-size:.74rem;color:#444}
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/suppliers" class="btn btn-ghost">Suppliers</a>
+    <a href="/inventory/suppliers/<%= supplier.id %>" class="btn btn-ghost"><%= supplier.name %></a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Price Catalog</span>
+  </div>
+  <a href="/inventory/purchase-orders/new?supplier_id=<%= supplier.id %>" class="btn btn-primary">📋 Create PO</a>
+</div>
+
+<div class="main">
+  <div class="page-title">📒 Price Catalog — <%= supplier.name %></div>
+  <div class="page-sub">Agreed prices per item · Used to auto-fill Purchase Orders</div>
+
+  <% if (success) { %><div class="toast">✅ Catalog <%= success === 'deleted' ? 'entry deleted' : 'entry saved' %>.</div><% } %>
+
+  <div class="card">
+    <div class="card-head">
+      Catalog Items (<%= catalog.length %>)
+      <span style="font-size:.72rem;color:#444">Auto-fills PO when this supplier is selected</span>
+    </div>
+
+    <% if (!catalog.length) { %>
+    <div class="empty">No catalog items yet. Add items below to auto-fill POs from this supplier.</div>
+    <% } else { %>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Item</th><th>Unit</th><th>Agreed Price</th><th>vs Avg Cost</th><th>Notes</th><th>Updated</th><th></th></tr></thead>
+      <tbody>
+      <% catalog.forEach(c => { %>
+      <tr>
+        <td style="color:#ddd;font-weight:600"><%= c.item_name %></td>
+        <td style="color:#555"><%= c.unit || c.item_unit || '—' %></td>
+        <td class="price-cell"><%= (tenant.currency||'') %><%= parseFloat(c.unit_price).toFixed(4) %></td>
+        <td></td>
+        <td style="color:#555;font-size:.78rem"><%= c.notes || '—' %></td>
+        <td class="updated-cell"><%= c.last_updated ? new Date(c.last_updated).toLocaleDateString() : '—' %></td>
+        <td>
+          <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/catalog/<%= c.id %>/delete" onsubmit="return confirm('Remove?')">
+            <button type="submit" class="btn btn-danger btn-sm">✕</button>
+          </form>
+        </td>
+      </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    </div>
+    <% } %>
+
+    <form method="POST" action="/inventory/suppliers/<%= supplier.id %>/catalog" class="add-form">
+      <div>
+        <label>Item *</label>
+        <select name="item_id" required>
+          <option value="">— Select item —</option>
+          <% items.forEach(i => { %><option value="<%= i.id %>"><%= i.name %> (<%= i.unit %>)</option><% }); %>
+        </select>
+      </div>
+      <div>
+        <label>Unit</label>
+        <input type="text" name="unit" placeholder="e.g. kg" />
+      </div>
+      <div>
+        <label>Price *</label>
+        <input type="number" name="unit_price" step="0.0001" min="0" placeholder="0.00" required />
+      </div>
+      <div>
+        <label>Notes</label>
+        <input type="text" name="notes" placeholder="Optional" />
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

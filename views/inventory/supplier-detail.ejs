@@ -109,6 +109,7 @@
     <span style="font-weight:700;color:#fff;font-size:.9rem"><%= supplier.name %></span>
   </div>
   <div style="display:flex;gap:8px">
+    <a href="/inventory/suppliers/<%= supplier.id %>/catalog" class="btn btn-ghost">📒 Price Catalog</a>
     <button onclick="window.print()" class="btn btn-print">🖨️ Print Statement</button>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('editModal').style.display='flex'">✏️ Edit</button>
   </div>

@@ -830,6 +830,30 @@ const pool = new Pool({
     )`,
     // ── Production location on menu items ────────────────────────────
     `ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS production_location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL`,
+    // ── Unit conversions (buy in kg, use in g) ────────────────────────
+    `CREATE TABLE IF NOT EXISTS unit_conversions (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      from_unit   VARCHAR(20) NOT NULL,
+      to_unit     VARCHAR(20) NOT NULL,
+      factor      NUMERIC(14,6) NOT NULL,
+      UNIQUE(tenant_id, item_id, from_unit, to_unit)
+    )`,
+    // ── Supplier price catalog ────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS supplier_catalog (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      supplier_id INTEGER REFERENCES suppliers(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      unit_price  NUMERIC(12,4) NOT NULL DEFAULT 0,
+      unit        VARCHAR(20),
+      last_updated DATE DEFAULT CURRENT_DATE,
+      notes       VARCHAR(200),
+      UNIQUE(tenant_id, supplier_id, item_id)
+    )`,
+    // ── Enable key feature flags for all tenants ──────────────────────
+    `UPDATE tenants SET feat_hr=true, feat_loyalty=true, feat_modifiers=true, feat_reservations=true WHERE true`,
     // ── Waste / Spoilage logging ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS inventory_waste (
       id          SERIAL PRIMARY KEY,
