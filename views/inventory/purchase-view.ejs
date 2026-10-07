@@ -78,6 +78,15 @@
         <div class="rh-label">Created By</div>
         <div class="rh-val"><%= receipt.created_by_name || '—' %></div>
       </div>
+      <% if (receipt.location_name) { %>
+      <div class="rh-item">
+        <div class="rh-label">Received To</div>
+        <div class="rh-val" style="display:flex;align-items:center;gap:6px">
+          <span style="width:8px;height:8px;border-radius:50%;background:<%= receipt.location_color || '#7c5cbf' %>;display:inline-block;flex-shrink:0"></span>
+          <%= receipt.location_name %>
+        </div>
+      </div>
+      <% } %>
       <% if (receipt.notes) { %>
       <div class="rh-item" style="grid-column:1/-1">
         <div class="rh-label">Notes</div>

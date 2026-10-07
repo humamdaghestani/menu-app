@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transfers — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+    .main { padding: 24px; max-width: 1000px; margin: 0 auto; }
+    .page-title { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 28px; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; }
+    .card-head { padding: 16px 20px; border-bottom: 1px solid #2a2a3e; display: flex; align-items: center; justify-content: space-between; }
+    .card-head-title { font-size: .88rem; font-weight: 700; color: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 12px 16px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .empty { text-align: center; padding: 48px; color: #444; font-size: .9rem; }
+
+    .loc-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.05); border-radius: 20px; padding: 3px 10px; font-size: .78rem; font-weight: 600; }
+    .loc-dot  { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .arrow { color: #555; margin: 0 4px; }
+
+    .toast { position: fixed; top: 64px; right: 20px; z-index: 999; padding: 12px 20px; border-radius: 10px; font-size: .85rem; font-weight: 600; }
+    .toast-ok { background: #00b894; color: #fff; }
+    .toast-err { background: #e74c3c; color: #fff; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Transfers</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/inventory/locations" class="btn btn-ghost">📍 Locations</a>
+    <a href="/inventory/transfers/new" class="btn btn-primary">+ New Transfer</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">🔄 Stock Transfers</div>
+
+  <% if (success) { %><div class="toast toast-ok" id="toast"><%= success %></div><% } %>
+  <% if (error)   { %><div class="toast toast-err" id="toast"><%= error %></div><% } %>
+
+  <% if (!locations.length) { %>
+  <div style="background:rgba(241,196,15,.08);border:1px solid rgba(241,196,15,.25);border-radius:12px;padding:18px 22px;margin-bottom:24px;font-size:.88rem;color:#f1c40f">
+    ⚠️ You have no locations set up yet. <a href="/inventory/locations" style="color:#f1c40f;text-decoration:underline">Create locations first</a> before making transfers.
+  </div>
+  <% } %>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-title">📋 Transfer History (<%= transfers.length %>)</div>
+    </div>
+    <% if (!transfers.length) { %>
+      <div class="empty">No transfers yet. Use transfers to move stock between locations.</div>
+    <% } else { %>
+    <table>
+      <thead><tr>
+        <th>Date</th>
+        <th>From → To</th>
+        <th>Items</th>
+        <th>Notes</th>
+        <th>By</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      <% transfers.forEach(tx => { %>
+        <tr>
+          <td style="white-space:nowrap"><%= new Date(tx.transfer_date).toLocaleDateString() %></td>
+          <td>
+            <span class="loc-chip"><span class="loc-dot" style="background:<%= tx.from_color || '#7c5cbf' %>"></span><%= tx.from_name || '—' %></span>
+            <span class="arrow">→</span>
+            <span class="loc-chip"><span class="loc-dot" style="background:<%= tx.to_color || '#00b894' %>"></span><%= tx.to_name || '—' %></span>
+          </td>
+          <td><%= tx.line_count %> item<%= tx.line_count !== 1 ? 's' : '' %></td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><%= tx.notes || '' %></td>
+          <td><%= tx.created_by_name || '—' %></td>
+          <td><a href="/inventory/transfers/<%= tx.id %>" class="btn btn-ghost btn-sm">View</a></td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+
+<script>
+setTimeout(() => { const t = document.getElementById('toast'); if (t) t.style.opacity = '0'; }, 3000);
+</script>
+</body>
+</html>

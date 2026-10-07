@@ -160,6 +160,16 @@
           <% if (parseFloat(item.reorder_level) > 0) { %>
           <span style="font-size:.7rem;color:#444"> / <%= parseFloat(item.reorder_level).toFixed(2) %></span>
           <% } %>
+          <% if (locStockMap && locStockMap[item.id] && locStockMap[item.id].length) { %>
+          <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">
+            <% locStockMap[item.id].forEach(ls => { %>
+            <span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.05);border-radius:10px;padding:1px 6px;font-size:.68rem;color:#888" title="<%= ls.name %>: <%= ls.qty.toFixed(2) %> <%= item.unit %>">
+              <span style="width:6px;height:6px;border-radius:50%;background:<%= ls.color %>;display:inline-block;flex-shrink:0"></span>
+              <%= ls.qty.toFixed(2) %>
+            </span>
+            <% }); %>
+          </div>
+          <% } %>
         </td>
         <td class="cost-val"><%= tenant.currency || '$' %><%= parseFloat(item.avg_cost).toFixed(4) %></td>
         <td>

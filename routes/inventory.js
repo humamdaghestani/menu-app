@@ -48,7 +48,7 @@ router.get('/', requireAuth, requireInventory, async (req, res) => {
 router.get('/items', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
-    const [itemsRes, menuItemsRes, menuCatsRes, invCatsRes] = await Promise.all([
+    const [itemsRes, menuItemsRes, menuCatsRes, invCatsRes, locStockRes] = await Promise.all([
       db.query(`
         SELECT ii.*, mi.name AS menu_item_name,
           ic.name AS inv_category_name, ic.color AS inv_category_color,
@@ -65,7 +65,21 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
       db.query(`SELECT id, name FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
       db.query(`SELECT id, name, parent_id FROM categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
       db.query(`SELECT * FROM inventory_categories WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
+      db.query(`
+        SELECT s.item_id, s.quantity, l.name AS loc_name, l.color AS loc_color
+        FROM inventory_stock s
+        JOIN inventory_locations l ON l.id=s.location_id
+        WHERE s.tenant_id=$1 AND s.quantity != 0
+        ORDER BY l.sort_order, l.name
+      `, [tid]),
     ]);
+
+    // Group location stocks by item_id
+    const locStockMap = {};
+    locStockRes.rows.forEach(r => {
+      if (!locStockMap[r.item_id]) locStockMap[r.item_id] = [];
+      locStockMap[r.item_id].push({ name: r.loc_name, color: r.loc_color, qty: parseFloat(r.quantity) });
+    });
 
     res.render('inventory/items', {
       tenant: req.tenant,
@@ -74,6 +88,7 @@ router.get('/items', requireAuth, requireInventory, async (req, res) => {
       menuItems: menuItemsRes.rows,
       categories: menuCatsRes.rows,
       invCategories: invCatsRes.rows,
+      locStockMap,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
 });
@@ -284,7 +299,7 @@ router.get('/purchases', requireAuth, requireInventory, async (req, res) => {
 router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => {
   try {
     const tid = req.user.tenantId;
-    const [invItemsRes, suppliersRes, lastPricesRes] = await Promise.all([
+    const [invItemsRes, suppliersRes, lastPricesRes, locsRes] = await Promise.all([
       db.query(`SELECT id, name, unit, barcode FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
       db.query(`SELECT id, name FROM suppliers WHERE tenant_id=$1 ORDER BY name`, [tid]),
       db.query(`
@@ -298,6 +313,7 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
         WHERE pr.tenant_id=$1 AND pr.status='active' AND prl.item_id IS NOT NULL
         ORDER BY prl.item_id, pr.receipt_date DESC, pr.id DESC
       `, [tid]),
+      db.query(`SELECT id, name, color FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY sort_order, name`, [tid]),
     ]);
     const lastPrices = {};
     lastPricesRes.rows.forEach(r => {
@@ -313,6 +329,7 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
       invItems: invItemsRes.rows,
       suppliers: suppliersRes.rows,
       lastPrices,
+      locations: locsRes.rows,
       error: req.query.error || null,
     });
   } catch (err) { console.error(err); res.status(500).send('Server error'); }
@@ -321,7 +338,14 @@ router.get('/purchases/new', requireAuth, requireInventory, async (req, res) => 
 router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => {
   try {
     const [receiptRes, linesRes] = await Promise.all([
-      db.query(`SELECT pr.*, u.name AS created_by_name FROM purchase_receipts pr LEFT JOIN users u ON u.id=pr.created_by WHERE pr.id=$1 AND pr.tenant_id=$2`, [req.params.id, req.user.tenantId]),
+      db.query(`
+        SELECT pr.*, u.name AS created_by_name,
+               il.name AS location_name, il.color AS location_color
+        FROM purchase_receipts pr
+        LEFT JOIN users u ON u.id=pr.created_by
+        LEFT JOIN inventory_locations il ON il.id=pr.location_id
+        WHERE pr.id=$1 AND pr.tenant_id=$2
+      `, [req.params.id, req.user.tenantId]),
       db.query(`SELECT * FROM purchase_receipt_lines WHERE receipt_id=$1 ORDER BY id`, [req.params.id]),
     ]);
     if (!receiptRes.rows[0]) return res.status(404).send('Receipt not found');
@@ -336,8 +360,9 @@ router.get('/purchases/:id', requireAuth, requireInventory, async (req, res) => 
 
 // Save new purchase receipt
 router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
-  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, bill_image, item_id, new_item_name, unit, quantity, unit_price } = req.body;
+  const { supplier_name, supplier_id, invoice_no, receipt_date, notes, bill_image, location_id, item_id, new_item_name, unit, quantity, unit_price } = req.body;
   const tid = req.user.tenantId;
+  const locId = parseInt(location_id) || null;
 
   const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
   const itemIds     = toArr(item_id);
@@ -363,11 +388,11 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
     await client.query('BEGIN');
 
     const rr = await client.query(
-      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, bill_image, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      `INSERT INTO purchase_receipts (tenant_id, supplier_name, supplier_id, invoice_no, receipt_date, total, notes, bill_image, location_id, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
       [tid, supplier_name?.trim() || null, parseInt(supplier_id)||null, invoice_no?.trim() || null,
        receipt_date || new Date().toISOString().slice(0, 10), total,
-       notes?.trim() || null, bill_image || null, req.user.userId]
+       notes?.trim() || null, bill_image || null, locId, req.user.userId]
     );
     const receiptId = rr.rows[0].id;
 
@@ -408,6 +433,15 @@ router.post('/purchases', requireAuth, requireInventory, async (req, res) => {
              VALUES ($1,$2,'purchase',$3,$4,$5,'purchase_receipt',$6,$7)`,
             [tid, resolvedItemId, l.quantity, l.unit_price, receiptId, 'Purchase receipt #' + receiptId, req.user.userId]
           );
+          // Update per-location stock if a location was selected
+          if (locId) {
+            await client.query(
+              `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity)
+               VALUES ($1,$2,$3,$4)
+               ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity + $4`,
+              [tid, resolvedItemId, locId, l.quantity]
+            );
+          }
         }
       }
 
@@ -683,6 +717,212 @@ router.post('/purchases/:id/image/delete', requireAuth, requireInventory, async 
     await db.query(`UPDATE purchase_receipts SET bill_image=NULL WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
     res.redirect(`/inventory/purchases/${req.params.id}?success=Image+removed`);
   } catch (err) { console.error(err); res.redirect(`/inventory/purchases/${req.params.id}?error=` + encodeURIComponent(err.message)); }
+});
+
+// ── Locations ─────────────────────────────────────────────────────────────────
+router.get('/locations', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [locsRes, stockRes] = await Promise.all([
+      db.query(`SELECT * FROM inventory_locations WHERE tenant_id=$1 ORDER BY sort_order, name`, [tid]),
+      db.query(`
+        SELECT location_id, COUNT(DISTINCT item_id)::int AS item_count,
+               COALESCE(SUM(quantity),0) AS total_qty
+        FROM inventory_stock WHERE tenant_id=$1 GROUP BY location_id
+      `, [tid]),
+    ]);
+    const stockMap = {};
+    stockRes.rows.forEach(r => { stockMap[r.location_id] = r; });
+    const locations = locsRes.rows.map(l => ({ ...l, ...stockMap[l.id] }));
+    res.render('inventory/locations', {
+      tenant: req.tenant, currentUser: req.user,
+      locations,
+      success: req.query.success || null,
+      error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/locations', requireAuth, requireInventory, async (req, res) => {
+  const { name, type, color, is_default } = req.body;
+  const tid = req.user.tenantId;
+  if (!name?.trim()) return res.redirect('/inventory/locations?error=Name+required');
+  try {
+    if (is_default) await db.query(`UPDATE inventory_locations SET is_default=false WHERE tenant_id=$1`, [tid]);
+    await db.query(
+      `INSERT INTO inventory_locations (tenant_id, name, type, color, is_default) VALUES ($1,$2,$3,$4,$5)`,
+      [tid, name.trim(), type || 'storage', color || '#7c5cbf', !!is_default]
+    );
+    res.redirect('/inventory/locations?success=Location+added');
+  } catch (err) { console.error(err); res.redirect('/inventory/locations?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/locations/:id/edit', requireAuth, requireInventory, async (req, res) => {
+  const { name, type, color, is_default, sort_order } = req.body;
+  const tid = req.user.tenantId;
+  try {
+    if (is_default) await db.query(`UPDATE inventory_locations SET is_default=false WHERE tenant_id=$1`, [tid]);
+    await db.query(
+      `UPDATE inventory_locations SET name=$1, type=$2, color=$3, is_default=$4, sort_order=$5 WHERE id=$6 AND tenant_id=$7`,
+      [name.trim(), type || 'storage', color || '#7c5cbf', !!is_default, parseInt(sort_order) || 0, req.params.id, tid]
+    );
+    res.redirect('/inventory/locations?success=Saved');
+  } catch (err) { console.error(err); res.redirect('/inventory/locations?error=' + encodeURIComponent(err.message)); }
+});
+
+router.post('/locations/:id/delete', requireAuth, requireInventory, async (req, res) => {
+  try {
+    const tid = req.user.tenantId;
+    const chk = await db.query(`SELECT COALESCE(SUM(quantity),0) AS qty FROM inventory_stock WHERE location_id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    if (parseFloat(chk.rows[0].qty) > 0) return res.redirect('/inventory/locations?error=Cannot+delete+location+with+stock');
+    await db.query(`DELETE FROM inventory_locations WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    res.redirect('/inventory/locations?success=Deleted');
+  } catch (err) { console.error(err); res.redirect('/inventory/locations?error=' + encodeURIComponent(err.message)); }
+});
+
+// ── Transfers ──────────────────────────────────────────────────────────────────
+router.get('/transfers', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [txRes, locsRes] = await Promise.all([
+      db.query(`
+        SELECT t.*,
+          fl.name AS from_name, fl.color AS from_color,
+          tl.name AS to_name,   tl.color AS to_color,
+          u.name AS created_by_name,
+          (SELECT COUNT(*) FROM inventory_transfer_lines WHERE transfer_id=t.id)::int AS line_count
+        FROM inventory_transfers t
+        LEFT JOIN inventory_locations fl ON fl.id=t.from_location_id
+        LEFT JOIN inventory_locations tl ON tl.id=t.to_location_id
+        LEFT JOIN users u ON u.id=t.created_by
+        WHERE t.tenant_id=$1
+        ORDER BY t.created_at DESC LIMIT 100
+      `, [tid]),
+      db.query(`SELECT * FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/transfers', {
+      tenant: req.tenant, currentUser: req.user,
+      transfers: txRes.rows, locations: locsRes.rows,
+      success: req.query.success || null, error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.get('/transfers/new', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [locsRes, itemsRes] = await Promise.all([
+      db.query(`SELECT * FROM inventory_locations WHERE tenant_id=$1 AND active=true ORDER BY sort_order, name`, [tid]),
+      db.query(`SELECT id, name, unit, stock_qty FROM inventory_items WHERE tenant_id=$1 AND is_active=true ORDER BY name`, [tid]),
+    ]);
+    res.render('inventory/transfer-new', {
+      tenant: req.tenant, currentUser: req.user,
+      locations: locsRes.rows, items: itemsRes.rows,
+      error: req.query.error || null,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.get('/transfers/:id', requireAuth, requireInventory, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [txRes, linesRes] = await Promise.all([
+      db.query(`
+        SELECT t.*,
+          fl.name AS from_name, fl.color AS from_color,
+          tl.name AS to_name,   tl.color AS to_color,
+          u.name AS created_by_name
+        FROM inventory_transfers t
+        LEFT JOIN inventory_locations fl ON fl.id=t.from_location_id
+        LEFT JOIN inventory_locations tl ON tl.id=t.to_location_id
+        LEFT JOIN users u ON u.id=t.created_by
+        WHERE t.id=$1 AND t.tenant_id=$2
+      `, [req.params.id, tid]),
+      db.query(`
+        SELECT itl.*, ii.unit AS item_unit
+        FROM inventory_transfer_lines itl
+        LEFT JOIN inventory_items ii ON ii.id=itl.item_id
+        WHERE itl.transfer_id=$1 ORDER BY itl.id
+      `, [req.params.id]),
+    ]);
+    if (!txRes.rows[0]) return res.redirect('/inventory/transfers');
+    res.render('inventory/transfer-view', {
+      tenant: req.tenant, currentUser: req.user,
+      transfer: txRes.rows[0], lines: linesRes.rows,
+    });
+  } catch (err) { console.error(err); res.status(500).send('Server error'); }
+});
+
+router.post('/transfers', requireAuth, requireInventory, async (req, res) => {
+  const { from_location_id, to_location_id, transfer_date, notes, item_id, quantity } = req.body;
+  const tid = req.user.tenantId;
+
+  if (!from_location_id || !to_location_id) return res.redirect('/inventory/transfers/new?error=Select+both+locations');
+  if (from_location_id === to_location_id) return res.redirect('/inventory/transfers/new?error=From+and+To+must+be+different');
+
+  const toArr = v => Array.isArray(v) ? v : (v !== undefined ? [v] : []);
+  const itemIds = toArr(item_id);
+  const qtys    = toArr(quantity);
+
+  const lines = itemIds.map((id, i) => ({
+    item_id: parseInt(id),
+    quantity: parseFloat(qtys[i]),
+  })).filter(l => l.item_id && !isNaN(l.quantity) && l.quantity > 0);
+
+  if (!lines.length) return res.redirect('/inventory/transfers/new?error=Add+at+least+one+item');
+
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Verify locations belong to tenant
+    const locCheck = await client.query(
+      `SELECT id FROM inventory_locations WHERE id IN ($1,$2) AND tenant_id=$3`,
+      [from_location_id, to_location_id, tid]
+    );
+    if (locCheck.rows.length < 2) { await client.query('ROLLBACK'); return res.redirect('/inventory/transfers/new?error=Invalid+locations'); }
+
+    const txRes = await client.query(
+      `INSERT INTO inventory_transfers (tenant_id, from_location_id, to_location_id, transfer_date, notes, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [tid, from_location_id, to_location_id, transfer_date || new Date().toISOString().slice(0,10), notes || null, req.user.userId]
+    );
+    const txId = txRes.rows[0].id;
+
+    for (const l of lines) {
+      const itemRes = await client.query(`SELECT name, unit, stock_qty FROM inventory_items WHERE id=$1 AND tenant_id=$2`, [l.item_id, tid]);
+      if (!itemRes.rows[0]) continue;
+      const { name, unit } = itemRes.rows[0];
+
+      // Deduct from source location stock (allow negative for flexibility)
+      await client.query(
+        `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity)
+         VALUES ($1,$2,$3,-$4)
+         ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity - $4`,
+        [tid, l.item_id, from_location_id, l.quantity]
+      );
+      // Add to destination location stock
+      await client.query(
+        `INSERT INTO inventory_stock (tenant_id, item_id, location_id, quantity)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (tenant_id, item_id, location_id) DO UPDATE SET quantity = inventory_stock.quantity + $4`,
+        [tid, l.item_id, to_location_id, l.quantity]
+      );
+
+      await client.query(
+        `INSERT INTO inventory_transfer_lines (transfer_id, item_id, item_name, quantity, unit)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [txId, l.item_id, name, l.quantity, unit]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.redirect('/inventory/transfers/' + txId + '?success=Transfer+completed');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.redirect('/inventory/transfers/new?error=' + encodeURIComponent(err.message));
+  } finally { client.release(); }
 });
 
 // ── Inventory Reports ──────────────────────────────────────────────────────────

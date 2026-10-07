@@ -122,6 +122,19 @@
           <label class="form-label">Date</label>
           <input type="date" name="receipt_date" class="form-input" value="<%= new Date().toISOString().slice(0,10) %>" />
         </div>
+        <% if (locations && locations.length) { %>
+        <div class="form-group">
+          <label class="form-label">Receive to Location</label>
+          <select name="location_id" class="form-input">
+            <option value="">— No location —</option>
+            <% locations.forEach(l => { %>
+            <option value="<%= l.id %>" <%- l.is_default ? 'selected' : '' %> style="color:#e0e0e0">
+              <%= l.name %>
+            </option>
+            <% }); %>
+          </select>
+        </div>
+        <% } %>
       </div>
       <div class="form-group" style="margin-top:12px">
         <label class="form-label">Notes</label>

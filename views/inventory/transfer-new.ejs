@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Transfer — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger  { background: rgba(231,76,60,.2); color: #e74c3c; border: none; cursor: pointer; }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+    .main { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .page-title { font-size: 1.3rem; font-weight: 800; color: #fff; margin-bottom: 24px; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; padding: 22px; margin-bottom: 20px; }
+    .card-title { font-size: .88rem; font-weight: 700; color: #fff; margin-bottom: 18px; }
+
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width:600px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+    .frow { margin-bottom: 14px; }
+    .flabel { display: block; font-size: .75rem; font-weight: 600; color: #888; margin-bottom: 5px; }
+    .finput { width: 100%; padding: 8px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; }
+    .finput:focus { outline: none; border-color: #7c5cbf; }
+    select.finput { appearance: none; cursor: pointer; }
+
+    /* Lines table */
+    .lines-wrap { overflow-x: auto; }
+    table.lines { width: 100%; border-collapse: collapse; min-width: 500px; }
+    table.lines th { font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 8px 10px; border-bottom: 1px solid #2a2a3e; text-align: left; }
+    table.lines td { padding: 6px 6px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    table.lines tr:last-child td { border-bottom: none; }
+
+    .unit-tag { font-size: .75rem; color: #777; margin-left: 4px; }
+    .stock-hint { font-size: .72rem; color: #555; margin-top: 2px; }
+
+    .error-bar { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); border-radius: 10px; padding: 12px 18px; margin-bottom: 18px; color: #e74c3c; font-size: .85rem; }
+
+    .no-locs { background: rgba(241,196,15,.08); border: 1px solid rgba(241,196,15,.2); border-radius: 10px; padding: 18px; text-align: center; color: #f1c40f; font-size: .9rem; }
+    .no-locs a { color: #f1c40f; text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <a href="/inventory/transfers" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Transfers</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ New</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">🔄 New Stock Transfer</div>
+
+  <% if (error) { %><div class="error-bar">⚠️ <%= error %></div><% } %>
+
+  <% if (locations.length < 2) { %>
+  <div class="no-locs">
+    You need at least 2 locations to make a transfer.<br>
+    <a href="/inventory/locations">Create locations →</a>
+  </div>
+  <% } else { %>
+
+  <form method="POST" action="/inventory/transfers" onsubmit="return validate()">
+    <!-- Header -->
+    <div class="card">
+      <div class="card-title">Transfer Details</div>
+      <div class="grid2">
+        <div class="frow">
+          <label class="flabel">From Location *</label>
+          <select class="finput" name="from_location_id" id="fromLoc" required onchange="checkSame()">
+            <option value="">— Select source —</option>
+            <% locations.forEach(l => { %>
+            <option value="<%= l.id %>" data-color="<%= l.color %>"><%= l.name %> (<%= l.type %>)</option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="frow">
+          <label class="flabel">To Location *</label>
+          <select class="finput" name="to_location_id" id="toLoc" required onchange="checkSame()">
+            <option value="">— Select destination —</option>
+            <% locations.forEach(l => { %>
+            <option value="<%= l.id %>" data-color="<%= l.color %>"><%= l.name %> (<%= l.type %>)</option>
+            <% }); %>
+          </select>
+        </div>
+        <div class="frow">
+          <label class="flabel">Transfer Date</label>
+          <input type="date" class="finput" name="transfer_date" value="<%= new Date().toISOString().slice(0,10) %>" />
+        </div>
+        <div class="frow">
+          <label class="flabel">Notes</label>
+          <input class="finput" name="notes" placeholder="Optional notes…" />
+        </div>
+      </div>
+      <div id="sameErr" style="display:none;color:#e74c3c;font-size:.8rem;margin-top:-8px">⚠️ From and To locations must be different.</div>
+    </div>
+
+    <!-- Lines -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        Items to Transfer
+        <button type="button" class="btn btn-ghost btn-sm" onclick="addLine()">+ Add Item</button>
+      </div>
+
+      <div class="lines-wrap">
+        <table class="lines">
+          <thead>
+            <tr>
+              <th style="width:55%">Item</th>
+              <th style="width:25%">Qty to Transfer</th>
+              <th style="width:20%"></th>
+            </tr>
+          </thead>
+          <tbody id="linesBody"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="addLine()">+ Add Row</button>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <a href="/inventory/transfers" class="btn btn-ghost">Cancel</a>
+      <button type="submit" class="btn btn-primary">✓ Complete Transfer</button>
+    </div>
+  </form>
+
+  <% } %>
+</div>
+
+<script>
+const ITEMS = <%- JSON.stringify(items) %>;
+let idx = 0;
+
+function addLine() {
+  const tbody = document.getElementById('linesBody');
+  const i = idx++;
+  const opts = ITEMS.map(it =>
+    `<option value="${it.id}" data-unit="${it.unit || ''}" data-stock="${parseFloat(it.stock_qty)||0}">${it.name} (${it.unit || 'pcs'})</option>`
+  ).join('');
+
+  const tr = document.createElement('tr');
+  tr.id = 'txline_' + i;
+  tr.innerHTML = `
+    <td>
+      <select class="finput" name="item_id" id="item_sel_${i}" onchange="onItemChange(${i})" style="font-size:.83rem">
+        <option value="">— select item —</option>
+        ${opts}
+      </select>
+      <div class="stock-hint" id="stock_hint_${i}"></div>
+    </td>
+    <td>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" class="finput" name="quantity" id="qty_${i}" min="0.001" step="any" placeholder="0" style="width:100px;font-size:.88rem" required />
+        <span class="unit-tag" id="unit_${i}"></span>
+      </div>
+    </td>
+    <td>
+      <button type="button" class="btn btn-danger btn-sm" onclick="removeLine(${i})">✕</button>
+    </td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function onItemChange(i) {
+  const sel = document.getElementById('item_sel_' + i);
+  const opt = sel.options[sel.selectedIndex];
+  const unit  = opt.dataset.unit || '';
+  const stock = parseFloat(opt.dataset.stock) || 0;
+  document.getElementById('unit_' + i).textContent = unit;
+  document.getElementById('stock_hint_' + i).textContent = stock ? `Total stock: ${stock} ${unit}` : '';
+}
+
+function removeLine(i) {
+  const tr = document.getElementById('txline_' + i);
+  if (tr) tr.remove();
+}
+
+function checkSame() {
+  const f = document.getElementById('fromLoc').value;
+  const t = document.getElementById('toLoc').value;
+  document.getElementById('sameErr').style.display = (f && t && f === t) ? '' : 'none';
+}
+
+function validate() {
+  const f = document.getElementById('fromLoc').value;
+  const t = document.getElementById('toLoc').value;
+  if (!f || !t) { alert('Select both locations.'); return false; }
+  if (f === t) { alert('From and To must be different locations.'); return false; }
+  const rows = document.querySelectorAll('#linesBody tr');
+  if (!rows.length) { alert('Add at least one item to transfer.'); return false; }
+  return true;
+}
+
+// Start with one blank line
+addLine();
+</script>
+</body>
+</html>

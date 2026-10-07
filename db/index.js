@@ -721,6 +721,46 @@ const pool = new Pool({
     `ALTER TABLE feedback ADD COLUMN IF NOT EXISTS table_no      VARCHAR(50)`,
     `ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS barcode VARCHAR(80)`,
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_items_barcode ON inventory_items(tenant_id, barcode) WHERE barcode IS NOT NULL`,
+    // ── Multi-location inventory ───────────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS inventory_locations (
+      id         SERIAL PRIMARY KEY,
+      tenant_id  INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      name       VARCHAR(80) NOT NULL,
+      type       VARCHAR(30) DEFAULT 'storage',
+      color      VARCHAR(20) DEFAULT '#7c5cbf',
+      is_default BOOLEAN DEFAULT false,
+      active     BOOLEAN DEFAULT true,
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS inventory_stock (
+      id          SERIAL PRIMARY KEY,
+      tenant_id   INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE CASCADE,
+      location_id INTEGER REFERENCES inventory_locations(id) ON DELETE CASCADE,
+      quantity    NUMERIC(14,4) DEFAULT 0,
+      UNIQUE(tenant_id, item_id, location_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS inventory_transfers (
+      id               SERIAL PRIMARY KEY,
+      tenant_id        INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      from_location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL,
+      to_location_id   INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL,
+      transfer_date    DATE NOT NULL DEFAULT CURRENT_DATE,
+      status           VARCHAR(20) DEFAULT 'completed',
+      notes            TEXT,
+      created_by       INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS inventory_transfer_lines (
+      id          SERIAL PRIMARY KEY,
+      transfer_id INTEGER REFERENCES inventory_transfers(id) ON DELETE CASCADE,
+      item_id     INTEGER REFERENCES inventory_items(id) ON DELETE SET NULL,
+      item_name   VARCHAR(120),
+      quantity    NUMERIC(14,4) NOT NULL,
+      unit        VARCHAR(20)
+    )`,
+    `ALTER TABLE purchase_receipts ADD COLUMN IF NOT EXISTS location_id INTEGER REFERENCES inventory_locations(id) ON DELETE SET NULL`,
   ];
   for (const sql of migrations) {
     await pool.query(sql);

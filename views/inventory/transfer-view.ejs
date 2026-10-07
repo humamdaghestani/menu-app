@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transfer #<%= transfer.id %> — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .main { padding: 24px; max-width: 800px; margin: 0 auto; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; margin-bottom: 20px; }
+    .card-head { padding: 18px 22px; border-bottom: 1px solid #2a2a3e; }
+    .card-title { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+    .card-sub { font-size: .82rem; color: #555; }
+    .meta-row { display: flex; flex-wrap: wrap; gap: 24px; padding: 18px 22px; border-bottom: 1px solid #2a2a3e; }
+    .meta-item { }
+    .meta-label { font-size: .7rem; text-transform: uppercase; color: #444; font-weight: 700; margin-bottom: 4px; }
+    .meta-val { font-size: .9rem; color: #ccc; font-weight: 600; }
+
+    .loc-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,.06); border-radius: 20px; padding: 4px 12px; font-size: .82rem; font-weight: 600; }
+    .loc-dot  { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 20px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 12px 20px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    @media print {
+      .topbar, .btn { display: none !important; }
+      .card { border: 1px solid #ccc; }
+      body { background: #fff; color: #000; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory/transfers" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">← Transfers</a>
+  </div>
+  <button class="btn btn-ghost" onclick="window.print()">🖨 Print</button>
+</div>
+
+<div class="main">
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">🔄 Stock Transfer #<%= transfer.id %></div>
+      <div class="card-sub"><%= new Date(transfer.transfer_date).toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %></div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item">
+        <div class="meta-label">From</div>
+        <div class="meta-val">
+          <span class="loc-chip"><span class="loc-dot" style="background:<%= transfer.from_color || '#e74c3c' %>"></span><%= transfer.from_name || '—' %></span>
+        </div>
+      </div>
+      <div class="meta-item" style="display:flex;align-items:center;font-size:1.2rem;color:#555;padding-top:16px">→</div>
+      <div class="meta-item">
+        <div class="meta-label">To</div>
+        <div class="meta-val">
+          <span class="loc-chip"><span class="loc-dot" style="background:<%= transfer.to_color || '#00b894' %>"></span><%= transfer.to_name || '—' %></span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Transferred By</div>
+        <div class="meta-val"><%= transfer.created_by_name || 'System' %></div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Status</div>
+        <div class="meta-val" style="color:#00b894">✓ Completed</div>
+      </div>
+    </div>
+
+    <% if (transfer.notes) { %>
+    <div style="padding:14px 22px;border-bottom:1px solid #2a2a3e;font-size:.85rem;color:#888">
+      📝 <%= transfer.notes %>
+    </div>
+    <% } %>
+
+    <table>
+      <thead><tr>
+        <th>#</th>
+        <th>Item</th>
+        <th>Qty</th>
+        <th>Unit</th>
+      </tr></thead>
+      <tbody>
+      <% lines.forEach((l, i) => { %>
+        <tr>
+          <td style="color:#444"><%= i + 1 %></td>
+          <td style="color:#fff;font-weight:600"><%= l.item_name %></td>
+          <td><strong style="color:#7c5cbf"><%= parseFloat(l.quantity).toFixed(2) %></strong></td>
+          <td><%= l.unit || l.item_unit || '—' %></td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

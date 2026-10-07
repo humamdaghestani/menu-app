@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Locations — <%= tenant.name %></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f1a; color: #e0e0e0; min-height: 100vh; }
+    .topbar { background: #1a1a2e; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.07); position: sticky; top: 0; z-index: 50; }
+    .btn { padding: 7px 16px; border: none; border-radius: 8px; cursor: pointer; font-size: .82rem; font-weight: 600; font-family: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-ghost { background: rgba(255,255,255,.08); color: #ccc; }
+    .btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; }
+    .btn-primary { background: #7c5cbf; color: #fff; }
+    .btn-primary:hover { opacity: .88; }
+    .btn-danger { background: rgba(231,76,60,.2); color: #e74c3c; }
+    .btn-danger:hover { background: rgba(231,76,60,.35); }
+    .btn-sm { padding: 4px 10px; font-size: .75rem; }
+    .main { padding: 24px; max-width: 900px; margin: 0 auto; }
+    .page-title { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+    .page-sub { font-size: .85rem; color: #555; margin-bottom: 28px; }
+
+    .card { background: #1a1a2e; border-radius: 14px; border: 1px solid #2a2a3e; overflow: hidden; margin-bottom: 28px; }
+    .card-head { padding: 16px 20px; border-bottom: 1px solid #2a2a3e; display: flex; align-items: center; justify-content: space-between; }
+    .card-head-title { font-size: .88rem; font-weight: 700; color: #fff; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: .72rem; text-transform: uppercase; color: #444; font-weight: 700; padding: 10px 16px; border-bottom: 1px solid #2a2a3e; }
+    td { padding: 12px 16px; font-size: .85rem; color: #ccc; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .empty { text-align: center; padding: 40px; color: #444; font-size: .9rem; }
+
+    .loc-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+    .badge { font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+    .badge-default { background: rgba(124,92,191,.2); color: #a78bfa; }
+    .badge-type { background: rgba(255,255,255,.07); color: #888; }
+
+    .toast { position: fixed; top: 64px; right: 20px; z-index: 999; padding: 12px 20px; border-radius: 10px; font-size: .85rem; font-weight: 600; }
+    .toast-ok { background: #00b894; color: #fff; }
+    .toast-err { background: #e74c3c; color: #fff; }
+
+    /* Create / Edit modal */
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 16px; padding: 28px; width: 420px; max-width: 95vw; }
+    .modal-title { font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 20px; }
+    .frow { margin-bottom: 14px; }
+    .flabel { display: block; font-size: .75rem; font-weight: 600; color: #888; margin-bottom: 5px; }
+    .finput { width: 100%; padding: 8px 12px; background: #0f0f1a; border: 1.5px solid #2a2a3e; border-radius: 8px; color: #fff; font-size: .88rem; font-family: inherit; }
+    .finput:focus { outline: none; border-color: #7c5cbf; }
+    select.finput { appearance: none; cursor: pointer; }
+    .frow-check { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: #ccc; cursor: pointer; margin-bottom: 16px; }
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <a href="/admin" class="btn btn-ghost" style="padding:6px 10px;font-size:1.1rem">🏠</a>
+    <a href="/inventory" class="btn btn-ghost" style="padding:5px 14px;font-size:.82rem">Inventory</a>
+    <span style="color:#444;font-size:.85rem;font-weight:600">/ Locations</span>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a href="/inventory/transfers" class="btn btn-ghost">🔄 Transfers</a>
+    <button class="btn btn-primary" onclick="openCreate()">+ New Location</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="page-title">📍 Inventory Locations</div>
+  <div class="page-sub">Define where your stock is physically stored — kitchen, bar, storage, etc. Purchases and transfers track stock per location.</div>
+
+  <% if (success) { %><div class="toast toast-ok" id="toast"><%= success %></div><% } %>
+  <% if (error)   { %><div class="toast toast-err" id="toast"><%= error %></div><% } %>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-head-title">📍 Locations (<%= locations.length %>)</div>
+    </div>
+    <% if (!locations.length) { %>
+      <div class="empty">No locations yet. Create your first one to start tracking stock by area.</div>
+    <% } else { %>
+    <table>
+      <thead><tr>
+        <th>Location</th>
+        <th>Type</th>
+        <th>Items</th>
+        <th>Total Qty</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      <% locations.forEach(loc => { %>
+        <tr>
+          <td>
+            <span class="loc-dot" style="background:<%= loc.color %>"></span>
+            <strong style="color:#fff"><%= loc.name %></strong>
+            <% if (loc.is_default) { %> <span class="badge badge-default">Default</span><% } %>
+          </td>
+          <td><span class="badge badge-type"><%= loc.type %></span></td>
+          <td><%= loc.item_count || 0 %></td>
+          <td><%= parseFloat(loc.total_qty || 0).toFixed(2) %></td>
+          <td style="text-align:right">
+            <button class="btn btn-ghost btn-sm" onclick="openEdit(<%-JSON.stringify({id:loc.id,name:loc.name,type:loc.type,color:loc.color,is_default:loc.is_default,sort_order:loc.sort_order||0})%>)">Edit</button>
+            <% if (!parseFloat(loc.total_qty || 0)) { %>
+            <form method="POST" action="/inventory/locations/<%= loc.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this location?')">
+              <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+            </form>
+            <% } %>
+          </td>
+        </tr>
+      <% }); %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+
+<!-- Create modal -->
+<div class="modal-bg" id="createModal">
+  <div class="modal">
+    <div class="modal-title">➕ New Location</div>
+    <form method="POST" action="/inventory/locations">
+      <div class="frow">
+        <label class="flabel">Name *</label>
+        <input class="finput" name="name" placeholder="e.g. Kitchen, Bar, Cold Storage" required />
+      </div>
+      <div class="frow">
+        <label class="flabel">Type</label>
+        <select class="finput" name="type">
+          <option value="storage">Storage</option>
+          <option value="kitchen">Kitchen</option>
+          <option value="bar">Bar</option>
+          <option value="production">Production</option>
+          <option value="freezer">Freezer</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="frow">
+        <label class="flabel">Color</label>
+        <input type="color" class="finput" name="color" value="#7c5cbf" style="height:38px;padding:4px;cursor:pointer" />
+      </div>
+      <label class="frow-check">
+        <input type="checkbox" name="is_default" value="1" />
+        Set as default location for purchases
+      </label>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" onclick="closeCreate()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Location</div>
+    <form method="POST" id="editForm">
+      <div class="frow">
+        <label class="flabel">Name *</label>
+        <input class="finput" name="name" id="editName" required />
+      </div>
+      <div class="frow">
+        <label class="flabel">Type</label>
+        <select class="finput" name="type" id="editType">
+          <option value="storage">Storage</option>
+          <option value="kitchen">Kitchen</option>
+          <option value="bar">Bar</option>
+          <option value="production">Production</option>
+          <option value="freezer">Freezer</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="frow">
+        <label class="flabel">Color</label>
+        <input type="color" class="finput" name="color" id="editColor" style="height:38px;padding:4px;cursor:pointer" />
+      </div>
+      <div class="frow">
+        <label class="flabel">Sort Order</label>
+        <input type="number" class="finput" name="sort_order" id="editSort" min="0" />
+      </div>
+      <label class="frow-check">
+        <input type="checkbox" name="is_default" value="1" id="editDefault" />
+        Set as default location for purchases
+      </label>
+      <div class="btn-row">
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function openCreate() { document.getElementById('createModal').classList.add('open'); }
+function closeCreate() { document.getElementById('createModal').classList.remove('open'); }
+function openEdit(loc) {
+  document.getElementById('editForm').action = '/inventory/locations/' + loc.id + '/edit';
+  document.getElementById('editName').value = loc.name;
+  document.getElementById('editType').value = loc.type;
+  document.getElementById('editColor').value = loc.color || '#7c5cbf';
+  document.getElementById('editSort').value = loc.sort_order || 0;
+  document.getElementById('editDefault').checked = !!loc.is_default;
+  document.getElementById('editModal').classList.add('open');
+}
+function closeEdit() { document.getElementById('editModal').classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if (e.target === bg) { closeCreate(); closeEdit(); } }));
+setTimeout(() => { const t = document.getElementById('toast'); if (t) t.style.opacity = '0'; }, 3000);
+</script>
+</body>
+</html>
