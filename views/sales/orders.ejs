@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invoices — <%= tenant.name %></title>
+  <title>Sales Orders — <%= tenant.name %></title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh;display:flex}
@@ -33,7 +33,7 @@
     .fg{display:flex;flex-direction:column;gap:3px}
     .fl{font-size:.65rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.3px}
     input[type=date],select{background:#1a1a2e;border:1.5px solid #2a2a3e;color:#fff;padding:6px 10px;border-radius:8px;font-family:inherit;font-size:.8rem;outline:none}
-    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;margin-bottom:20px}
+    .kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px}
     .kpi{background:#1a1a2e;border-radius:12px;border:1px solid #2a2a3e;padding:15px 16px}
     .kpi-label{font-size:.65rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:6px}
     .kpi-val{font-size:1.3rem;font-weight:800}
@@ -46,11 +46,11 @@
     tr.row:hover td{background:rgba(255,255,255,.02);cursor:pointer}
     .empty{text-align:center;padding:60px 24px;color:#444}
     .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.7rem;font-weight:700}
-    .b-draft{background:rgba(255,255,255,.07);color:#666}
-    .b-sent{background:rgba(37,99,235,.15);color:#60a5fa}
-    .b-paid{background:rgba(0,184,148,.12);color:#00b894}
-    .b-overdue{background:rgba(231,76,60,.12);color:#e74c3c}
-    .b-partial{background:rgba(241,196,15,.12);color:#f1c40f}
+    .b-confirmed{background:rgba(37,99,235,.15);color:#60a5fa}
+    .b-processing{background:rgba(241,196,15,.12);color:#f1c40f}
+    .b-delivered{background:rgba(0,184,148,.12);color:#00b894}
+    .b-invoiced{background:rgba(167,139,223,.15);color:#a78bdf}
+    .b-cancelled{background:rgba(231,76,60,.12);color:#e74c3c}
     .alert{border-radius:10px;padding:10px 16px;font-size:.85rem;margin-bottom:16px}
     .alert-ok{background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.25);color:#00b894}
     .alert-err{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.25);color:#e74c3c}
@@ -72,8 +72,6 @@
     .rm-btn{background:rgba(231,76,60,.12);color:#e74c3c;border:none;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:.75rem}
     .totals-row{display:flex;justify-content:flex-end;gap:20px;padding:8px 0;font-size:.85rem;color:#555}
     .totals-row strong{color:#2563eb;font-size:1rem}
-    .progress-bar{height:5px;background:#2a2a3e;border-radius:3px;overflow:hidden;margin-top:4px;min-width:80px}
-    .progress-fill{height:100%;border-radius:3px;background:#00b894}
     @media(max-width:768px){.sidebar{width:56px}.brand-text,.sidebar-nav span:not(.icon){display:none}.main{margin-left:56px;padding:16px}}
   </style>
 </head>
@@ -88,8 +86,8 @@
     <div class="divider"></div>
     <a href="/sales"><span class="icon">📊</span><span>Dashboard</span></a>
     <a href="/sales/quotations"><span class="icon">📄</span><span>Quotations</span></a>
-    <a href="/sales/orders"><span class="icon">📦</span><span>Sales Orders</span></a>
-    <a href="/sales/invoices" class="active"><span class="icon">🧾</span><span>Invoices</span></a>
+    <a href="/sales/orders" class="active"><span class="icon">📦</span><span>Sales Orders</span></a>
+    <a href="/sales/invoices"><span class="icon">🧾</span><span>Invoices</span></a>
     <a href="/sales/returns"><span class="icon">↩️</span><span>Sales Returns</span></a>
     <a href="/sales/customers"><span class="icon">👥</span><span>Customers</span></a>
     <div class="divider"></div>
@@ -103,148 +101,136 @@
 </aside>
 
 <div class="main">
-  <div class="page-title">🧾 Invoices — فواتير المبيعات</div>
-  <div class="page-sub">Issue invoices to customers and track payments.</div>
+  <div class="page-title">📦 Sales Orders — أوامر البيع</div>
+  <div class="page-sub">Confirmed orders ready for processing and delivery.</div>
 
   <% if (locals.success) { %><div class="alert alert-ok">✓ <%= success %></div><% } %>
   <% if (locals.error)   { %><div class="alert alert-err">✗ <%= error %></div><% } %>
 
-  <form method="GET" action="/sales/invoices" class="filter-bar">
+  <form method="GET" action="/sales/orders" class="filter-bar">
     <div class="fg"><div class="fl">From</div><input type="date" name="from" value="<%= from %>" /></div>
     <div class="fg"><div class="fl">To</div><input type="date" name="to" value="<%= to %>" /></div>
     <div class="fg">
       <div class="fl">Status</div>
       <select name="status">
         <option value="">All</option>
-        <% ['draft','sent','partial','paid','overdue'].forEach(s => { %>
+        <% ['confirmed','processing','delivered','invoiced','cancelled'].forEach(s => { %>
         <option value="<%= s %>" <%= status===s?'selected':'' %>><%= s.charAt(0).toUpperCase()+s.slice(1) %></option>
         <% }) %>
       </select>
     </div>
     <button type="submit" class="btn btn-primary">Filter</button>
-    <a href="/sales/invoices" class="btn btn-ghost">Reset</a>
-    <button type="button" class="btn btn-primary" style="margin-left:auto" onclick="document.getElementById('newModal').classList.add('open')">+ New Invoice</button>
+    <a href="/sales/orders" class="btn btn-ghost">Reset</a>
+    <button type="button" class="btn btn-primary" style="margin-left:auto" onclick="document.getElementById('newModal').classList.add('open')">+ New Order</button>
   </form>
 
   <div class="kpi-row">
-    <div class="kpi"><div class="kpi-label">Total Invoiced</div><div class="kpi-val" style="color:#fff"><%= tenant.currency||'' %><%= kpi.total.toLocaleString(undefined,{maximumFractionDigits:0}) %></div></div>
-    <div class="kpi"><div class="kpi-label">Collected</div><div class="kpi-val" style="color:#00b894"><%= tenant.currency||'' %><%= kpi.paid.toLocaleString(undefined,{maximumFractionDigits:0}) %></div></div>
-    <div class="kpi"><div class="kpi-label">Outstanding</div><div class="kpi-val" style="color:#f1c40f"><%= tenant.currency||'' %><%= kpi.unpaid.toLocaleString(undefined,{maximumFractionDigits:0}) %></div></div>
-    <div class="kpi"><div class="kpi-label">Overdue</div><div class="kpi-val" style="color:#e74c3c"><%= kpi.overdue %></div></div>
-    <div class="kpi"><div class="kpi-label">Count</div><div class="kpi-val" style="color:#60a5fa"><%= invoices.length %></div></div>
+    <div class="kpi"><div class="kpi-label">Total Orders</div><div class="kpi-val" style="color:#fff"><%= orders.length %></div></div>
+    <div class="kpi"><div class="kpi-label">Total Value</div><div class="kpi-val" style="color:#a78bdf"><%= tenant.currency||'' %><%= kpi.total.toLocaleString(undefined,{maximumFractionDigits:0}) %></div></div>
+    <div class="kpi"><div class="kpi-label">Confirmed</div><div class="kpi-val" style="color:#60a5fa"><%= kpi.confirmed %></div></div>
+    <div class="kpi"><div class="kpi-label">Processing</div><div class="kpi-val" style="color:#f1c40f"><%= kpi.processing %></div></div>
+    <div class="kpi"><div class="kpi-label">Delivered</div><div class="kpi-val" style="color:#00b894"><%= kpi.delivered %></div></div>
   </div>
 
   <div class="card">
-    <div class="card-head">All Invoices <span style="font-size:.72rem;color:#444;font-weight:400"><%= invoices.length %> records</span></div>
-    <% if (!invoices.length) { %>
-    <div class="empty">No invoices yet.</div>
+    <div class="card-head">All Orders <span style="font-size:.72rem;color:#444;font-weight:400"><%= orders.length %> records</span></div>
+    <% if (!orders.length) { %>
+    <div class="empty">
+      <div style="font-size:2rem;margin-bottom:12px">📦</div>
+      <div style="font-weight:600;color:#666;margin-bottom:6px">No sales orders yet</div>
+      <div style="font-size:.78rem">Create one directly or convert an accepted quotation.</div>
+    </div>
     <% } else { %>
     <div style="overflow-x:auto">
     <table>
-      <thead><tr><th>No.</th><th>Customer</th><th>Date</th><th>Due</th><th>Total</th><th>Paid</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Order No.</th><th>Customer</th><th>Order Date</th><th>Delivery</th><th>Total</th><th>Status</th><th></th></tr></thead>
       <tbody>
-      <% invoices.forEach(inv => {
-           const pct = parseFloat(inv.total)>0 ? Math.min(100,Math.round(parseFloat(inv.paid_amount||0)/parseFloat(inv.total)*100)) : 0;
-           const isOverdue = inv.due_date && new Date(inv.due_date)<new Date() && inv.status!=='paid';
-      %>
-      <tr class="row" onclick="window.location='/sales/invoices/<%= inv.id %>'">
-        <td style="color:#60a5fa;font-weight:700"><%= inv.invoice_no %></td>
-        <td style="color:#fff;font-weight:600"><%= inv.customer_name||'—' %><% if(inv.customer_phone){%><br/><span style="font-size:.72rem;color:#444"><%= inv.customer_phone %></span><%}%></td>
-        <td><%= new Date(inv.invoice_date).toLocaleDateString() %></td>
-        <td style="color:<%= isOverdue?'#e74c3c':'#666' %>"><%= inv.due_date?new Date(inv.due_date).toLocaleDateString():'—' %><% if(isOverdue){%> <span style="font-size:.68rem;font-weight:700">OVERDUE</span><%}%></td>
-        <td style="font-weight:700;color:#fff"><%= tenant.currency||'' %><%= parseFloat(inv.total||0).toFixed(2) %></td>
-        <td>
-          <span style="color:#00b894"><%= tenant.currency||'' %><%= parseFloat(inv.paid_amount||0).toFixed(2) %></span>
-          <div class="progress-bar"><div class="progress-fill" style="width:<%= pct %>%"></div></div>
-        </td>
-        <td><span class="badge b-<%= isOverdue&&inv.status!=='paid'?'overdue':inv.status %>"><%= isOverdue&&inv.status!=='paid'?'overdue':inv.status %></span></td>
+      <% orders.forEach(o => { %>
+      <tr class="row" onclick="window.location='/sales/orders/<%= o.id %>'">
+        <td style="color:#a78bdf;font-weight:700"><%= o.order_no %></td>
+        <td style="color:#fff;font-weight:600"><%= o.customer_name||'—' %><% if(o.customer_phone){%><br/><span style="font-size:.72rem;color:#444"><%= o.customer_phone %></span><%}%></td>
+        <td><%= new Date(o.order_date).toLocaleDateString() %></td>
+        <td style="color:<%= o.delivery_date && new Date(o.delivery_date)<new Date() && o.status!=='delivered'?'#e74c3c':'#666' %>"><%= o.delivery_date ? new Date(o.delivery_date).toLocaleDateString() : '—' %></td>
+        <td style="font-weight:700;color:#fff"><%= tenant.currency||'' %><%= parseFloat(o.total||0).toFixed(2) %></td>
+        <td><span class="badge b-<%= o.status %>"><%= o.status %></span></td>
         <td onclick="event.stopPropagation()">
-          <form method="POST" action="/sales/invoices/<%= inv.id %>/delete" onsubmit="return confirm('Delete?')">
+          <form method="POST" action="/sales/orders/<%= o.id %>/delete" onsubmit="return confirm('Delete?')">
             <button class="btn btn-danger btn-sm" type="submit">Del</button>
           </form>
         </td>
       </tr>
       <% }) %>
       </tbody>
-      <tfoot>
-        <tr style="border-top:2px solid #2a2a3e">
-          <td colspan="4" style="font-weight:700;color:#fff">Total</td>
-          <td style="font-weight:800;color:#fff"><%= tenant.currency||'' %><%= kpi.total.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
-          <td style="color:#00b894;font-weight:700"><%= tenant.currency||'' %><%= kpi.paid.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) %></td>
-          <td colspan="2"></td>
-        </tr>
-      </tfoot>
     </table>
     </div>
     <% } %>
   </div>
 </div>
 
-<!-- New Invoice Modal -->
+<!-- New Order Modal -->
 <div class="modal-overlay" id="newModal" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal">
-    <h2>🧾 New Invoice</h2>
-    <form method="POST" action="/sales/invoices">
+    <h2>📦 New Sales Order</h2>
+    <form method="POST" action="/sales/orders">
       <div class="form-grid">
         <div class="form-group"><label>Customer Name *</label><input type="text" name="customer_name" required placeholder="Customer name" /></div>
         <div class="form-group"><label>Phone</label><input type="text" name="customer_phone" placeholder="07..." /></div>
-        <div class="form-group"><label>Invoice Date</label><input type="date" class="fi" name="invoice_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
-        <div class="form-group"><label>Due Date</label><input type="date" class="fi" name="due_date" /></div>
+        <div class="form-group"><label>Order Date</label><input type="date" class="fi" name="order_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
+        <div class="form-group"><label>Delivery Date</label><input type="date" class="fi" name="delivery_date" /></div>
         <div class="form-group full">
           <label style="margin-bottom:6px;display:block">Items</label>
           <table class="items-tbl">
             <thead><tr><th style="width:42%">Item</th><th style="width:18%">Qty</th><th style="width:25%">Unit Price</th><th></th></tr></thead>
-            <tbody id="invItemsBody">
+            <tbody id="ordItemsBody">
               <tr>
-                <td><input type="text" name="item_name[]" list="menuList2" placeholder="Item name" onchange="fillInvPrice(this)" /></td>
-                <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcInvTotal()" /></td>
-                <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcInvTotal()" /></td>
-                <td><button type="button" class="rm-btn" onclick="removeInvRow(this)">✕</button></td>
+                <td><input type="text" name="item_name[]" list="menuListOrd" placeholder="Item name" onchange="fillOrdPrice(this)" /></td>
+                <td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcOrdTotal()" /></td>
+                <td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcOrdTotal()" /></td>
+                <td><button type="button" class="rm-btn" onclick="removeOrdRow(this)">✕</button></td>
               </tr>
             </tbody>
           </table>
-          <button type="button" onclick="addInvRow()" class="btn btn-ghost btn-sm">+ Add Item</button>
-          <datalist id="menuList2">
+          <button type="button" onclick="addOrdRow()" class="btn btn-ghost btn-sm">+ Add Item</button>
+          <datalist id="menuListOrd">
             <% menuItems.forEach(m => { %><option value="<%= m.name %>" data-price="<%= m.price %>"><% }) %>
           </datalist>
         </div>
-        <div class="form-group"><label>Discount %</label><input type="number" name="discount_pct" id="invDisc" value="0" min="0" max="100" step="0.1" oninput="calcInvTotal()" /></div>
-        <div class="form-group"><label>Tax %</label><input type="number" name="tax_pct" id="invTax" value="0" min="0" max="100" step="0.1" oninput="calcInvTotal()" /></div>
+        <div class="form-group"><label>Discount %</label><input type="number" name="discount_pct" id="ordDisc" value="0" min="0" max="100" step="0.1" oninput="calcOrdTotal()" /></div>
+        <div class="form-group"><label>Tax %</label><input type="number" name="tax_pct" id="ordTax" value="0" min="0" max="100" step="0.1" oninput="calcOrdTotal()" /></div>
         <div class="form-group full">
           <div class="totals-row">
-            <span>Subtotal: <strong id="invSub">0.00</strong></span>
-            <span>Total: <strong id="invTotal" style="font-size:1.1rem">0.00</strong></span>
+            <span>Subtotal: <strong id="ordSub">0.00</strong></span>
+            <span>Total: <strong id="ordTotal">0.00</strong></span>
           </div>
         </div>
-        <div class="form-group full"><label>Notes</label><textarea name="notes" rows="2" placeholder="Payment terms, bank details..."></textarea></div>
+        <div class="form-group full"><label>Notes</label><textarea name="notes" rows="2" placeholder="Special instructions, delivery notes..."></textarea></div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
         <button type="button" class="btn btn-ghost" onclick="document.getElementById('newModal').classList.remove('open')">Cancel</button>
-        <button type="submit" class="btn btn-primary">Create Invoice</button>
+        <button type="submit" class="btn btn-primary">Create Order</button>
       </div>
     </form>
   </div>
 </div>
 <script>
 const cur='<%= tenant.currency||"" %>';
-function calcInvTotal(){
+function calcOrdTotal(){
   let sub=0;
-  document.querySelectorAll('#invItemsBody tr').forEach(tr=>{
+  document.querySelectorAll('#ordItemsBody tr').forEach(tr=>{
     sub+=(parseFloat(tr.querySelector('[name="item_qty[]"]')?.value)||0)*(parseFloat(tr.querySelector('[name="item_price[]"]')?.value)||0);
   });
-  const disc=parseFloat(document.getElementById('invDisc').value)||0;
-  const tax=parseFloat(document.getElementById('invTax').value)||0;
-  document.getElementById('invSub').textContent=cur+sub.toFixed(2);
-  document.getElementById('invTotal').textContent=cur+(sub*(1-disc/100)*(1+tax/100)).toFixed(2);
+  const disc=parseFloat(document.getElementById('ordDisc').value)||0;
+  const tax=parseFloat(document.getElementById('ordTax').value)||0;
+  document.getElementById('ordSub').textContent=cur+sub.toFixed(2);
+  document.getElementById('ordTotal').textContent=cur+(sub*(1-disc/100)*(1+tax/100)).toFixed(2);
 }
-function addInvRow(){
+function addOrdRow(){
   const tr=document.createElement('tr');
-  tr.innerHTML=`<td><input type="text" name="item_name[]" list="menuList2" placeholder="Item name" onchange="fillInvPrice(this)"/></td><td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcInvTotal()"/></td><td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcInvTotal()"/></td><td><button type="button" class="rm-btn" onclick="removeInvRow(this)">✕</button></td>`;
-  document.getElementById('invItemsBody').appendChild(tr);
+  tr.innerHTML=`<td><input type="text" name="item_name[]" list="menuListOrd" placeholder="Item name" onchange="fillOrdPrice(this)"/></td><td><input type="number" name="item_qty[]" value="1" min="0.01" step="0.01" oninput="calcOrdTotal()"/></td><td><input type="number" name="item_price[]" value="0" min="0" step="0.01" oninput="calcOrdTotal()"/></td><td><button type="button" class="rm-btn" onclick="removeOrdRow(this)">✕</button></td>`;
+  document.getElementById('ordItemsBody').appendChild(tr);
 }
-function removeInvRow(btn){if(document.querySelectorAll('#invItemsBody tr').length>1){btn.closest('tr').remove();calcInvTotal();}}
-function fillInvPrice(inp){const opt=document.querySelector(`#menuList2 option[value="${inp.value}"]`);if(opt){const pi=inp.closest('tr').querySelector('[name="item_price[]"]');if(pi){pi.value=parseFloat(opt.dataset.price)||0;calcInvTotal();}}}
-document.querySelector('#invItemsBody [name="item_name[]"]').addEventListener('change',function(){fillInvPrice(this);});
+function removeOrdRow(btn){if(document.querySelectorAll('#ordItemsBody tr').length>1){btn.closest('tr').remove();calcOrdTotal();}}
+function fillOrdPrice(inp){const opt=document.querySelector(`#menuListOrd option[value="${inp.value}"]`);if(opt){const pi=inp.closest('tr').querySelector('[name="item_price[]"]');if(pi){pi.value=parseFloat(opt.dataset.price)||0;calcOrdTotal();}}}
 </script>
 </body>
 </html>

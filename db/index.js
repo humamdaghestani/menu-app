@@ -909,6 +909,27 @@ const pool = new Pool({
       created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
       created_at     TIMESTAMPTZ DEFAULT NOW()
     )`,
+    // ── Sales Orders (أمر بيع) ───────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS sales_orders (
+      id             SERIAL PRIMARY KEY,
+      tenant_id      INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+      order_no       VARCHAR(50),
+      quotation_id   INTEGER REFERENCES quotations(id) ON DELETE SET NULL,
+      customer_name  VARCHAR(200),
+      customer_phone VARCHAR(50),
+      order_date     DATE DEFAULT CURRENT_DATE,
+      delivery_date  DATE,
+      status         VARCHAR(20) DEFAULT 'confirmed',
+      items          JSONB DEFAULT '[]',
+      subtotal       NUMERIC(12,2) DEFAULT 0,
+      discount_pct   NUMERIC(5,2) DEFAULT 0,
+      tax_pct        NUMERIC(5,2) DEFAULT 0,
+      total          NUMERIC(12,2) DEFAULT 0,
+      notes          TEXT,
+      created_by     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS sales_order_id INTEGER REFERENCES sales_orders(id) ON DELETE SET NULL`,
     // ── Waste / Spoilage logging ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS inventory_waste (
       id          SERIAL PRIMARY KEY,

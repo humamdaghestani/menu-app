@@ -25,26 +25,48 @@ router.get('/', requireAuth, requireSales, async (req, res) => {
   const tid = req.user.tenantId;
   const { from, to } = dateRange(req.query);
   try {
-    const [quotRes, invRes, retRes, custRes, overdueRes, recentQRes, recentInvRes] = await Promise.all([
-      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total FROM quotations WHERE tenant_id=$1 AND quotation_date BETWEEN $2 AND $3`, [tid, from, to]),
-      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total, COALESCE(SUM(paid_amount),0) AS paid FROM sales_invoices WHERE tenant_id=$1 AND invoice_date BETWEEN $2 AND $3`, [tid, from, to]),
+    const [quotRes, ordRes, invRes, retRes, custRes, overdueRes, recentQRes, recentOrdRes, recentInvRes] = await Promise.all([
+      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total,
+                  COUNT(*) FILTER (WHERE status='draft') AS draft,
+                  COUNT(*) FILTER (WHERE status='sent') AS sent,
+                  COUNT(*) FILTER (WHERE status='accepted') AS accepted
+                FROM quotations WHERE tenant_id=$1 AND quotation_date BETWEEN $2 AND $3`, [tid, from, to]),
+      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total,
+                  COUNT(*) FILTER (WHERE status='confirmed') AS confirmed,
+                  COUNT(*) FILTER (WHERE status='processing') AS processing,
+                  COUNT(*) FILTER (WHERE status='delivered') AS delivered
+                FROM sales_orders WHERE tenant_id=$1 AND order_date BETWEEN $2 AND $3`, [tid, from, to]),
+      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total, COALESCE(SUM(paid_amount),0) AS paid
+                FROM sales_invoices WHERE tenant_id=$1 AND invoice_date BETWEEN $2 AND $3`, [tid, from, to]),
       db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total FROM sales_returns WHERE tenant_id=$1 AND return_date BETWEEN $2 AND $3`, [tid, from, to]),
       db.query(`SELECT COUNT(*) AS cnt FROM customers WHERE tenant_id=$1`, [tid]),
       db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total-paid_amount),0) AS amount FROM sales_invoices WHERE tenant_id=$1 AND status != 'paid' AND due_date < CURRENT_DATE`, [tid]),
       db.query(`SELECT id, quotation_no, customer_name, total, status, quotation_date FROM quotations WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 5`, [tid]),
+      db.query(`SELECT id, order_no, customer_name, total, status, order_date FROM sales_orders WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 5`, [tid]),
       db.query(`SELECT id, invoice_no, customer_name, total, paid_amount, status, invoice_date FROM sales_invoices WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 5`, [tid]),
     ]);
+    const qr = quotRes.rows[0], or = ordRes.rows[0], ir = invRes.rows[0];
+    const pipeline = [
+      { stage: 'Quotation', label: 'عرض سعر', icon: '📄', cnt: parseInt(qr.cnt)||0, total: parseFloat(qr.total)||0, color: '#60a5fa',
+        breakdown: [ {lbl:'Draft', val: parseInt(qr.draft)||0}, {lbl:'Sent', val: parseInt(qr.sent)||0}, {lbl:'Accepted', val: parseInt(qr.accepted)||0} ] },
+      { stage: 'Sales Order', label: 'أمر بيع', icon: '📦', cnt: parseInt(or.cnt)||0, total: parseFloat(or.total)||0, color: '#a78bdf',
+        breakdown: [ {lbl:'Confirmed', val: parseInt(or.confirmed)||0}, {lbl:'Processing', val: parseInt(or.processing)||0}, {lbl:'Delivered', val: parseInt(or.delivered)||0} ] },
+      { stage: 'Invoice', label: 'فاتورة', icon: '🧾', cnt: parseInt(ir.cnt)||0, total: parseFloat(ir.total)||0, color: '#34d399',
+        breakdown: [ {lbl:'Issued', val: parseInt(ir.cnt)||0}, {lbl:'Paid', val: 0} ] },
+    ];
     const kpi = {
-      quotations: { cnt: parseInt(quotRes.rows[0].cnt)||0, total: parseFloat(quotRes.rows[0].total)||0 },
-      invoices:   { cnt: parseInt(invRes.rows[0].cnt)||0, total: parseFloat(invRes.rows[0].total)||0, paid: parseFloat(invRes.rows[0].paid)||0 },
+      quotations: { cnt: parseInt(qr.cnt)||0, total: parseFloat(qr.total)||0 },
+      orders:     { cnt: parseInt(or.cnt)||0, total: parseFloat(or.total)||0 },
+      invoices:   { cnt: parseInt(ir.cnt)||0, total: parseFloat(ir.total)||0, paid: parseFloat(ir.paid)||0 },
       returns:    { cnt: parseInt(retRes.rows[0].cnt)||0, total: parseFloat(retRes.rows[0].total)||0 },
       customers:  parseInt(custRes.rows[0].cnt)||0,
       overdue:    { cnt: parseInt(overdueRes.rows[0].cnt)||0, amount: parseFloat(overdueRes.rows[0].amount)||0 },
     };
     res.render('sales/home', {
       tenant: req.tenant, currentUser: req.user,
-      kpi, from, to,
+      kpi, pipeline, from, to,
       recentQuotations: recentQRes.rows,
+      recentOrders: recentOrdRes.rows,
       recentInvoices: recentInvRes.rows,
     });
   } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
@@ -127,16 +149,116 @@ router.post('/quotations/:id/convert', requireAuth, requireSales, async (req, re
     const r = await db.query(`SELECT * FROM quotations WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
     if (!r.rows.length) return res.redirect('/sales/quotations');
     const q = r.rows[0];
+    const cntRes = await db.query(`SELECT COUNT(*)+1 AS n FROM sales_orders WHERE tenant_id=$1`, [tid]);
+    const oNo = `SO-${String(cntRes.rows[0].n).padStart(4,'0')}`;
+    const result = await db.query(
+      `INSERT INTO sales_orders (tenant_id,order_no,quotation_id,customer_name,customer_phone,order_date,items,subtotal,discount_pct,tax_pct,total,notes,created_by)
+       VALUES ($1,$2,$3,$4,$5,CURRENT_DATE,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [tid, oNo, q.id, q.customer_name, q.customer_phone, q.items, q.subtotal, q.discount_pct, q.tax_pct, q.total, q.notes, req.user.userId]
+    );
+    await db.query(`UPDATE quotations SET status='accepted' WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    res.redirect(`/sales/orders/${result.rows[0].id}?success=Sales+order+created+from+quotation`);
+  } catch(err){ console.error(err); res.redirect(`/sales/quotations/${req.params.id}?error=`+encodeURIComponent(err.message)); }
+});
+
+// ── Sales Orders ──────────────────────────────────────────────────
+router.get('/orders', requireAuth, requireSales, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { from, to } = dateRange(req.query);
+  const status = req.query.status || '';
+  try {
+    let q = `SELECT so.*, u.email AS created_by_name FROM sales_orders so LEFT JOIN users u ON u.id=so.created_by WHERE so.tenant_id=$1 AND so.order_date BETWEEN $2 AND $3`;
+    const params = [tid, from, to];
+    if (status) { q += ` AND so.status=$${params.length+1}`; params.push(status); }
+    q += ` ORDER BY so.created_at DESC`;
+    const [rows, menuRes] = await Promise.all([
+      db.query(q, params),
+      db.query(`SELECT id, name, price::numeric FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+    ]);
+    const kpi = {
+      total: rows.rows.reduce((s,r)=>s+parseFloat(r.total||0),0),
+      confirmed: rows.rows.filter(r=>r.status==='confirmed').length,
+      processing: rows.rows.filter(r=>r.status==='processing').length,
+      delivered: rows.rows.filter(r=>r.status==='delivered').length,
+    };
+    res.render('sales/orders', {
+      tenant: req.tenant, currentUser: req.user,
+      orders: rows.rows, menuItems: menuRes.rows,
+      from, to, status, kpi,
+      success: req.query.success, error: req.query.error,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.post('/orders', requireAuth, requireSales, async (req, res) => {
+  const tid = req.user.tenantId;
+  const { customer_name, customer_phone, order_date, delivery_date, discount_pct, tax_pct, notes } = req.body;
+  try {
+    const items = [];
+    const names  = [].concat(req.body['item_name[]']  || []);
+    const qtys   = [].concat(req.body['item_qty[]']   || []);
+    const prices = [].concat(req.body['item_price[]'] || []);
+    for (let i = 0; i < names.length; i++) {
+      if (!names[i]) continue;
+      items.push({ name: names[i], qty: parseFloat(qtys[i])||1, price: parseFloat(prices[i])||0 });
+    }
+    const subtotal = items.reduce((s,it) => s + it.qty*it.price, 0);
+    const disc = parseFloat(discount_pct)||0, tax = parseFloat(tax_pct)||0;
+    const total = subtotal * (1 - disc/100) * (1 + tax/100);
+    const cntRes = await db.query(`SELECT COUNT(*)+1 AS n FROM sales_orders WHERE tenant_id=$1`, [tid]);
+    const oNo = `SO-${String(cntRes.rows[0].n).padStart(4,'0')}`;
+    await db.query(
+      `INSERT INTO sales_orders (tenant_id,order_no,customer_name,customer_phone,order_date,delivery_date,items,subtotal,discount_pct,tax_pct,total,notes,created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [tid, oNo, customer_name, customer_phone, order_date||new Date().toISOString().slice(0,10),
+       delivery_date||null, JSON.stringify(items), subtotal.toFixed(2), disc, tax, total.toFixed(2), notes, req.user.userId]
+    );
+    res.redirect('/sales/orders?success=Sales+order+created');
+  } catch(err){ console.error(err); res.redirect('/sales/orders?error='+encodeURIComponent(err.message)); }
+});
+
+router.get('/orders/:id', requireAuth, requireSales, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [r, invRes] = await Promise.all([
+      db.query(`SELECT so.*, u.email AS created_by_name, q.quotation_no FROM sales_orders so LEFT JOIN users u ON u.id=so.created_by LEFT JOIN quotations q ON q.id=so.quotation_id WHERE so.id=$1 AND so.tenant_id=$2`, [req.params.id, tid]),
+      db.query(`SELECT id, invoice_no, total, paid_amount, status FROM sales_invoices WHERE sales_order_id=$1`, [req.params.id]),
+    ]);
+    if (!r.rows.length) return res.redirect('/sales/orders');
+    res.render('sales/order-view', {
+      tenant: req.tenant, currentUser: req.user,
+      order: r.rows[0], invoices: invRes.rows,
+      success: req.query.success, error: req.query.error,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
+});
+
+router.post('/orders/:id/status', requireAuth, requireSales, async (req, res) => {
+  await db.query(`UPDATE sales_orders SET status=$1 WHERE id=$2 AND tenant_id=$3`, [req.body.status, req.params.id, req.user.tenantId]);
+  res.redirect(`/sales/orders/${req.params.id}?success=Status+updated`);
+});
+
+router.post('/orders/:id/invoice', requireAuth, requireSales, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const r = await db.query(`SELECT * FROM sales_orders WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    if (!r.rows.length) return res.redirect('/sales/orders');
+    const o = r.rows[0];
     const cntRes = await db.query(`SELECT COUNT(*)+1 AS n FROM sales_invoices WHERE tenant_id=$1`, [tid]);
     const iNo = `INV-${String(cntRes.rows[0].n).padStart(4,'0')}`;
     const result = await db.query(
-      `INSERT INTO sales_invoices (tenant_id,invoice_no,customer_name,customer_phone,invoice_date,items,subtotal,discount_pct,tax_pct,total,notes,created_by)
-       VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
-      [tid, iNo, q.customer_name, q.customer_phone, q.items, q.subtotal, q.discount_pct, q.tax_pct, q.total, q.notes, req.user.userId]
+      `INSERT INTO sales_invoices (tenant_id,invoice_no,sales_order_id,customer_name,customer_phone,invoice_date,items,subtotal,discount_pct,tax_pct,total,notes,created_by)
+       VALUES ($1,$2,$3,$4,$5,CURRENT_DATE,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [tid, iNo, o.id, o.customer_name, o.customer_phone, o.items, o.subtotal, o.discount_pct, o.tax_pct, o.total, o.notes, req.user.userId]
     );
-    await db.query(`UPDATE quotations SET status='accepted' WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
-    res.redirect(`/sales/invoices/${result.rows[0].id}?success=Invoice+created+from+quotation`);
-  } catch(err){ console.error(err); res.redirect(`/sales/quotations/${req.params.id}?error=`+encodeURIComponent(err.message)); }
+    await db.query(`UPDATE sales_orders SET status='invoiced' WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    res.redirect(`/sales/invoices/${result.rows[0].id}?success=Invoice+created+from+order`);
+  } catch(err){ console.error(err); res.redirect(`/sales/orders/${req.params.id}?error=`+encodeURIComponent(err.message)); }
+});
+
+router.post('/orders/:id/delete', requireAuth, requireSales, async (req, res) => {
+  await db.query(`DELETE FROM sales_orders WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
+  res.redirect('/sales/orders?success=Deleted');
 });
 
 // ── Invoices ──────────────────────────────────────────────────────

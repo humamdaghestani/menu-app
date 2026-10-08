@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= order.order_no %> — <%= tenant.name %></title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh;display:flex}
+    .sidebar{width:220px;background:#1a1a2e;display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;padding:0 0 20px}
+    .sidebar-brand{padding:20px 16px 16px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px}
+    .sidebar-brand img{width:36px;height:36px;border-radius:8px;object-fit:cover}
+    .brand-emoji{font-size:1.4rem}
+    .brand-text h2{color:#fff;font-size:.88rem;font-weight:700;line-height:1.2}
+    .brand-text span{color:#555;font-size:.72rem}
+    .sidebar-nav{flex:1;padding:12px 10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto}
+    .sidebar-nav a,.sidebar-nav button{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:9px;color:#888;text-decoration:none;font-size:.85rem;background:none;border:none;cursor:pointer;width:100%;transition:background .15s,color .15s;font-family:inherit}
+    .sidebar-nav a:hover,.sidebar-nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+    .sidebar-nav a.active{background:#2563eb;color:#fff;font-weight:600}
+    .sidebar-nav .icon{font-size:1rem;width:18px;text-align:center;flex-shrink:0}
+    .sidebar-nav .divider{height:1px;background:rgba(255,255,255,.06);margin:4px 0}
+    .sidebar-footer{padding:0 10px}
+    .view-menu-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.06);color:#666;padding:9px;border-radius:9px;text-decoration:none;font-size:.8rem;transition:background .15s}
+    .view-menu-btn:hover{background:rgba(255,255,255,.12);color:#fff}
+    .main{margin-left:220px;flex:1;padding:28px}
+    .btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-size:.82rem;font-weight:600;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:opacity .15s}
+    .btn-primary{background:#2563eb;color:#fff}.btn-primary:hover{opacity:.88}
+    .btn-success{background:#00b894;color:#fff}.btn-success:hover{opacity:.88}
+    .btn-warn{background:rgba(241,196,15,.15);color:#f1c40f}
+    .btn-purple{background:rgba(167,139,223,.2);color:#a78bdf}
+    .btn-danger{background:rgba(231,76,60,.12);color:#e74c3c}
+    .btn-ghost{background:rgba(255,255,255,.08);color:#ccc}.btn-ghost:hover{background:rgba(255,255,255,.14);color:#fff}
+    .btn-sm{padding:4px 10px;font-size:.75rem}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:.75rem;font-weight:700}
+    .b-confirmed{background:rgba(37,99,235,.15);color:#60a5fa}
+    .b-processing{background:rgba(241,196,15,.12);color:#f1c40f}
+    .b-delivered{background:rgba(0,184,148,.12);color:#00b894}
+    .b-invoiced{background:rgba(167,139,223,.15);color:#a78bdf}
+    .b-cancelled{background:rgba(231,76,60,.12);color:#e74c3c}
+    .b-paid{background:rgba(0,184,148,.12);color:#00b894}
+    .b-draft{background:rgba(255,255,255,.07);color:#666}
+    .b-sent{background:rgba(37,99,235,.15);color:#60a5fa}
+    .b-partial{background:rgba(241,196,15,.12);color:#f1c40f}
+    .alert{border-radius:10px;padding:10px 16px;font-size:.85rem;margin-bottom:16px}
+    .alert-ok{background:rgba(0,184,148,.1);border:1px solid rgba(0,184,148,.25);color:#00b894}
+    .alert-err{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.25);color:#e74c3c}
+
+    /* Pipeline stepper */
+    .pipeline{display:flex;align-items:center;gap:0;margin-bottom:22px;background:#1a1a2e;border:1px solid #2a2a3e;border-radius:14px;padding:16px 20px;overflow-x:auto}
+    .step{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:80px}
+    .step-dot{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;border:2px solid #2a2a3e;background:#0f0f1a;color:#444;transition:.2s}
+    .step-dot.done{background:#00b894;border-color:#00b894;color:#fff}
+    .step-dot.active{background:#2563eb;border-color:#2563eb;color:#fff;box-shadow:0 0 12px rgba(37,99,235,.4)}
+    .step-lbl{font-size:.65rem;font-weight:700;color:#444;text-align:center;white-space:nowrap}
+    .step-lbl.done{color:#00b894}
+    .step-lbl.active{color:#60a5fa}
+    .step-connector{flex:1;height:2px;background:#2a2a3e;min-width:20px}
+    .step-connector.done{background:#00b894}
+
+    .doc{background:#1a1a2e;border-radius:16px;border:1px solid #2a2a3e;padding:28px;max-width:860px;margin-bottom:20px}
+    .doc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid #2a2a3e;flex-wrap:wrap;gap:16px}
+    .doc-logo{width:56px;height:56px;border-radius:10px;object-fit:cover}
+    .doc-logo-ph{width:56px;height:56px;border-radius:10px;background:#2a2a3e;display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    .info-box{background:#0f0f1a;border-radius:10px;padding:14px 16px}
+    .info-box h4{font-size:.65rem;text-transform:uppercase;color:#444;font-weight:700;margin-bottom:8px}
+    .info-box .val{font-size:.88rem;color:#ccc;line-height:1.5}
+    .info-box .val strong{color:#fff}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:.67rem;text-transform:uppercase;color:#444;font-weight:700;padding:8px 12px;border-bottom:2px solid #2a2a3e}
+    td{padding:10px 12px;font-size:.85rem;border-bottom:1px solid rgba(255,255,255,.04);color:#ccc}
+    tr:last-child td{border-bottom:none}
+    .totals-block{margin-left:auto;margin-top:14px;width:260px}
+    .trow{display:flex;justify-content:space-between;padding:5px 0;font-size:.85rem;color:#666}
+    .trow.big{font-size:1rem;font-weight:800;color:#fff;border-top:1px solid #2a2a3e;padding-top:10px;margin-top:4px}
+    .invoices-section{background:#1a1a2e;border-radius:14px;border:1px solid #2a2a3e;padding:20px;max-width:860px}
+    .invoices-section h3{font-size:.9rem;font-weight:700;color:#fff;margin-bottom:14px}
+    @media(max-width:768px){.sidebar{width:56px}.brand-text,.sidebar-nav span:not(.icon){display:none}.main{margin-left:56px;padding:16px}}
+  </style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <% if (tenant.logo_url) { %><img src="<%= tenant.logo_url %>" alt="" /><% } else { %><span class="brand-emoji">💼</span><% } %>
+    <div class="brand-text"><h2><%= tenant.name %></h2><span>Sales</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="/admin"><span class="icon">🏠</span><span>Home</span></a>
+    <div class="divider"></div>
+    <a href="/sales"><span class="icon">📊</span><span>Dashboard</span></a>
+    <a href="/sales/quotations"><span class="icon">📄</span><span>Quotations</span></a>
+    <a href="/sales/orders" class="active"><span class="icon">📦</span><span>Sales Orders</span></a>
+    <a href="/sales/invoices"><span class="icon">🧾</span><span>Invoices</span></a>
+    <a href="/sales/returns"><span class="icon">↩️</span><span>Sales Returns</span></a>
+    <a href="/sales/customers"><span class="icon">👥</span><span>Customers</span></a>
+    <div class="divider"></div>
+    <form method="POST" action="/admin/logout" style="margin-top:auto">
+      <button type="submit"><span class="icon">🚪</span><span>Logout</span></button>
+    </form>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/?tenant=<%= tenant.subdomain %>" target="_blank" class="view-menu-btn"><span>🔗</span><span>View Menu</span></a>
+  </div>
+</aside>
+
+<div class="main">
+  <% if (locals.success) { %><div class="alert alert-ok">✓ <%= success %></div><% } %>
+  <% if (locals.error)   { %><div class="alert alert-err">✗ <%= error %></div><% } %>
+
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="/sales/orders" class="btn btn-ghost">← Orders</a>
+      <span style="font-size:1rem;font-weight:800;color:#fff"><%= order.order_no %></span>
+      <span class="badge b-<%= order.status %>"><%= order.status %></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <% if (order.status === 'confirmed') { %>
+      <form method="POST" action="/sales/orders/<%= order.id %>/status">
+        <input type="hidden" name="status" value="processing" />
+        <button class="btn btn-warn btn-sm">▶ Start Processing</button>
+      </form>
+      <% } %>
+      <% if (order.status === 'processing') { %>
+      <form method="POST" action="/sales/orders/<%= order.id %>/status">
+        <input type="hidden" name="status" value="delivered" />
+        <button class="btn btn-success btn-sm">✓ Mark Delivered</button>
+      </form>
+      <% } %>
+      <% if (order.status === 'delivered') { %>
+      <form method="POST" action="/sales/orders/<%= order.id %>/invoice" onsubmit="return confirm('Create an invoice from this order?')">
+        <button class="btn btn-primary btn-sm">🧾 Create Invoice</button>
+      </form>
+      <% } %>
+      <% if (order.status !== 'invoiced' && order.status !== 'cancelled') { %>
+      <form method="POST" action="/sales/orders/<%= order.id %>/status">
+        <input type="hidden" name="status" value="cancelled" />
+        <button class="btn btn-danger btn-sm" onclick="return confirm('Cancel this order?')">✗ Cancel</button>
+      </form>
+      <% } %>
+      <button onclick="window.print()" class="btn btn-ghost btn-sm">🖨 Print</button>
+      <form method="POST" action="/sales/orders/<%= order.id %>/delete" onsubmit="return confirm('Delete order?')">
+        <button class="btn btn-danger btn-sm">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pipeline stepper -->
+  <%
+    const stages = ['confirmed','processing','delivered','invoiced'];
+    const stageIdx = stages.indexOf(order.status);
+  %>
+  <div class="pipeline">
+    <% stages.forEach((s, i) => {
+         const done  = i < stageIdx;
+         const active = i === stageIdx;
+         const icons = ['✓','⚙','🚚','🧾'];
+         const labels = ['Confirmed','Processing','Delivered','Invoiced'];
+    %>
+    <div class="step">
+      <div class="step-dot <%= done?'done':active?'active':'' %>"><%= done ? '✓' : icons[i] %></div>
+      <div class="step-lbl <%= done?'done':active?'active':'' %>"><%= labels[i] %></div>
+    </div>
+    <% if (i < stages.length-1) { %><div class="step-connector <%= i<stageIdx?'done':'' %>"></div><% } %>
+    <% }) %>
+  </div>
+
+  <div class="doc">
+    <div class="doc-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <% if (tenant.logo_url) { %><img class="doc-logo" src="<%= tenant.logo_url %>" /><% } else { %><div class="doc-logo-ph">🏪</div><% } %>
+        <div>
+          <div style="font-size:1rem;font-weight:800;color:#fff"><%= tenant.name %></div>
+          <% if (tenant.whatsapp) { %><div style="font-size:.78rem;color:#444">📞 <%= tenant.whatsapp %></div><% } %>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:1.3rem;font-weight:800;color:#fff">SALES ORDER</div>
+        <div style="color:#a78bdf;font-size:1rem;font-weight:700"><%= order.order_no %></div>
+        <% if (order.quotation_no) { %><div style="font-size:.75rem;color:#444;margin-top:4px">From: <a href="/sales/quotations/<%= order.quotation_id %>" style="color:#60a5fa"><%= order.quotation_no %></a></div><% } %>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-box">
+        <h4>Customer</h4>
+        <div class="val">
+          <strong><%= order.customer_name||'—' %></strong><br/>
+          <% if (order.customer_phone) { %>📞 <%= order.customer_phone %><% } %>
+        </div>
+      </div>
+      <div class="info-box">
+        <h4>Dates</h4>
+        <div class="val">
+          Order: <strong><%= new Date(order.order_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) %></strong><br/>
+          <% if (order.delivery_date) { %>
+          Delivery: <strong style="color:<%= new Date(order.delivery_date)<new Date()&&order.status!=='delivered'?'#e74c3c':'#ccc' %>"><%= new Date(order.delivery_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) %></strong>
+          <% } else { %>Delivery: <strong>—</strong><% } %>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>#</th><th>Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>
+      <% const items = Array.isArray(order.items)?order.items:[];
+         items.forEach((it,i) => {
+           const lTotal = parseFloat(it.qty||1)*parseFloat(it.price||0);
+      %>
+      <tr>
+        <td style="color:#444"><%= i+1 %></td>
+        <td style="color:#fff;font-weight:500"><%= it.name||'—' %></td>
+        <td style="text-align:right"><%= parseFloat(it.qty||1).toFixed(2) %></td>
+        <td style="text-align:right"><%= tenant.currency||'' %><%= parseFloat(it.price||0).toFixed(2) %></td>
+        <td style="text-align:right;font-weight:600"><%= tenant.currency||'' %><%= lTotal.toFixed(2) %></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+
+    <%
+      const subtotal = parseFloat(order.subtotal||0);
+      const discPct  = parseFloat(order.discount_pct||0);
+      const taxPct   = parseFloat(order.tax_pct||0);
+      const discAmt  = subtotal * discPct / 100;
+      const taxAmt   = (subtotal - discAmt) * taxPct / 100;
+      const total    = parseFloat(order.total||0);
+    %>
+    <div class="totals-block">
+      <div class="trow"><span>Subtotal</span><span><%= tenant.currency||'' %><%= subtotal.toFixed(2) %></span></div>
+      <% if (discPct>0) { %><div class="trow"><span>Discount (<%= discPct %>%)</span><span style="color:#e74c3c">−<%= tenant.currency||'' %><%= discAmt.toFixed(2) %></span></div><% } %>
+      <% if (taxPct>0)  { %><div class="trow"><span>Tax (<%= taxPct %>%)</span><span>+<%= tenant.currency||'' %><%= taxAmt.toFixed(2) %></span></div><% } %>
+      <div class="trow big"><span>Total</span><span style="color:#a78bdf"><%= tenant.currency||'' %><%= total.toFixed(2) %></span></div>
+    </div>
+
+    <% if (order.notes) { %>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #2a2a3e;font-size:.82rem;color:#555;white-space:pre-wrap"><%= order.notes %></div>
+    <% } %>
+  </div>
+
+  <!-- Linked Invoices -->
+  <div class="invoices-section">
+    <h3>🧾 Linked Invoices</h3>
+    <% if (!invoices.length) { %>
+    <div style="color:#444;font-size:.82rem;padding:16px 0">
+      No invoices yet.
+      <% if (order.status === 'delivered') { %>
+      Use the <strong>"Create Invoice"</strong> button above to generate one.
+      <% } else if (order.status !== 'invoiced' && order.status !== 'cancelled') { %>
+      Mark the order as <strong>Delivered</strong> first to unlock invoicing.
+      <% } %>
+    </div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Invoice No.</th><th>Total</th><th>Paid</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      <% invoices.forEach(inv => { %>
+      <tr>
+        <td><a href="/sales/invoices/<%= inv.id %>" style="color:#60a5fa;font-weight:700;text-decoration:none"><%= inv.invoice_no %></a></td>
+        <td><%= tenant.currency||'' %><%= parseFloat(inv.total||0).toFixed(2) %></td>
+        <td style="color:#00b894"><%= tenant.currency||'' %><%= parseFloat(inv.paid_amount||0).toFixed(2) %></td>
+        <td><span class="badge b-<%= inv.status %>"><%= inv.status %></span></td>
+        <td><a href="/sales/invoices/<%= inv.id %>" class="btn btn-ghost btn-sm">Open →</a></td>
+      </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>

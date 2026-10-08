@@ -60,9 +60,13 @@
     .badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:.68rem;font-weight:700}
     .b-draft{background:rgba(255,255,255,.07);color:#666}
     .b-sent{background:rgba(37,99,235,.15);color:#60a5fa}
-    .b-accepted,.b-paid{background:rgba(0,184,148,.12);color:#00b894}
-    .b-rejected,.b-overdue{background:rgba(231,76,60,.12);color:#e74c3c}
+    .b-accepted,.b-paid,.b-delivered{background:rgba(0,184,148,.12);color:#00b894}
+    .b-rejected,.b-overdue,.b-cancelled{background:rgba(231,76,60,.12);color:#e74c3c}
     .b-expired{background:rgba(149,165,166,.12);color:#95a5a6}
+    .b-confirmed{background:rgba(37,99,235,.15);color:#60a5fa}
+    .b-processing{background:rgba(241,196,15,.12);color:#f1c40f}
+    .b-invoiced{background:rgba(167,139,223,.15);color:#a78bdf}
+    .b-partial{background:rgba(241,196,15,.12);color:#f1c40f}
     @media(max-width:768px){.sidebar{width:56px}.brand-text,.sidebar-nav span:not(.icon){display:none}.main{margin-left:56px;padding:16px}}
   </style>
 </head>
@@ -77,6 +81,7 @@
     <div class="divider"></div>
     <a href="/sales" class="active"><span class="icon">📊</span><span>Dashboard</span></a>
     <a href="/sales/quotations"><span class="icon">📄</span><span>Quotations</span></a>
+    <a href="/sales/orders"><span class="icon">📦</span><span>Sales Orders</span></a>
     <a href="/sales/invoices"><span class="icon">🧾</span><span>Invoices</span></a>
     <a href="/sales/returns"><span class="icon">↩️</span><span>Sales Returns</span></a>
     <a href="/sales/customers"><span class="icon">👥</span><span>Customers</span></a>
@@ -110,6 +115,11 @@
       <div class="kpi-sub"><%= tenant.currency||'' %><%= kpi.quotations.total.toLocaleString(undefined,{maximumFractionDigits:0}) %> total value</div>
     </div>
     <div class="kpi">
+      <div class="kpi-label">Sales Orders</div>
+      <div class="kpi-val" style="color:#a78bdf"><%= kpi.orders.cnt %></div>
+      <div class="kpi-sub"><%= tenant.currency||'' %><%= kpi.orders.total.toLocaleString(undefined,{maximumFractionDigits:0}) %> value</div>
+    </div>
+    <div class="kpi">
       <div class="kpi-label">Invoices Issued</div>
       <div class="kpi-val" style="color:#fff"><%= kpi.invoices.cnt %></div>
       <div class="kpi-sub"><%= tenant.currency||'' %><%= kpi.invoices.total.toLocaleString(undefined,{maximumFractionDigits:0}) %> total</div>
@@ -136,17 +146,44 @@
     </a>
   </div>
 
+  <!-- Pipeline -->
+  <div style="background:#1a1a2e;border:1px solid #2a2a3e;border-radius:14px;padding:20px 24px;margin-bottom:22px">
+    <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;color:#444;letter-spacing:.4px;margin-bottom:16px">Sales Pipeline</div>
+    <div style="display:flex;align-items:stretch;gap:0;overflow-x:auto">
+      <% pipeline.forEach((stage, i) => { %>
+      <a href="/sales/<%= stage.stage==='Quotation'?'quotations':stage.stage==='Sales Order'?'orders':'invoices' %>" style="flex:1;min-width:140px;text-decoration:none;padding:16px 20px;border-right:<%= i<pipeline.length-1?'1px solid #2a2a3e':'none' %>;transition:background .15s;border-radius:0" onmouseover="this.style.background='rgba(255,255,255,.03)'" onmouseout="this.style.background=''">
+        <div style="font-size:1.4rem;margin-bottom:6px"><%= stage.icon %></div>
+        <div style="font-size:.78rem;font-weight:700;color:#888;margin-bottom:2px"><%= stage.stage %></div>
+        <div style="font-size:.65rem;color:#444;margin-bottom:10px"><%= stage.label %></div>
+        <div style="font-size:1.6rem;font-weight:800;color:<%= stage.color %>"><%= stage.cnt %></div>
+        <div style="font-size:.72rem;color:#444;margin-top:2px"><%= tenant.currency||'' %><%= stage.total.toLocaleString(undefined,{maximumFractionDigits:0}) %></div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+          <% stage.breakdown.forEach(b => { if(b.val>0){ %>
+          <span style="font-size:.65rem;background:rgba(255,255,255,.06);color:#555;padding:2px 7px;border-radius:10px"><%= b.lbl %>: <%= b.val %></span>
+          <% } }) %>
+        </div>
+      </a>
+      <% if (i < pipeline.length-1) { %><div style="display:flex;align-items:center;padding:0 2px;color:#2a2a3e;font-size:1.2rem">→</div><% } %>
+      <% }) %>
+    </div>
+  </div>
+
   <!-- Module cards -->
   <div class="modules">
     <a href="/sales/quotations" class="mod-card">
       <div class="mod-icon">📄</div>
       <div class="mod-name">Quotations</div>
-      <div class="mod-desc">عرض سعر — Price quotes for customers with discount & tax</div>
+      <div class="mod-desc">عرض سعر — Price quotes → convert to Sales Order</div>
+    </a>
+    <a href="/sales/orders" class="mod-card">
+      <div class="mod-icon">📦</div>
+      <div class="mod-name">Sales Orders</div>
+      <div class="mod-desc">أمر بيع — Confirmed orders → process → deliver → invoice</div>
     </a>
     <a href="/sales/invoices" class="mod-card">
       <div class="mod-icon">🧾</div>
       <div class="mod-name">Invoices</div>
-      <div class="mod-desc">فواتير مبيعات — Issue and track customer invoices</div>
+      <div class="mod-desc">فواتير مبيعات — Track payments and balances</div>
     </a>
     <a href="/sales/returns" class="mod-card">
       <div class="mod-icon">↩️</div>
@@ -161,12 +198,11 @@
   </div>
 
   <!-- Recent activity -->
-  <div class="grid2">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
     <div class="card">
-      <div class="card-head">Recent Quotations <a href="/sales/quotations" style="font-size:.72rem;color:#60a5fa;text-decoration:none;font-weight:400">View all →</a></div>
+      <div class="card-head">Recent Quotations <a href="/sales/quotations" style="font-size:.72rem;color:#60a5fa;text-decoration:none;font-weight:400">→</a></div>
       <table>
-        <% if (!recentQuotations.length) { %>
-        <tr><td style="text-align:center;padding:24px;color:#444">No quotations yet</td></tr>
+        <% if (!recentQuotations.length) { %><tr><td style="text-align:center;padding:24px;color:#444">None yet</td></tr>
         <% } else { recentQuotations.forEach(q => { %>
         <tr onclick="window.location='/sales/quotations/<%= q.id %>'" style="cursor:pointer">
           <td><span style="color:#60a5fa;font-weight:600"><%= q.quotation_no %></span><br/><span style="font-size:.72rem;color:#555"><%= q.customer_name||'—' %></span></td>
@@ -176,10 +212,21 @@
       </table>
     </div>
     <div class="card">
-      <div class="card-head">Recent Invoices <a href="/sales/invoices" style="font-size:.72rem;color:#60a5fa;text-decoration:none;font-weight:400">View all →</a></div>
+      <div class="card-head">Recent Orders <a href="/sales/orders" style="font-size:.72rem;color:#a78bdf;text-decoration:none;font-weight:400">→</a></div>
       <table>
-        <% if (!recentInvoices.length) { %>
-        <tr><td style="text-align:center;padding:24px;color:#444">No invoices yet</td></tr>
+        <% if (!recentOrders.length) { %><tr><td style="text-align:center;padding:24px;color:#444">None yet</td></tr>
+        <% } else { recentOrders.forEach(o => { %>
+        <tr onclick="window.location='/sales/orders/<%= o.id %>'" style="cursor:pointer">
+          <td><span style="color:#a78bdf;font-weight:600"><%= o.order_no %></span><br/><span style="font-size:.72rem;color:#555"><%= o.customer_name||'—' %></span></td>
+          <td style="text-align:right"><%= tenant.currency||'' %><%= parseFloat(o.total||0).toFixed(2) %><br/><span class="badge b-<%= o.status %>"><%= o.status %></span></td>
+        </tr>
+        <% }) } %>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-head">Recent Invoices <a href="/sales/invoices" style="font-size:.72rem;color:#34d399;text-decoration:none;font-weight:400">→</a></div>
+      <table>
+        <% if (!recentInvoices.length) { %><tr><td style="text-align:center;padding:24px;color:#444">None yet</td></tr>
         <% } else { recentInvoices.forEach(inv => { %>
         <tr onclick="window.location='/sales/invoices/<%= inv.id %>'" style="cursor:pointer">
           <td><span style="color:#fff;font-weight:600"><%= inv.invoice_no %></span><br/><span style="font-size:.72rem;color:#555"><%= inv.customer_name||'—' %></span></td>

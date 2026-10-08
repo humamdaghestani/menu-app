@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(node --check \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\pos-print-agent.js\")",
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\ASUS\\\\Desktop\\\\pos-print-agent.js\" \"C:\\\\Users\\\\ASUS\\\\AppData\\\\Roaming\\\\POSPrintAgent\\\\pos-print-agent.js\" -Force)",
+      "Read(//c/Users/ASUS/Desktop/**)",
+      "Bash(netsh advfirewall *)",
+      "PowerShell(Start-Process netsh -ArgumentList 'advfirewall firewall add rule name=\"POS Print Agent\" dir=in action=allow protocol=TCP localport=9191' -Verb RunAs -Wait 2>&1; Write-Host \"Done\")",
+      "PowerShell(node --version)",
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"c:/Users/ASUS/menu-app/public/downloads\")",
+      "Bash(pkg bin/pos-print-agent-src.js --targets node18-win-x64 --output public/downloads/pos-print-agent.exe)",
+      "Bash(node bin/generate-icons.js)",
+      "Bash(git merge *)",
+      "Bash(find /c/Users/ASUS -name \"010_*.sql\" -o -name \"011_*.sql\" 2>/dev/null | grep -v node_modules | head -10)",
+      "Read(//c/Users/ASUS/**)",
+      "Bash(node -e \"require\\('./routes/accounting.js'\\); require\\('./routes/inventory.js'\\); console.log\\('Routes OK'\\);\")",
+      "Bash(grep -n \"CREATE TABLE IF NOT EXISTS menu_items\\\\|CREATE TABLE IF NOT EXISTS menu_categories\\\\|name_ar\\\\|name_en\\\\|name_[a-z]\\\\{2,3\\\\}\\\\|image\\\\|img\" c:/Users/ASUS/menu-app/db/index.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" https://github.com)",
+      "Bash(git fetch *)",
+      "Bash(grep -v \"return res\\\\|comment\\\\|//\")",
+      "Bash(sed -i 's|/accounting/sales-returns|/sales/returns|g' \"c:/Users/ASUS/menu-app/views/sales/returns.ejs\")",
+      "Bash(sed -i 's|📒 Accounting|💼 Sales|g; s|href=\"/accounting\"|href=\"/sales\"|g' \"c:/Users/ASUS/menu-app/views/sales/returns.ejs\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\ASUS\\Desktop",
+      "C:\\Users\\ASUS\\AppData\\Roaming\\POSPrintAgent"
+    ]
+  }
+}
