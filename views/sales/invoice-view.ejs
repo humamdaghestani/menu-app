@@ -165,12 +165,12 @@
 
   <!-- Payment recording (shown when not fully paid) -->
   <% const totalNum = parseFloat(invoice.total||0); const paidNum = parseFloat(invoice.paid_amount||0); const owed = Math.max(0,totalNum-paidNum); %>
-  <% if (invoice.status !== 'paid') { %>
+  <% if (invoice.status !== 'paid' && owed > 0) { %>
   <div class="payment-card no-print">
     <h3>💳 Record Payment</h3>
     <form method="POST" action="/sales/invoices/<%= invoice.id %>/status">
       <div class="pay-grid">
-        <div class="fg"><div class="fl">Amount Received</div><input type="number" name="payment_amount" value="<%= owed.toFixed(2) %>" min="0.01" step="0.01" max="<%= owed.toFixed(2) %>" /></div>
+        <div class="fg"><div class="fl">Amount Received</div><input type="number" name="payment_amount" value="<%= owed.toFixed(2) %>" min="0.01" step="0.01" /></div>
         <div class="fg"><div class="fl">Payment Method</div>
           <select name="payment_method" style="background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none;width:100%">
             <option>Cash</option><option>Bank Transfer</option><option>Cheque</option><option>Card</option>
