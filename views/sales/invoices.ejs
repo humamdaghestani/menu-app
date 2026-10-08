@@ -62,7 +62,7 @@
     .form-group{display:flex;flex-direction:column;gap:5px}
     .form-group.full{grid-column:1/-1}
     label{font-size:.75rem;font-weight:600;color:#555}
-    input[type=text],input[type=number],textarea,input[type=date].fi{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
+    input[type=text],input[type=email],input[type=number],textarea,input[type=date].fi{width:100%;background:#0f0f1a;border:1.5px solid #2a2a3e;color:#fff;padding:8px 10px;border-radius:8px;font-family:inherit;font-size:.85rem;outline:none}
     input:focus,textarea:focus{border-color:#2563eb}
     textarea{resize:vertical;min-height:60px}
     .items-tbl{width:100%;border-collapse:collapse;margin-bottom:8px}
@@ -74,6 +74,18 @@
     .totals-row strong{color:#2563eb;font-size:1rem}
     .progress-bar{height:5px;background:#2a2a3e;border-radius:3px;overflow:hidden;margin-top:4px;min-width:80px}
     .progress-fill{height:100%;border-radius:3px;background:#00b894}
+    .cust-wrap{position:relative}
+    .cust-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#151528;border:1.5px solid #2563eb;border-radius:10px;z-index:999;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.7)}
+    .cust-drop.open{display:block}
+    .cust-opt{padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.04)}
+    .cust-opt:hover{background:rgba(37,99,235,.18)}
+    .cust-opt-name{color:#fff;font-weight:600;font-size:.85rem}
+    .cust-opt-sub{font-size:.72rem;color:#555;margin-top:1px}
+    .cust-opt.cust-new{color:#60a5fa;font-size:.83rem;padding:10px 14px;cursor:pointer;font-style:italic}
+    .cust-opt.cust-new:hover{background:rgba(37,99,235,.1)}
+    .cust-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(37,99,235,.15);color:#60a5fa;padding:3px 10px 3px 8px;border-radius:20px;font-size:.78rem;font-weight:600;margin-top:5px}
+    .cust-badge button{background:none;border:none;color:#60a5fa;cursor:pointer;font-size:1rem;line-height:1;padding:0}
+    .cust-extra-fields{display:none;grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
     @media(max-width:768px){.sidebar{width:56px}.brand-text,.sidebar-nav span:not(.icon){display:none}.main{margin-left:56px;padding:16px}}
   </style>
 </head>
@@ -186,8 +198,22 @@
     <h2>🧾 New Invoice</h2>
     <form method="POST" action="/sales/invoices">
       <div class="form-grid">
-        <div class="form-group"><label>Customer Name *</label><input type="text" name="customer_name" required placeholder="Customer name" /></div>
-        <div class="form-group"><label>Phone</label><input type="text" name="customer_phone" placeholder="07..." /></div>
+        <div class="form-group full cust-wrap">
+          <label>Customer *</label>
+          <input type="text" id="cName_INV" name="customer_name" required placeholder="Search existing or type new customer name..." autocomplete="off" oninput="custFilter('INV')" onblur="setTimeout(()=>custClose('INV'),200)" />
+          <div id="cDrop_INV" class="cust-drop"></div>
+          <div id="cBadge_INV"></div>
+          <input type="hidden" id="cSave_INV" name="save_customer" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="cPhone_INV" name="customer_phone" placeholder="07..." />
+        </div>
+        <div id="cExtra_INV" style="display:none;grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group"><label>Email</label><input type="email" id="cEmail_INV" name="customer_email" placeholder="optional" /></div>
+          <div class="form-group"><label>City</label><input type="text" id="cCity_INV" name="customer_city" placeholder="City" /></div>
+          <div class="form-group full"><label>Address</label><input type="text" id="cAddr_INV" name="customer_address" placeholder="Street, area..." /></div>
+        </div>
         <div class="form-group"><label>Invoice Date</label><input type="date" class="fi" name="invoice_date" value="<%= new Date().toISOString().slice(0,10) %>" /></div>
         <div class="form-group"><label>Due Date</label><input type="date" class="fi" name="due_date" /></div>
         <div class="form-group full">
@@ -226,7 +252,54 @@
   </div>
 </div>
 <script>
+const CUSTOMERS=<%- JSON.stringify(customers) %>;
 const cur='<%= tenant.currency||"" %>';
+
+function custFilter(p){
+  const inp=document.getElementById('cName_'+p);
+  const drop=document.getElementById('cDrop_'+p);
+  const q=inp.value.toLowerCase().trim();
+  if(!q){drop.classList.remove('open');return;}
+  const matches=CUSTOMERS.filter(c=>c.name.toLowerCase().includes(q)||(c.phone&&c.phone.includes(q))).slice(0,8);
+  drop.innerHTML='';
+  matches.forEach(c=>{
+    const d=document.createElement('div');d.className='cust-opt';
+    d.innerHTML=`<div class="cust-opt-name">${c.name}</div><div class="cust-opt-sub">${[c.phone,c.city,c.email].filter(Boolean).join(' · ')}</div>`;
+    d.onmousedown=()=>custSelect(p,c);
+    drop.appendChild(d);
+  });
+  const nd=document.createElement('div');nd.className='cust-opt cust-new';
+  nd.textContent='+ Save "'+inp.value+'" as new customer';
+  nd.onmousedown=()=>custNew(p);
+  drop.appendChild(nd);
+  drop.classList.add('open');
+}
+function custClose(p){document.getElementById('cDrop_'+p).classList.remove('open');}
+function custSelect(p,c){
+  document.getElementById('cName_'+p).value=c.name;
+  document.getElementById('cPhone_'+p).value=c.phone||'';
+  if(document.getElementById('cEmail_'+p))document.getElementById('cEmail_'+p).value=c.email||'';
+  if(document.getElementById('cCity_'+p))document.getElementById('cCity_'+p).value=c.city||'';
+  if(document.getElementById('cAddr_'+p))document.getElementById('cAddr_'+p).value=c.address||'';
+  document.getElementById('cSave_'+p).value='0';
+  document.getElementById('cDrop_'+p).classList.remove('open');
+  const extra=document.getElementById('cExtra_'+p);if(extra)extra.style.display='none';
+  document.getElementById('cBadge_'+p).innerHTML=`<span class="cust-badge">✓ ${c.name} <button type="button" onclick="custClear('${p}')">×</button></span>`;
+}
+function custNew(p){
+  document.getElementById('cDrop_'+p).classList.remove('open');
+  const extra=document.getElementById('cExtra_'+p);
+  if(extra){extra.style.cssText='display:grid;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px';}
+  document.getElementById('cSave_'+p).value='1';
+  document.getElementById('cBadge_'+p).innerHTML='';
+}
+function custClear(p){
+  ['cName_','cPhone_','cEmail_','cCity_','cAddr_'].forEach(f=>{const el=document.getElementById(f+p);if(el)el.value='';});
+  document.getElementById('cSave_'+p).value='0';
+  const extra=document.getElementById('cExtra_'+p);if(extra)extra.style.display='none';
+  document.getElementById('cBadge_'+p).innerHTML='';
+}
+
 function calcInvTotal(){
   let sub=0;
   document.querySelectorAll('#invItemsBody tr').forEach(tr=>{

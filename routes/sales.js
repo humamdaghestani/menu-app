@@ -20,6 +20,17 @@ function dateRange(q) {
   return { from, to };
 }
 
+async function maybeSaveCustomer(tid, body) {
+  if (body.save_customer !== '1' || !body.customer_name) return;
+  const exists = await db.query(`SELECT id FROM customers WHERE tenant_id=$1 AND name=$2 LIMIT 1`, [tid, body.customer_name]);
+  if (!exists.rows.length) {
+    await db.query(
+      `INSERT INTO customers (tenant_id, name, phone, email, address, city) VALUES ($1,$2,$3,$4,$5,$6)`,
+      [tid, body.customer_name, body.customer_phone||null, body.customer_email||null, body.customer_address||null, body.customer_city||null]
+    );
+  }
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────
 router.get('/', requireAuth, requireSales, async (req, res) => {
   const tid = req.user.tenantId;
@@ -82,13 +93,14 @@ router.get('/quotations', requireAuth, requireSales, async (req, res) => {
     const params = [tid, from, to];
     if (status) { q += ` AND qt.status=$${params.length+1}`; params.push(status); }
     q += ` ORDER BY qt.created_at DESC`;
-    const [rows, menuRes] = await Promise.all([
+    const [rows, menuRes, custRes] = await Promise.all([
       db.query(q, params),
       db.query(`SELECT id, name, price::numeric FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name, phone, email, address, city, notes FROM customers WHERE tenant_id=$1 ORDER BY name`, [tid]),
     ]);
     res.render('sales/quotations', {
       tenant: req.tenant, currentUser: req.user,
-      quotations: rows.rows, menuItems: menuRes.rows,
+      quotations: rows.rows, menuItems: menuRes.rows, customers: custRes.rows,
       from, to, status,
       success: req.query.success, error: req.query.error,
     });
@@ -117,6 +129,7 @@ router.post('/quotations', requireAuth, requireSales, async (req, res) => {
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [tid, qNo, customer_name, customer_phone, quotation_date||new Date().toISOString().slice(0,10),
        valid_until||null, JSON.stringify(items), subtotal.toFixed(2), disc, tax, total.toFixed(2), notes, req.user.userId]);
+    await maybeSaveCustomer(tid, req.body);
     res.redirect('/sales/quotations?success=Quotation+created');
   } catch(err){ console.error(err); res.redirect('/sales/quotations?error='+encodeURIComponent(err.message)); }
 });
@@ -171,9 +184,10 @@ router.get('/orders', requireAuth, requireSales, async (req, res) => {
     const params = [tid, from, to];
     if (status) { q += ` AND so.status=$${params.length+1}`; params.push(status); }
     q += ` ORDER BY so.created_at DESC`;
-    const [rows, menuRes] = await Promise.all([
+    const [rows, menuRes, custRes] = await Promise.all([
       db.query(q, params),
       db.query(`SELECT id, name, price::numeric FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name, phone, email, address, city, notes FROM customers WHERE tenant_id=$1 ORDER BY name`, [tid]),
     ]);
     const kpi = {
       total: rows.rows.reduce((s,r)=>s+parseFloat(r.total||0),0),
@@ -183,7 +197,7 @@ router.get('/orders', requireAuth, requireSales, async (req, res) => {
     };
     res.render('sales/orders', {
       tenant: req.tenant, currentUser: req.user,
-      orders: rows.rows, menuItems: menuRes.rows,
+      orders: rows.rows, menuItems: menuRes.rows, customers: custRes.rows,
       from, to, status, kpi,
       success: req.query.success, error: req.query.error,
     });
@@ -213,6 +227,7 @@ router.post('/orders', requireAuth, requireSales, async (req, res) => {
       [tid, oNo, customer_name, customer_phone, order_date||new Date().toISOString().slice(0,10),
        delivery_date||null, JSON.stringify(items), subtotal.toFixed(2), disc, tax, total.toFixed(2), notes, req.user.userId]
     );
+    await maybeSaveCustomer(tid, req.body);
     res.redirect('/sales/orders?success=Sales+order+created');
   } catch(err){ console.error(err); res.redirect('/sales/orders?error='+encodeURIComponent(err.message)); }
 });
@@ -271,9 +286,10 @@ router.get('/invoices', requireAuth, requireSales, async (req, res) => {
     const params = [tid, from, to];
     if (status) { q += ` AND si.status=$${params.length+1}`; params.push(status); }
     q += ` ORDER BY si.created_at DESC`;
-    const [rows, menuRes] = await Promise.all([
+    const [rows, menuRes, custRes] = await Promise.all([
       db.query(q, params),
       db.query(`SELECT id, name, price::numeric FROM menu_items WHERE tenant_id=$1 AND is_available=true ORDER BY name`, [tid]),
+      db.query(`SELECT id, name, phone, email, address, city, notes FROM customers WHERE tenant_id=$1 ORDER BY name`, [tid]),
     ]);
     const kpi = {
       total: rows.rows.reduce((s,r)=>s+parseFloat(r.total||0),0),
@@ -283,7 +299,7 @@ router.get('/invoices', requireAuth, requireSales, async (req, res) => {
     };
     res.render('sales/invoices', {
       tenant: req.tenant, currentUser: req.user,
-      invoices: rows.rows, menuItems: menuRes.rows,
+      invoices: rows.rows, menuItems: menuRes.rows, customers: custRes.rows,
       from, to, status, kpi,
       success: req.query.success, error: req.query.error,
     });
@@ -312,6 +328,7 @@ router.post('/invoices', requireAuth, requireSales, async (req, res) => {
                     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [tid, iNo, customer_name, customer_phone, invoice_date||new Date().toISOString().slice(0,10),
        due_date||null, JSON.stringify(items), subtotal.toFixed(2), disc, tax, total.toFixed(2), notes, req.user.userId]);
+    await maybeSaveCustomer(tid, req.body);
     res.redirect('/sales/invoices?success=Invoice+created');
   } catch(err){ console.error(err); res.redirect('/sales/invoices?error='+encodeURIComponent(err.message)); }
 });
