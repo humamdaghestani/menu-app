@@ -81,6 +81,11 @@
       <button class="btn btn-ghost btn-sm">⏱ Mark Expired</button>
     </form>
     <% } %>
+    <% if (q.status !== 'rejected' && q.status !== 'expired') { %>
+    <form method="POST" action="/sales/quotations/<%= q.id %>/convert" onsubmit="return confirm('Convert this quotation to an invoice?')" style="display:inline">
+      <button class="btn btn-primary btn-sm">🧾 Convert to Invoice</button>
+    </form>
+    <% } %>
     <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print / PDF</button>
     <form method="POST" action="/sales/quotations/<%= q.id %>/delete" onsubmit="return confirm('Delete this quotation?')" style="display:inline">
       <button class="btn btn-danger btn-sm">🗑 Delete</button>

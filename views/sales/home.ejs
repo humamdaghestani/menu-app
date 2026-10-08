@@ -129,6 +129,11 @@
       <div class="kpi-val" style="color:#a78bdf"><%= kpi.customers %></div>
       <div class="kpi-sub">total registered</div>
     </div>
+    <a href="/sales/invoices?status=overdue" class="kpi" style="text-decoration:none;border-color:<%= kpi.overdue.cnt>0?'rgba(231,76,60,.3)':'#2a2a3e' %>">
+      <div class="kpi-label">Overdue Invoices</div>
+      <div class="kpi-val" style="color:<%= kpi.overdue.cnt>0?'#e74c3c':'#444' %>"><%= kpi.overdue.cnt %></div>
+      <div class="kpi-sub"><%= kpi.overdue.cnt>0 ? (tenant.currency||'')+kpi.overdue.amount.toLocaleString(undefined,{maximumFractionDigits:0})+' owed' : 'none' %></div>
+    </a>
   </div>
 
   <!-- Module cards -->

@@ -25,11 +25,12 @@ router.get('/', requireAuth, requireSales, async (req, res) => {
   const tid = req.user.tenantId;
   const { from, to } = dateRange(req.query);
   try {
-    const [quotRes, invRes, retRes, custRes, recentQRes, recentInvRes] = await Promise.all([
+    const [quotRes, invRes, retRes, custRes, overdueRes, recentQRes, recentInvRes] = await Promise.all([
       db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total FROM quotations WHERE tenant_id=$1 AND quotation_date BETWEEN $2 AND $3`, [tid, from, to]),
       db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total, COALESCE(SUM(paid_amount),0) AS paid FROM sales_invoices WHERE tenant_id=$1 AND invoice_date BETWEEN $2 AND $3`, [tid, from, to]),
       db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total),0) AS total FROM sales_returns WHERE tenant_id=$1 AND return_date BETWEEN $2 AND $3`, [tid, from, to]),
       db.query(`SELECT COUNT(*) AS cnt FROM customers WHERE tenant_id=$1`, [tid]),
+      db.query(`SELECT COUNT(*) AS cnt, COALESCE(SUM(total-paid_amount),0) AS amount FROM sales_invoices WHERE tenant_id=$1 AND status != 'paid' AND due_date < CURRENT_DATE`, [tid]),
       db.query(`SELECT id, quotation_no, customer_name, total, status, quotation_date FROM quotations WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 5`, [tid]),
       db.query(`SELECT id, invoice_no, customer_name, total, paid_amount, status, invoice_date FROM sales_invoices WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 5`, [tid]),
     ]);
@@ -38,6 +39,7 @@ router.get('/', requireAuth, requireSales, async (req, res) => {
       invoices:   { cnt: parseInt(invRes.rows[0].cnt)||0, total: parseFloat(invRes.rows[0].total)||0, paid: parseFloat(invRes.rows[0].paid)||0 },
       returns:    { cnt: parseInt(retRes.rows[0].cnt)||0, total: parseFloat(retRes.rows[0].total)||0 },
       customers:  parseInt(custRes.rows[0].cnt)||0,
+      overdue:    { cnt: parseInt(overdueRes.rows[0].cnt)||0, amount: parseFloat(overdueRes.rows[0].amount)||0 },
     };
     res.render('sales/home', {
       tenant: req.tenant, currentUser: req.user,
@@ -117,6 +119,24 @@ router.post('/quotations/:id/status', requireAuth, requireSales, async (req, res
 router.post('/quotations/:id/delete', requireAuth, requireSales, async (req, res) => {
   await db.query(`DELETE FROM quotations WHERE id=$1 AND tenant_id=$2`, [req.params.id, req.user.tenantId]);
   res.redirect('/sales/quotations?success=Deleted');
+});
+
+router.post('/quotations/:id/convert', requireAuth, requireSales, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const r = await db.query(`SELECT * FROM quotations WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    if (!r.rows.length) return res.redirect('/sales/quotations');
+    const q = r.rows[0];
+    const cntRes = await db.query(`SELECT COUNT(*)+1 AS n FROM sales_invoices WHERE tenant_id=$1`, [tid]);
+    const iNo = `INV-${String(cntRes.rows[0].n).padStart(4,'0')}`;
+    const result = await db.query(
+      `INSERT INTO sales_invoices (tenant_id,invoice_no,customer_name,customer_phone,invoice_date,items,subtotal,discount_pct,tax_pct,total,notes,created_by)
+       VALUES ($1,$2,$3,$4,CURRENT_DATE,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+      [tid, iNo, q.customer_name, q.customer_phone, q.items, q.subtotal, q.discount_pct, q.tax_pct, q.total, q.notes, req.user.userId]
+    );
+    await db.query(`UPDATE quotations SET status='accepted' WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]);
+    res.redirect(`/sales/invoices/${result.rows[0].id}?success=Invoice+created+from+quotation`);
+  } catch(err){ console.error(err); res.redirect(`/sales/quotations/${req.params.id}?error=`+encodeURIComponent(err.message)); }
 });
 
 // ── Invoices ──────────────────────────────────────────────────────
@@ -312,6 +332,25 @@ router.post('/customers', requireAuth, requireSales, async (req, res) => {
       [tid, name, phone||null, email||null, notes||null]);
     res.redirect('/sales/customers?success=Customer+added');
   } catch(err){ console.error(err); res.redirect('/sales/customers?error='+encodeURIComponent(err.message)); }
+});
+
+router.get('/customers/:id', requireAuth, requireSales, async (req, res) => {
+  const tid = req.user.tenantId;
+  try {
+    const [custRes, invRes, quotRes] = await Promise.all([
+      db.query(`SELECT * FROM customers WHERE id=$1 AND tenant_id=$2`, [req.params.id, tid]),
+      db.query(`SELECT * FROM sales_invoices WHERE tenant_id=$1 AND customer_name=(SELECT name FROM customers WHERE id=$2 AND tenant_id=$1) ORDER BY created_at DESC`, [tid, req.params.id]),
+      db.query(`SELECT * FROM quotations WHERE tenant_id=$1 AND customer_name=(SELECT name FROM customers WHERE id=$2 AND tenant_id=$1) ORDER BY created_at DESC`, [tid, req.params.id]),
+    ]);
+    if (!custRes.rows.length) return res.redirect('/sales/customers');
+    res.render('sales/customer-view', {
+      tenant: req.tenant, currentUser: req.user,
+      customer: custRes.rows[0],
+      invoices: invRes.rows,
+      quotations: quotRes.rows,
+      success: req.query.success,
+    });
+  } catch(err){ console.error(err); res.status(500).send('Error: '+err.message); }
 });
 
 // Redirect old accounting URLs to sales

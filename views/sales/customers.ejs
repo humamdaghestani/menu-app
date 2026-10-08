@@ -121,7 +121,7 @@
            const credit = parseFloat(c.credit_balance||0);
            const initial = (c.name||'?').charAt(0).toUpperCase();
       %>
-      <tr class="cust-row">
+      <tr class="cust-row" onclick="window.location='/sales/customers/<%= c.id %>'" style="cursor:pointer">
         <td>
           <div class="customer-cell">
             <div class="avatar"><%= initial %></div>
@@ -143,7 +143,7 @@
         </td>
         <td style="color:<%= credit>0?'#00b894':'#444' %>"><%= credit>0?'+':'' %><%= tenant.currency||'' %><%= credit.toFixed(2) %></td>
         <td>
-          <a href="/sales/invoices?customer=<%= encodeURIComponent(c.name) %>" class="btn btn-ghost btn-sm" title="View invoices">🧾</a>
+          <a href="/sales/invoices?customer=<%= encodeURIComponent(c.name) %>" class="btn btn-ghost btn-sm" title="View invoices" onclick="event.stopPropagation()">🧾</a>
         </td>
       </tr>
       <% }) %>
