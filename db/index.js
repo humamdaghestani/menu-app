@@ -930,6 +930,8 @@ const pool = new Pool({
       created_at     TIMESTAMPTZ DEFAULT NOW()
     )`,
     `ALTER TABLE sales_invoices ADD COLUMN IF NOT EXISTS sales_order_id INTEGER REFERENCES sales_orders(id) ON DELETE SET NULL`,
+    `ALTER TABLE customers ADD COLUMN IF NOT EXISTS address TEXT`,
+    `ALTER TABLE customers ADD COLUMN IF NOT EXISTS city VARCHAR(80)`,
     // ── Waste / Spoilage logging ──────────────────────────────────────
     `CREATE TABLE IF NOT EXISTS inventory_waste (
       id          SERIAL PRIMARY KEY,
